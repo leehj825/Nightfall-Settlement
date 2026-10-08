@@ -959,6 +959,7 @@
         const ox = npc.position.x - o.position.x, oz = npc.position.z - o.position.z;
         const reach = o.userData.radius + PLAYER_R + 0.45, od = Math.hypot(ox, oz);
         if (od >= reach || od < 1e-4) continue;
+        if (Math.abs(o.position.x - tx) < 0.3 && Math.abs(o.position.z - tz) < 0.3) continue;   // 목적지 자체(채집/수리 대상)는 피하지 않는다
         const nx = ox / od, nz = oz / od, into = mx * nx + mz * nz;
         if (into >= 0) continue;
         mx -= into * nx; mz -= into * nz;
