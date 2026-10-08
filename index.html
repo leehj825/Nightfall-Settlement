@@ -5,43 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Nightfall Settlement</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1020; touch-action: none;
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2a1d3a; touch-action: none;
     -webkit-user-select: none; user-select: none; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
-  canvas#game { display: block; width: 100%; height: 100%; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
-  /* 진입 UI */
-  #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: radial-gradient(ellipse at 50% 70%, rgba(255,140,60,.35), rgba(20,10,35,.92) 70%); z-index: 10; text-align: center; padding: 16px; }
-  #menu.hidden { display: none; }
-  .title { margin: 0; font-size: clamp(34px, 9vw, 84px); font-weight: 900; letter-spacing: .06em; text-transform: uppercase;
-    background: linear-gradient(180deg, #ffe7a8 0%, #ff9d3c 55%, #c2410c 100%); -webkit-background-clip: text; background-clip: text;
-    color: transparent; filter: drop-shadow(0 4px 0 #3a1408) drop-shadow(0 0 22px rgba(255,140,50,.55)); }
-  .subtitle { margin: 10px 0 36px; color: #c9b8e8; letter-spacing: .5em; font-size: clamp(11px, 2.6vw, 18px); text-transform: uppercase; }
-  #startBtn { font: inherit; font-size: 20px; font-weight: 700; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c);
-    border: 0; border-radius: 999px; padding: 14px 44px; cursor: pointer; box-shadow: 0 5px 0 #a8480f, 0 10px 24px rgba(0,0,0,.4); }
-  #startBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #a8480f; }
-  .hint { margin-top: 26px; color: #9d8cc0; font-size: 14px; line-height: 1.6; }
+  #title { position: fixed; top: 10px; left: 0; right: 0; text-align: center; margin: 0; pointer-events: none;
+    font-size: clamp(20px, 5vw, 40px); font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+    background: linear-gradient(180deg, #ffe7a8, #ff9d3c 60%, #c2410c); -webkit-background-clip: text; background-clip: text;
+    color: transparent; filter: drop-shadow(0 3px 0 #3a1408) drop-shadow(0 0 14px rgba(255,140,50,.5)); }
 
-  /* 가상 조이스틱 (좌측 하단) */
-  #joyZone { position: fixed; left: 0; bottom: 0; width: 55%; height: 45%; z-index: 5; touch-action: none; }
-  #joyBase { position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%;
-    background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); display: none; pointer-events: none; }
-  #joyBase.fixed { display: block; }
-  #joyKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
-    background: rgba(255,190,110,.75); border: 2px solid rgba(255,255,255,.7); }
+  #hud { position: fixed; top: 10px; left: 10px; padding: 8px 14px; border-radius: 10px; color: #fff;
+    background: rgba(20,10,30,.55); font-size: 17px; line-height: 1.6; pointer-events: none; }
+  #toast { position: fixed; top: 22%; left: 0; right: 0; text-align: center; color: #ffe7a8; font-size: 18px;
+    text-shadow: 0 2px 4px #000; opacity: 0; transition: opacity .3s; pointer-events: none; }
+
+  #joy { position: fixed; left: 18px; bottom: 18px; width: 150px; height: 150px; z-index: 5; touch-action: none; }
+
+  #actions { position: fixed; right: 18px; bottom: 22px; display: flex; flex-direction: column; gap: 14px; z-index: 5; }
+  .btn { font: inherit; font-weight: 700; font-size: 16px; color: #3a1408; width: 92px; height: 92px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.6); background: radial-gradient(circle at 35% 30%, #ffd98a, #ff9a3c);
+    box-shadow: 0 4px 0 #a8480f, 0 8px 18px rgba(0,0,0,.4); cursor: pointer; touch-action: none; }
+  .btn small { display: block; font-weight: 400; font-size: 11px; opacity: .75; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; }
+  #buildBtn { background: radial-gradient(circle at 35% 30%, #d9b48a, #8a5a34); color: #fff; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-
-<div id="menu">
-  <h1 class="title">Nightfall Settlement</h1>
-  <div class="subtitle">Survive the dusk</div>
-  <button id="startBtn">START</button>
-  <div class="hint">모바일: 좌측 하단 조이스틱 &nbsp;|&nbsp; PC: W A S D</div>
+<h1 id="title">Nightfall Settlement</h1>
+<div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b></div>
+<div id="toast"></div>
+<canvas id="joy" width="150" height="150"></canvas>
+<div id="actions">
+  <button class="btn" id="buildBtn">목책 건설<small>Build · B</small></button>
+  <button class="btn" id="actBtn">채집<small>Action · Space</small></button>
 </div>
-
-<div id="joyZone"><div id="joyBase"><div id="joyKnob"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -56,174 +54,280 @@
   const scene = new THREE.Scene();
   const dusk = new THREE.Color(0x3a2a52);
   scene.background = dusk;
-  scene.fog = new THREE.Fog(dusk, 30, 70);
+  scene.fog = new THREE.Fog(dusk, 35, 80);
 
-  // ---------- 조명 (해 질 녘) ----------
-  scene.add(new THREE.AmbientLight(0x6f86d6, 0.55));            // 푸른빛 환경광
-  const sun = new THREE.DirectionalLight(0xff9a4a, 1.1);        // 따뜻한 오렌지 태양광
-  sun.position.set(-18, 14, -10);
+  // ---------- 조명 ----------
+  scene.add(new THREE.AmbientLight(0x6f86d6, 0.6));
+  const sun = new THREE.DirectionalLight(0xff9a4a, 1.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 80 });
+  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 90 });
   scene.add(sun, sun.target);
 
-  // ---------- 바닥 (캐주얼 흙색) ----------
+  // ---------- 바닥 ----------
+  const MAP = 50;   // 맵 반경
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 400),
-    new THREE.MeshToonMaterial({ color: 0x9a6b44 })
+    new THREE.PlaneGeometry(MAP * 2 + 40, MAP * 2 + 40),
+    new THREE.MeshStandardMaterial({ color: 0x9a6b44, flatShading: true, roughness: 1 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // 이동감을 위한 장식용 돌멩이
-  const rockMat = new THREE.MeshToonMaterial({ color: 0x6e5a4c });
-  for (let i = 0; i < 60; i++) {
-    const s = 0.3 + Math.random() * 0.7;
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s), rockMat);
-    rock.position.set((Math.random() - .5) * 90, s * 0.4, (Math.random() - .5) * 90);
-    rock.rotation.set(Math.random() * 3, Math.random() * 3, 0);
-    rock.castShadow = rock.receiveShadow = true;
-    scene.add(rock);
-  }
+  // ---------- 절차적 맵: 나무 / 바위 ----------
+  const obstacles = [];   // 충돌 + 채집 대상 배열
+  const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
+  const trunkMat = mat(0x6b4226), leafMat = mat(0x3f8a3c), rockMat = mat(0x8b8b92);
+  const rand = (a, b) => a + Math.random() * (b - a);
 
-  // ---------- 플레이어 (캡슐형: 원통 + 반구 2개) ----------
+  function makeTree() {
+    const g = new THREE.Group();
+    const h = rand(1.2, 1.8);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.32, h, 6), trunkMat);
+    trunk.position.y = h / 2;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(rand(1.0, 1.3), rand(2.2, 3), 6), leafMat);
+    cone.position.y = h + 0.9;
+    g.add(trunk, cone);
+    g.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+    g.userData = { type: 'wood', radius: 0.9 };
+    return g;
+  }
+  function makeRock() {
+    const s = rand(0.6, 1.2);
+    const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
+    m.scale.y = rand(0.7, 1);
+    m.position.y = s * 0.55;
+    m.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+    m.castShadow = m.receiveShadow = true;
+    const g = new THREE.Group();
+    g.add(m);
+    g.userData = { type: 'stone', radius: s * 0.95 };
+    return g;
+  }
+  function scatter(factory, count) {
+    for (let i = 0; i < count; i++) {
+      const o = factory();
+      for (let tries = 0; tries < 30; tries++) {
+        const x = rand(-MAP + 3, MAP - 3), z = rand(-MAP + 3, MAP - 3);
+        if (Math.hypot(x, z) < 5) continue;   // 시작 지점 비우기
+        if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
+        o.position.set(x, 0, z);
+        o.rotation.y = rand(0, Math.PI * 2);
+        scene.add(o);
+        obstacles.push(o);
+        break;
+      }
+    }
+  }
+  scatter(makeTree, 20 + Math.floor(Math.random() * 11));
+  scatter(makeRock, 20 + Math.floor(Math.random() * 11));
+
+  // ---------- 플레이어 ----------
   const player = new THREE.Group();
-  const bodyMat = new THREE.MeshToonMaterial({ color: 0xe8553c });
   const R = 0.45, H = 0.7;
-  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 20), bodyMat);
-  const top = new THREE.Mesh(new THREE.SphereGeometry(R, 20, 12), bodyMat);
-  const bot = top.clone();
-  top.position.y = H / 2; bot.position.y = -H / 2;
+  const bodyMat = mat(0xe8553c);
   const capsule = new THREE.Group();
-  capsule.add(cyl, top, bot);
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), bodyMat);
+  const capTop = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 6), bodyMat);
+  const capBot = capTop.clone();
+  capTop.position.y = H / 2; capBot.position.y = -H / 2;
+  capsule.add(cyl, capTop, capBot);
   capsule.position.y = H / 2 + R;
+  const face = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.2), mat(0xfff1c9));   // 얼굴(앞쪽 +Z)
+  face.position.set(0, 0.5, R * 0.95);
+  capsule.add(face);
   capsule.traverse(m => { if (m.isMesh) m.castShadow = true; });
-  // 바라보는 방향을 알려주는 "눈"
-  const eye = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.2), new THREE.MeshToonMaterial({ color: 0xfff1c9 }));
-  eye.position.set(0, 0.55, R * 0.9);
-  capsule.add(eye);
   player.add(capsule);
   scene.add(player);
+  const PLAYER_R = 0.5;
 
-  // ---------- 쿼터뷰 카메라 + Lerp 추적 ----------
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
-  const CAM_OFFSET = new THREE.Vector3(12, 14, 12);   // 비스듬히 위에서 내려다보는 각도
-  const camTarget = new THREE.Vector3();
-  camera.position.copy(CAM_OFFSET);
-  camera.lookAt(0, 0, 0);
+  // ---------- 카메라 (Orbit + Lerp) ----------
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+  let yaw = 0, pitch = 0.45;
+  const DIST = 8, LOOK_H = 1.6;
+  const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
+  function goalPos(out) {
+    return out.set(
+      player.position.x + Math.sin(yaw) * Math.cos(pitch) * DIST,
+      LOOK_H + Math.sin(pitch) * DIST,
+      player.position.z + Math.cos(yaw) * Math.cos(pitch) * DIST);
+  }
+  camera.position.copy(goalPos(camGoal));
+  lookAt.set(0, LOOK_H, 0);
 
   function resize() {
-    const w = innerWidth, h = innerHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
   resize();
 
-  // ---------- 입력: 가상 조이스틱 ----------
-  const joy = { x: 0, y: 0, id: null };      // x: 오른쪽 +, y: 위쪽 +
-  const zone = document.getElementById('joyZone');
-  const base = document.getElementById('joyBase');
-  const knob = document.getElementById('joyKnob');
-  const MAX_R = 55;
-  let origin = { x: 0, y: 0 };
-
-  function joyMove(e) {
-    let dx = e.clientX - origin.x, dy = e.clientY - origin.y;
-    const len = Math.hypot(dx, dy);
-    if (len > MAX_R) { dx = dx / len * MAX_R; dy = dy / len * MAX_R; }
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    joy.x = dx / MAX_R;
-    joy.y = -dy / MAX_R;
-  }
-  function joyEnd(e) {
-    if (e.pointerId !== joy.id) return;
-    joy.id = null; joy.x = joy.y = 0;
-    base.classList.remove('fixed');
-    knob.style.transform = '';
-  }
-  zone.addEventListener('pointerdown', e => {
-    if (joy.id !== null) return;
-    joy.id = e.pointerId;
-    zone.setPointerCapture(e.pointerId);
-    origin = { x: e.clientX, y: e.clientY };     // 터치한 위치가 조이스틱 중심
-    base.style.left = origin.x + 'px';
-    base.style.top = origin.y + 'px';
-    base.classList.add('fixed');
-    joyMove(e);
+  // ---------- 카메라 회전 입력 ----------
+  // 모바일: 화면 우측 터치 드래그 / PC: 마우스 우클릭 드래그
+  const look = { id: null, x: 0, y: 0 };
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointerdown', e => {
+    const ok = e.pointerType === 'mouse' ? e.button === 2 : e.clientX > innerWidth * 0.4;
+    if (!ok || look.id !== null) return;
+    look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
   });
-  zone.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(e); });
-  zone.addEventListener('pointerup', joyEnd);
-  zone.addEventListener('pointercancel', joyEnd);
-  zone.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerId !== look.id) return;
+    yaw -= (e.clientX - look.x) * 0.006;
+    pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - look.y) * 0.005));
+    look.x = e.clientX; look.y = e.clientY;
+  });
+  const lookEnd = e => { if (e.pointerId === look.id) look.id = null; };
+  canvas.addEventListener('pointerup', lookEnd);
+  canvas.addEventListener('pointercancel', lookEnd);
 
-  // ---------- 입력: WASD ----------
+  // ---------- 가상 조이스틱 (Canvas) ----------
+  const joyCanvas = document.getElementById('joy');
+  const jctx = joyCanvas.getContext('2d');
+  const joy = { x: 0, y: 0, id: null };   // x: 오른쪽 +, y: 위쪽 +
+  const JC = 75, JMAX = 50;
+  function drawJoy() {
+    jctx.clearRect(0, 0, 150, 150);
+    jctx.beginPath(); jctx.arc(JC, JC, JMAX + 10, 0, 7);
+    jctx.fillStyle = 'rgba(255,255,255,.12)'; jctx.fill();
+    jctx.lineWidth = 3; jctx.strokeStyle = 'rgba(255,255,255,.4)'; jctx.stroke();
+    jctx.beginPath(); jctx.arc(JC + joy.x * JMAX, JC - joy.y * JMAX, 28, 0, 7);
+    jctx.fillStyle = 'rgba(255,190,110,.8)'; jctx.fill();
+    jctx.strokeStyle = 'rgba(255,255,255,.8)'; jctx.stroke();
+  }
+  function joyUpdate(e) {
+    const r = joyCanvas.getBoundingClientRect();
+    let dx = e.clientX - r.left - JC, dy = e.clientY - r.top - JC;
+    const l = Math.hypot(dx, dy);
+    if (l > JMAX) { dx = dx / l * JMAX; dy = dy / l * JMAX; }
+    joy.x = dx / JMAX; joy.y = -dy / JMAX;
+    drawJoy();
+  }
+  const joyEnd = e => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; drawJoy(); };
+  joyCanvas.addEventListener('pointerdown', e => {
+    if (joy.id !== null) return;
+    joy.id = e.pointerId; joyCanvas.setPointerCapture(e.pointerId); joyUpdate(e);
+  });
+  joyCanvas.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyUpdate(e); });
+  joyCanvas.addEventListener('pointerup', joyEnd);
+  joyCanvas.addEventListener('pointercancel', joyEnd);
+  drawJoy();
+
+  // ---------- 키보드 ----------
   const keys = {};
-  addEventListener('keydown', e => { keys[e.code] = true; });
+  addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) gather(); }
+    if (e.code === 'KeyB' && !e.repeat) build();
+    keys[e.code] = true;
+  });
   addEventListener('keyup', e => { keys[e.code] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
-  function getInput() {
-    let x = joy.x, y = joy.y;
-    const kx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-    const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
-    if (kx || ky) { const l = Math.hypot(kx, ky); x = kx / l; y = ky / l; }
-    return { x, y };
+  // ---------- 자원 / 상호작용 ----------
+  const res = { wood: 0, stone: 0 };
+  const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN');
+  const toastEl = document.getElementById('toast');
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.style.opacity = 1;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.opacity = 0, 1400);
+  }
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; }
+
+  const GATHER_RANGE = 2.6;
+  function gather() {
+    let best = null, bestD = GATHER_RANGE;
+    for (const o of obstacles) {
+      if (o.userData.type !== 'wood' && o.userData.type !== 'stone') continue;
+      const d = Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius;
+      if (d < bestD) { bestD = d; best = o; }
+    }
+    if (!best) return toast('가까이에 채집할 대상이 없습니다');
+    scene.remove(best);
+    obstacles.splice(obstacles.indexOf(best), 1);
+    res[best.userData.type]++;
+    updateHud();
   }
 
-  // ---------- 게임 루프 ----------
-  // 카메라 기준 화면 위/오른쪽에 해당하는 월드 방향
-  const FWD = new THREE.Vector3(-1, 0, -1).normalize();
-  const RIGHT = new THREE.Vector3(1, 0, -1).normalize();
-  const SPEED = 6;
-  const move = new THREE.Vector3();
-  let started = false;
-  let facing = 0;
+  const fenceMat = mat(0x8a5a34);
+  function build() {
+    if (res.wood < 5) return toast('나무가 5개 필요합니다');
+    const fx = Math.sin(facing), fz = Math.cos(facing);
+    const fence = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 0.35), fenceMat);
+    fence.position.set(player.position.x + fx * 2, 0.55, player.position.z + fz * 2);
+    fence.rotation.y = facing;
+    fence.castShadow = fence.receiveShadow = true;
+    fence.userData = { type: 'fence', radius: 1.0 };
+    scene.add(fence);
+    obstacles.push(fence);
+    res.wood -= 5;
+    updateHud();
+  }
+  const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
+  bindBtn('actBtn', gather);
+  bindBtn('buildBtn', build);
 
+  // ---------- 메인 루프 ----------
+  const SPEED = 6;
+  let facing = 0;
   const clock = new THREE.Clock();
+
   function tick() {
     requestAnimationFrame(tick);
     const dt = Math.min(clock.getDelta(), 0.05);
     const t = clock.elapsedTime;
 
-    if (started) {
-      const input = getInput();
-      const mag = Math.min(1, Math.hypot(input.x, input.y));
-      if (mag > 0.08) {
-        move.set(0, 0, 0).addScaledVector(RIGHT, input.x).addScaledVector(FWD, input.y).normalize();
-        player.position.addScaledVector(move, SPEED * mag * dt);
+    // 입력 합산 (조이스틱 or WASD)
+    let ix = joy.x, iy = joy.y;
+    const kx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+    const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+    if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
+    const mag = Math.min(1, Math.hypot(ix, iy));
 
-        // 이동 방향으로 부드럽게 회전
-        const target = Math.atan2(move.x, move.z);
-        let diff = target - facing;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-        facing += diff * Math.min(1, dt * 14);
-        player.rotation.y = facing;
-        capsule.position.y = H / 2 + R + Math.abs(Math.sin(t * 12)) * 0.08 * mag;   // 걷는 통통거림
-      } else {
-        capsule.position.y += (H / 2 + R - capsule.position.y) * Math.min(1, dt * 10);
-      }
+    if (mag > 0.08) {
+      // 현재 카메라가 바라보는 방향(수평) 기준으로 전진/우측 벡터 계산
+      const fwdX = -Math.sin(yaw), fwdZ = -Math.cos(yaw);
+      const rightX = Math.cos(yaw), rightZ = -Math.sin(yaw);
+      let mx = rightX * ix + fwdX * iy, mz = rightZ * ix + fwdZ * iy;
+      const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
+
+      player.position.x += mx * SPEED * mag * dt;
+      player.position.z += mz * SPEED * mag * dt;
+
+      // 이동 방향으로 부드럽게 회전
+      let diff = Math.atan2(mx, mz) - facing;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      facing += diff * Math.min(1, dt * 14);
+      player.rotation.y = facing;
+      capsule.position.y = H / 2 + R + Math.abs(Math.sin(t * 12)) * 0.08 * mag;
+    } else {
+      capsule.position.y += (H / 2 + R - capsule.position.y) * Math.min(1, dt * 10);
     }
 
-    // 카메라 부드러운 추적 (Lerp)
-    camTarget.copy(player.position).add(CAM_OFFSET);
-    camera.position.lerp(camTarget, 1 - Math.exp(-5 * dt));
-    camera.lookAt(camera.position.x - CAM_OFFSET.x, 0, camera.position.z - CAM_OFFSET.z);
+    // 충돌 처리: 겹치면 바깥으로 밀어냄
+    for (const o of obstacles) {
+      const dx = player.position.x - o.position.x, dz = player.position.z - o.position.z;
+      const min = o.userData.radius + PLAYER_R, d = Math.hypot(dx, dz);
+      if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
+    }
+    player.position.x = Math.max(-MAP, Math.min(MAP, player.position.x));
+    player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));
 
-    // 그림자 영역이 플레이어를 따라가도록
+    // 카메라 Lerp 추적
+    const k = 1 - Math.exp(-6 * dt);
+    camera.position.lerp(goalPos(camGoal), k);
+    lookAt.lerp(new THREE.Vector3(player.position.x, LOOK_H, player.position.z), k);
+    camera.lookAt(lookAt);
+
+    // 그림자 범위가 플레이어를 따라가게
     sun.target.position.copy(player.position);
-    sun.position.set(player.position.x - 18, 14, player.position.z - 10);
+    sun.position.set(player.position.x - 20, 16, player.position.z - 12);
 
     renderer.render(scene, camera);
   }
   tick();
-
-  document.getElementById('startBtn').addEventListener('click', () => {
-    started = true;
-    document.getElementById('menu').classList.add('hidden');
-  });
 })();
 </script>
 </body>
