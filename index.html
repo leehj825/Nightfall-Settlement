@@ -25,6 +25,11 @@
   #gameover h2 { margin: 0 0 14px; color: #ff5a4a; font-size: clamp(24px, 6vw, 38px); text-shadow: 0 3px 0 #300; }
   #gameover p { margin: 6px 0; font-size: 20px; }
   #gameover p.cause { font-size: 14px; color: #c9a6a0; }
+  #goRewind { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  #goRewind button { font: inherit; font-size: 16px; font-weight: 700; color: #fff; padding: 10px 18px; border-radius: 12px; cursor: pointer;
+    border: 2px solid rgba(255,255,255,.55); background: linear-gradient(#4f7fd0, #2a4f9a); box-shadow: 0 3px 0 #17306a; }
+  #goRewind button:first-child { background: linear-gradient(#4fb36a, #1f7a3d); box-shadow: 0 3px 0 #0f4a24; }
+  #goRewind button:active { transform: translateY(2px); }
   #restartBtn { margin-top: 18px; font: inherit; font-size: 20px; font-weight: 700; color: #3a1408; padding: 12px 38px; border: 0;
     border-radius: 999px; cursor: pointer; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 4px 0 #a8480f; }
   #restartBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; }
@@ -96,7 +101,7 @@
 <div id="bossBar"><span id="bossName">베헤모스</span><div class="track"><div id="bossFill"></div></div></div>
 <div id="clear">1장 클리어 - 영지가 안정화되었습니다!</div>
 <div id="warn"></div>
-<div id="gameover"><div class="card"><h2>당신의 마을은 무너졌습니다.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><button id="restartBtn">다시 시작</button></div></div>
+<div id="gameover"><div class="card"><h2>당신의 마을은 무너졌습니다.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><div id="goRewind"></div><button id="restartBtn">처음부터 다시 시작</button></div></div>
 <div id="toast"></div>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
@@ -515,6 +520,15 @@
       }
     }
   }
+  const doormats = [];
+  function addGate(x, z, r, nx, nz) {                                // 출입구 경유지 등록 + 바닥의 얇고 납작한 회색 도어 매트
+    gateWaypoints.push({ x, z, r, nx, nz });
+    const doormat = new THREE.Mesh(matGeo, matMat);
+    doormat.position.set(x, 0.02, z);
+    doormat.receiveShadow = true;
+    scene.add(doormat);
+    doormats.push(doormat);
+  }
   // 정사각형 성벽 띠(중앙 기준 체비셰프 거리 R ± width) 안의 자원을 모두 치워, 벽과 나무/바위 사이에 NPC가 끼는 틈을 없앤다
   const cheb = (x, z) => Math.max(Math.abs(x), Math.abs(z));
   function clearCorridor(R, width) {
@@ -537,11 +551,7 @@
     for (const p of pts) {
       if (p.u === 0) {                                              // 출입구: 비워 두고 길만 터 준 뒤 경유지로 등록
         clearArea(p.x, p.z, 2.4);
-        gateWaypoints.push({ x: p.x, z: p.z, r: R, nx: p.nx, nz: p.nz });
-        const doormat = new THREE.Mesh(matGeo, matMat);             // 바닥의 얇고 납작한 회색 도어 매트
-        doormat.position.set(p.x, 0.02, p.z);
-        doormat.receiveShadow = true;
-        scene.add(doormat);
+        addGate(p.x, p.z, R, p.nx, p.nz);
         continue;
       }
       const taken = blueprints.some(b => Math.hypot(b.position.x - p.x, b.position.z - p.z) < 1.5) ||
@@ -557,6 +567,7 @@
   const designBtnEl = document.getElementById('designBtn');
   function updateDesignBtn() {
     const cfg = CFG.DESIGN[designTier];
+    designBtnEl.classList.remove('done');
     if (!cfg) {
       designBtnEl.classList.add('done'); designBtnEl.classList.remove('stone');
       document.getElementById('designLbl').textContent = '방어선 설계 완료';
@@ -714,6 +725,7 @@
     document.getElementById('goDays').textContent = `생존 일수: ${Math.floor(gameMin / 1440) + 1}일`;
     document.getElementById('goCause').textContent = sub;
     document.getElementById('gameover').style.display = 'flex';
+    renderRewindButtons();
   }
   document.getElementById('restartBtn').addEventListener('click', () => location.reload());
   function damage(n) {
@@ -1845,6 +1857,100 @@
   }
   const bossBarEl = document.getElementById('bossBar'), bossFillEl = document.getElementById('bossFill');
 
+  // ---------- 체크포인트: 매일 아침 자동 저장 → 게임 오버 때 그날(또는 이전) 아침으로 되돌아가기 ----------
+  const checkpoints = [];            // { day, label, snap } - 최근 4개
+  function makeSnapshot() {
+    const pos = (o) => ({ x: o.position.x, z: o.position.z });
+    const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
+    return {
+      gameMin, res: { ...res }, weaponUp, weaponMode, hp, fireHp, designTier, townDone, chapterCleared, lastWarnDay, lastRespawnDay,
+      wave: { ...wave }, player: { ...pos(player), facing },
+      nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
+      fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
+      buildings: obstacles.filter(o => o.userData.type === 'building').map(o => ({ kind: o.userData.kind, ...pos(o) })),
+      bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
+      gates: gateWaypoints.map(g => ({ ...g })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, promoteTo: n.promote ? n.promote.to : null })),
+      boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
+    };
+  }
+  function saveCheckpoint(label) {
+    const day = Math.floor(gameMin / 1440) + 1;
+    const i = checkpoints.findIndex(c => c.day === day);
+    if (i >= 0) checkpoints.splice(i, 1);                                   // 같은 날은 최신 것으로 교체
+    checkpoints.push({ day, label, snap: makeSnapshot() });
+    checkpoints.sort((a, b) => a.day - b.day);
+    while (checkpoints.length > 4) checkpoints.shift();
+  }
+  function clearWorld() {
+    for (const e of enemies.slice()) removeEnemy(e);
+    for (const list of [rocks, arrows, shocks, particles, slashes, floaters]) {
+      for (const o of list.slice()) {
+        scene.remove(o.m || o); if (o.userData && o.userData.mark) scene.remove(o.userData.mark);
+      }
+      list.length = 0;
+    }
+    for (const o of obstacles.slice()) if (o !== campfire) scene.remove(o);
+    obstacles.length = 0; obstacles.push(campfire);
+    for (const b of blueprints) scene.remove(b);
+    blueprints.length = 0;
+    for (const d of doormats) scene.remove(d);
+    doormats.length = 0; gateWaypoints.length = 0;
+    for (const n of npcs) scene.remove(n);
+    npcs.length = 0;
+    reserved.wood = 0; reserved.stone = 0;
+  }
+  function applySnapshot(sn) {
+    clearWorld();
+    gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone;
+    weaponUp = sn.weaponUp; weaponMode = sn.weaponMode; hp = sn.hp; fireHp = sn.fireHp;
+    designTier = sn.designTier; townDone = sn.townDone; chapterCleared = sn.chapterCleared;
+    lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
+    dead = false; fireAlive = true; flame.visible = true; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
+    dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
+    for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
+    for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
+    for (const b of sn.buildings) createBuilding(b.kind, b.x, b.z);
+    for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
+    for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
+    for (const d of sn.npcs) {
+      const n = makeNpc(d.role, d.home, d.born); n.position.set(d.x, 0, d.z); n.hp = d.hp;
+      if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
+    }
+    npc = npcs[0];
+    player.position.set(sn.player.x, 0, sn.player.z); facing = sn.player.facing; player.rotation.y = facing;
+    camera.position.copy(goalPos(camGoal)); lookAt.set(sn.player.x, LOOK_H, sn.player.z);
+    for (const b of sn.boss) { wave.day = sn.wave.day; spawnEnemy('boss'); const e = enemies[enemies.length - 1]; e.position.x = b.x; e.position.z = b.z; e.userData.hp = b.hp; }
+    // UI 동기화
+    document.getElementById('gameover').style.display = 'none';
+    clearEl.classList.remove('show'); warnEl.classList.remove('show');
+    updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
+    document.getElementById('swapCur').textContent = `Q · 현재: ${weaponMode === 'bow' ? '활' : '검'}`;
+    const tb = document.getElementById('townBtn');
+    tb.classList.toggle('done', townDone);
+    document.getElementById('townLbl').textContent = townDone ? '마을 인프라 설계 완료' : CFG.TOWN.label;
+    document.getElementById('townCost').textContent = townDone ? '동료가 건설합니다' : '나무 40개 소모';
+    const ub = document.getElementById('upgBtn');
+    ub.classList.toggle('done', weaponUp);
+    ub.firstChild.textContent = weaponUp ? '무기 강화 완료' : '무기 강화';
+    ub.lastChild.textContent = weaponUp ? `검 공격력 ${swordDmg()}` : '검 데미지 ↑ · 돌 10개';
+  }
+  function rewindTo(cp) {
+    applySnapshot(cp.snap);
+    for (let i = checkpoints.length - 1; i >= 0; i--) if (checkpoints[i].day > cp.day) checkpoints.splice(i, 1);     // 되돌린 시점보다 미래의 저장은 폐기
+    toast(`${cp.label}으로 돌아왔습니다`);
+  }
+  function renderRewindButtons() {
+    const box = document.getElementById('goRewind');
+    box.innerHTML = '';
+    [...checkpoints].reverse().forEach((cp, i) => {
+      const b = document.createElement('button');
+      b.textContent = i === 0 ? `${cp.label}으로 돌아가기 (가장 최근 아침)` : `${cp.label}으로 돌아가기`;
+      b.addEventListener('click', () => rewindTo(cp));
+      box.appendChild(b);
+    });
+  }
+
   // ---------- 디버그: 보스전 바로 테스트 (Shift+B: Day 7 준비 / Shift+N: 보스 소환, 주소 뒤에 ?debug=1 이면 버튼 표시) ----------
   function debugSetup() {
     if (dead) return;
@@ -1936,7 +2042,7 @@
       else showWarning(`Night ${dayNo} - 방어전을 준비하십시오!`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('아침이 밝아 체력이 완전히 회복되었습니다'); } }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('아침이 밝아 체력이 완전히 회복되었습니다'); } saveCheckpoint(`Day ${dayNo} 아침`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     updateNpcs(dt, hour, t);
     updateFx(dt);
@@ -2021,6 +2127,7 @@
     renderer.render(scene, camera);
     if (off) camera.position.sub(off);
   }
+  saveCheckpoint('Day 1 시작');
   tick();
 })();
 </script>
