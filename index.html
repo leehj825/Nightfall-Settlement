@@ -314,16 +314,117 @@
     scene.fog.far = lerp(80, 30, n);
   }
 
+  // ---------- 플레이어 횃불 ----------
+  const torch = new THREE.PointLight(0xff8a30, 0, 18, 1.6);   // 밤에만 켜짐 (tick에서 밝기 제어)
+  torch.position.set(0, 2.4, 0.3);
+  player.add(torch);
+
+  // ---------- 모닥불 (마을 거점) ----------
+  const FIRE_R = 0.8;
+  const campfire = new THREE.Group();
+  const logMat = mat(0x5a3a1e);
+  for (let i = 0; i < 4; i++) {
+    const log = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.22, 0.22), logMat);
+    log.position.y = 0.2;
+    log.rotation.y = i * Math.PI / 4 + 0.2;
+    log.rotation.z = 0.15;
+    log.castShadow = true;
+    campfire.add(log);
+  }
+  for (let i = 0; i < 8; i++) {   // 테두리 돌
+    const a = i / 8 * Math.PI * 2;
+    const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), rockMat);
+    st.position.set(Math.cos(a) * 0.85, 0.12, Math.sin(a) * 0.85);
+    campfire.add(st);
+  }
+  const flame = new THREE.Group();
+  const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.1, 6), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
+  const flameInner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.7, 6), new THREE.MeshBasicMaterial({ color: 0xffd84a }));
+  flameOuter.position.y = 0.75; flameInner.position.y = 0.6;
+  flame.add(flameOuter, flameInner);
+  campfire.add(flame);
+  const fireLight = new THREE.PointLight(0xff8c3a, 1.8, 28, 1.4);   // 영구 조명
+  fireLight.position.y = 1.4;
+  campfire.add(fireLight);
+  campfire.userData = { type: 'campfire', radius: FIRE_R };
+  scene.add(campfire);
+  obstacles.push(campfire);
+  let fireAlive = true;
+
+  function animateFire(t) {
+    if (!fireAlive) return;
+    const f = 1 + Math.sin(t * 9) * 0.12 + Math.sin(t * 23) * 0.06;
+    flame.scale.set(2 - f, f, 2 - f);
+    fireLight.intensity = 1.8 + (f - 1) * 1.5;
+  }
+
   // ---------- 체력 / 게임오버 ----------
   let hp = 100, dead = false, hurtCd = 0;
   const hpEl = document.getElementById('hpN');
+  function gameOver(sub) {
+    if (dead) return;
+    dead = true;
+    const el = document.getElementById('gameover');
+    el.innerHTML = `Game Over<small>${sub}</small><small>화면을 탭하면 다시 시작</small>`;
+    el.style.display = 'flex';
+    setTimeout(() => addEventListener('pointerdown', () => location.reload(), { once: true }), 600);
+  }
   function damage(n) {
     hp = Math.max(0, hp - n);
     hpEl.textContent = hp;
-    if (hp <= 0 && !dead) {
-      dead = true;
-      document.getElementById('gameover').style.display = 'flex';
-      setTimeout(() => addEventListener('pointerdown', () => location.reload(), { once: true }), 600);
+    if (hp <= 0) gameOver('쓰러졌습니다');
+  }
+  function destroyFire() {
+    fireAlive = false;
+    flame.visible = false;
+    fireLight.intensity = 0;
+    gameOver('마을이 파괴되었습니다');
+  }
+
+  // ---------- 이펙트: 타격 궤적 / 파편 ----------
+  const ATK_RANGE = 3, ATK_HALF = Math.PI / 3, ATK_CD = 0.4, SLASH_LIFE = 0.15;
+  const slashGeo = new THREE.CircleGeometry(ATK_RANGE, 20, -Math.PI / 2 - ATK_HALF, ATK_HALF * 2);
+  const slashes = [];
+  function spawnSlash(x, z, ang) {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(slashGeo, new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2;
+    g.add(m);
+    g.position.set(x, 0.08, z);
+    g.rotation.y = ang;
+    g.userData.life = SLASH_LIFE;
+    scene.add(g);
+    slashes.push(g);
+  }
+  const particles = [];
+  const pGeo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
+  const pMat = new THREE.MeshBasicMaterial({ color: 0xff2a1a });
+  const PLIFE = 0.7;
+  function burst(pos) {
+    for (let i = 0; i < 12; i++) {
+      const m = new THREE.Mesh(pGeo, pMat);
+      m.position.set(pos.x, 0.8, pos.z);
+      m.userData = { v: new THREE.Vector3(rand(-1, 1) * 4, rand(3, 6), rand(-1, 1) * 4), life: PLIFE };
+      scene.add(m);
+      particles.push(m);
+    }
+  }
+  function updateFx(dt) {
+    for (const s of slashes.slice()) {
+      s.userData.life -= dt;
+      s.children[0].material.opacity = Math.max(0, s.userData.life / SLASH_LIFE) * 0.6;
+      if (s.userData.life <= 0) { scene.remove(s); s.children[0].material.dispose(); slashes.splice(slashes.indexOf(s), 1); }
+    }
+    for (const p of particles.slice()) {
+      const u = p.userData;
+      u.v.y -= 14 * dt;
+      p.position.addScaledVector(u.v, dt);
+      if (p.position.y < 0.1) { p.position.y = 0.1; u.v.y *= -0.3; u.v.x *= 0.6; u.v.z *= 0.6; }
+      p.rotation.x += dt * 8; p.rotation.z += dt * 6;
+      u.life -= dt;
+      p.scale.setScalar(Math.max(u.life / PLIFE, 0.01));
+      if (u.life <= 0) { scene.remove(p); particles.splice(particles.indexOf(p), 1); }
     }
   }
 
@@ -332,17 +433,33 @@
   const enemyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 8);
   const enemyMat = mat(0xc4231a);
   const ENEMY_R = 0.45, ENEMY_SPEED = 2.4, MAX_ENEMIES = 14, FENCE_BREAK_TIME = 3;
+  const AGGRO = 9, DEAGGRO = 13, FIRE_BREAK_TIME = 3;
   let spawnCd = 0;
   function spawnEnemy() {
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const m = new THREE.Mesh(enemyGeo, enemyMat);
     m.position.set(Math.cos(a) * r, 0.8, Math.sin(a) * r);
     m.castShadow = true;
-    m.userData = { fenceTimer: 0, sinking: false };
+    m.userData = { fenceTimer: 0, fireTimer: 0, aggro: false, sinking: false };
     scene.add(m);
     enemies.push(m);
   }
   function removeEnemy(e) { scene.remove(e); enemies.splice(enemies.indexOf(e), 1); }
+  function killEnemy(e) { burst(e.position); removeEnemy(e); }
+
+  // 부채꼴 판정: (x,z)에서 ang 방향
+  function sectorHit(x, z, ang) {
+    const fx = Math.sin(ang), fz = Math.cos(ang);
+    let n = 0;
+    for (const e of enemies.slice()) {
+      if (e.userData.sinking) continue;
+      const dx = e.position.x - x, dz = e.position.z - z;
+      const d = Math.hypot(dx, dz);
+      if (d > ATK_RANGE + ENEMY_R) continue;
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { killEnemy(e); n++; }
+    }
+    return n;
+  }
 
   function updateEnemies(dt, night) {
     if (night && !dead) {
@@ -359,16 +476,19 @@
       }
       if (dead) continue;
 
-      // 플레이어를 바라보고 전진
-      e.lookAt(player.position.x, e.position.y, player.position.z);
-      const dx = player.position.x - e.position.x, dz = player.position.z - e.position.z;
+      // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
+      const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+      u.aggro = u.aggro ? pd < DEAGGRO : pd < AGGRO;
+      const tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      e.lookAt(tx, e.position.y, tz);
+      const dx = tx - e.position.x, dz = tz - e.position.z;
       const d = Math.hypot(dx, dz);
       let blocked = null;
       if (d > 0.8) {
         e.position.x += dx / d * ENEMY_SPEED * dt;
         e.position.z += dz / d * ENEMY_SPEED * dt;
       }
-      // 장애물 충돌: 목책이면 멈추고 공격, 나무/바위는 비켜 감
+      // 장애물 충돌: 목책이면 멈추고 공격, 나머지는 비켜 감
       for (const o of obstacles) {
         const ox = e.position.x - o.position.x, oz = e.position.z - o.position.z;
         const min = o.userData.radius + ENEMY_R, od = Math.hypot(ox, oz);
@@ -380,7 +500,7 @@
       }
       if (blocked) {
         u.fenceTimer += dt;
-        e.position.x += (Math.random() - .5) * 0.02;            // 때리는 느낌의 떨림
+        e.position.x += (Math.random() - .5) * 0.02;
         if (u.fenceTimer >= FENCE_BREAK_TIME) {
           scene.remove(blocked);
           obstacles.splice(obstacles.indexOf(blocked), 1);
@@ -388,35 +508,175 @@
         }
       } else u.fenceTimer = 0;
 
-      // 플레이어와 접촉 시 피해
-      if (d < PLAYER_R + ENEMY_R + 0.15 && hurtCd <= 0) { damage(10); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+      // 모닥불 공격: 도달 후 3초 유지되면 모닥불 소멸 → 패배
+      if (fireAlive && Math.hypot(e.position.x, e.position.z) < FIRE_R + ENEMY_R + 0.3) {
+        u.fireTimer += dt;
+        flame.scale.multiplyScalar(0.98);
+        if (u.fireTimer >= FIRE_BREAK_TIME) destroyFire();
+      } else u.fireTimer = 0;
+
+      // 플레이어 / 동료와 접촉 시 피해
+      if (pd < PLAYER_R + ENEMY_R + 0.15 && hurtCd <= 0) { damage(10); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+      if (!npc.down && npc.hurtCd <= 0 &&
+          Math.hypot(npc.position.x - e.position.x, npc.position.z - e.position.z) < 0.95) {
+        damageNpc(10); npc.hurtCd = 0.8;
+      }
     }
     hurtCd -= dt;
+    npc.hurtCd -= dt;
   }
 
-  // ---------- 공격 (부채꼴 판정) ----------
-  const ATK_RANGE = 3, ATK_HALF = Math.PI / 3, ATK_CD = 0.4;
-  const arc = new THREE.Mesh(
-    new THREE.CircleGeometry(ATK_RANGE, 20, -Math.PI / 2 - ATK_HALF, ATK_HALF * 2),
-    new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide })
-  );
-  arc.rotation.x = -Math.PI / 2;
-  arc.position.y = 0.06;
-  arc.visible = false;
-  player.add(arc);
+  // ---------- 동료 NPC ----------
+  const NPC_MAX_HP = 50, NPC_AGGRO = 10, NPC_HOME = { x: 2.4, z: 2.4 };
+  const npcMat = mat(0x3a6fe0);
+  const npc = new THREE.Group();
+  const npcBody = new THREE.Group();
+  {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), npcMat);
+    const t1 = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 6), npcMat);
+    const t2 = t1.clone();
+    t1.position.y = H / 2; t2.position.y = -H / 2;
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.2), mat(0xfff1c9));
+    f.position.set(0, 0.5, R * 0.95);
+    npcBody.add(c, t1, t2, f);
+    npcBody.traverse(m => { if (m.isMesh) m.castShadow = true; });
+  }
+  const NPC_BASE_Y = H / 2 + R;
+  npcBody.position.y = NPC_BASE_Y;
+  npc.add(npcBody);
+  npc.position.set(NPC_HOME.x, 0, NPC_HOME.z);
+  Object.assign(npc, { hp: NPC_MAX_HP, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '' });
+  scene.add(npc);
+
+  // 머리 위 상태 라벨
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 256; labelCanvas.height = 96;
+  const lctx = labelCanvas.getContext('2d');
+  const labelTex = new THREE.CanvasTexture(labelCanvas);
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, fog: false }));
+  label.scale.set(2.6, 0.98, 1);
+  label.position.y = 2.7;
+  npc.add(label);
+  function setLabel(state) {
+    const text = `${state}|${npc.hp}`;
+    if (npc.labelText === text) return;
+    npc.labelText = text;
+    lctx.clearRect(0, 0, 256, 96);
+    lctx.fillStyle = 'rgba(10,10,30,.65)';
+    lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
+    lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
+    lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
+    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`HP ${npc.hp}/${NPC_MAX_HP}`, 128, 76);
+    labelTex.needsUpdate = true;
+  }
+
+  function damageNpc(n) {
+    npc.hp = Math.max(0, npc.hp - n);
+    if (npc.hp <= 0 && !npc.down) {
+      npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false;
+      npcMat.color.set(0x777777);                 // 회색으로 변환
+      npcBody.rotation.z = Math.PI / 2;           // 바닥에 눕기
+      npcBody.position.y = R;
+      burst(npc.position);
+    }
+  }
+  function reviveNpc() {
+    npc.down = false; npc.hp = NPC_MAX_HP;
+    npcMat.color.set(0x3a6fe0);
+    npcBody.rotation.z = 0; npcBody.position.y = NPC_BASE_Y;
+    npc.position.set(NPC_HOME.x, 0, NPC_HOME.z);
+  }
+  // 목표 지점으로 이동 (남은 거리 반환)
+  function npcMove(tx, tz, speed, dt) {
+    const dx = tx - npc.position.x, dz = tz - npc.position.z, d = Math.hypot(dx, dz);
+    if (d > 0.05) {
+      const step = Math.min(d, speed * dt);
+      npc.position.x += dx / d * step; npc.position.z += dz / d * step;
+      npc.face = Math.atan2(dx, dz);
+      npc.rotation.y = npc.face;
+    }
+    for (const o of obstacles) {
+      const ox = npc.position.x - o.position.x, oz = npc.position.z - o.position.z;
+      const min = o.userData.radius + PLAYER_R, od = Math.hypot(ox, oz);
+      if (od < min && od > 1e-4) { npc.position.x = o.position.x + ox / od * min; npc.position.z = o.position.z + oz / od * min; }
+    }
+    return d;
+  }
+  function updateNpc(dt, hour, t) {
+    if (dead) return;
+    const isDay = hour >= 6 && hour < 18;
+    if (npc.down) {
+      if (isDay) reviveNpc(); else { setLabel('쓰러짐'); return; }
+    }
+    npc.atkCd -= dt;
+    let state = '대기 중';
+    let bob = 0;
+
+    if (isDay) {
+      // 주간: 가장 가까운 자원을 찾아 채집
+      if (npc.target && !obstacles.includes(npc.target)) { npc.target = null; npc.gatherT = 0; }
+      if (!npc.target) {
+        let bd = Infinity;
+        for (const o of obstacles) {
+          const ty = o.userData.type;
+          if (ty !== 'wood' && ty !== 'stone') continue;
+          const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
+          if (d < bd) { bd = d; npc.target = o; }
+        }
+        npc.gatherT = 0;
+      }
+      if (npc.target) {
+        state = '채집 중';
+        const o = npc.target, stop = o.userData.radius + PLAYER_R + 0.3;
+        const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
+        if (d > stop) { npcMove(o.position.x, o.position.z, 3.5, dt); npc.gatherT = 0; }
+        else {
+          npc.face = Math.atan2(o.position.x - npc.position.x, o.position.z - npc.position.z);
+          npc.rotation.y = npc.face;
+          npc.gatherT += dt;
+          bob = Math.abs(Math.sin(t * 14)) * 0.15;       // 들썩임
+          if (npc.gatherT >= 2) {
+            const type = o.userData.type;
+            scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
+            res[type]++; updateHud();
+            npc.target = null; npc.gatherT = 0;
+          }
+        }
+      } else npcMove(NPC_HOME.x, NPC_HOME.z, 3.5, dt);
+    } else {
+      // 야간: 모닥불 방어
+      npc.target = null; npc.gatherT = 0;
+      let foe = null, bd = NPC_AGGRO;
+      for (const e of enemies) {
+        if (e.userData.sinking) continue;
+        const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
+        if (d < bd) { bd = d; foe = e; }
+      }
+      if (npc.returning || !foe) {
+        if (npcMove(NPC_HOME.x, NPC_HOME.z, 5, dt) < 0.8) npc.returning = false;
+      } else {
+        state = '전투 중';
+        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        if (d < 1.7 && npc.atkCd <= 0) {
+          npc.atkCd = 0.8;
+          const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
+          spawnSlash(npc.position.x, npc.position.z, ang);
+          if (!sectorHit(npc.position.x, npc.position.z, ang)) killEnemy(foe);
+          npc.returning = true;
+        }
+      }
+    }
+    npcBody.position.y = NPC_BASE_Y + bob;
+    setLabel(state);
+  }
+
+  // ---------- 플레이어 공격 ----------
   let atkT = 0, atkCd = 0, shake = 0;
   function attack() {
     if (dead || atkCd > 0) return;
-    atkCd = ATK_CD; atkT = 0.25; shake = 0.3;
-    arc.visible = true;
-    const fx = Math.sin(facing), fz = Math.cos(facing);
-    for (const e of enemies.slice()) {
-      if (e.userData.sinking) continue;
-      const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z;
-      const d = Math.hypot(dx, dz);
-      if (d > ATK_RANGE + ENEMY_R) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) removeEnemy(e);
-    }
+    atkCd = ATK_CD; atkT = SLASH_LIFE; shake = 0.3;
+    spawnSlash(player.position.x, player.position.z, facing);
+    sectorHit(player.position.x, player.position.z, facing);
   }
 
   // ---------- 메인 루프 ----------
@@ -433,17 +693,21 @@
     gameMin += dt * MIN_PER_SEC;
     const hour = (gameMin / 60) % 24;
     const night = hour >= 20 || hour < 5;
-    applyLighting(nightFactor(hour));
+    const nf = nightFactor(hour);
+    applyLighting(nf);
+    torch.intensity = nf * 2.4;   // 횃불: 밤에 켜지고 낮에 꺼짐
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
     clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 
     updateEnemies(dt, night);
+    updateNpc(dt, hour, t);
+    updateFx(dt);
+    animateFire(t);
     atkCd -= dt;
     if (atkT > 0) {
       atkT -= dt;
-      capsule.position.z = Math.sin((1 - Math.max(atkT, 0) / 0.25) * Math.PI) * 0.35;   // 앞으로 살짝 찌르는 모션
-      arc.material.opacity = Math.max(atkT, 0) / 0.25 * 0.55;
-      if (atkT <= 0) { arc.visible = false; capsule.position.z = 0; }
+      capsule.position.z = Math.sin((1 - Math.max(atkT, 0) / SLASH_LIFE) * Math.PI) * 0.35;   // 앞으로 살짝 찌르는 모션
+      if (atkT <= 0) capsule.position.z = 0;
     }
 
     // 입력 합산 (조이스틱 or WASD)
