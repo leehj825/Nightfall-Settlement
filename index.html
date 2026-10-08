@@ -67,7 +67,7 @@
 <h1 id="title">Nightfall Settlement</h1>
 <div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b></div>
 <button id="designBtn"><span id="designLbl">1단계 방어선 설계</span><small id="designCost">나무 30개 소모</small></button>
-<button id="upgBtn">무기 강화<small>돌 10개 소모</small></button>
+<button id="upgBtn">무기 강화<small>검 데미지 ↑ · 돌 10개</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="warn"></div>
 <div id="gameover"><div class="card"><h2>당신의 마을은 무너졌습니다.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><button id="restartBtn">다시 시작</button></div></div>
@@ -126,6 +126,8 @@
     ],
     ARROW_RANGE: 30, ARROW_SPEED: 45,           // 화살 사거리 / 속도
     ARCHER_COUNT: 1, ARCHER_AGGRO: 30, ARCHER_FIRE_INTERVAL: 1.5,   // 궁수 동료 수 / 인식 거리 / 발사 간격(초)
+    CORRIDOR_WIDTH: 3.2,                       // 성벽 양옆으로 자원을 치우는 폭 (NPC 통행로)
+    GATE_REACH: 2.0, GATE_BAND: 2.5, GATE_GRACE: 3,   // 출입구 도달 반경 / 성벽 위 목표 판정 폭 / 통과 후 재경유 금지 시간(초)
     BUILD_TIME: 2, REPAIR_TIME: 1.5, GATHER_TIME: 2,   // 동료의 작업 시간(초)
     FENCE_UPGRADE_STONE: 5,                    // 돌 성벽 업그레이드 비용(돌)
     FENCE_HP: 30, WALL_HP: 100,                // 나무 목책 / 돌 성벽 체력
@@ -140,7 +142,12 @@
     BRUTE_FROM_DAY: 2, BRUTE_HP: 10, BRUTE_SCALE: 1.5, BRUTE_SPEED_MUL: 0.7, BRUTE_CONTACT_DMG: 25, ENEMY_CONTACT_DMG: 10,
     KNOCKBACK: 0.7, KNOCKBACK_UPGRADED: 1.6, BRUTE_KNOCKBACK_MUL: 0.7,   // 넉백 거리 (무기 강화 시 증가)
     ENEMY_HP: 2,                               // 적 체력
-    BASE_ATK: 1, UPGRADED_ATK: 2,              // 공격력 (플레이어·동료 공통)
+    // 무기 데미지: 검은 근접(고위험·고화력), 활은 안전하지만 약함. 무기 강화는 검에만 적용된다.
+    SWORD_DMG: 2, SWORD_DMG_UPGRADED: 4,       // 검 (플레이어·근접 동료 공통)
+    BOW_DMG: 1,                                // 활 (플레이어·궁수 동료 공통, 강화 불가)
+    // 방패병 (Day 3부터): 화살 면역, 검/근접 동료 돌진에만 피해
+    SHIELD_FROM_DAY: 3, SHIELD_CHANCE: 0.3, SHIELD_HP: 3, SHIELD_SPEED_MUL: 0.9,
+    HP_SCALE_EVERY: 2,                         // 모든 적 최대 HP가 N일마다 +1 (보너스 = floor((Day-1)/N))
     WEAPON_UPGRADE_STONE: 10,                  // 무기 강화 비용(돌)
     UPGRADED_SLASH_SCALE: 1.5,                 // 강화 후 검기 크기 배율
   };
@@ -300,7 +307,8 @@
 
   // ---------- 자원 / 상호작용 ----------
   const res = { wood: 0, stone: 0 };
-  let weaponUp = false, atk = CFG.BASE_ATK;
+  let weaponUp = false;
+  function swordDmg() { return weaponUp ? CFG.SWORD_DMG_UPGRADED : CFG.SWORD_DMG; }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN');
   const toastEl = document.getElementById('toast');
   let toastTimer;
@@ -309,7 +317,7 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.opacity = 0, 1400);
   }
   const atkEl = document.getElementById('atkN');
-  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; atkEl.textContent = atk; }
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; atkEl.textContent = `검 ${swordDmg()} / 활 ${CFG.BOW_DMG}`; }
 
   const GATHER_RANGE = 2.6;
   function gather() {
@@ -340,6 +348,9 @@
   }
   // 청사진: 충돌 판정이 없고(obstacles에 넣지 않음) 적도 무시하는 반투명 목책. 동료 NPC가 실물로 건설한다.
   const blueprints = [];
+  const gateWaypoints = [];              // 출입구(Gap) 좌표 {x, z, r(소속 성벽 반지름)} - NPC 길찾기용 경유지
+  const matMat = new THREE.MeshStandardMaterial({ color: 0x8a8d92, roughness: 1 });
+  const matGeo = new THREE.BoxGeometry(3.2, 0.04, 3.2);
   const bpGeo = new THREE.BoxGeometry(2.4, 1.1, 0.35);
   function createFence(x, z, rot) {
     const fence = new THREE.Mesh(bpGeo, fenceMat);
@@ -383,14 +394,33 @@
       }
     }
   }
+  // 성벽 띠(반지름 R ± width) 안의 자원을 모두 치워, 벽과 나무/바위 사이에 NPC가 끼는 틈이 생기지 않게 한다
+  function clearCorridor(R, width) {
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i], ty = o.userData.type;
+      if ((ty === 'wood' || ty === 'stone') && Math.abs(Math.hypot(o.position.x, o.position.z) - R) < width + o.userData.radius) {
+        scene.remove(o); obstacles.splice(i, 1);
+      }
+    }
+  }
   function designRing(cfg) {
+    clearCorridor(cfg.radius, CFG.CORRIDOR_WIDTH);
     const gaps = new Set(cfg.gaps);
     const r = cfg.kind === 'stone' ? 1.5 : 1.2;
     let placed = 0;
     for (let i = 0; i < cfg.count; i++) {
       const a = i / cfg.count * Math.PI * 2;
       const x = Math.cos(a) * cfg.radius, z = Math.sin(a) * cfg.radius;
-      if (gaps.has(i)) { clearArea(x, z, 2.2); continue; }      // 출입구: 비워 두고 길만 터 줌
+      if (gaps.has(i)) {                                          // 출입구: 비워 두고 길만 터 준 뒤 경유지로 등록
+        clearArea(x, z, 2.2);
+        gateWaypoints.push({ x, z, r: cfg.radius });
+        const doormat = new THREE.Mesh(matGeo, matMat);           // 바닥의 얇고 납작한 회색 도어 매트
+        doormat.position.set(x, 0.02, z);
+        doormat.rotation.y = -(a + Math.PI / 2);
+        doormat.receiveShadow = true;
+        scene.add(doormat);
+        continue;
+      }
       const taken = blueprints.some(b => Math.hypot(b.position.x - x, b.position.z - z) < 1.5) ||
                     obstacles.some(o => o.userData.type === 'fence' && Math.hypot(o.position.x - x, o.position.z - z) < 1.5);
       if (taken) continue;
@@ -446,11 +476,11 @@
     if (weaponUp) return toast('이미 무기가 강화되었습니다');
     if (res.stone < CFG.WEAPON_UPGRADE_STONE) return toast(`돌이 ${CFG.WEAPON_UPGRADE_STONE}개 필요합니다`);
     res.stone -= CFG.WEAPON_UPGRADE_STONE;
-    weaponUp = true; atk = CFG.UPGRADED_ATK;
+    weaponUp = true;
     updateHud();
     const btn = document.getElementById('upgBtn');
-    btn.classList.add('done'); btn.firstChild.textContent = '무기 강화 완료'; btn.lastChild.textContent = `공격력 ${atk}`;
-    toast('무기 강화 완료! 검기가 강력해졌습니다');
+    btn.classList.add('done'); btn.firstChild.textContent = '무기 강화 완료'; btn.lastChild.textContent = `검 공격력 ${swordDmg()}`;
+    toast('검 강화 완료! (활 데미지는 그대로)');
   }
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
@@ -623,16 +653,27 @@
   const ENEMY_R = 0.45, ENEMY_SPEED = 2.4;
   const AGGRO = 9, DEAGGRO = 13, FIRE_BREAK_TIME = 3;
   let spawnCd = 0;
-  function spawnEnemy(brute = false) {
+  // kind: 'normal' | 'brute' | 'shield'. 최대 HP는 날짜에 따라 HP_SCALE_EVERY일마다 +1
+  const shieldMat = mat(0xb8c0cc), shieldPlateMat = mat(0x666b73), shieldPlateGeo = new THREE.BoxGeometry(0.95, 1.1, 0.14);
+  function spawnEnemy(kind = 'normal') {
+    const brute = kind === 'brute', shield = kind === 'shield';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const sc = brute ? CFG.BRUTE_SCALE : 1;
-    const m = new THREE.Mesh(enemyGeo, brute ? bruteMat : enemyMat);
+    const m = new THREE.Mesh(enemyGeo, brute ? bruteMat : shield ? shieldMat : enemyMat);
     m.scale.setScalar(sc);
     m.position.set(Math.cos(a) * r, 0.8 * sc, Math.sin(a) * r);
     m.castShadow = true;
+    if (shield) {                                    // 앞쪽(+Z, 진행 방향)에 방패 판
+      const plate = new THREE.Mesh(shieldPlateGeo, shieldPlateMat);
+      plate.position.set(0, 0.05, 0.55);
+      plate.castShadow = true;
+      m.add(plate);
+    }
+    const hpBonus = Math.floor((Math.max(1, wave.day) - 1) / CFG.HP_SCALE_EVERY);
+    const hp = (brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : CFG.ENEMY_HP) + hpBonus;
     m.userData = {
-      brute, hp: brute ? CFG.BRUTE_HP : CFG.ENEMY_HP, r: ENEMY_R * sc,
-      speed: ENEMY_SPEED * (brute ? CFG.BRUTE_SPEED_MUL : 1),
+      kind, brute, shield, hp, maxHp: hp, r: ENEMY_R * sc,
+      speed: ENEMY_SPEED * (brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : 1),
       contact: brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
       fireTimer: 0, aggro: false, sinking: false };
@@ -644,18 +685,18 @@
 
   // 적에게 피해: 죽으면 true, 살아남으면 작은 파편 + 넉백 (무기 강화 시 더 멀리)
   const KB_TIME = 0.15;
-  function hitEnemy(e, dmg, fromX, fromZ) {
+  function hitEnemy(e, dmg, fromX, fromZ, strongKb = false) {
     const u = e.userData;
     u.hp -= dmg;
     if (u.hp <= 0) { killEnemy(e); return true; }
     burst(e.position, 4);
     const dx = e.position.x - fromX, dz = e.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
-    const dist = (weaponUp ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK) * u.kbMul;
+    const dist = (strongKb ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK) * u.kbMul;
     u.kbT = KB_TIME; u.kbVx = dx / d * dist / KB_TIME; u.kbVz = dz / d * dist / KB_TIME;
     return false;
   }
 
-  // 부채꼴 판정: (x,z)에서 ang 방향, 공격력(atk)만큼 피해 (플레이어·동료 공통)
+  // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
   function sectorHit(x, z, ang) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
     const range = ATK_RANGE * slashScale();
@@ -665,7 +706,7 @@
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, atk, x, z); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, swordDmg(), x, z, weaponUp); n++; }
     }
     return n;
   }
@@ -683,7 +724,9 @@
     if (night && !dead && wave.remaining > 0) {
       spawnCd -= dt;
       if (spawnCd <= 0 && enemies.length < CFG.MAX_ALIVE) {
-        spawnEnemy(wave.remaining <= wave.brutes);
+        const kind = wave.remaining <= wave.brutes ? 'brute'
+          : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
+        spawnEnemy(kind);
         wave.remaining--;
         spawnCd = rand(0.8, 1.2) * Math.max(CFG.MIN_SPAWN_INTERVAL, CFG.SPAWN_INTERVAL_BASE / (1 + CFG.SPAWN_RATE_GROWTH * (waveDay - 1)));
       }
@@ -788,7 +831,7 @@
 
     Object.assign(n, { home, archer, baseColor, mat: m, body, lctx: cv.getContext('2d'), labelTex: tex,
       hp: NPC_MAX_HP, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
-      task: null, workT: 0, short: null, pickCd: i * 0.1 });
+      task: null, workT: 0, short: null, pickCd: i * 0.1, wp: null, exitPt: null, graceT: 0, graceRing: 0 });
     scene.add(n);
     npcs.push(n);
     return n;
@@ -830,13 +873,104 @@
   function updateNpcs(dt, hour, t) {
     for (const n of npcs) { npc = n; updateNpc(dt, hour, t); }
   }
-  // 목표 지점으로 이동 (남은 거리 반환)
+  // ---------- 출입구 경유지 길찾기 ----------
+  // 성벽(원형 방어선)을 사이에 두고 있으면 목표로 직진하지 않고, 가장 가까운 출입구를 임시 목표로 삼아 먼저 통과한다.
+  // 반환: 통과해야 하는 성벽의 반지름 (없으면 null)
+  function ringToCross(px, pz, tx, tz) {
+    const rings = [...new Set(gateWaypoints.map(g => g.r))].sort((a, b) => a - b);
+    if (!rings.length) return null;
+    const dMe = Math.hypot(px, pz), dT = Math.hypot(tx, tz);
+    const inward = dMe > dT;                                  // 안쪽으로 가면 바깥 성벽부터, 바깥쪽으로 가면 안쪽 성벽부터
+    for (const R of (inward ? rings.slice().reverse() : rings)) {
+      const meOut = dMe > R;
+      const tgtOut = Math.abs(dT - R) < CFG.GATE_BAND ? meOut : dT > R;   // 성벽 위(청사진/목책)에 있는 목표는 같은 쪽으로 취급
+      if (meOut !== tgtOut) return R;
+    }
+    return null;
+  }
+  function nearestGate(R) {
+    let best = null, bd = Infinity;
+    for (const g of gateWaypoints) {
+      if (g.r !== R) continue;
+      const dx = g.x - npc.position.x, dz = g.z - npc.position.z, d = dx * dx + dz * dz;
+      if (d < bd) { bd = d; best = g; }
+    }
+    return best;
+  }
+  // 성벽 바깥(또는 안쪽 고리 사이)에서 목표로 직진하면 원형 성벽을 가로지르게 되므로, 성벽 반지름보다 바깥 궤도를 따라 호를 그리며 돈다.
+  const polar = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
+  function aimPoint(px, pz, tx, tz) {
+    const dP = Math.hypot(px, pz), dQ = Math.hypot(tx, tz);
+    let R = 0;
+    for (const g of gateWaypoints) if (dP > g.r - 0.5 && dQ > g.r - 0.5 && g.r > R) R = g.r;   // 둘 다 이 성벽 바깥쪽인 가장 큰 고리
+    if (!R) return [tx, tz];
+    const aP = Math.atan2(pz, px);
+    let diff = Math.atan2(tz, tx) - aP;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    if (Math.abs(diff) < 0.25) return [tx, tz];                                   // 각도 차가 작으면 직진
+    if (dP < R + 1.5) return polar(aP, R + 3);                                    // 출입구 근처: 먼저 바깥으로 빠져나온다
+    return polar(aP + Math.sign(diff) * Math.min(Math.abs(diff), 0.5), Math.min(Math.max(dP, R + 2.5), MAP - 2));
+  }
+  // 반환값은 최종 목적지까지의 (이동 전) 거리 - 호출부의 도착 판정에 그대로 쓰인다
   function npcMove(tx, tz, speed, dt) {
+    // 끼임 방지: 거의 못 움직이면 잠깐 옆으로 비켜 걷는다
+    const moved = Math.hypot(npc.position.x - (npc.prevX ?? npc.position.x), npc.position.z - (npc.prevZ ?? npc.position.z));
+    npc.prevX = npc.position.x; npc.prevZ = npc.position.z;
+    if (npc.nudgeT > 0) npc.nudgeT -= dt;
+    else if (moved < speed * dt * 0.2 && Math.hypot(tx - npc.position.x, tz - npc.position.z) > 1.5) {
+      npc.stuckT = (npc.stuckT || 0) + dt;
+      if (npc.stuckT > 0.5) { npc.stuckT = 0; npc.nudgeT = 0.7; npc.nudgeDir = Math.random() < 0.5 ? 1 : -1; }
+    } else npc.stuckT = 0;
+    const dFinal = Math.hypot(tx - npc.position.x, tz - npc.position.z);
+    const stepTo = (x, z) => { const [ax, az] = aimPoint(npc.position.x, npc.position.z, x, z); npcStep(ax, az, speed, dt); };
+    // 출입구를 막 통과했다면 문 앞/뒤의 출구점까지 먼저 빠져나온 뒤 최종 목적지로 향한다 (벽 모서리에 걸리지 않게)
+    if (npc.exitPt && npc.graceT > 0 && Math.hypot(npc.exitPt.x - npc.position.x, npc.exitPt.z - npc.position.z) > 1.0) {
+      npcStep(npc.exitPt.x, npc.exitPt.z, speed, dt);
+      return dFinal;
+    }
+    npc.exitPt = null;
+    const R = ringToCross(npc.position.x, npc.position.z, tx, tz);
+    if (R !== null && !(npc.graceT > 0 && npc.graceRing === R)) {
+      if (!npc.wp || npc.wp.r !== R) npc.wp = nearestGate(R);          // 경유지는 한 번 정하면 유지 (출입구 사이 왔다갔다 방지)
+      if (npc.wp) {
+        if (Math.hypot(npc.wp.x - npc.position.x, npc.wp.z - npc.position.z) < CFG.GATE_REACH) {
+          // 출입구 도달(반경 2.0): 경유 상태 해제 → 최종 목적지 쪽으로 진행
+          const g = npc.wp, gd = Math.hypot(g.x, g.z) || 1;
+          const dir = Math.hypot(tx, tz) > R ? 1 : -1;                 // 목적지가 성벽 바깥이면 바깥쪽 출구점, 안쪽이면 안쪽 출구점
+          npc.exitPt = { x: g.x / gd * (R + dir * 3), z: g.z / gd * (R + dir * 3) };
+          npc.graceRing = R; npc.graceT = CFG.GATE_GRACE; npc.wp = null;
+        } else {
+          stepTo(npc.wp.x, npc.wp.z);
+          return dFinal;
+        }
+      }
+    } else npc.wp = null;
+    stepTo(tx, tz);
+    return dFinal;
+  }
+  // 목표 지점으로 한 걸음 이동 (장애물 밀어내기 포함, NPC끼리는 충돌하지 않으므로 출입구에서 서로 밀치지 않는다)
+  function npcStep(tx, tz, speed, dt) {
     const dx = tx - npc.position.x, dz = tz - npc.position.z, d = Math.hypot(dx, dz);
     if (d > 0.05) {
+      let mx = dx / d, mz = dz / d;
+      if (npc.nudgeT > 0) { const t0 = mx; mx = -mz * npc.nudgeDir; mz = t0 * npc.nudgeDir; }   // 끼임 탈출: 목표의 수직 방향
+      // 장애물을 정면으로 들이받지 않도록, 가까운 장애물 쪽 성분을 제거하고 옆으로 미끄러진다 (벽에 비비적거림 방지)
+      for (const o of obstacles) {
+        const ox = npc.position.x - o.position.x, oz = npc.position.z - o.position.z;
+        const reach = o.userData.radius + PLAYER_R + 0.45, od = Math.hypot(ox, oz);
+        if (od >= reach || od < 1e-4) continue;
+        const nx = ox / od, nz = oz / od, into = mx * nx + mz * nz;
+        if (into >= 0) continue;
+        mx -= into * nx; mz -= into * nz;
+        if (Math.hypot(mx, mz) < 0.3) {                       // 정면 충돌이면 목표 쪽으로 가까운 옆 방향 선택
+          const side = (nx * mz - nz * mx) >= 0 ? 1 : -1;
+          mx = -nz * side; mz = nx * side;
+        }
+      }
+      const ml = Math.hypot(mx, mz) || 1;
       const step = Math.min(d, speed * dt);
-      npc.position.x += dx / d * step; npc.position.z += dz / d * step;
-      npc.face = Math.atan2(dx, dz);
+      npc.position.x += mx / ml * step; npc.position.z += mz / ml * step;
+      npc.face = Math.atan2(mx, mz);
       npc.rotation.y = npc.face;
     }
     for (const o of obstacles) {
@@ -901,6 +1035,7 @@
       if (isDay) reviveNpc(); else { setLabel('쓰러짐'); return; }
     }
     npc.atkCd -= dt;
+    npc.graceT -= dt;
     let state = '대기 중';
     let bob = 0;
 
@@ -1022,6 +1157,35 @@
     scene.add(g);
     arrows.push(g);
   }
+  // 떠오르는 텍스트 (방패병 면역 표시)
+  const floaters = [], floatTex = new Map();
+  function floatText(text, x, y, z) {
+    let tex = floatTex.get(text);
+    if (!tex) {
+      const cv = document.createElement('canvas');
+      cv.width = 256; cv.height = 64;
+      const c = cv.getContext('2d');
+      c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineWidth = 5; c.strokeStyle = 'rgba(0,0,0,.7)'; c.strokeText(text, 128, 32);
+      c.fillStyle = '#c9ced6'; c.fillText(text, 128, 32);
+      tex = new THREE.CanvasTexture(cv);
+      floatTex.set(text, tex);
+    }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, fog: false, depthTest: false }));
+    sp.scale.set(1.6, 0.4, 1);
+    sp.position.set(x, y, z);
+    sp.userData = { life: 0.9 };
+    scene.add(sp);
+    floaters.push(sp);
+  }
+  function updateFloaters(dt) {
+    for (const f of floaters.slice()) {
+      f.userData.life -= dt;
+      f.position.y += dt * 1.1;
+      f.material.opacity = Math.max(0, Math.min(1, f.userData.life / 0.4));
+      if (f.userData.life <= 0) { scene.remove(f); f.material.dispose(); floaters.splice(floaters.indexOf(f), 1); }
+    }
+  }
   function updateArrows(dt) {
     for (const a of arrows.slice()) {
       const u = a.userData;
@@ -1037,7 +1201,8 @@
         if (px * px + pz * pz < (e.userData.r + 0.15) ** 2 && t < bestT) { bestT = t; hit = e; }
       }
       if (hit) {
-        hitEnemy(hit, atk, x0, z0);                 // 근접 공격과 동일한 데미지
+        if (hit.userData.shield) floatText('면역 (Immune)', hit.position.x, hit.position.y + 1.6, hit.position.z);   // 방패병: 화살 면역
+        else hitEnemy(hit, CFG.BOW_DMG, x0, z0, false);    // 활 데미지는 고정(무기 강화 영향 없음)
         scene.remove(a); arrows.splice(arrows.indexOf(a), 1);
         continue;
       }
@@ -1058,7 +1223,9 @@
   function respawnResources() {
     const free = (x, z) => Math.hypot(x - player.position.x, z - player.position.z) > 6 &&
                            npcs.every(n => Math.hypot(x - n.position.x, z - n.position.z) > 4) &&
-                           blueprints.every(b => Math.hypot(x - b.position.x, z - b.position.z) > 3);     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
+                           blueprints.every(b => Math.hypot(x - b.position.x, z - b.position.z) > 3) &&
+                           gateWaypoints.every(g => Math.hypot(x - g.x, z - g.z) > 3.5) &&
+                           gateWaypoints.every(g => Math.abs(Math.hypot(x, z) - g.r) > CFG.CORRIDOR_WIDTH + 1);   // 성벽 통행로에는 리스폰 금지     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
     const before = obstacles.length;
     scatter(makeTree, Math.max(0, CFG.TREE_COUNT - countType('wood')), free);
     scatter(makeRock, Math.max(0, CFG.STONE_COUNT - countType('stone')), free);
@@ -1094,6 +1261,7 @@
     updateNpcs(dt, hour, t);
     updateFx(dt);
     updateArrows(dt);
+    updateFloaters(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
     atkCd -= dt;
