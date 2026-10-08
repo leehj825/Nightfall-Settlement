@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Nightfall Settlement</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1020; touch-action: none;
+    -webkit-user-select: none; user-select: none; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+  canvas#game { display: block; width: 100%; height: 100%; }
+
+  /* 진입 UI */
+  #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 70%, rgba(255,140,60,.35), rgba(20,10,35,.92) 70%); z-index: 10; text-align: center; padding: 16px; }
+  #menu.hidden { display: none; }
+  .title { margin: 0; font-size: clamp(34px, 9vw, 84px); font-weight: 900; letter-spacing: .06em; text-transform: uppercase;
+    background: linear-gradient(180deg, #ffe7a8 0%, #ff9d3c 55%, #c2410c 100%); -webkit-background-clip: text; background-clip: text;
+    color: transparent; filter: drop-shadow(0 4px 0 #3a1408) drop-shadow(0 0 22px rgba(255,140,50,.55)); }
+  .subtitle { margin: 10px 0 36px; color: #c9b8e8; letter-spacing: .5em; font-size: clamp(11px, 2.6vw, 18px); text-transform: uppercase; }
+  #startBtn { font: inherit; font-size: 20px; font-weight: 700; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c);
+    border: 0; border-radius: 999px; padding: 14px 44px; cursor: pointer; box-shadow: 0 5px 0 #a8480f, 0 10px 24px rgba(0,0,0,.4); }
+  #startBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #a8480f; }
+  .hint { margin-top: 26px; color: #9d8cc0; font-size: 14px; line-height: 1.6; }
+
+  /* 가상 조이스틱 (좌측 하단) */
+  #joyZone { position: fixed; left: 0; bottom: 0; width: 55%; height: 45%; z-index: 5; touch-action: none; }
+  #joyBase { position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%;
+    background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); display: none; pointer-events: none; }
+  #joyBase.fixed { display: block; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+    background: rgba(255,190,110,.75); border: 2px solid rgba(255,255,255,.7); }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="menu">
+  <h1 class="title">Nightfall Settlement</h1>
+  <div class="subtitle">Survive the dusk</div>
+  <button id="startBtn">START</button>
+  <div class="hint">모바일: 좌측 하단 조이스틱 &nbsp;|&nbsp; PC: W A S D</div>
+</div>
+
+<div id="joyZone"><div id="joyBase"><div id="joyKnob"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ---------- 렌더러 / 씬 ----------
+  const canvas = document.getElementById('game');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  const dusk = new THREE.Color(0x3a2a52);
+  scene.background = dusk;
+  scene.fog = new THREE.Fog(dusk, 30, 70);
+
+  // ---------- 조명 (해 질 녘) ----------
+  scene.add(new THREE.AmbientLight(0x6f86d6, 0.55));            // 푸른빛 환경광
+  const sun = new THREE.DirectionalLight(0xff9a4a, 1.1);        // 따뜻한 오렌지 태양광
+  sun.position.set(-18, 14, -10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 80 });
+  scene.add(sun, sun.target);
+
+  // ---------- 바닥 (캐주얼 흙색) ----------
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 400),
+    new THREE.MeshToonMaterial({ color: 0x9a6b44 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // 이동감을 위한 장식용 돌멩이
+  const rockMat = new THREE.MeshToonMaterial({ color: 0x6e5a4c });
+  for (let i = 0; i < 60; i++) {
+    const s = 0.3 + Math.random() * 0.7;
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s), rockMat);
+    rock.position.set((Math.random() - .5) * 90, s * 0.4, (Math.random() - .5) * 90);
+    rock.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+    rock.castShadow = rock.receiveShadow = true;
+    scene.add(rock);
+  }
+
+  // ---------- 플레이어 (캡슐형: 원통 + 반구 2개) ----------
+  const player = new THREE.Group();
+  const bodyMat = new THREE.MeshToonMaterial({ color: 0xe8553c });
+  const R = 0.45, H = 0.7;
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 20), bodyMat);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(R, 20, 12), bodyMat);
+  const bot = top.clone();
+  top.position.y = H / 2; bot.position.y = -H / 2;
+  const capsule = new THREE.Group();
+  capsule.add(cyl, top, bot);
+  capsule.position.y = H / 2 + R;
+  capsule.traverse(m => { if (m.isMesh) m.castShadow = true; });
+  // 바라보는 방향을 알려주는 "눈"
+  const eye = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.2), new THREE.MeshToonMaterial({ color: 0xfff1c9 }));
+  eye.position.set(0, 0.55, R * 0.9);
+  capsule.add(eye);
+  player.add(capsule);
+  scene.add(player);
+
+  // ---------- 쿼터뷰 카메라 + Lerp 추적 ----------
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+  const CAM_OFFSET = new THREE.Vector3(12, 14, 12);   // 비스듬히 위에서 내려다보는 각도
+  const camTarget = new THREE.Vector3();
+  camera.position.copy(CAM_OFFSET);
+  camera.lookAt(0, 0, 0);
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // ---------- 입력: 가상 조이스틱 ----------
+  const joy = { x: 0, y: 0, id: null };      // x: 오른쪽 +, y: 위쪽 +
+  const zone = document.getElementById('joyZone');
+  const base = document.getElementById('joyBase');
+  const knob = document.getElementById('joyKnob');
+  const MAX_R = 55;
+  let origin = { x: 0, y: 0 };
+
+  function joyMove(e) {
+    let dx = e.clientX - origin.x, dy = e.clientY - origin.y;
+    const len = Math.hypot(dx, dy);
+    if (len > MAX_R) { dx = dx / len * MAX_R; dy = dy / len * MAX_R; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    joy.x = dx / MAX_R;
+    joy.y = -dy / MAX_R;
+  }
+  function joyEnd(e) {
+    if (e.pointerId !== joy.id) return;
+    joy.id = null; joy.x = joy.y = 0;
+    base.classList.remove('fixed');
+    knob.style.transform = '';
+  }
+  zone.addEventListener('pointerdown', e => {
+    if (joy.id !== null) return;
+    joy.id = e.pointerId;
+    zone.setPointerCapture(e.pointerId);
+    origin = { x: e.clientX, y: e.clientY };     // 터치한 위치가 조이스틱 중심
+    base.style.left = origin.x + 'px';
+    base.style.top = origin.y + 'px';
+    base.classList.add('fixed');
+    joyMove(e);
+  });
+  zone.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(e); });
+  zone.addEventListener('pointerup', joyEnd);
+  zone.addEventListener('pointercancel', joyEnd);
+  zone.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ---------- 입력: WASD ----------
+  const keys = {};
+  addEventListener('keydown', e => { keys[e.code] = true; });
+  addEventListener('keyup', e => { keys[e.code] = false; });
+  addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+  function getInput() {
+    let x = joy.x, y = joy.y;
+    const kx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+    const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+    if (kx || ky) { const l = Math.hypot(kx, ky); x = kx / l; y = ky / l; }
+    return { x, y };
+  }
+
+  // ---------- 게임 루프 ----------
+  // 카메라 기준 화면 위/오른쪽에 해당하는 월드 방향
+  const FWD = new THREE.Vector3(-1, 0, -1).normalize();
+  const RIGHT = new THREE.Vector3(1, 0, -1).normalize();
+  const SPEED = 6;
+  const move = new THREE.Vector3();
+  let started = false;
+  let facing = 0;
+
+  const clock = new THREE.Clock();
+  function tick() {
+    requestAnimationFrame(tick);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const t = clock.elapsedTime;
+
+    if (started) {
+      const input = getInput();
+      const mag = Math.min(1, Math.hypot(input.x, input.y));
+      if (mag > 0.08) {
+        move.set(0, 0, 0).addScaledVector(RIGHT, input.x).addScaledVector(FWD, input.y).normalize();
+        player.position.addScaledVector(move, SPEED * mag * dt);
+
+        // 이동 방향으로 부드럽게 회전
+        const target = Math.atan2(move.x, move.z);
+        let diff = target - facing;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        facing += diff * Math.min(1, dt * 14);
+        player.rotation.y = facing;
+        capsule.position.y = H / 2 + R + Math.abs(Math.sin(t * 12)) * 0.08 * mag;   // 걷는 통통거림
+      } else {
+        capsule.position.y += (H / 2 + R - capsule.position.y) * Math.min(1, dt * 10);
+      }
+    }
+
+    // 카메라 부드러운 추적 (Lerp)
+    camTarget.copy(player.position).add(CAM_OFFSET);
+    camera.position.lerp(camTarget, 1 - Math.exp(-5 * dt));
+    camera.lookAt(camera.position.x - CAM_OFFSET.x, 0, camera.position.z - CAM_OFFSET.z);
+
+    // 그림자 영역이 플레이어를 따라가도록
+    sun.target.position.copy(player.position);
+    sun.position.set(player.position.x - 18, 14, player.position.z - 10);
+
+    renderer.render(scene, camera);
+  }
+  tick();
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    started = true;
+    document.getElementById('menu').classList.add('hidden');
+  });
+})();
+</script>
+</body>
+</html>
