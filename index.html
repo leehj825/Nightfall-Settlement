@@ -47,6 +47,13 @@
   #upgBtn { position: fixed; top: 10px; right: 10px; z-index: 5; font: inherit; font-weight: 700; font-size: 15px; color: #fff;
     padding: 8px 14px; border-radius: 12px; border: 2px solid rgba(255,255,255,.6); cursor: pointer; touch-action: none;
     background: linear-gradient(#5aa8ff, #2a5fc0); box-shadow: 0 3px 0 #173a80; line-height: 1.2; }
+  #designBtn { position: fixed; top: 78px; right: 10px; z-index: 5; width: 200px; font: inherit; font-weight: 800; font-size: 17px; color: #fff;
+    padding: 14px 12px; border-radius: 14px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.25;
+    background: linear-gradient(#4fb36a, #1f7a3d); box-shadow: 0 4px 0 #0f4a24, 0 8px 18px rgba(0,0,0,.4); }
+  #designBtn small { display: block; font-weight: 500; font-size: 12px; opacity: .9; margin-top: 3px; }
+  #designBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0f4a24; }
+  #designBtn.stone { background: linear-gradient(#8a9099, #4a4f57); box-shadow: 0 4px 0 #2a2d33, 0 8px 18px rgba(0,0,0,.4); }
+  #designBtn.done { background: #555; box-shadow: none; opacity: .7; }
   #upgBtn small { display: block; font-weight: 400; font-size: 11px; opacity: .85; }
   #upgBtn:active { transform: translateY(2px); }
   #upgBtn.done { background: #666; box-shadow: none; opacity: .75; }
@@ -57,6 +64,7 @@
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
 <div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b></div>
+<button id="designBtn"><span id="designLbl">1단계 방어선 설계</span><small id="designCost">나무 30개 소모</small></button>
 <button id="upgBtn">무기 강화<small>돌 10개 소모</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="warn"></div>
@@ -65,7 +73,7 @@
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
   <button class="btn" id="atkBtn">공격<small>Attack · F</small></button>
-  <button class="btn" id="buildBtn"><span id="buildLbl">청사진 배치</span><small>Build · B / U</small></button>
+  <button class="btn" id="buildBtn"><span id="buildLbl">성벽 강화</span><small>Upgrade · U</small></button>
   <button class="btn" id="actBtn">채집<small>Action · Space</small></button>
 </div>
 
@@ -107,7 +115,12 @@
   const CFG = {
     TREE_COUNT: 26, STONE_COUNT: 26,           // 맵에 생성되는 나무 / 바위 수
     GATHER_YIELD: { wood: 1, stone: 1 },       // 1회 채집당 획득량 (플레이어·동료 공통)
-    FENCE_BUILD_WOOD: 5,                       // 목책 건설 비용(나무, 동료가 건설 시 차감)
+    BP_COST: { wood: 5, stone: 5 },            // 동료가 청사진 1개를 지을 때 드는 자원 (나무 목책 / 돌 성벽)
+    // 자동 방어선 도면: 모닥불(0,0) 기준 원형 배치. gaps = 비워 둘 슬롯 번호(출입구)
+    DESIGN: [
+      { label: '1단계 방어선 설계', cost: { wood: 30 }, radius: 15, count: 30, kind: 'wood', gaps: [0, 15] },
+      { label: '2단계 석조 방어선 설계', cost: { stone: 50 }, radius: 25, count: 44, kind: 'stone', gaps: [11, 33] },
+    ],
     BUILD_TIME: 2, REPAIR_TIME: 1.5, GATHER_TIME: 2,   // 동료의 작업 시간(초)
     FENCE_UPGRADE_STONE: 5,                    // 돌 성벽 업그레이드 비용(돌)
     FENCE_HP: 30, WALL_HP: 100,                // 나무 목책 / 돌 성벽 체력
@@ -272,7 +285,6 @@
   const keys = {};
   addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) gather(); }
-    if (e.code === 'KeyB' && !e.repeat) build();
     if (e.code === 'KeyU' && !e.repeat) upgradeFence();
     if (e.code === 'KeyF' && !e.repeat) attack();
     keys[e.code] = true;
@@ -328,24 +340,86 @@
     fence.position.set(x, 0.55, z);
     fence.rotation.y = rot;
     fence.castShadow = fence.receiveShadow = true;
-    fence.userData = { type: 'fence', level: 'wood', radius: 1.0, hp: CFG.FENCE_HP, maxHp: CFG.FENCE_HP };
+    fence.userData = { type: 'fence', level: 'wood', radius: 1.2, hp: CFG.FENCE_HP, maxHp: CFG.FENCE_HP };
     scene.add(fence);
     obstacles.push(fence);
     return fence;
   }
-  function build() {
-    if (dead) return;
-    const fx = Math.sin(facing), fz = Math.cos(facing);
-    const x = player.position.x + fx * 2, z = player.position.z + fz * 2;
-    const taken = blueprints.concat(obstacles.filter(o => o.userData.type === 'fence'));
-    if (taken.some(o => Math.hypot(o.position.x - x, o.position.z - z) < 1.6)) return toast('이미 그 위치에 목책이 있습니다');
-    const bp = new THREE.Mesh(bpGeo, new THREE.MeshBasicMaterial({ color: 0x4aa8ff, transparent: true, opacity: 0.4, depthWrite: false }));
-    bp.position.set(x, 0.55, z);
-    bp.rotation.y = facing;
-    bp.userData = { type: 'blueprint', radius: 1.0 };
+  const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
+  function createWall(x, z, rot) {              // 돌 성벽 (짙은 회색, HP 100)
+    const w = new THREE.Mesh(wallGeo, wallMat);
+    w.position.set(x, 0.7, z);
+    w.rotation.y = rot;
+    w.castShadow = w.receiveShadow = true;
+    w.userData = { type: 'fence', level: 'stone', radius: 1.5, hp: CFG.WALL_HP, maxHp: CFG.WALL_HP };
+    scene.add(w);
+    obstacles.push(w);
+    return w;
+  }
+  const createStructure = (kind, x, z, rot) => kind === 'stone' ? createWall(x, z, rot) : createFence(x, z, rot);
+  // ---------- 마을 자동 확장: 원형 방어선 도면 ----------
+  function addBlueprint(kind, x, z, rot) {
+    const stone = kind === 'stone';
+    const bp = new THREE.Mesh(stone ? wallGeo : bpGeo,
+      new THREE.MeshBasicMaterial({ color: stone ? 0xc8d8ff : 0x4aa8ff, transparent: true, opacity: 0.4, depthWrite: false }));
+    bp.position.set(x, stone ? 0.7 : 0.55, z);
+    bp.rotation.y = rot;
+    bp.userData = { type: 'blueprint', res: kind, radius: stone ? 1.5 : 1.2, owner: null };
     scene.add(bp);
     blueprints.push(bp);
-    toast(`청사진 배치! 동료가 나무 ${CFG.FENCE_BUILD_WOOD}개로 건설합니다`);
+  }
+  // 건설 부지 확보: 해당 위치의 나무/바위를 즉시 삭제
+  function clearArea(x, z, r) {
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i], ty = o.userData.type;
+      if ((ty === 'wood' || ty === 'stone') && Math.hypot(o.position.x - x, o.position.z - z) < o.userData.radius + r) {
+        scene.remove(o); obstacles.splice(i, 1);
+      }
+    }
+  }
+  function designRing(cfg) {
+    const gaps = new Set(cfg.gaps);
+    const r = cfg.kind === 'stone' ? 1.5 : 1.2;
+    let placed = 0;
+    for (let i = 0; i < cfg.count; i++) {
+      const a = i / cfg.count * Math.PI * 2;
+      const x = Math.cos(a) * cfg.radius, z = Math.sin(a) * cfg.radius;
+      if (gaps.has(i)) { clearArea(x, z, 2.2); continue; }      // 출입구: 비워 두고 길만 터 줌
+      const taken = blueprints.some(b => Math.hypot(b.position.x - x, b.position.z - z) < 1.5) ||
+                    obstacles.some(o => o.userData.type === 'fence' && Math.hypot(o.position.x - x, o.position.z - z) < 1.5);
+      if (taken) continue;
+      clearArea(x, z, r + 0.3);
+      addBlueprint(cfg.kind, x, z, -(a + Math.PI / 2));          // 원의 접선 방향으로 정렬
+      placed++;
+    }
+    return placed;
+  }
+  let designTier = 0;
+  const designBtnEl = document.getElementById('designBtn');
+  function updateDesignBtn() {
+    const cfg = CFG.DESIGN[designTier];
+    if (!cfg) {
+      designBtnEl.classList.add('done'); designBtnEl.classList.remove('stone');
+      document.getElementById('designLbl').textContent = '방어선 설계 완료';
+      document.getElementById('designCost').textContent = '모든 단계 설계됨';
+      return;
+    }
+    const [type, n] = Object.entries(cfg.cost)[0];
+    document.getElementById('designLbl').textContent = cfg.label;
+    document.getElementById('designCost').textContent = `${type === 'wood' ? '나무' : '돌'} ${n}개 소모`;
+    designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
+  }
+  function designDefense() {
+    if (dead) return;
+    const cfg = CFG.DESIGN[designTier];
+    if (!cfg) return;
+    const [type, n] = Object.entries(cfg.cost)[0];
+    if (res[type] < n) return toast(`${type === 'wood' ? '나무' : '돌'}가 ${n}개 필요합니다`);
+    res[type] -= n;
+    const placed = designRing(cfg);
+    designTier++;
+    updateHud(); updateDesignBtn();
+    toast(`${cfg.label} 완료! 청사진 ${placed}개 - 동료가 건설합니다`);
   }
   function upgradeFence() {
     if (dead) return;
@@ -360,7 +434,6 @@
     toast('돌 성벽으로 업그레이드!');
   }
   // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설
-  function buildOrUpgrade() { if (nearestFence('wood')) upgradeFence(); else build(); }
 
   function upgradeWeapon() {
     if (dead) return;
@@ -375,7 +448,8 @@
   }
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
-  bindBtn('buildBtn', buildOrUpgrade);
+  bindBtn('buildBtn', upgradeFence);
+  bindBtn('designBtn', designDefense);
   bindBtn('upgBtn', upgradeWeapon);
   bindBtn('atkBtn', attack);
 
@@ -688,7 +762,7 @@
   npcBody.position.y = NPC_BASE_Y;
   npc.add(npcBody);
   npc.position.set(NPC_HOME.x, 0, NPC_HOME.z);
-  Object.assign(npc, { hp: NPC_MAX_HP, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '', task: null, workT: 0, noWood: false });
+  Object.assign(npc, { hp: NPC_MAX_HP, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '', task: null, workT: 0, short: null, pickCd: 0 });
   scene.add(npc);
 
   // 머리 위 상태 라벨
@@ -716,7 +790,7 @@
   function damageNpc(n) {
     npc.hp = Math.max(0, npc.hp - n);
     if (npc.hp <= 0 && !npc.down) {
-      npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; npc.task = null; npc.workT = 0;
+      npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; setTask(null); npc.workT = 0;
       npcMat.color.set(0x777777);                 // 회색으로 변환
       npcBody.rotation.z = Math.PI / 2;           // 바닥에 눕기
       npcBody.position.y = R;
@@ -745,25 +819,31 @@
     }
     return d;
   }
-  // 주간 작업 선택
+  // 주간 작업 선택 (제곱거리 비교로 가장 가까운 대상을 O(n) 한 번에 탐색, 다른 동료가 점유한 대상은 제외)
   function nearestOf(list, pred) {
     let best = null, bd = Infinity;
-    for (const o of list) {
+    const nx = npc.position.x, nz = npc.position.z;
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
       if (!pred(o)) continue;
-      const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
+      const dx = o.position.x - nx, dz = o.position.z - nz, d = dx * dx + dz * dz;
       if (d < bd) { bd = d; best = o; }
     }
     return best;
   }
+  const unclaimed = (o) => !o.userData.owner || o.userData.owner === npc;
+  function setTask(nt) {                       // 대상 점유(claim)/해제
+    if (npc.task) npc.task.target.userData.owner = null;
+    npc.task = nt;
+    if (nt) nt.target.userData.owner = npc;
+  }
   function pickDayTask() {
-    const damaged = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.hp < o.userData.maxHp);
+    const damaged = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.hp < o.userData.maxHp && unclaimed(o));
     if (damaged) return { kind: 'repair', target: damaged };
-    if (npc.noWood && res.wood >= CFG.FENCE_BUILD_WOOD) npc.noWood = false;
-    if (!npc.noWood) {
-      const bp = nearestOf(blueprints, () => true);
-      if (bp) return { kind: 'build', target: bp };
-    }
-    const r = nearestOf(obstacles, o => npc.noWood ? o.userData.type === 'wood' : (o.userData.type === 'wood' || o.userData.type === 'stone'));
+    if (npc.short && res[npc.short] >= CFG.BP_COST[npc.short]) npc.short = null;
+    const bp = nearestOf(blueprints, b => b.userData.res !== npc.short && unclaimed(b));
+    if (bp) return { kind: 'build', target: bp };
+    const r = nearestOf(obstacles, o => (npc.short ? o.userData.type === npc.short : (o.userData.type === 'wood' || o.userData.type === 'stone')) && unclaimed(o));
     return r ? { kind: 'gather', target: r } : null;
   }
   function taskValid(tk) {
@@ -785,11 +865,13 @@
       // 주간 우선순위: 1) 수리  2) 건설(청사진)  3) 채집
       const PRIO = { repair: 0, build: 1, gather: 2 };
       let task = npc.task;
-      if (task && !taskValid(task)) { task = npc.task = null; npc.workT = 0; }
-      if (!task || npc.workT === 0) {           // 작업 도중이 아니면 더 높은 우선순위 작업이 있는지 확인
+      if (task && !taskValid(task)) { setTask(null); task = null; npc.workT = 0; }
+      npc.pickCd -= dt;
+      if (npc.pickCd <= 0 && (!task || npc.workT === 0)) {     // 작업 도중이 아닐 때만, 0.3초 간격으로 재탐색
+        npc.pickCd = 0.3;
         const nt = pickDayTask();
-        if (nt && (!task || PRIO[nt.kind] < PRIO[task.kind])) { task = npc.task = nt; npc.workT = 0; }
-        else if (!task) task = npc.task = nt;
+        if (nt && (!task || PRIO[nt.kind] < PRIO[task.kind])) { setTask(nt); task = nt; npc.workT = 0; }
+        else if (!task) { setTask(nt); task = nt; }
       }
       if (task) {
         const o = task.target;
@@ -800,37 +882,38 @@
         else {
           npc.face = Math.atan2(o.position.x - npc.position.x, o.position.z - npc.position.z);
           npc.rotation.y = npc.face;
-          if (task.kind === 'build' && npc.workT === 0 && res.wood < CFG.FENCE_BUILD_WOOD) {
+          if (task.kind === 'build' && npc.workT === 0 && res[o.userData.res] < CFG.BP_COST[o.userData.res]) {
             // 도착했는데 나무가 부족하면 건설 보류, 즉시 채집으로 전환
-            npc.noWood = true; npc.task = null;
-            toast('나무가 부족해 건설을 보류하고 채집합니다');
+            npc.short = o.userData.res; setTask(null);
+            toast(`${npc.short === 'stone' ? '돌' : '나무'} 자원이 부족해 건설을 보류하고 채집합니다`);
           } else {
             npc.workT += dt;
             bob = Math.abs(Math.sin(t * 14)) * 0.15;       // 들썩임
             if (task.kind === 'build' && npc.workT >= CFG.BUILD_TIME) {
-              if (res.wood >= CFG.FENCE_BUILD_WOOD) {
-                res.wood -= CFG.FENCE_BUILD_WOOD; updateHud();
+              const kind = o.userData.res, cost = CFG.BP_COST[kind];
+              if (res[kind] >= cost) {
+                res[kind] -= cost; updateHud();
                 blueprints.splice(blueprints.indexOf(o), 1); scene.remove(o);
-                createFence(o.position.x, o.position.z, o.rotation.y);
+                createStructure(kind, o.position.x, o.position.z, o.rotation.y);
                 dust(o.position.x, o.position.z);
               }
-              npc.task = null; npc.workT = 0;
+              setTask(null); npc.workT = 0;
             } else if (task.kind === 'repair' && npc.workT >= CFG.REPAIR_TIME) {
               o.userData.hp = o.userData.maxHp;
               dust(o.position.x, o.position.z);
-              npc.task = null; npc.workT = 0;
+              setTask(null); npc.workT = 0;
             } else if (task.kind === 'gather' && npc.workT >= CFG.GATHER_TIME) {
               const type = o.userData.type;
               scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
               res[type] += CFG.GATHER_YIELD[type]; updateHud();
-              npc.task = null; npc.workT = 0;
+              setTask(null); npc.workT = 0;
             }
           }
         }
       } else npcMove(NPC_HOME.x, NPC_HOME.z, 3.5, dt);
     } else {
       // 야간: 모닥불 방어
-      npc.target = null; npc.gatherT = 0; npc.task = null; npc.workT = 0;
+      npc.target = null; npc.gatherT = 0; setTask(null); npc.workT = 0;
       let foe = null, bd = NPC_AGGRO;
       for (const e of enemies) {
         if (e.userData.sinking) continue;
@@ -874,7 +957,8 @@
   const countType = (t) => obstacles.filter(o => o.userData.type === t).length;
   function respawnResources() {
     const free = (x, z) => Math.hypot(x - player.position.x, z - player.position.z) > 6 &&
-                           Math.hypot(x - npc.position.x, z - npc.position.z) > 4;     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
+                           Math.hypot(x - npc.position.x, z - npc.position.z) > 4 &&
+                           blueprints.every(b => Math.hypot(x - b.position.x, z - b.position.z) > 3);     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
     const before = obstacles.length;
     scatter(makeTree, Math.max(0, CFG.TREE_COUNT - countType('wood')), free);
     scatter(makeRock, Math.max(0, CFG.STONE_COUNT - countType('stone')), free);
@@ -884,7 +968,6 @@
 
   // ---------- 메인 루프 ----------
   const SPEED = 6;
-  const buildLblEl = document.getElementById('buildLbl');
   let facing = 0;
   const clock = new THREE.Clock();
 
@@ -911,8 +994,6 @@
     updateNpc(dt, hour, t);
     updateFx(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
-    const lbl = nearestFence('wood') ? '돌 성벽 강화' : '청사진 배치';
-    if (buildLblEl.textContent !== lbl) buildLblEl.textContent = lbl;
     animateFire(t);
     atkCd -= dt;
     if (atkT > 0) {
