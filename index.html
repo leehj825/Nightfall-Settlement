@@ -32,6 +32,8 @@
     text-align: center; color: #ff8a7a; font-weight: 800; font-size: 14px; text-shadow: 0 2px 3px #000; pointer-events: none; }
   #bossBar .track { height: 10px; margin-top: 3px; border-radius: 6px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.4); overflow: hidden; }
   #bossFill { height: 100%; width: 100%; background: linear-gradient(#ff5a4a, #a01810); }
+  #dbg { position: fixed; left: 10px; top: 214px; z-index: 6; display: none; gap: 6px; }
+  #dbg button { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px; border: 1px solid #fff8; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; }
   #clear { position: fixed; top: 36%; left: 0; right: 0; text-align: center; color: #ffd54a; z-index: 16; padding: 0 12px;
     font-size: clamp(26px, 6.5vw, 58px); font-weight: 900; text-shadow: 0 4px 0 #5a3d00, 0 0 28px rgba(255,200,60,.8);
     opacity: 0; transition: opacity .6s; pointer-events: none; }
@@ -90,6 +92,7 @@
 <button id="townBtn"><span id="townLbl">마을 인프라 설계</span><small id="townCost">나무 40개 소모</small></button>
 <button id="upgBtn">무기 강화<small>검 데미지 ↑ · 돌 10개</small></button>
 <div id="clock">Day 1 - 08:00</div>
+<div id="dbg"><button id="dbgSetup">Day7 준비</button><button id="dbgBoss">보스 소환</button></div>
 <div id="bossBar"><span id="bossName">베헤모스</span><div class="track"><div id="bossFill"></div></div></div>
 <div id="clear">1장 클리어 - 영지가 안정화되었습니다!</div>
 <div id="warn"></div>
@@ -167,7 +170,14 @@
     // Day 7 보스 '베헤모스' + 지진 강타(충격파)
     BOSS_DAY: 7, BOSS_HP: 100, BOSS_SCALE: 3, BOSS_SPEED_MUL: 0.5, BOSS_CONTACT_DMG: 40, BOSS_KB_MUL: 0.15,
     BOSS_SLAM_INTERVAL: 5, BOSS_JUMP_TIME: 0.6,
-    QUAKE_SPEED: 14, QUAKE_MAX: 22, QUAKE_STRUCT_DMG: 60, QUAKE_NPC_DMG: 30, QUAKE_PLAYER_DMG: 35, QUAKE_KB: 4, QUAKE_FIRE_DMG: 30,
+    // 충격파: 구조물 피해는 거리에 따라 줄고(QUAKE_FALLOFF), 동료/시민은 피해 거의 없이 넉백만(상한 QUAKE_NPC_KB), 플레이어는 대시 무적으로 회피
+    QUAKE_SPEED: 14, QUAKE_MAX: 22, QUAKE_STRUCT_DMG: 25, QUAKE_FALLOFF: 0.6, QUAKE_NPC_DMG: 1, QUAKE_NPC_KB: 7, QUAKE_PLAYER_DMG: 35, QUAKE_KB: 4, QUAKE_FIRE_DMG: 15,
+    // 보스 패턴: 지진 전 캐스팅(궁수 궁극기로 끊으면 기절), 타격 시 어그로 고정, 모닥불은 즉사가 아니라 초당 피해
+    BOSS_CAST_TIME: 1.5, BOSS_STUN_TIME: 3, STUN_DMG_MULT: 2, BOSS_LURE_TIME: 10,
+    BOSS_FIRE_DPS: 20, BOSS_FIRE_BUMP_TIME: 2.5, BOSS_FIRE_BUMP_DIST: 6,
+    BOSS_SPAWN_HOUR: 21.5,                     // 보스 등장 시각(밤 시작 20시 이후, 24 넘으면 +24)
+    // 플레이어 회복: 모닥불 곁 자동 회복 + 아침 완전 회복. 모닥불도 낮에 서서히 회복
+    PLAYER_MAX_HP: 100, REGEN_RATE: 4, REGEN_RADIUS: 7, REGEN_DELAY: 2, FIRE_REGEN: 8,
     // 플레이어 궁극기 '회전 강타'
     ULT_RADIUS: 8, ULT_DAMAGE: 10, ULT_CD: 15, ULT_KB: 6,
     // 1장 클리어 후 무한 모드: Day 8부터 하루마다 적 수 / 체력 추가 증가
@@ -670,12 +680,13 @@
   function animateFire(t) {
     if (!fireAlive) return;
     const f = 1 + Math.sin(t * 9) * 0.12 + Math.sin(t * 23) * 0.06;
-    flame.scale.set(2 - f, f, 2 - f);
+    const hpR = Math.max(0.35, fireHp / CFG.FIRE_HP);         // 모닥불 체력이 줄면 불꽃도 작아진다
+    flame.scale.set((2 - f) * hpR, f * hpR, (2 - f) * hpR);
     fireLight.intensity = 1.8 + (f - 1) * 1.5;
   }
 
   // ---------- 체력 / 게임오버 ----------
-  let hp = 100, dead = false, hurtCd = 0;
+  let hp = CFG.PLAYER_MAX_HP, dead = false, hurtCd = 0, sinceHurt = 99, nowHour = 8;
   const hpEl = document.getElementById('hpN');
   function gameOver(sub) {
     if (dead) return;
@@ -688,8 +699,17 @@
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     hp = Math.max(0, hp - n);
-    hpEl.textContent = hp;
+    sinceHurt = 0;
+    hpEl.textContent = Math.ceil(hp);
     if (hp <= 0) gameOver('쓰러졌습니다');
+  }
+  function healPlayer(n) { hp = Math.min(CFG.PLAYER_MAX_HP, hp + n); hpEl.textContent = Math.ceil(hp); }
+  // 회복: 모닥불 곁에서 일정 시간 맞지 않으면 초당 회복, 모닥불은 낮에 서서히 회복
+  function updateRegen(dt) {
+    if (dead) return;
+    sinceHurt += dt;
+    if (fireAlive && hp < CFG.PLAYER_MAX_HP && sinceHurt >= CFG.REGEN_DELAY && Math.hypot(player.position.x, player.position.z) < CFG.REGEN_RADIUS) healPlayer(CFG.REGEN_RATE * dt);
+    if (fireAlive && fireHp < CFG.FIRE_HP && nowHour >= 6 && nowHour < 18) fireHp = Math.min(CFG.FIRE_HP, fireHp + CFG.FIRE_REGEN * dt);
   }
   function destroyFire() {
     fireAlive = false;
@@ -770,7 +790,7 @@
     const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const sc = boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : 1;
-    const m = new THREE.Mesh(enemyGeo, boss ? bossMat : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat);
+    const m = new THREE.Mesh(enemyGeo, boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat);
     m.scale.setScalar(sc);
     m.position.set(Math.cos(a) * r, 0.8 * sc, Math.sin(a) * r);
     m.castShadow = true;
@@ -789,11 +809,35 @@
       speed: ENEMY_SPEED * (boss ? CFG.BOSS_SPEED_MUL : brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : 1),
       contact: boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: boss ? CFG.BOSS_KB_MUL : brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
-      fireTimer: 0, aggro: false, sinking: false };
+      fireTimer: 0, aggro: false, sinking: false, castT: 0, stunT: 0, lureT: 0, critT: 0, tele: null };
+    if (boss) {                                       // 보스 머리 위 표시: 어그로 '!' / 기절 텍스트와 빙글 도는 별
+      const bang = textSprite('!', '#ff2a1a', 0.5, 0.5, 'bold 96px sans-serif');
+      bang.position.set(0, 1.25, 0); bang.visible = false; m.add(bang);
+      const stunTxt = textSprite('기절함! ★', '#ffe14a', 1.1, 0.28, 'bold 48px sans-serif');
+      stunTxt.position.set(0, 1.4, 0); stunTxt.visible = false; m.add(stunTxt);
+      const stars = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffe14a }));
+        const a = i / 3 * Math.PI * 2; st.position.set(Math.cos(a) * 0.4, 0, Math.sin(a) * 0.4); stars.add(st);
+      }
+      stars.position.y = 1.1; stars.visible = false; m.add(stars);
+      Object.assign(m.userData, { bang, stunTxt, stars });
+    }
     scene.add(m);
     enemies.push(m);
   }
-  function removeEnemy(e) { scene.remove(e); enemies.splice(enemies.indexOf(e), 1); }
+  function textSprite(text, color, w, h, font) {
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 128;
+    const c = cv.getContext('2d');
+    c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = 8; c.strokeStyle = 'rgba(0,0,0,.8)'; c.strokeText(text, 128, 64);
+    c.fillStyle = color; c.fillText(text, 128, 64);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false }));
+    sp.scale.set(w, h, 1); sp.renderOrder = 12;
+    return sp;
+  }
+  function removeEnemy(e) { if (e.userData.tele) scene.remove(e.userData.tele); scene.remove(e); enemies.splice(enemies.indexOf(e), 1); }
   function killEnemy(e) {
     burst(e.position, e.userData.boss ? 60 : 12);
     removeEnemy(e);
@@ -802,8 +846,13 @@
 
   // 적에게 피해: 죽으면 true, 살아남으면 작은 파편 + 넉백 (무기 강화 시 더 멀리)
   const KB_TIME = 0.15;
-  function hitEnemy(e, dmg, fromX, fromZ, strongKb = false, kbDist = null) {
+  function hitEnemy(e, dmg, fromX, fromZ, strongKb = false, kbDist = null, byPlayer = false) {
     const u = e.userData;
+    if (u.stunT > 0) {                                  // 기절한 보스: 모든 피해 2배 (크리티컬)
+      dmg *= CFG.STUN_DMG_MULT;
+      if (u.critT <= 0) { u.critT = 0.45; floatText('크리티컬 x2!', e.position.x, e.position.y + 5.2, e.position.z); }
+    }
+    if (byPlayer && u.boss) u.lureT = CFG.BOSS_LURE_TIME;      // 플레이어가 때리면 10초간 플레이어만 쫓는다
     u.hp -= dmg;
     if (u.hp <= 0) { killEnemy(e); return true; }
     burst(e.position, 4);
@@ -814,7 +863,7 @@
   }
 
   // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
-  function sectorHit(x, z, ang) {
+  function sectorHit(x, z, ang, byPlayer = false) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
     const range = ATK_RANGE * slashScale();
     let n = 0;
@@ -823,7 +872,7 @@
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, swordDmg(), x, z, weaponUp); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, swordDmg(), x, z, weaponUp, null, byPlayer); n++; }
     }
     return n;
   }
@@ -842,7 +891,11 @@
   }
   function updateEnemies(dt, night, waveDay) {
     if (night && wave.day !== waveDay) startWave(waveDay);
-    if (night && !dead && wave.bossLeft > 0) { spawnEnemy('boss'); wave.bossLeft = 0; }
+    const nh = nowHour < 5 ? nowHour + 24 : nowHour;
+    if (night && !dead && wave.bossLeft > 0 && nh >= CFG.BOSS_SPAWN_HOUR) {      // 보스는 밤이 시작되고 잠시 뒤 등장 (준비 시간)
+      spawnEnemy('boss'); wave.bossLeft = 0;
+      showWarning('베헤모스가 나타났습니다!'); shake = Math.max(shake, 0.8);
+    }
     if (night && !dead && (wave.remaining > 0 || wave.siegeLeft > 0)) {
       spawnCd -= dt;
       if (spawnCd <= 0 && enemies.length < CFG.MAX_ALIVE) {
@@ -869,7 +922,7 @@
 
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
       const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
-      u.aggro = u.siege ? false : (u.aggro ? pd < DEAGGRO : pd < AGGRO);      // 공성 투척병은 플레이어를 쫓지 않는다
+      u.aggro = u.siege ? false : (u.boss && u.lureT > 0) ? true : (u.aggro ? pd < DEAGGRO : pd < AGGRO);      // 보스는 맞은 뒤 10초간 플레이어 고정      // 공성 투척병은 플레이어를 쫓지 않는다
       const tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
       e.lookAt(tx, e.position.y, tz);
       const dx = tx - e.position.x, dz = tz - e.position.z;
@@ -878,7 +931,7 @@
       if (u.kbT > 0) {                       // 넉백 중에는 밀려남
         u.kbT -= dt;
         e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt;
-      } else if (d > 0.8 && !(u.slamT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF)) {   // 투척병은 안전거리에서 멈춘다
+      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF)) {   // 투척병은 안전거리에서 멈춘다
         e.position.x += dx / d * u.speed * dt;
         e.position.z += dz / d * u.speed * dt;
       }
@@ -894,18 +947,31 @@
       }
       if (blocked) {
         e.position.x += (Math.random() - .5) * 0.02;
-        blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt;   // 구조물 체력 감소
+        if (!(u.stunT > 0)) blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt;   // 구조물 체력 감소
         if (blocked.userData.hp <= 0) collapseStructure(blocked);     // 파괴 시 청사진으로 되돌아간다
       }
 
-      // 베헤모스 지진 강타: 5초마다 제자리에서 점프 → 내려찍어 충격파 생성
+      // 베헤모스 지진 강타: 캐스팅(1.5초, 붉게 깜빡 + 예고 링) → 점프 → 내려찍기. 캐스팅 중 궁극기에 맞으면 취소되고 기절
       if (u.boss) {
-        u.slamCd -= dt;
-        if (u.slamT > 0) {
+        u.slamCd -= dt; u.lureT -= dt; u.critT -= dt;
+        u.bang.visible = u.lureT > 0 && !(u.stunT > 0);
+        u.stunTxt.visible = u.stars.visible = u.stunT > 0;
+        u.stars.rotation.y += dt * 5;
+        if (u.stunT > 0) {
+          u.stunT -= dt;
+          if (u.stunT <= 0) bossRecover(e);
+        } else if (u.slamT > 0) {
           u.slamT -= dt;
           e.position.y = u.baseY + Math.sin((1 - Math.max(u.slamT, 0) / CFG.BOSS_JUMP_TIME) * Math.PI) * 1.8;
           if (u.slamT <= 0) { e.position.y = u.baseY; spawnShockwave(e.position.x, e.position.z); }
-        } else if (u.slamCd <= 0) { u.slamT = CFG.BOSS_JUMP_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL; }
+        } else if (u.castT > 0) {
+          u.castT -= dt;
+          const pulse = 0.5 + 0.5 * Math.sin(u.castT * 24);
+          if (e.material.emissive) { e.material.emissive.setHex(0xff2000); e.material.emissiveIntensity = 0.25 + 0.75 * pulse; }
+          if (u.tele) u.tele.children.forEach(c => c.material.opacity = 0.15 + 0.25 * pulse);
+          u.tele && u.tele.position.set(e.position.x, 0.1, e.position.z);
+          if (u.castT <= 0) { hideTelegraph(e); u.slamT = CFG.BOSS_JUMP_TIME; }
+        } else if (u.slamCd <= 0) { u.castT = CFG.BOSS_CAST_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL; showTelegraph(e); }
       }
 
       // 공성 투척병: 안전거리에 도착하면 일정 간격으로 폭발 바위를 던진다
@@ -916,15 +982,27 @@
 
       // 모닥불 공격: 도달 후 3초 유지되면 모닥불 소멸 → 패배
       if (fireAlive && Math.hypot(e.position.x, e.position.z) < FIRE_R + er + 0.3) {
-        u.fireTimer += dt;
-        flame.scale.multiplyScalar(0.98);
-        if (u.fireTimer >= FIRE_BREAK_TIME) destroyFire();
+        if (u.boss) {                                             // 보스: 즉사 대신 초당 피해, 오래 붙어 있으면 밀려난다
+          if (!(u.stunT > 0)) {
+            fireHp -= CFG.BOSS_FIRE_DPS * dt; u.fireTimer += dt;
+            if (fireHp <= 0) destroyFire();
+            else if (u.fireTimer >= CFG.BOSS_FIRE_BUMP_TIME) {
+              u.fireTimer = 0;
+              const l = Math.hypot(e.position.x, e.position.z) || 1, kd = CFG.BOSS_FIRE_BUMP_DIST / (KB_TIME * 2);
+              u.kbT = KB_TIME * 2; u.kbVx = e.position.x / l * kd; u.kbVz = e.position.z / l * kd;
+              shake = Math.max(shake, 0.4);
+            }
+          }
+        } else {
+          u.fireTimer += dt;
+          if (u.fireTimer >= FIRE_BREAK_TIME) destroyFire();
+        }
       } else u.fireTimer = 0;
 
       // 플레이어 / 동료와 접촉 시 피해
-      if (pd < PLAYER_R + er + 0.15 && hurtCd <= 0) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+      if (pd < PLAYER_R + er + 0.15 && hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
       for (const n of npcs.slice()) {
-        if (!n.down && n.hurtCd <= 0 && Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z) < PLAYER_R + er) {
+        if (!n.down && n.hurtCd <= 0 && !(u.stunT > 0) && Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z) < PLAYER_R + er) {
           damageNpc(n, u.contact); n.hurtCd = 0.8;
         }
       }
@@ -1378,13 +1456,13 @@
     atkCd = ATK_CD;
     if (weaponMode === 'bow') {
       shake = Math.max(shake, 0.08);
-      fireArrow(player.position.x, player.position.z, facing);
+      fireArrow(player.position.x, player.position.z, facing, true);
       return;
     }
     atkT = SLASH_LIFE; shake = 0.3;
     spawnSlash(player.position.x, player.position.z, facing);
     // 광역(Cleave): 부채꼴 안의 모든 적이 동시에 피해와 넉백을 받는다
-    const hits = sectorHit(player.position.x, player.position.z, facing);
+    const hits = sectorHit(player.position.x, player.position.z, facing, true);
     if (hits >= 2) {
       shake = Math.min(0.7, 0.3 + hits * 0.06);
       floatText(`광역 타격 x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
@@ -1403,7 +1481,7 @@
   const arrows = [];
   const arrowGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6);
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x8a5a2b });
-  function fireArrow(x, z, ang) {
+  function fireArrow(x, z, ang, byPlayer = false) {
     const g = new THREE.Group();
     const m = new THREE.Mesh(arrowGeo, arrowMat);
     m.rotation.x = Math.PI / 2;                     // 원기둥 축을 진행(+Z) 방향으로 눕힘
@@ -1411,7 +1489,7 @@
     const sx = Math.sin(ang), sz = Math.cos(ang);
     g.position.set(x + sx * 0.7, 1.0, z + sz * 0.7);
     g.rotation.y = ang;
-    g.userData = { vx: sx * CFG.ARROW_SPEED, vz: sz * CFG.ARROW_SPEED, dist: 0 };
+    g.userData = { vx: sx * CFG.ARROW_SPEED, vz: sz * CFG.ARROW_SPEED, dist: 0, byPlayer };
     scene.add(g);
     arrows.push(g);
   }
@@ -1460,7 +1538,7 @@
       }
       if (hit) {
         if (hit.userData.shield) floatText('면역 (Immune)', hit.position.x, hit.position.y + 1.6, hit.position.z);   // 방패병: 화살 면역
-        else hitEnemy(hit, CFG.BOW_DMG, x0, z0, false);    // 활 데미지는 고정(무기 강화 영향 없음)
+        else hitEnemy(hit, CFG.BOW_DMG, x0, z0, false, null, u.byPlayer);    // 활 데미지는 고정(무기 강화 영향 없음)
         scene.remove(a); arrows.splice(arrows.indexOf(a), 1);
         continue;
       }
@@ -1603,15 +1681,52 @@
     for (const e of enemies.slice()) {                               // 반경 내 모든 적: 방패병 포함(검 피해는 방패 무시), 강한 넉백
       if (e.userData.sinking) continue;
       if (Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z) < CFG.ULT_RADIUS + e.userData.r) {
-        hitEnemy(e, CFG.ULT_DAMAGE, player.position.x, player.position.z, true, CFG.ULT_KB); n++;
+        const wasCasting = e.userData.castT > 0;
+        hitEnemy(e, CFG.ULT_DAMAGE, player.position.x, player.position.z, true, CFG.ULT_KB, true); n++;
+        if (wasCasting && enemies.includes(e)) stunBoss(e);          // 캐스팅 중 궁극기 적중 → 지진 취소 + 기절
       }
     }
     if (n) floatText(`회전 강타 x${n}!`, player.position.x, 2.8, player.position.z);
   }
 
+  // ---------- 베헤모스: 예고 링 / 기절 ----------
+  const teleDiscGeo = new THREE.CircleGeometry(5, 32), teleRingGeo = new THREE.RingGeometry(0.985, 1, 64);
+  function showTelegraph(e) {
+    const u = e.userData;
+    if (u.tele) return;
+    const g = new THREE.Group();
+    const mk = (geo) => new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
+    const disc = mk(teleDiscGeo), ring = mk(teleRingGeo);
+    ring.scale.set(CFG.QUAKE_MAX, CFG.QUAKE_MAX, 1);
+    disc.rotation.x = ring.rotation.x = -Math.PI / 2;
+    g.add(disc, ring); g.position.set(e.position.x, 0.1, e.position.z);
+    scene.add(g); u.tele = g;
+  }
+  function hideTelegraph(e) { const u = e.userData; if (u.tele) { scene.remove(u.tele); u.tele = null; } }
+  function resetBossLook(e) { if (e.material.emissive) { e.material.emissive.setHex(0x000000); e.material.emissiveIntensity = 0; } e.material.color.setHex(0x0b0b0e); }
+  function stunBoss(e) {
+    const u = e.userData;
+    u.castT = 0; u.slamT = 0; hideTelegraph(e);
+    u.stunT = CFG.BOSS_STUN_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL;
+    e.position.y = u.baseY;
+    if (e.material.emissive) { e.material.emissive.setHex(0x000000); e.material.emissiveIntensity = 0; }
+    e.material.color.setHex(0x8a8a92);                                           // 기절: 회색
+    floatText('카운터! 기절!', e.position.x, e.position.y + 5.8, e.position.z);
+    shake = Math.max(shake, 0.6);
+  }
+  function bossRecover(e) { resetBossLook(e); e.userData.slamCd = 2; }
+
   // ---------- 베헤모스 충격파 (지진 강타) ----------
   const shocks = [];
   const shockGeo = new THREE.RingGeometry(0.92, 1, 64);
+  function shoveNpc(n, ux, uz, dist) {
+    n.position.x += ux * dist; n.position.z += uz * dist;
+    for (const o of obstacles) {
+      const ox = n.position.x - o.position.x, oz = n.position.z - o.position.z, min = o.userData.radius + PLAYER_R, od = Math.hypot(ox, oz);
+      if (od < min && od > 1e-4) { n.position.x = o.position.x + ox / od * min; n.position.z = o.position.z + oz / od * min; }
+    }
+    n.position.x = Math.max(-MAP + 1, Math.min(MAP - 1, n.position.x)); n.position.z = Math.max(-MAP + 1, Math.min(MAP - 1, n.position.z));
+  }
   function spawnShockwave(x, z) {
     const m = new THREE.Mesh(shockGeo, new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2; m.position.set(x, 0.15, z); m.scale.set(0.1, 0.1, 1);
@@ -1626,15 +1741,19 @@
       s.m.scale.set(s.r, s.r, 1);
       s.m.material.opacity = 0.8 * Math.max(0, 1 - s.r / CFG.QUAKE_MAX);
       const reach = (px, pz, pad = 0) => Math.hypot(px - s.x, pz - s.z) <= s.r + pad;
-      for (const o of obstacles.slice()) {                                   // 충격파에 닿는 모든 구조물
-        if (o.userData.type === 'fence' && !s.hit.has(o) && reach(o.position.x, o.position.z)) { s.hit.add(o); damageStructure(o, CFG.QUAKE_STRUCT_DMG); }
+      for (const o of obstacles.slice()) {                                   // 충격파에 닿는 구조물: 거리가 멀수록 피해가 줄어든다
+        if (o.userData.type === 'fence' && !s.hit.has(o) && reach(o.position.x, o.position.z)) {
+          s.hit.add(o);
+          const dd = Math.hypot(o.position.x - s.x, o.position.z - s.z);
+          damageStructure(o, CFG.QUAKE_STRUCT_DMG * (1 - CFG.QUAKE_FALLOFF * Math.min(1, dd / CFG.QUAKE_MAX)));
+        }
       }
       if (fireAlive && !s.hit.has('fire') && reach(0, 0)) { s.hit.add('fire'); fireHp -= CFG.QUAKE_FIRE_DMG; if (fireHp <= 0) destroyFire(); }
-      for (const n of npcs.slice()) {
+      for (const n of npcs.slice()) {                                       // 동료/시민: 피해는 거의 없이 넉백만 (벽/건물/맵 밖으로 날아가지 않게 보정)
         if (n.down || s.hit.has(n) || !reach(n.position.x, n.position.z)) continue;
         s.hit.add(n);
         const dx = n.position.x - s.x, dz = n.position.z - s.z, d = Math.hypot(dx, dz) || 1;
-        n.position.x += dx / d * CFG.QUAKE_KB; n.position.z += dz / d * CFG.QUAKE_KB;      // 넉백
+        shoveNpc(n, dx / d, dz / d, CFG.QUAKE_NPC_KB);
         damageNpc(n, CFG.QUAKE_NPC_DMG);
       }
       if (!s.hit.has('player') && reach(player.position.x, player.position.z)) {
@@ -1688,6 +1807,36 @@
   }
   const bossBarEl = document.getElementById('bossBar'), bossFillEl = document.getElementById('bossFill');
 
+  // ---------- 디버그: 보스전 바로 테스트 (Shift+B: Day 7 준비 / Shift+N: 보스 소환, 주소 뒤에 ?debug=1 이면 버튼 표시) ----------
+  function debugSetup() {
+    if (dead) return;
+    res.wood += 400; res.stone += 400; weaponUp = true;
+    while (CFG.DESIGN[designTier]) designDefense();
+    if (!townDone) designTown();
+    for (const b of blueprints.slice()) {                     // 도면을 즉시 완성
+      blueprints.splice(blueprints.indexOf(b), 1); scene.remove(b);
+      if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
+      else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
+    }
+    morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
+    for (const c of npcs.filter(n => n.promote)) setRole(c, c.promote.to);
+    for (const e of enemies.slice()) removeEnemy(e);
+    for (const r of rocks.slice()) { scene.remove(r); scene.remove(r.userData.mark); rocks.splice(rocks.indexOf(r), 1); }
+    healPlayer(CFG.PLAYER_MAX_HP); fireHp = CFG.FIRE_HP;
+    chapterCleared = false; wave.day = 0; wave.bossLeft = 0;
+    gameMin = (CFG.BOSS_DAY - 1) * 1440 + 17 * 60 + 30;       // Day 7 17:30
+    lastWarnDay = CFG.BOSS_DAY - 1; lastRespawnDay = CFG.BOSS_DAY;
+    updateHud();
+    toast('DEBUG: Day 7 17:30 - 방어선·마을·병력 준비 완료');
+  }
+  function debugBoss() { debugSetup(); gameMin = (CFG.BOSS_DAY - 1) * 1440 + 21 * 60 + 40; }   // Day 7 21:40 → 곧 보스 등장
+  addEventListener('keydown', e => { if (e.shiftKey && e.code === 'KeyB') debugSetup(); if (e.shiftKey && e.code === 'KeyN') debugBoss(); });
+  if (/[?&]debug/.test(location.search)) {
+    document.getElementById('dbg').style.display = 'flex';
+    document.getElementById('dbgSetup').addEventListener('click', debugSetup);
+    document.getElementById('dbgBoss').addEventListener('click', debugBoss);
+  }
+
   // ---------- 경고 UI / 자원 리스폰 ----------
   const warnEl = document.getElementById('warn');
   let warnTimer;
@@ -1730,13 +1879,15 @@
     clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ 무한 모드' : ''}`;
 
     const dayNo = Math.floor(gameMin / 1440) + 1;
+    nowHour = hour;
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
       if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('경고: 거대한 위협이 접근합니다!'); bossShakeT = 3; }
+      else if (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared) showWarning('내일 밤, 거대한 위협이 찾아옵니다. 성벽과 병력을 준비하세요!');
       else showWarning(`Night ${dayNo} - 방어전을 준비하십시오!`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('아침이 밝아 체력이 완전히 회복되었습니다'); } }
     updateEnemies(dt, night, Math.max(1, waveDay));
     updateNpcs(dt, hour, t);
     updateFx(dt);
@@ -1744,6 +1895,7 @@
     updateRocks(dt);
     updateShocks(dt);
     updatePopUi();
+    updateRegen(dt);
     updateDash(dt);
     updateFloaters(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
