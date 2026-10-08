@@ -144,7 +144,10 @@
 
   // ---------- 밸런스 설정 (여기서 조절) ----------
   const CFG = {
-    TREE_COUNT: 26, STONE_COUNT: 26,           // 맵에 생성되는 나무 / 바위 수
+    TREE_COUNT: 60, STONE_COUNT: 50,           // 맵에 항상 유지하려는 나무 / 바위 수 (모자라면 계속 다시 채워진다)
+    REPLENISH_INTERVAL: 2.5, REPLENISH_BATCH: 3,   // 자원 보충 주기(초) / 한 번에 종류별 최대 보충 수
+    SPAWN_ZONES: { inner: 0.4, annulus: 0.35 },    // 자원 생성 위치 비율: 마을 안쪽 / 1~2단계 성벽 사이 (나머지는 맵 전체) → 동료가 문을 덜 드나든다
+    GATHER_WORKERS_BIG_DEFICIT: 30, GATHER_BUFFER: 15,   // 부족분이 크고 여유 자원이 GATHER_BUFFER 미만일 때만 채집조를 절반으로 늘린다 (평소엔 1명)
     GATHER_YIELD: { wood: 3, stone: 3 },       // 1회 채집당 획득량 (플레이어·동료 공통)
     BP_COST: { wood: 5, stone: 5 },            // 동료가 청사진 1개를 지을 때 드는 자원 (나무 목책 / 돌 성벽)
     // 자동 방어선 도면: 모닥불(0,0) 기준 원형 배치. gaps = 비워 둘 슬롯 번호(출입구)
@@ -243,12 +246,29 @@
     g.userData = { type: 'stone', radius: s * 0.95 };
     return g;
   }
+  // 자원 생성 위치: 마을 안쪽(중앙 십자 통로 제외) / 1~2단계 성벽 사이 고리 / 맵 전체. 통로(출입구로 이어지는 길)는 항상 비워 둔다
+  function samplePoint() {
+    const Z = CFG.SPAWN_ZONES;
+    for (let k = 0; k < 12; k++) {
+      const r = Math.random();
+      let x, z;
+      if (r < Z.inner) { x = rand(-11, 11); z = rand(-11, 11); }
+      else if (r < Z.inner + Z.annulus) {
+        const c = rand(18.5, 22.5), t = rand(-22.5, 22.5), sg = Math.random() < 0.5 ? -1 : 1;
+        if (Math.random() < 0.5) { x = sg * c; z = t; } else { x = t; z = sg * c; }
+      } else { x = rand(-MAP + 3, MAP - 3); z = rand(-MAP + 3, MAP - 3); }
+      const inBase = Math.max(Math.abs(x), Math.abs(z)) < 26;
+      if (inBase && (Math.abs(x) < 2.8 || Math.abs(z) < 2.8)) continue;       // 출입구로 이어지는 길
+      return [x, z];
+    }
+    return [rand(-MAP + 3, MAP - 3), rand(-MAP + 3, MAP - 3)];
+  }
   function scatter(factory, count, ok = () => true) {
     for (let i = 0; i < count; i++) {
       const o = factory();
       for (let tries = 0; tries < 60; tries++) {
-        const x = rand(-MAP + 3, MAP - 3), z = rand(-MAP + 3, MAP - 3);
-        if (Math.hypot(x, z) < 5 || !ok(x, z)) continue;   // 시작 지점 비우기
+        const [x, z] = samplePoint();
+        if (Math.hypot(x, z) < 6 || !ok(x, z)) continue;   // 모닥불 주변 비우기
         if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
         o.position.set(x, 0, z);
         o.rotation.y = rand(0, Math.PI * 2);
@@ -1320,18 +1340,39 @@
     return best;
   }
   const unclaimed = (o) => !o.userData.owner || o.userData.owner === npc;
-  function setTask(nt) {                       // 대상 점유(claim)/해제
-    if (npc.task) npc.task.target.userData.owner = null;
+  const reserved = { wood: 0, stone: 0 };       // 건설 담당이 이미 '예약'한 자원 (여럿이 같은 자원을 보고 동시에 건설하러 가지 않게)
+  const bpCost = (b) => b.userData.cost ?? CFG.BP_COST[b.userData.res];
+  function setTask(nt) {                       // 대상 점유(claim)/해제 + 건설 자원 예약
+    if (npc.task) {
+      npc.task.target.userData.owner = null;
+      if (npc.task.kind === 'build') reserved[npc.task.target.userData.res] -= bpCost(npc.task.target);
+    }
     npc.task = nt;
-    if (nt) nt.target.userData.owner = npc;
+    if (nt) {
+      nt.target.userData.owner = npc;
+      if (nt.kind === 'build') reserved[nt.target.userData.res] += bpCost(nt.target);
+    }
   }
+  // 낮 작업 배분: 수리 > (채집조/건설조 분업). 자원이 부족하면 채집 담당을 먼저 정해 두고, 나머지는 '살 수 있는' 청사진만 지으러 간다
   function pickDayTask() {
     const damaged = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.hp < o.userData.maxHp && unclaimed(o));
     if (damaged) return { kind: 'repair', target: damaged };
-    if (npc.short && res[npc.short] >= CFG.BP_COST[npc.short]) npc.short = null;
-    const bp = nearestOf(blueprints, b => b.userData.res !== npc.short && unclaimed(b));
-    if (bp) return { kind: 'build', target: bp };
-    const r = nearestOf(obstacles, o => (npc.short ? o.userData.type === npc.short : (o.userData.type === 'wood' || o.userData.type === 'stone')) && unclaimed(o));
+    const workers = npcs.filter(n => !n.down && !n.promote);
+    const gatherers = workers.filter(n => n !== npc && n.task && n.task.kind === 'gather').length;
+    const need = { wood: -res.wood, stone: -res.stone };                 // 청사진 전체 비용 - 보유량 = 부족분
+    for (const b of blueprints) need[b.userData.res] += bpCost(b);
+    const deficit = Math.max(0, need.wood) + Math.max(0, need.stone);
+    let want = 0;
+    const buffer = Math.max(0, res.wood - reserved.wood) + Math.max(0, res.stone - reserved.stone);       // 지금 바로 쓸 수 있는 여유 자원
+    if (deficit > 0) want = workers.length <= 1 ? 0 : (deficit > CFG.GATHER_WORKERS_BIG_DEFICIT && buffer < CFG.GATHER_BUFFER ? Math.ceil(workers.length / 2) : 1);
+    if (gatherers >= want) {                                              // 채집조가 충분 → 이 NPC는 건설 (예약 후에도 자원이 남는 청사진만)
+      const bp = nearestOf(blueprints, b => unclaimed(b) && res[b.userData.res] - reserved[b.userData.res] >= bpCost(b));
+      if (bp) return { kind: 'build', target: bp };
+    }
+    const wantType = need.wood >= need.stone ? (need.wood > 0 ? 'wood' : null) : (need.stone > 0 ? 'stone' : null);   // 가장 부족한 자원부터
+    const isRes = (t) => t === 'wood' || t === 'stone';
+    const r = (wantType && nearestOf(obstacles, o => o.userData.type === wantType && unclaimed(o))) ||
+              nearestOf(obstacles, o => isRes(o.userData.type) && unclaimed(o));
     return r ? { kind: 'gather', target: r } : null;
   }
   function taskValid(tk) {
@@ -1370,15 +1411,13 @@
 
     if (busy) { /* 전직 훈련 이동 중 */ } else if (isDay) {
       // 주간 우선순위: 1) 수리  2) 건설(청사진)  3) 채집
-      const PRIO = { repair: 0, build: 1, gather: 2 };
       let task = npc.task;
       if (task && !taskValid(task)) { setTask(null); task = null; npc.workT = 0; }
       npc.pickCd -= dt;
-      if (npc.pickCd <= 0 && (!task || npc.workT === 0)) {     // 작업 도중이 아닐 때만, 0.3초 간격으로 재탐색
+      if (!task && npc.pickCd <= 0) {          // 작업이 끝나거나 사라졌을 때만 새 작업 선택 (중간에 바꾸지 않아 갈팡질팡 방지)
         npc.pickCd = 0.3;
         const nt = pickDayTask();
-        if (nt && (!task || PRIO[nt.kind] < PRIO[task.kind])) { setTask(nt); task = nt; npc.workT = 0; }
-        else if (!task) { setTask(nt); task = nt; }
+        if (nt) { setTask(nt); task = nt; npc.workT = 0; }
       }
       if (task) {
         const o = task.target;
@@ -1391,8 +1430,7 @@
           npc.rotation.y = npc.face;
           if (task.kind === 'build' && npc.workT === 0 && res[o.userData.res] < (o.userData.cost ?? CFG.BP_COST[o.userData.res])) {
             // 도착했는데 나무가 부족하면 건설 보류, 즉시 채집으로 전환
-            npc.short = o.userData.res; setTask(null);
-            toast(`${npc.short === 'stone' ? '돌' : '나무'} 자원이 부족해 건설을 보류하고 채집합니다`);
+            setTask(null);                       // (플레이어가 자원을 써 버린 경우) 건설 보류 → 다음 선택에서 채집으로 배정
           } else {
             npc.workT += dt;
             bob = Math.abs(Math.sin(t * 14)) * 0.15;       // 들썩임
@@ -1845,16 +1883,27 @@
     clearTimeout(warnTimer); warnTimer = setTimeout(() => warnEl.classList.remove('show'), 3000);
   }
   const countType = (t) => obstacles.filter(o => o.userData.type === t).length;
-  function respawnResources() {
-    const free = (x, z) => Math.hypot(x - player.position.x, z - player.position.z) > 6 &&
-                           npcs.every(n => Math.hypot(x - n.position.x, z - n.position.z) > 4) &&
-                           blueprints.every(b => Math.hypot(x - b.position.x, z - b.position.z) > 3) &&
-                           gateWaypoints.every(g => Math.hypot(x - g.x, z - g.z) > 3.5) &&
-                           gateWaypoints.every(g => Math.abs(cheb(x, z) - g.r) > CFG.CORRIDOR_WIDTH + 1);   // 성벽 통행로에는 리스폰 금지     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
-    const before = obstacles.length;
-    scatter(makeTree, Math.max(0, CFG.TREE_COUNT - countType('wood')), free);
-    scatter(makeRock, Math.max(0, CFG.STONE_COUNT - countType('stone')), free);
-    if (obstacles.length > before) toast('아침이 밝았습니다. 자원이 다시 자라났습니다');
+  // 자원 보충: 나무/바위가 목표 수보다 적으면 (플레이어·동료·청사진·출입구·성벽 통행로를 피해) 채워 넣는다
+  function resourceFree() {
+    return (x, z) => Math.hypot(x - player.position.x, z - player.position.z) > 6 &&
+      npcs.every(n => Math.hypot(x - n.position.x, z - n.position.z) > 4) &&
+      blueprints.every(b => Math.hypot(x - b.position.x, z - b.position.z) > 3) &&
+      gateWaypoints.every(g => Math.hypot(x - g.x, z - g.z) > 3.5) &&
+      gateWaypoints.every(g => Math.abs(cheb(x, z) - g.r) > CFG.CORRIDOR_WIDTH + 1);      // 성벽 통행로에는 생성 금지
+  }
+  function topUpResources(maxPerType = Infinity) {
+    const free = resourceFree(), before = obstacles.length;
+    scatter(makeTree, Math.min(maxPerType, Math.max(0, CFG.TREE_COUNT - countType('wood'))), free);
+    scatter(makeRock, Math.min(maxPerType, Math.max(0, CFG.STONE_COUNT - countType('stone'))), free);
+    return obstacles.length - before;
+  }
+  function respawnResources() { if (topUpResources() > 0) toast('아침이 밝았습니다. 자원이 다시 자라났습니다'); }
+  let replenishCd = 0;
+  function replenishTick(dt) {                 // 하루 한 번이 아니라 수시로 보충해서 자원이 바닥나지 않게 한다
+    replenishCd -= dt;
+    if (replenishCd > 0 || dead) return;
+    replenishCd = CFG.REPLENISH_INTERVAL;
+    topUpResources(CFG.REPLENISH_BATCH);
   }
   let lastWarnDay = 0, lastRespawnDay = 1, bossShakeT = 0;
 
@@ -1896,6 +1945,7 @@
     updateShocks(dt);
     updatePopUi();
     updateRegen(dt);
+    replenishTick(dt);
     updateDash(dt);
     updateFloaters(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
