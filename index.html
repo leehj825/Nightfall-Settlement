@@ -67,7 +67,7 @@
 <h1 id="title">Nightfall Settlement</h1>
 <div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b></div>
 <button id="designBtn"><span id="designLbl">1단계 방어선 설계</span><small id="designCost">나무 30개 소모</small></button>
-<button id="upgBtn">무기 강화<small>돌 10개 소모</small></button>
+<button id="upgBtn">무기 강화<small>검 데미지 ↑ · 돌 10개</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="warn"></div>
 <div id="gameover"><div class="card"><h2>당신의 마을은 무너졌습니다.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><button id="restartBtn">다시 시작</button></div></div>
@@ -140,7 +140,12 @@
     BRUTE_FROM_DAY: 2, BRUTE_HP: 10, BRUTE_SCALE: 1.5, BRUTE_SPEED_MUL: 0.7, BRUTE_CONTACT_DMG: 25, ENEMY_CONTACT_DMG: 10,
     KNOCKBACK: 0.7, KNOCKBACK_UPGRADED: 1.6, BRUTE_KNOCKBACK_MUL: 0.7,   // 넉백 거리 (무기 강화 시 증가)
     ENEMY_HP: 2,                               // 적 체력
-    BASE_ATK: 1, UPGRADED_ATK: 2,              // 공격력 (플레이어·동료 공통)
+    // 무기 데미지: 검은 근접(고위험·고화력), 활은 안전하지만 약함. 무기 강화는 검에만 적용된다.
+    SWORD_DMG: 2, SWORD_DMG_UPGRADED: 4,       // 검 (플레이어·근접 동료 공통)
+    BOW_DMG: 1,                                // 활 (플레이어·궁수 동료 공통, 강화 불가)
+    // 방패병 (Day 3부터): 화살 면역, 검/근접 동료 돌진에만 피해
+    SHIELD_FROM_DAY: 3, SHIELD_CHANCE: 0.3, SHIELD_HP: 3, SHIELD_SPEED_MUL: 0.9,
+    HP_SCALE_EVERY: 2,                         // 모든 적 최대 HP가 N일마다 +1 (보너스 = floor((Day-1)/N))
     WEAPON_UPGRADE_STONE: 10,                  // 무기 강화 비용(돌)
     UPGRADED_SLASH_SCALE: 1.5,                 // 강화 후 검기 크기 배율
   };
@@ -300,7 +305,8 @@
 
   // ---------- 자원 / 상호작용 ----------
   const res = { wood: 0, stone: 0 };
-  let weaponUp = false, atk = CFG.BASE_ATK;
+  let weaponUp = false;
+  function swordDmg() { return weaponUp ? CFG.SWORD_DMG_UPGRADED : CFG.SWORD_DMG; }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN');
   const toastEl = document.getElementById('toast');
   let toastTimer;
@@ -309,7 +315,7 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.opacity = 0, 1400);
   }
   const atkEl = document.getElementById('atkN');
-  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; atkEl.textContent = atk; }
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; atkEl.textContent = `검 ${swordDmg()} / 활 ${CFG.BOW_DMG}`; }
 
   const GATHER_RANGE = 2.6;
   function gather() {
@@ -446,11 +452,11 @@
     if (weaponUp) return toast('이미 무기가 강화되었습니다');
     if (res.stone < CFG.WEAPON_UPGRADE_STONE) return toast(`돌이 ${CFG.WEAPON_UPGRADE_STONE}개 필요합니다`);
     res.stone -= CFG.WEAPON_UPGRADE_STONE;
-    weaponUp = true; atk = CFG.UPGRADED_ATK;
+    weaponUp = true;
     updateHud();
     const btn = document.getElementById('upgBtn');
-    btn.classList.add('done'); btn.firstChild.textContent = '무기 강화 완료'; btn.lastChild.textContent = `공격력 ${atk}`;
-    toast('무기 강화 완료! 검기가 강력해졌습니다');
+    btn.classList.add('done'); btn.firstChild.textContent = '무기 강화 완료'; btn.lastChild.textContent = `검 공격력 ${swordDmg()}`;
+    toast('검 강화 완료! (활 데미지는 그대로)');
   }
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
@@ -623,16 +629,27 @@
   const ENEMY_R = 0.45, ENEMY_SPEED = 2.4;
   const AGGRO = 9, DEAGGRO = 13, FIRE_BREAK_TIME = 3;
   let spawnCd = 0;
-  function spawnEnemy(brute = false) {
+  // kind: 'normal' | 'brute' | 'shield'. 최대 HP는 날짜에 따라 HP_SCALE_EVERY일마다 +1
+  const shieldMat = mat(0xb8c0cc), shieldPlateMat = mat(0x666b73), shieldPlateGeo = new THREE.BoxGeometry(0.95, 1.1, 0.14);
+  function spawnEnemy(kind = 'normal') {
+    const brute = kind === 'brute', shield = kind === 'shield';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const sc = brute ? CFG.BRUTE_SCALE : 1;
-    const m = new THREE.Mesh(enemyGeo, brute ? bruteMat : enemyMat);
+    const m = new THREE.Mesh(enemyGeo, brute ? bruteMat : shield ? shieldMat : enemyMat);
     m.scale.setScalar(sc);
     m.position.set(Math.cos(a) * r, 0.8 * sc, Math.sin(a) * r);
     m.castShadow = true;
+    if (shield) {                                    // 앞쪽(+Z, 진행 방향)에 방패 판
+      const plate = new THREE.Mesh(shieldPlateGeo, shieldPlateMat);
+      plate.position.set(0, 0.05, 0.55);
+      plate.castShadow = true;
+      m.add(plate);
+    }
+    const hpBonus = Math.floor((Math.max(1, wave.day) - 1) / CFG.HP_SCALE_EVERY);
+    const hp = (brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : CFG.ENEMY_HP) + hpBonus;
     m.userData = {
-      brute, hp: brute ? CFG.BRUTE_HP : CFG.ENEMY_HP, r: ENEMY_R * sc,
-      speed: ENEMY_SPEED * (brute ? CFG.BRUTE_SPEED_MUL : 1),
+      kind, brute, shield, hp, maxHp: hp, r: ENEMY_R * sc,
+      speed: ENEMY_SPEED * (brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : 1),
       contact: brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
       fireTimer: 0, aggro: false, sinking: false };
@@ -644,18 +661,18 @@
 
   // 적에게 피해: 죽으면 true, 살아남으면 작은 파편 + 넉백 (무기 강화 시 더 멀리)
   const KB_TIME = 0.15;
-  function hitEnemy(e, dmg, fromX, fromZ) {
+  function hitEnemy(e, dmg, fromX, fromZ, strongKb = false) {
     const u = e.userData;
     u.hp -= dmg;
     if (u.hp <= 0) { killEnemy(e); return true; }
     burst(e.position, 4);
     const dx = e.position.x - fromX, dz = e.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
-    const dist = (weaponUp ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK) * u.kbMul;
+    const dist = (strongKb ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK) * u.kbMul;
     u.kbT = KB_TIME; u.kbVx = dx / d * dist / KB_TIME; u.kbVz = dz / d * dist / KB_TIME;
     return false;
   }
 
-  // 부채꼴 판정: (x,z)에서 ang 방향, 공격력(atk)만큼 피해 (플레이어·동료 공통)
+  // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
   function sectorHit(x, z, ang) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
     const range = ATK_RANGE * slashScale();
@@ -665,7 +682,7 @@
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, atk, x, z); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, swordDmg(), x, z, weaponUp); n++; }
     }
     return n;
   }
@@ -683,7 +700,9 @@
     if (night && !dead && wave.remaining > 0) {
       spawnCd -= dt;
       if (spawnCd <= 0 && enemies.length < CFG.MAX_ALIVE) {
-        spawnEnemy(wave.remaining <= wave.brutes);
+        const kind = wave.remaining <= wave.brutes ? 'brute'
+          : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
+        spawnEnemy(kind);
         wave.remaining--;
         spawnCd = rand(0.8, 1.2) * Math.max(CFG.MIN_SPAWN_INTERVAL, CFG.SPAWN_INTERVAL_BASE / (1 + CFG.SPAWN_RATE_GROWTH * (waveDay - 1)));
       }
@@ -1022,6 +1041,35 @@
     scene.add(g);
     arrows.push(g);
   }
+  // 떠오르는 텍스트 (방패병 면역 표시)
+  const floaters = [], floatTex = new Map();
+  function floatText(text, x, y, z) {
+    let tex = floatTex.get(text);
+    if (!tex) {
+      const cv = document.createElement('canvas');
+      cv.width = 256; cv.height = 64;
+      const c = cv.getContext('2d');
+      c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineWidth = 5; c.strokeStyle = 'rgba(0,0,0,.7)'; c.strokeText(text, 128, 32);
+      c.fillStyle = '#c9ced6'; c.fillText(text, 128, 32);
+      tex = new THREE.CanvasTexture(cv);
+      floatTex.set(text, tex);
+    }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, fog: false, depthTest: false }));
+    sp.scale.set(1.6, 0.4, 1);
+    sp.position.set(x, y, z);
+    sp.userData = { life: 0.9 };
+    scene.add(sp);
+    floaters.push(sp);
+  }
+  function updateFloaters(dt) {
+    for (const f of floaters.slice()) {
+      f.userData.life -= dt;
+      f.position.y += dt * 1.1;
+      f.material.opacity = Math.max(0, Math.min(1, f.userData.life / 0.4));
+      if (f.userData.life <= 0) { scene.remove(f); f.material.dispose(); floaters.splice(floaters.indexOf(f), 1); }
+    }
+  }
   function updateArrows(dt) {
     for (const a of arrows.slice()) {
       const u = a.userData;
@@ -1037,7 +1085,8 @@
         if (px * px + pz * pz < (e.userData.r + 0.15) ** 2 && t < bestT) { bestT = t; hit = e; }
       }
       if (hit) {
-        hitEnemy(hit, atk, x0, z0);                 // 근접 공격과 동일한 데미지
+        if (hit.userData.shield) floatText('면역 (Immune)', hit.position.x, hit.position.y + 1.6, hit.position.z);   // 방패병: 화살 면역
+        else hitEnemy(hit, CFG.BOW_DMG, x0, z0, false);    // 활 데미지는 고정(무기 강화 영향 없음)
         scene.remove(a); arrows.splice(arrows.indexOf(a), 1);
         continue;
       }
@@ -1094,6 +1143,7 @@
     updateNpcs(dt, hour, t);
     updateFx(dt);
     updateArrows(dt);
+    updateFloaters(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
     atkCd -= dt;
