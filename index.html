@@ -34,20 +34,27 @@
   .btn small { display: block; font-weight: 400; font-size: 11px; opacity: .75; }
   .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; }
   #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; }
+  #upgBtn { position: fixed; top: 10px; right: 10px; z-index: 5; font: inherit; font-weight: 700; font-size: 15px; color: #fff;
+    padding: 8px 14px; border-radius: 12px; border: 2px solid rgba(255,255,255,.6); cursor: pointer; touch-action: none;
+    background: linear-gradient(#5aa8ff, #2a5fc0); box-shadow: 0 3px 0 #173a80; line-height: 1.2; }
+  #upgBtn small { display: block; font-weight: 400; font-size: 11px; opacity: .85; }
+  #upgBtn:active { transform: translateY(2px); }
+  #upgBtn.done { background: #666; box-shadow: none; opacity: .75; }
   #buildBtn { background: radial-gradient(circle at 35% 30%, #d9b48a, #8a5a34); color: #fff; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
-<div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b></div>
+<div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b></div>
+<button id="upgBtn">무기 강화<small>돌 10개 소모</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="gameover">Game Over<small>화면을 탭하면 다시 시작</small></div>
 <div id="toast"></div>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
   <button class="btn" id="atkBtn">공격<small>Attack · F</small></button>
-  <button class="btn" id="buildBtn">목책 건설<small>Build · B</small></button>
+  <button class="btn" id="buildBtn"><span id="buildLbl">목책 건설</span><small>Build · B / U</small></button>
   <button class="btn" id="actBtn">채집<small>Action · Space</small></button>
 </div>
 
@@ -84,6 +91,20 @@
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
+
+  // ---------- 밸런스 설정 (여기서 조절) ----------
+  const CFG = {
+    TREE_COUNT: 26, STONE_COUNT: 26,           // 맵에 생성되는 나무 / 바위 수
+    GATHER_YIELD: { wood: 1, stone: 1 },       // 1회 채집당 획득량 (플레이어·동료 공통)
+    FENCE_BUILD_WOOD: 5,                       // 목책 건설 비용(나무)
+    FENCE_UPGRADE_STONE: 5,                    // 돌 성벽 업그레이드 비용(돌)
+    FENCE_HP: 30, WALL_HP: 100,                // 나무 목책 / 돌 성벽 체력
+    ENEMY_FENCE_DPS: 10,                       // 적이 구조물에 주는 초당 데미지
+    ENEMY_HP: 2,                               // 적 체력
+    BASE_ATK: 1, UPGRADED_ATK: 2,              // 공격력 (플레이어·동료 공통)
+    WEAPON_UPGRADE_STONE: 10,                  // 무기 강화 비용(돌)
+    UPGRADED_SLASH_SCALE: 1.5,                 // 강화 후 검기 크기 배율
+  };
 
   // ---------- 절차적 맵: 나무 / 바위 ----------
   const obstacles = [];   // 충돌 + 채집 대상 배열
@@ -130,8 +151,8 @@
       }
     }
   }
-  scatter(makeTree, 20 + Math.floor(Math.random() * 11));
-  scatter(makeRock, 20 + Math.floor(Math.random() * 11));
+  scatter(makeTree, CFG.TREE_COUNT);
+  scatter(makeRock, CFG.STONE_COUNT);
 
   // ---------- 플레이어 ----------
   const player = new THREE.Group();
@@ -231,6 +252,7 @@
   addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) gather(); }
     if (e.code === 'KeyB' && !e.repeat) build();
+    if (e.code === 'KeyU' && !e.repeat) upgradeFence();
     if (e.code === 'KeyF' && !e.repeat) attack();
     keys[e.code] = true;
   });
@@ -239,6 +261,7 @@
 
   // ---------- 자원 / 상호작용 ----------
   const res = { wood: 0, stone: 0 };
+  let weaponUp = false, atk = CFG.BASE_ATK;
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN');
   const toastEl = document.getElementById('toast');
   let toastTimer;
@@ -246,7 +269,8 @@
     toastEl.textContent = msg; toastEl.style.opacity = 1;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.opacity = 0, 1400);
   }
-  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; }
+  const atkEl = document.getElementById('atkN');
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; atkEl.textContent = atk; }
 
   const GATHER_RANGE = 2.6;
   function gather() {
@@ -260,28 +284,65 @@
     if (!best) return toast('가까이에 채집할 대상이 없습니다');
     scene.remove(best);
     obstacles.splice(obstacles.indexOf(best), 1);
-    res[best.userData.type]++;
+    res[best.userData.type] += CFG.GATHER_YIELD[best.userData.type];
     updateHud();
   }
 
-  const fenceMat = mat(0x8a5a34);
+  const fenceMat = mat(0x8a5a34), wallMat = mat(0x4a4d52);
+  const UPGRADE_RANGE = 3.2;
+  function nearestFence(level) {
+    let best = null, bd = UPGRADE_RANGE;
+    for (const o of obstacles) {
+      if (o.userData.type !== 'fence' || (level && o.userData.level !== level)) continue;
+      const d = Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
   function build() {
     if (dead) return;
-    if (res.wood < 5) return toast('나무가 5개 필요합니다');
+    if (res.wood < CFG.FENCE_BUILD_WOOD) return toast(`나무가 ${CFG.FENCE_BUILD_WOOD}개 필요합니다`);
     const fx = Math.sin(facing), fz = Math.cos(facing);
     const fence = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 0.35), fenceMat);
     fence.position.set(player.position.x + fx * 2, 0.55, player.position.z + fz * 2);
     fence.rotation.y = facing;
     fence.castShadow = fence.receiveShadow = true;
-    fence.userData = { type: 'fence', radius: 1.0 };
+    fence.userData = { type: 'fence', level: 'wood', radius: 1.0, hp: CFG.FENCE_HP, maxHp: CFG.FENCE_HP };
     scene.add(fence);
     obstacles.push(fence);
-    res.wood -= 5;
+    res.wood -= CFG.FENCE_BUILD_WOOD;
     updateHud();
+  }
+  function upgradeFence() {
+    if (dead) return;
+    const f = nearestFence('wood');
+    if (!f) return toast(nearestFence() ? '이미 돌 성벽입니다' : '가까이에 업그레이드할 나무 목책이 없습니다');
+    if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`돌이 ${CFG.FENCE_UPGRADE_STONE}개 필요합니다`);
+    res.stone -= CFG.FENCE_UPGRADE_STONE;
+    f.material = wallMat;                         // 짙은 회색 돌 성벽
+    f.scale.y = 1.25; f.position.y = 0.55 * 1.25;
+    Object.assign(f.userData, { level: 'stone', hp: CFG.WALL_HP, maxHp: CFG.WALL_HP });
+    updateHud();
+    toast('돌 성벽으로 업그레이드!');
+  }
+  // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설
+  function buildOrUpgrade() { if (nearestFence('wood')) upgradeFence(); else build(); }
+
+  function upgradeWeapon() {
+    if (dead) return;
+    if (weaponUp) return toast('이미 무기가 강화되었습니다');
+    if (res.stone < CFG.WEAPON_UPGRADE_STONE) return toast(`돌이 ${CFG.WEAPON_UPGRADE_STONE}개 필요합니다`);
+    res.stone -= CFG.WEAPON_UPGRADE_STONE;
+    weaponUp = true; atk = CFG.UPGRADED_ATK;
+    updateHud();
+    const btn = document.getElementById('upgBtn');
+    btn.classList.add('done'); btn.firstChild.textContent = '무기 강화 완료'; btn.lastChild.textContent = `공격력 ${atk}`;
+    toast('무기 강화 완료! 검기가 강력해졌습니다');
   }
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
-  bindBtn('buildBtn', build);
+  bindBtn('buildBtn', buildOrUpgrade);
+  bindBtn('upgBtn', upgradeWeapon);
   bindBtn('atkBtn', attack);
 
   // ---------- 낮/밤 순환 ----------
@@ -385,14 +446,16 @@
   const ATK_RANGE = 3, ATK_HALF = Math.PI / 3, ATK_CD = 0.4, SLASH_LIFE = 0.15;
   const slashGeo = new THREE.CircleGeometry(ATK_RANGE, 20, -Math.PI / 2 - ATK_HALF, ATK_HALF * 2);
   const slashes = [];
+  const slashScale = () => weaponUp ? CFG.UPGRADED_SLASH_SCALE : 1;
   function spawnSlash(x, z, ang) {
     const g = new THREE.Group();
     const m = new THREE.Mesh(slashGeo, new THREE.MeshBasicMaterial({
-      color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+      color: weaponUp ? 0x4aa8ff : 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2;
     g.add(m);
     g.position.set(x, 0.08, z);
     g.rotation.y = ang;
+    g.scale.setScalar(slashScale());
     g.userData.life = SLASH_LIFE;
     scene.add(g);
     slashes.push(g);
@@ -401,8 +464,8 @@
   const pGeo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
   const pMat = new THREE.MeshBasicMaterial({ color: 0xff2a1a });
   const PLIFE = 0.7;
-  function burst(pos) {
-    for (let i = 0; i < 12; i++) {
+  function burst(pos, count = 12) {
+    for (let i = 0; i < count; i++) {
       const m = new THREE.Mesh(pGeo, pMat);
       m.position.set(pos.x, 0.8, pos.z);
       m.userData = { v: new THREE.Vector3(rand(-1, 1) * 4, rand(3, 6), rand(-1, 1) * 4), life: PLIFE };
@@ -432,7 +495,7 @@
   const enemies = [];
   const enemyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 8);
   const enemyMat = mat(0xc4231a);
-  const ENEMY_R = 0.45, ENEMY_SPEED = 2.4, MAX_ENEMIES = 14, FENCE_BREAK_TIME = 3;
+  const ENEMY_R = 0.45, ENEMY_SPEED = 2.4, MAX_ENEMIES = 14;
   const AGGRO = 9, DEAGGRO = 13, FIRE_BREAK_TIME = 3;
   let spawnCd = 0;
   function spawnEnemy() {
@@ -440,23 +503,34 @@
     const m = new THREE.Mesh(enemyGeo, enemyMat);
     m.position.set(Math.cos(a) * r, 0.8, Math.sin(a) * r);
     m.castShadow = true;
-    m.userData = { fenceTimer: 0, fireTimer: 0, aggro: false, sinking: false };
+    m.userData = { hp: CFG.ENEMY_HP, fireTimer: 0, aggro: false, sinking: false };
     scene.add(m);
     enemies.push(m);
   }
   function removeEnemy(e) { scene.remove(e); enemies.splice(enemies.indexOf(e), 1); }
   function killEnemy(e) { burst(e.position); removeEnemy(e); }
 
-  // 부채꼴 판정: (x,z)에서 ang 방향
+  // 적에게 피해: 죽으면 true, 살아남으면 작은 파편 + 살짝 밀려남
+  function hitEnemy(e, dmg, fromX, fromZ) {
+    e.userData.hp -= dmg;
+    if (e.userData.hp <= 0) { killEnemy(e); return true; }
+    burst(e.position, 4);
+    const dx = e.position.x - fromX, dz = e.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
+    e.position.x += dx / d * 0.6; e.position.z += dz / d * 0.6;
+    return false;
+  }
+
+  // 부채꼴 판정: (x,z)에서 ang 방향, 공격력(atk)만큼 피해 (플레이어·동료 공통)
   function sectorHit(x, z, ang) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
+    const range = ATK_RANGE * slashScale();
     let n = 0;
     for (const e of enemies.slice()) {
       if (e.userData.sinking) continue;
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
-      if (d > ATK_RANGE + ENEMY_R) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { killEnemy(e); n++; }
+      if (d > range + ENEMY_R) continue;
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, atk, x, z); n++; }
     }
     return n;
   }
@@ -499,14 +573,13 @@
         }
       }
       if (blocked) {
-        u.fenceTimer += dt;
         e.position.x += (Math.random() - .5) * 0.02;
-        if (u.fenceTimer >= FENCE_BREAK_TIME) {
+        blocked.userData.hp -= CFG.ENEMY_FENCE_DPS * dt;      // 목책/성벽 체력 감소
+        if (blocked.userData.hp <= 0) {
           scene.remove(blocked);
           obstacles.splice(obstacles.indexOf(blocked), 1);
-          u.fenceTimer = 0;
         }
-      } else u.fenceTimer = 0;
+      }
 
       // 모닥불 공격: 도달 후 3초 유지되면 모닥불 소멸 → 패배
       if (fireAlive && Math.hypot(e.position.x, e.position.z) < FIRE_R + ENEMY_R + 0.3) {
@@ -638,7 +711,7 @@
           if (npc.gatherT >= 2) {
             const type = o.userData.type;
             scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
-            res[type]++; updateHud();
+            res[type] += CFG.GATHER_YIELD[type]; updateHud();
             npc.target = null; npc.gatherT = 0;
           }
         }
@@ -661,8 +734,8 @@
           npc.atkCd = 0.8;
           const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
           spawnSlash(npc.position.x, npc.position.z, ang);
-          if (!sectorHit(npc.position.x, npc.position.z, ang)) killEnemy(foe);
-          npc.returning = true;
+          sectorHit(npc.position.x, npc.position.z, ang);
+          if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }
       }
     }
@@ -681,6 +754,7 @@
 
   // ---------- 메인 루프 ----------
   const SPEED = 6;
+  const buildLblEl = document.getElementById('buildLbl');
   let facing = 0;
   const clock = new THREE.Clock();
 
@@ -702,6 +776,8 @@
     updateEnemies(dt, night);
     updateNpc(dt, hour, t);
     updateFx(dt);
+    const lbl = nearestFence('wood') ? '돌 성벽 강화' : '목책 건설';
+    if (buildLblEl.textContent !== lbl) buildLblEl.textContent = lbl;
     animateFire(t);
     atkCd -= dt;
     if (atkT > 0) {
