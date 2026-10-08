@@ -43,6 +43,8 @@
     box-shadow: 0 4px 0 #a8480f, 0 8px 18px rgba(0,0,0,.4); cursor: pointer; touch-action: none; }
   .btn small { display: block; font-weight: 400; font-size: 11px; opacity: .75; }
   .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; }
+  #swapBtn { width: 92px; height: 52px; border-radius: 16px; font-size: 14px; align-self: flex-end;
+    background: radial-gradient(circle at 35% 30%, #b9e8ff, #4a90c8); color: #08243a; line-height: 1.1; }
   #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; }
   #upgBtn { position: fixed; top: 10px; right: 10px; z-index: 5; font: inherit; font-weight: 700; font-size: 15px; color: #fff;
     padding: 8px 14px; border-radius: 12px; border: 2px solid rgba(255,255,255,.6); cursor: pointer; touch-action: none;
@@ -72,6 +74,7 @@
 <div id="toast"></div>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
+  <button class="btn" id="swapBtn"><span id="swapLbl">무기 교체</span><small id="swapCur">Q · 현재: 검</small></button>
   <button class="btn" id="atkBtn">공격<small>Attack · F</small></button>
   <button class="btn" id="buildBtn"><span id="buildLbl">성벽 강화</span><small>Upgrade · U</small></button>
   <button class="btn" id="actBtn">채집<small>Action · Space</small></button>
@@ -121,6 +124,8 @@
       { label: '1단계 방어선 설계', cost: { wood: 30 }, radius: 15, count: 30, kind: 'wood', gaps: [0, 15] },
       { label: '2단계 석조 방어선 설계', cost: { stone: 50 }, radius: 25, count: 44, kind: 'stone', gaps: [11, 33] },
     ],
+    ARROW_RANGE: 30, ARROW_SPEED: 45,           // 화살 사거리 / 속도
+    ARCHER_COUNT: 1, ARCHER_AGGRO: 30, ARCHER_FIRE_INTERVAL: 1.5,   // 궁수 동료 수 / 인식 거리 / 발사 간격(초)
     BUILD_TIME: 2, REPAIR_TIME: 1.5, GATHER_TIME: 2,   // 동료의 작업 시간(초)
     FENCE_UPGRADE_STONE: 5,                    // 돌 성벽 업그레이드 비용(돌)
     FENCE_HP: 30, WALL_HP: 100,                // 나무 목책 / 돌 성벽 체력
@@ -287,6 +292,7 @@
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) gather(); }
     if (e.code === 'KeyU' && !e.repeat) upgradeFence();
     if (e.code === 'KeyF' && !e.repeat) attack();
+    if (e.code === 'KeyQ' && !e.repeat) swapWeapon();
     keys[e.code] = true;
   });
   addEventListener('keyup', e => { keys[e.code] = false; });
@@ -452,6 +458,7 @@
   bindBtn('designBtn', designDefense);
   bindBtn('upgBtn', upgradeWeapon);
   bindBtn('atkBtn', attack);
+  bindBtn('swapBtn', swapWeapon);
 
   // ---------- 낮/밤 순환 ----------
   const DAY_START_MIN = 8 * 60;       // 08:00 시작
@@ -748,13 +755,15 @@
   // 각 NPC는 자기 상태(task, hp, 라벨 등)를 가진 Group. updateNpcs()가 순서대로 `npc`(현재 처리 중인 동료)를 바꿔가며 AI를 돌린다.
   const NPC_MAX_HP = 50, NPC_AGGRO = 10, NPC_COUNT = 3, NPC_HOME_RADIUS = 3.4;
   const NPC_BASE_Y = H / 2 + R;
-  const NPC_COLOR = 0x3a6fe0;
+  const NPC_COLOR = 0x3a6fe0, ARCHER_COLOR = 0x3fae4a;
   const npcs = [];
   function makeNpc(i) {
     const n = new THREE.Group();
     const ang = Math.PI / 4 + i * Math.PI * 2 / NPC_COUNT;       // 모닥불 둘레에 균등 배치
     const home = { x: Math.cos(ang) * NPC_HOME_RADIUS, z: Math.sin(ang) * NPC_HOME_RADIUS };
-    const m = mat(NPC_COLOR);
+    const archer = i >= NPC_COUNT - CFG.ARCHER_COUNT;       // 마지막 동료(들)가 궁수 - 초록색
+    const baseColor = archer ? ARCHER_COLOR : NPC_COLOR;
+    const m = mat(baseColor);
     const body = new THREE.Group();
     const c = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), m);
     const t1 = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 6), m);
@@ -777,7 +786,7 @@
     label.position.y = 2.7;
     n.add(label);
 
-    Object.assign(n, { home, mat: m, body, lctx: cv.getContext('2d'), labelTex: tex,
+    Object.assign(n, { home, archer, baseColor, mat: m, body, lctx: cv.getContext('2d'), labelTex: tex,
       hp: NPC_MAX_HP, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
       task: null, workT: 0, short: null, pickCd: i * 0.1 });
     scene.add(n);
@@ -797,7 +806,7 @@
     lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
     lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
     lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`HP ${npc.hp}/${NPC_MAX_HP}`, 128, 76);
+    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.archer ? '궁수 ' : ''}HP ${npc.hp}/${NPC_MAX_HP}`, 128, 76);
     npc.labelTex.needsUpdate = true;
   }
 
@@ -814,7 +823,7 @@
   }
   function reviveNpc() {
     npc.down = false; npc.hp = NPC_MAX_HP;
-    npc.mat.color.set(NPC_COLOR);
+    npc.mat.color.set(npc.baseColor);
     npc.body.rotation.z = 0; npc.body.position.y = NPC_BASE_Y;
     npc.position.set(npc.home.x, 0, npc.home.z);
   }
@@ -868,6 +877,22 @@
     if (tk.kind === 'build') return blueprints.includes(tk.target);
     if (!obstacles.includes(tk.target)) return false;
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
+  }
+  // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
+  function archerDefend(dt) {
+    const hx = npc.home.x, hz = npc.home.z;
+    if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
+    let foe = null, bd = CFG.ARCHER_AGGRO;
+    for (const e of enemies) {
+      if (e.userData.sinking) continue;
+      const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
+      if (d < bd) { bd = d; foe = e; }
+    }
+    if (!foe) return '대기 중';
+    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
+    npc.face = ang; npc.rotation.y = ang;
+    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; fireArrow(npc.position.x, npc.position.z, ang); }
+    return '전투 중';
   }
   function updateNpc(dt, hour, t) {
     if (dead) return;
@@ -932,6 +957,7 @@
     } else {
       // 야간: 모닥불 방어
       npc.target = null; npc.gatherT = 0; setTask(null); npc.workT = 0;
+      if (npc.archer) state = archerDefend(dt); else {
       let foe = null, bd = NPC_AGGRO;
       for (const e of enemies) {
         if (e.userData.sinking) continue;
@@ -951,6 +977,7 @@
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }
       }
+      }
     }
     npc.body.position.y = NPC_BASE_Y + bob;
     setLabel(state);
@@ -960,9 +987,64 @@
   let atkT = 0, atkCd = 0, shake = 0;
   function attack() {
     if (dead || atkCd > 0) return;
-    atkCd = ATK_CD; atkT = SLASH_LIFE; shake = 0.3;
+    atkCd = ATK_CD;
+    if (weaponMode === 'bow') {
+      shake = Math.max(shake, 0.08);
+      fireArrow(player.position.x, player.position.z, facing);
+      return;
+    }
+    atkT = SLASH_LIFE; shake = 0.3;
     spawnSlash(player.position.x, player.position.z, facing);
     sectorHit(player.position.x, player.position.z, facing);
+  }
+
+  // ---------- 무기 교체 / 화살 ----------
+  let weaponMode = 'sword';
+  function swapWeapon() {
+    if (dead) return;
+    weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
+    document.getElementById('swapCur').textContent = `Q · 현재: ${weaponMode === 'bow' ? '활' : '검'}`;
+    toast(weaponMode === 'bow' ? '활을 장착했습니다 (원거리)' : '검을 장착했습니다 (근접)');
+  }
+  // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
+  const arrows = [];
+  const arrowGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6);
+  const arrowMat = new THREE.MeshBasicMaterial({ color: 0x8a5a2b });
+  function fireArrow(x, z, ang) {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(arrowGeo, arrowMat);
+    m.rotation.x = Math.PI / 2;                     // 원기둥 축을 진행(+Z) 방향으로 눕힘
+    g.add(m);
+    const sx = Math.sin(ang), sz = Math.cos(ang);
+    g.position.set(x + sx * 0.7, 1.0, z + sz * 0.7);
+    g.rotation.y = ang;
+    g.userData = { vx: sx * CFG.ARROW_SPEED, vz: sz * CFG.ARROW_SPEED, dist: 0 };
+    scene.add(g);
+    arrows.push(g);
+  }
+  function updateArrows(dt) {
+    for (const a of arrows.slice()) {
+      const u = a.userData;
+      const x0 = a.position.x, z0 = a.position.z;
+      const dx = u.vx * dt, dz = u.vz * dt, len = Math.hypot(dx, dz);
+      // 이번 프레임 이동 구간(선분)과 가장 먼저 만나는 적을 찾는다 (빠른 화살의 터널링 방지)
+      let hit = null, bestT = Infinity;
+      for (const e of enemies) {
+        if (e.userData.sinking) continue;
+        const ex = e.position.x - x0, ez = e.position.z - z0;
+        const t = Math.max(0, Math.min(1, (ex * dx + ez * dz) / (len * len)));
+        const px = ex - dx * t, pz = ez - dz * t;
+        if (px * px + pz * pz < (e.userData.r + 0.15) ** 2 && t < bestT) { bestT = t; hit = e; }
+      }
+      if (hit) {
+        hitEnemy(hit, atk, x0, z0);                 // 근접 공격과 동일한 데미지
+        scene.remove(a); arrows.splice(arrows.indexOf(a), 1);
+        continue;
+      }
+      a.position.x += dx; a.position.z += dz;
+      u.dist += len;
+      if (u.dist >= CFG.ARROW_RANGE) { scene.remove(a); arrows.splice(arrows.indexOf(a), 1); }   // 사거리 초과 시 소멸
+    }
   }
 
   // ---------- 경고 UI / 자원 리스폰 ----------
@@ -1011,6 +1093,7 @@
     updateEnemies(dt, night, Math.max(1, waveDay));
     updateNpcs(dt, hour, t);
     updateFx(dt);
+    updateArrows(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
     atkCd -= dt;
