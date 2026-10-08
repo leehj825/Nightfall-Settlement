@@ -69,6 +69,13 @@
   #designBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0f4a24; }
   #designBtn.stone { background: linear-gradient(#8a9099, #4a4f57); box-shadow: 0 4px 0 #2a2d33, 0 8px 18px rgba(0,0,0,.4); }
   #designBtn.done { background: #555; box-shadow: none; opacity: .7; }
+  #townBtn { position: fixed; top: 156px; right: 10px; z-index: 5; width: 200px; font: inherit; font-weight: 800; font-size: 17px; color: #fff;
+    padding: 14px 12px; border-radius: 14px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.25;
+    background: linear-gradient(#d8a24a, #9a6420); box-shadow: 0 4px 0 #5c3a0e, 0 8px 18px rgba(0,0,0,.4); }
+  #townBtn small { display: block; font-weight: 500; font-size: 12px; opacity: .9; margin-top: 3px; }
+  #townBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #5c3a0e; }
+  #townBtn.done { background: #555; box-shadow: none; opacity: .7; }
+  #popJobs { font-size: 12px; color: #d8e4ff; }
   #upgBtn small { display: block; font-weight: 400; font-size: 11px; opacity: .85; }
   #upgBtn:active { transform: translateY(2px); }
   #upgBtn.done { background: #666; box-shadow: none; opacity: .75; }
@@ -78,8 +85,9 @@
 <body>
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
-<div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b></div>
+<div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b><br>🏘️ 마을 인구: <b id="popN">3 / 3</b><br><small id="popJobs">(시민: 0명 | 근접: 2명 | 궁수: 1명)</small></div>
 <button id="designBtn"><span id="designLbl">1단계 방어선 설계</span><small id="designCost">나무 30개 소모</small></button>
+<button id="townBtn"><span id="townLbl">마을 인프라 설계</span><small id="townCost">나무 40개 소모</small></button>
 <button id="upgBtn">무기 강화<small>검 데미지 ↑ · 돌 10개</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="bossBar"><span id="bossName">베헤모스</span><div class="track"><div id="bossFill"></div></div></div>
@@ -137,10 +145,21 @@
     GATHER_YIELD: { wood: 3, stone: 3 },       // 1회 채집당 획득량 (플레이어·동료 공통)
     BP_COST: { wood: 5, stone: 5 },            // 동료가 청사진 1개를 지을 때 드는 자원 (나무 목책 / 돌 성벽)
     // 자동 방어선 도면: 모닥불(0,0) 기준 원형 배치. gaps = 비워 둘 슬롯 번호(출입구)
-    DESIGN: [
-      { label: '1단계 방어선 설계', cost: { wood: 30 }, radius: 15, count: 30, kind: 'wood', gaps: [0, 15] },
-      { label: '2단계 석조 방어선 설계', cost: { stone: 50 }, radius: 25, count: 44, kind: 'stone', gaps: [11, 33] },
+    DESIGN: [      // 사각형 방어선: half = 한 변의 절반(중앙 기준), perHalf = 중심에서 모서리까지 구간 수 (부재 간격 = half / perHalf)
+      { label: '1단계 방어선 설계', cost: { wood: 30 }, half: 15, perHalf: 5, kind: 'wood' },     // 30 x 30
+      { label: '2단계 석조 방어선 설계', cost: { stone: 50 }, half: 25, perHalf: 7, kind: 'stone' },   // 50 x 50
     ],
+    // 마을 인프라 (사각 방어선 안쪽 격자 배치). 건설 자원 / 비용 / 소요 시간은 건물별로 지정
+    TOWN: {
+      label: '마을 인프라 설계', cost: { wood: 40 },
+      lots: [
+        { kind: 'house', x: -9, z: -9 }, { kind: 'house', x: -4, z: -9 }, { kind: 'house', x: 4, z: -9 },
+        { kind: 'barracks', x: -7.5, z: 9 }, { kind: 'range', x: 6.5, z: 9 },
+      ],
+    },
+    BUILDING: { house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 } },
+    BUILD_TIME_BUILDING: 3,
+    BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수
     // 공성 투척병 (Day 4~): 초장거리에서 곡사로 폭발 바위를 던져 구조물을 광역 파괴. 궁수(30)가 닿지 않는 거리에 멈춘다
     SIEGE_FROM_DAY: 4, SIEGE_HP: 4, SIEGE_STANDOFF: 42, SIEGE_INTERVAL: 4.5,
     ROCK_DAMAGE: 50, ROCK_SPLASH: 4, ROCK_FLIGHT_SPEED: 18, FIRE_HP: 150,   // 바위 구조물 피해 / 폭발 반경 / 비행 속도 / 모닥불 체력
@@ -407,7 +426,7 @@
     return w;
   }
   const createStructure = (kind, x, z, rot) => kind === 'stone' ? createWall(x, z, rot) : createFence(x, z, rot);
-  // ---------- 마을 자동 확장: 원형 방어선 도면 ----------
+  // ---------- 마을 자동 확장: 사각형 방어선 도면 ----------
   function addBlueprint(kind, x, z, rot) {
     const stone = kind === 'stone';
     const bp = new THREE.Mesh(stone ? wallGeo : bpGeo,
@@ -415,6 +434,45 @@
     bp.position.set(x, stone ? 0.7 : 0.55, z);
     bp.rotation.y = rot;
     bp.userData = { type: 'blueprint', res: kind, radius: stone ? 1.5 : 1.2, owner: null };
+    scene.add(bp);
+    blueprints.push(bp);
+  }
+  // ----- 마을 건물 (거주지 / 병영 / 사격장) -----
+  const bMat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
+  const houseWall = bMat(0xc9a46a), houseRoof = bMat(0xa34a2a), barrackMat = bMat(0x7b808a), barrackTop = bMat(0x585d66);
+  const woodMat2 = bMat(0x8a5a34), tgtRed = new THREE.MeshStandardMaterial({ color: 0xd23a2a, roughness: 1 }), tgtWhite = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 });
+  function doorOf(b) {                 // 건물 앞(중앙 쪽) 출입 지점
+    const d = Math.hypot(b.position.x, b.position.z) || 1, off = b.userData.radius + 0.9;
+    return { x: b.position.x - b.position.x / d * off, z: b.position.z - b.position.z / d * off };
+  }
+  function createBuilding(kind, x, z) {
+    const g = new THREE.Group();
+    const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+    if (kind === 'house') {                                              // 큐브 + 삼각 지붕
+      add(new THREE.BoxGeometry(2.6, 1.8, 2.6), houseWall, 0, 0.9, 0);
+      const roof = add(new THREE.ConeGeometry(2.3, 1.4, 4), houseRoof, 0, 2.5, 0); roof.rotation.y = Math.PI / 4;
+    } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
+      add(new THREE.BoxGeometry(6.4, 1.6, 4.4), barrackMat, 0, 0.8, 0);
+      add(new THREE.BoxGeometry(6.6, 0.25, 4.6), barrackTop, 0, 1.72, 0);
+    } else {                                                             // 사격장: 나무 단상 + 앞의 원형 과녁
+      add(new THREE.BoxGeometry(4.4, 0.4, 3.0), woodMat2, 0, 0.2, 0);
+      add(new THREE.BoxGeometry(0.2, 1.6, 0.2), woodMat2, 0, 0.8, -3.2);
+      for (const [r, m, yy] of [[0.9, tgtRed, 0], [0.62, tgtWhite, 0.02], [0.32, tgtRed, 0.04]]) {
+        const t = add(new THREE.CylinderGeometry(r, r, 0.12, 24), m, 0, 1.7, -3.2 - yy); t.rotation.x = Math.PI / 2;
+      }
+    }
+    g.position.set(x, 0, z);
+    g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius };
+    scene.add(g);
+    obstacles.push(g);
+    return g;
+  }
+  function addBuildingBlueprint(kind, x, z) {
+    const def = CFG.BUILDING[kind];
+    const size = kind === 'house' ? [2.6, 2.4, 2.6] : kind === 'barracks' ? [6.4, 1.8, 4.4] : [4.4, 1.8, 3.0];
+    const bp = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshBasicMaterial({ color: 0x7fe0a0, transparent: true, opacity: 0.4, depthWrite: false }));
+    bp.position.set(x, size[1] / 2, z);
+    bp.userData = { type: 'blueprint', res: def.res, cost: def.cost, bkind: kind, radius: def.radius, stand: def.radius + 0.9, buildTime: CFG.BUILD_TIME_BUILDING, owner: null };
     scene.add(bp);
     blueprints.push(bp);
   }
@@ -427,38 +485,40 @@
       }
     }
   }
-  // 성벽 띠(반지름 R ± width) 안의 자원을 모두 치워, 벽과 나무/바위 사이에 NPC가 끼는 틈이 생기지 않게 한다
+  // 정사각형 성벽 띠(중앙 기준 체비셰프 거리 R ± width) 안의 자원을 모두 치워, 벽과 나무/바위 사이에 NPC가 끼는 틈을 없앤다
+  const cheb = (x, z) => Math.max(Math.abs(x), Math.abs(z));
   function clearCorridor(R, width) {
     for (let i = obstacles.length - 1; i >= 0; i--) {
       const o = obstacles[i], ty = o.userData.type;
-      if ((ty === 'wood' || ty === 'stone') && Math.abs(Math.hypot(o.position.x, o.position.z) - R) < width + o.userData.radius) {
+      if ((ty === 'wood' || ty === 'stone') && Math.abs(cheb(o.position.x, o.position.z) - R) < width + o.userData.radius) {
         scene.remove(o); obstacles.splice(i, 1);
       }
     }
   }
-  function designRing(cfg) {
-    clearCorridor(cfg.radius, CFG.CORRIDOR_WIDTH);
-    const gaps = new Set(cfg.gaps);
-    const r = cfg.kind === 'stone' ? 1.5 : 1.2;
+  // 중앙(0,0)을 기준으로 정사각형 네 테두리를 따라 청사진 배치. 각 변의 정중앙은 출입구(Gap)로 비워 도어 매트와 경유지를 만든다
+  function designSquare(cfg) {
+    const R = cfg.half, n = cfg.perHalf, step = R / n;
+    clearCorridor(R, CFG.CORRIDOR_WIDTH);
+    const rad = cfg.kind === 'stone' ? 1.5 : 1.2;
+    const pts = [];
+    for (let k = -n; k <= n; k++) { pts.push({ x: k * step, z: -R, u: k, nx: 0, nz: -1, rot: 0 }); pts.push({ x: k * step, z: R, u: k, nx: 0, nz: 1, rot: 0 }); }              // 북/남 (모서리 포함)
+    for (let k = -(n - 1); k <= n - 1; k++) { pts.push({ x: R, z: k * step, u: k, nx: 1, nz: 0, rot: Math.PI / 2 }); pts.push({ x: -R, z: k * step, u: k, nx: -1, nz: 0, rot: Math.PI / 2 }); }   // 동/서
     let placed = 0;
-    for (let i = 0; i < cfg.count; i++) {
-      const a = i / cfg.count * Math.PI * 2;
-      const x = Math.cos(a) * cfg.radius, z = Math.sin(a) * cfg.radius;
-      if (gaps.has(i)) {                                          // 출입구: 비워 두고 길만 터 준 뒤 경유지로 등록
-        clearArea(x, z, 2.2);
-        gateWaypoints.push({ x, z, r: cfg.radius });
-        const doormat = new THREE.Mesh(matGeo, matMat);           // 바닥의 얇고 납작한 회색 도어 매트
-        doormat.position.set(x, 0.02, z);
-        doormat.rotation.y = -(a + Math.PI / 2);
+    for (const p of pts) {
+      if (p.u === 0) {                                              // 출입구: 비워 두고 길만 터 준 뒤 경유지로 등록
+        clearArea(p.x, p.z, 2.4);
+        gateWaypoints.push({ x: p.x, z: p.z, r: R, nx: p.nx, nz: p.nz });
+        const doormat = new THREE.Mesh(matGeo, matMat);             // 바닥의 얇고 납작한 회색 도어 매트
+        doormat.position.set(p.x, 0.02, p.z);
         doormat.receiveShadow = true;
         scene.add(doormat);
         continue;
       }
-      const taken = blueprints.some(b => Math.hypot(b.position.x - x, b.position.z - z) < 1.5) ||
-                    obstacles.some(o => o.userData.type === 'fence' && Math.hypot(o.position.x - x, o.position.z - z) < 1.5);
+      const taken = blueprints.some(b => Math.hypot(b.position.x - p.x, b.position.z - p.z) < 1.5) ||
+                    obstacles.some(o => o.userData.type === 'fence' && Math.hypot(o.position.x - p.x, o.position.z - p.z) < 1.5);
       if (taken) continue;
-      clearArea(x, z, r + 0.3);
-      addBlueprint(cfg.kind, x, z, -(a + Math.PI / 2));          // 원의 접선 방향으로 정렬
+      clearArea(p.x, p.z, rad + 0.3);
+      addBlueprint(cfg.kind, p.x, p.z, p.rot);
       placed++;
     }
     return placed;
@@ -485,10 +545,24 @@
     const [type, n] = Object.entries(cfg.cost)[0];
     if (res[type] < n) return toast(`${type === 'wood' ? '나무' : '돌'}가 ${n}개 필요합니다`);
     res[type] -= n;
-    const placed = designRing(cfg);
+    const placed = designSquare(cfg);
     designTier++;
     updateHud(); updateDesignBtn();
     toast(`${cfg.label} 완료! 청사진 ${placed}개 - 동료가 건설합니다`);
+  }
+  let townDone = false;
+  function designTown() {
+    if (dead || townDone) return;
+    const [type, n] = Object.entries(CFG.TOWN.cost)[0];
+    if (res[type] < n) return toast(`${type === 'wood' ? '나무' : '돌'}가 ${n}개 필요합니다`);
+    res[type] -= n;
+    townDone = true;
+    for (const lot of CFG.TOWN.lots) { clearArea(lot.x, lot.z, CFG.BUILDING[lot.kind].radius + 1.2); addBuildingBlueprint(lot.kind, lot.x, lot.z); }
+    updateHud();
+    document.getElementById('townBtn').classList.add('done');
+    document.getElementById('townLbl').textContent = '마을 인프라 설계 완료';
+    document.getElementById('townCost').textContent = '동료가 건설합니다';
+    toast('마을 인프라 도면 완료! 거주지 3 · 병영 1 · 사격장 1');
   }
   function upgradeFence() {
     if (dead) return;
@@ -519,6 +593,7 @@
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
   bindBtn('designBtn', designDefense);
+  bindBtn('townBtn', designTown);
   bindBtn('upgBtn', upgradeWeapon);
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
@@ -848,7 +923,7 @@
 
       // 플레이어 / 동료와 접촉 시 피해
       if (pd < PLAYER_R + er + 0.15 && hurtCd <= 0) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
-      for (const n of npcs) {
+      for (const n of npcs.slice()) {
         if (!n.down && n.hurtCd <= 0 && Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z) < PLAYER_R + er) {
           damageNpc(n, u.contact); n.hurtCd = 0.8;
         }
@@ -858,19 +933,22 @@
     for (const n of npcs) n.hurtCd -= dt;
   }
 
-  // ---------- 동료 NPC (시작 3명) ----------
-  // 각 NPC는 자기 상태(task, hp, 라벨 등)를 가진 Group. updateNpcs()가 순서대로 `npc`(현재 처리 중인 동료)를 바꿔가며 AI를 돌린다.
-  const NPC_MAX_HP = 50, NPC_COUNT = 3, NPC_HOME_RADIUS = 3.4;
+  // ---------- 동료 NPC / 시민 ----------
+  // 각 NPC는 자기 상태(task, hp, 라벨 등)를 가진 Group. updateNpcs()가 순서대로 `npc`(현재 처리 중인 NPC)를 바꿔가며 AI를 돌린다.
+  // role: 'melee'(파랑 근접 병사) | 'archer'(초록 궁수) | 'citizen'(노랑 시민)
+  const NPC_COUNT = 3, NPC_HOME_RADIUS = 3.4;
   const NPC_BASE_Y = H / 2 + R;
-  const NPC_COLOR = 0x3a6fe0, ARCHER_COLOR = 0x3fae4a;
+  const ROLE = {
+    melee: { color: 0x3a6fe0, hp: 50, name: '' },
+    archer: { color: 0x3fae4a, hp: 50, name: '궁수 ' },
+    citizen: { color: 0xf2c230, hp: CFG.CITIZEN_HP, name: '시민 ' },
+  };
   const npcs = [];
-  function makeNpc(i) {
+  const homeSlot = (k) => { const a = Math.PI / 4 + k * 0.85, r = NPC_HOME_RADIUS + (k % 3) * 1.0; return { x: Math.cos(a) * r, z: Math.sin(a) * r }; };
+  function makeNpc(role, home, born = 'initial', delay = 0) {
     const n = new THREE.Group();
-    const ang = Math.PI / 4 + i * Math.PI * 2 / NPC_COUNT;       // 모닥불 둘레에 균등 배치
-    const home = { x: Math.cos(ang) * NPC_HOME_RADIUS, z: Math.sin(ang) * NPC_HOME_RADIUS };
-    const archer = i >= NPC_COUNT - CFG.ARCHER_COUNT;       // 마지막 동료(들)가 궁수 - 초록색
-    const baseColor = archer ? ARCHER_COLOR : NPC_COLOR;
-    const m = mat(baseColor);
+    const def = ROLE[role];
+    const m = mat(def.color);
     const body = new THREE.Group();
     const c = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), m);
     const t1 = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 6), m);
@@ -893,18 +971,22 @@
     label.position.y = 2.7;
     n.add(label);
 
-    Object.assign(n, { home, archer, baseColor, mat: m, body, lctx: cv.getContext('2d'), labelTex: tex,
-      hp: NPC_MAX_HP, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
-      task: null, workT: 0, short: null, pickCd: i * 0.1, wp: null, exitPt: null, graceT: 0, graceRing: 0 });
+    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: def.color, maxHp: def.hp, mat: m, body, lctx: cv.getContext('2d'), labelTex: tex,
+      hp: def.hp, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
+      task: null, workT: 0, short: null, pickCd: delay, wp: null, route: null, routeRing: 0, graceT: 0, graceRing: 0,
+      promote: null, hidden: false });
     scene.add(n);
     npcs.push(n);
     return n;
   }
-  for (let i = 0; i < NPC_COUNT; i++) makeNpc(i);
-  let npc = npcs[0];                       // 현재 처리 중인 동료
+  for (let i = 0; i < NPC_COUNT; i++) {
+    const ang = Math.PI / 4 + i * Math.PI * 2 / NPC_COUNT;       // 모닥불 둘레에 균등 배치
+    makeNpc(i >= NPC_COUNT - CFG.ARCHER_COUNT ? 'archer' : 'melee', { x: Math.cos(ang) * NPC_HOME_RADIUS, z: Math.sin(ang) * NPC_HOME_RADIUS }, 'initial', i * 0.1);
+  }
+  let npc = npcs[0];                       // 현재 처리 중인 NPC
 
   function setLabel(state) {
-    const text = `${state}|${npc.hp}`;
+    const text = `${state}|${npc.hp}|${npc.role}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
     const lctx = npc.lctx;
@@ -913,15 +995,23 @@
     lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
     lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
     lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.archer ? '궁수 ' : ''}HP ${npc.hp}/${NPC_MAX_HP}`, 128, 76);
+    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${ROLE[npc.role].name}HP ${npc.hp}/${npc.maxHp}`, 128, 76);
     npc.labelTex.needsUpdate = true;
   }
 
+  function removeNpc(n) {                  // 시민 출신은 쓰러지면 영구 사망 → 인구수 감소
+    npc = n; setTask(null);
+    scene.remove(n);
+    npcs.splice(npcs.indexOf(n), 1);
+    burst(n.position);
+    toast('주민이 쓰러졌습니다');
+  }
   function damageNpc(target, n) {
     npc = target;
     npc.hp = Math.max(0, npc.hp - n);
     if (npc.hp <= 0 && !npc.down) {
-      npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; setTask(null); npc.workT = 0;
+      if (npc.born === 'citizen') { removeNpc(npc); return; }
+      npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; setTask(null); npc.workT = 0; npc.promote = null;
       npc.mat.color.set(0x777777);                // 회색으로 변환
       npc.body.rotation.z = Math.PI / 2;          // 바닥에 눕기
       npc.body.position.y = R;
@@ -929,21 +1019,81 @@
     }
   }
   function reviveNpc() {
-    npc.down = false; npc.hp = NPC_MAX_HP;
+    npc.down = false; npc.hp = npc.maxHp;
     npc.mat.color.set(npc.baseColor);
     npc.body.rotation.z = 0; npc.body.position.y = NPC_BASE_Y;
     npc.position.set(npc.home.x, 0, npc.home.z);
   }
   function updateNpcs(dt, hour, t) {
-    for (const n of npcs) { npc = n; updateNpc(dt, hour, t); }
+    for (const n of npcs.slice()) { npc = n; updateNpc(dt, hour, t); }
   }
-  // ---------- 출입구 경유지 길찾기 ----------
-  // 성벽(원형 방어선)을 사이에 두고 있으면 목표로 직진하지 않고, 가장 가까운 출입구를 임시 목표로 삼아 먼저 통과한다.
-  // 반환: 통과해야 하는 성벽의 반지름 (없으면 null)
+
+  // ---------- 인구 / 직업 (문명 시스템) ----------
+  const builtBuildings = (kind) => obstacles.filter(o => o.userData.type === 'building' && o.userData.kind === kind);
+  const maxPop = () => CFG.BASE_POP + builtBuildings('house').length;      // 거주지 1채당 최대 인구 +1
+  const countRole = (r) => npcs.filter(n => n.role === r).length;
+  const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
+  function updatePopUi() {
+    const a = `${npcs.length} / ${maxPop()}`, b = `(시민: ${countRole('citizen')}명 | 근접: ${countRole('melee')}명 | 궁수: ${countRole('archer')}명)`;
+    if (popEl.textContent !== a) popEl.textContent = a;
+    if (popJobsEl.textContent !== b) popJobsEl.textContent = b;
+  }
+  function setRole(n, role) {              // 직업 변경(전직): 색, 체력, 집 위치 갱신
+    n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = ROLE[role].hp; n.hp = n.maxHp;
+    n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
+    n.home = homeSlot(npcs.filter(x => x.role !== 'citizen').length);
+    n.labelText = '';
+    dust(n.position.x, n.position.z);
+  }
+  // 매일 아침: 인구가 최대 인구보다 적으면 완성된 거주지 앞에서 시민 스폰 → 병영/사격장이 있으면 시민 1명씩 전직 훈련
+  function morningTown() {
+    const houses = builtBuildings('house'), fresh = [];
+    let guard = 0;
+    while (houses.length && npcs.length < maxPop() && guard++ < 20) {
+      const h = houses[npcs.length % houses.length], door = doorOf(h);
+      const c = makeNpc('citizen', door, 'citizen', fresh.length * 0.15);
+      c.position.set(door.x, 0, door.z);
+      fresh.push(c);
+    }
+    if (fresh.length) toast(`새 시민 ${fresh.length}명이 마을에 도착했습니다`);
+    const pool = fresh.concat(npcs.filter(n => n.role === 'citizen' && !fresh.includes(n) && !n.promote));
+    const barracks = builtBuildings('barracks')[0], range = builtBuildings('range')[0];
+    if (barracks && pool.length) pool.shift().promote = { to: 'melee', target: barracks };
+    if (range && pool.length) pool.shift().promote = { to: 'archer', target: range };
+  }
+  // 전직 이동: 해당 건물 앞까지 걸어가면 직업 변경. 진행 중이면 true
+  function promoteStep(dt) {
+    const pr = npc.promote, b = pr.target;
+    if (!obstacles.includes(b)) { npc.promote = null; return false; }
+    const door = doorOf(b);
+    if (npcMove(door.x, door.z, 3.5, dt) < 1.6) {
+      setRole(npc, pr.to);
+      toast(pr.to === 'melee' ? '시민이 근접 병사로 전직했습니다!' : '시민이 궁수로 전직했습니다!');
+      return false;
+    }
+    return true;
+  }
+  // 시민 야간 AI: 전투에 참여하지 않고 가장 가까운 거주지(없으면 모닥불)로 도망쳐 웅크린다
+  function citizenHide(dt) {
+    let spot = null, bd = Infinity;
+    for (const h of builtBuildings('house')) {
+      const d = (h.position.x - npc.position.x) ** 2 + (h.position.z - npc.position.z) ** 2;
+      if (d < bd) { bd = d; spot = doorOf(h); }
+    }
+    if (!spot) { const l = Math.hypot(npc.position.x, npc.position.z) || 1; spot = { x: npc.position.x / l * 1.6, z: npc.position.z / l * 1.6 }; }
+    if (npcMove(spot.x, spot.z, 5, dt) < 0.7) { npc.hidden = true; return '숨는 중'; }
+    npc.hidden = false;
+    return '도망 중';
+  }
+
+  // ---------- 출입구 경유지 길찾기 (사각형 성벽) ----------
+  // 성벽을 사이에 두고 있으면 목표로 직진하지 않고, 가장 가까운 출입구를 임시 목표로 삼아 문 앞 → 문 뒤 순서로 통과한다.
+  // 안/밖 판별은 중앙으로부터의 체비셰프 거리(cheb)와 각 성벽의 half 값을 비교한다.
+  // 반환: 통과해야 하는 성벽의 half (없으면 null)
   function ringToCross(px, pz, tx, tz) {
     const rings = [...new Set(gateWaypoints.map(g => g.r))].sort((a, b) => a - b);
     if (!rings.length) return null;
-    const dMe = Math.hypot(px, pz), dT = Math.hypot(tx, tz);
+    const dMe = cheb(px, pz), dT = cheb(tx, tz);
     const inward = dMe > dT;                                  // 안쪽으로 가면 바깥 성벽부터, 바깥쪽으로 가면 안쪽 성벽부터
     for (const R of (inward ? rings.slice().reverse() : rings)) {
       const meOut = dMe > R;
@@ -961,19 +1111,47 @@
     }
     return best;
   }
-  // 성벽 바깥(또는 안쪽 고리 사이)에서 목표로 직진하면 원형 성벽을 가로지르게 되므로, 성벽 반지름보다 바깥 궤도를 따라 호를 그리며 돈다.
-  const polar = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
+  // 선분(P→Q)이 중앙 정사각형(half H)의 내부를 지나는지 (slab 검사)
+  function segHitsBox(x0, z0, x1, z1, H) {
+    let t0 = 0, t1 = 1;
+    for (const [p, d] of [[x0, x1 - x0], [z0, z1 - z0]]) {
+      if (Math.abs(d) < 1e-9) { if (Math.abs(p) > H) return false; continue; }
+      let a = (-H - p) / d, b = (H - p) / d;
+      if (a > b) [a, b] = [b, a];
+      t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+      if (t0 > t1) return false;
+    }
+    return true;
+  }
+  // 성벽 바깥에서 목표로 직진하면 성벽 안을 가로지르게 되므로, 성벽 바깥 궤도(모서리 지점)를 거쳐 돌아간다
   function aimPoint(px, pz, tx, tz) {
-    const dP = Math.hypot(px, pz), dQ = Math.hypot(tx, tz);
+    const cP = cheb(px, pz), cQ = cheb(tx, tz);
     let R = 0;
-    for (const g of gateWaypoints) if (dP > g.r - 0.5 && dQ > g.r - 0.5 && g.r > R) R = g.r;   // 둘 다 이 성벽 바깥쪽인 가장 큰 고리
-    if (!R) return [tx, tz];
-    const aP = Math.atan2(pz, px);
-    let diff = Math.atan2(tz, tx) - aP;
-    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    if (Math.abs(diff) < 0.25) return [tx, tz];                                   // 각도 차가 작으면 직진
-    if (dP < R + 1.5) return polar(aP, R + 3);                                    // 출입구 근처: 먼저 바깥으로 빠져나온다
-    return polar(aP + Math.sign(diff) * Math.min(Math.abs(diff), 0.5), Math.min(Math.max(dP, R + 2.5), MAP - 2));
+    for (const g of gateWaypoints) if (cP > g.r + 1.5 && cQ > g.r - 0.5 && g.r > R) R = g.r;      // 둘 다 이 성벽 바깥쪽인 가장 큰 사각형
+    if (!R) { npc.orbitTarget = -1; return [tx, tz]; }
+    const H = cQ > R + 1.5 ? R + 1.2 : R - 1.0;                                                     // 성벽 위 목표는 내부만 피한다
+    if (!segHitsBox(px, pz, tx, tz, H)) { npc.orbitDir = 0; npc.orbitTarget = -1; return [tx, tz]; }
+    // 성벽 바깥 모서리 궤도를 따라 돈다: 향할 모서리(orbitTarget)를 정해 두고, 도착하면 회전 방향(orbitDir)의 인접 모서리로 이어서 이동
+    const c = R + 2.5, corners = [[-c, -c], [c, -c], [c, c], [-c, c]];
+    if (npc.orbitTarget >= 0 && npc.orbitTarget != null) {
+      const [cx, cz] = corners[npc.orbitTarget];
+      if (Math.hypot(cx - px, cz - pz) < 2.0) {
+        if (!npc.orbitDir) {
+          const f = corners[(npc.orbitTarget + 1) % 4], b = corners[(npc.orbitTarget + 3) % 4];
+          npc.orbitDir = Math.hypot(tx - f[0], tz - f[1]) <= Math.hypot(tx - b[0], tz - b[1]) ? 1 : -1;
+        }
+        npc.orbitTarget = (npc.orbitTarget + npc.orbitDir + 4) % 4;
+      }
+      return corners[npc.orbitTarget];
+    }
+    npc.orbitDir = 0;
+    let best = null, bd = Infinity;
+    corners.forEach(([cx, cz], i) => {
+      if (segHitsBox(px, pz, cx, cz, H)) return;                       // 성벽 안을 가로질러야 닿는 모서리는 제외 (인접 모서리만)
+      const d = Math.hypot(cx - px, cz - pz) + Math.hypot(tx - cx, tz - cz);
+      if (d < bd) { bd = d; best = [cx, cz]; npc.orbitTarget = i; }
+    });
+    return best || [tx, tz];
   }
   // 반환값은 최종 목적지까지의 (이동 전) 거리 - 호출부의 도착 판정에 그대로 쓰인다
   function npcMove(tx, tz, speed, dt) {
@@ -987,26 +1165,32 @@
     } else npc.stuckT = 0;
     const dFinal = Math.hypot(tx - npc.position.x, tz - npc.position.z);
     const stepTo = (x, z) => { const [ax, az] = aimPoint(npc.position.x, npc.position.z, x, z); npcStep(ax, az, speed, dt); };
-    // 출입구를 막 통과했다면 문 앞/뒤의 출구점까지 먼저 빠져나온 뒤 최종 목적지로 향한다 (벽 모서리에 걸리지 않게)
-    if (npc.exitPt && npc.graceT > 0 && Math.hypot(npc.exitPt.x - npc.position.x, npc.exitPt.z - npc.position.z) > 1.0) {
-      npcStep(npc.exitPt.x, npc.exitPt.z, speed, dt);
-      return dFinal;
+
+    // 이미 출입구 경유 중이면 계속 진행: [문 앞(approach), 문 뒤(exit)]
+    if (npc.route) {
+      if (npc.route.length === 2 && ringToCross(npc.position.x, npc.position.z, tx, tz) !== npc.routeRing) npc.route = null;   // 목적지가 바뀌어 더는 통과가 필요 없음
+      else {
+        const pt = npc.route[0];
+        if (Math.hypot(pt.x - npc.position.x, pt.z - npc.position.z) < 1.3) {
+          npc.route.shift();
+          if (!npc.route.length) {                       // 경유 완료 → 해제하고 원래 목적지로 직진
+            npc.graceRing = npc.routeRing; npc.graceT = CFG.GATE_GRACE; npc.route = null; npc.wp = null;
+          }
+        }
+        if (npc.route) { stepTo(npc.route[0].x, npc.route[0].z); return dFinal; }
+      }
     }
-    npc.exitPt = null;
     const R = ringToCross(npc.position.x, npc.position.z, tx, tz);
     if (R !== null && !(npc.graceT > 0 && npc.graceRing === R)) {
-      if (!npc.wp || npc.wp.r !== R) npc.wp = nearestGate(R);          // 경유지는 한 번 정하면 유지 (출입구 사이 왔다갔다 방지)
-      if (npc.wp) {
-        if (Math.hypot(npc.wp.x - npc.position.x, npc.wp.z - npc.position.z) < CFG.GATE_REACH) {
-          // 출입구 도달(반경 2.0): 경유 상태 해제 → 최종 목적지 쪽으로 진행
-          const g = npc.wp, gd = Math.hypot(g.x, g.z) || 1;
-          const dir = Math.hypot(tx, tz) > R ? 1 : -1;                 // 목적지가 성벽 바깥이면 바깥쪽 출구점, 안쪽이면 안쪽 출구점
-          npc.exitPt = { x: g.x / gd * (R + dir * 3), z: g.z / gd * (R + dir * 3) };
-          npc.graceRing = R; npc.graceT = CFG.GATE_GRACE; npc.wp = null;
-        } else {
-          stepTo(npc.wp.x, npc.wp.z);
-          return dFinal;
-        }
+      const g = npc.wp && npc.wp.r === R ? npc.wp : (npc.wp = nearestGate(R));        // 경유할 출입구는 한 번 정하면 유지
+      if (g) {
+        const pOut = cheb(npc.position.x, npc.position.z) > R, k = pOut ? 1 : -1;
+        const A = { x: g.x + g.nx * 3 * k, z: g.z + g.nz * 3 * k }, B = { x: g.x - g.nx * 3 * k, z: g.z - g.nz * 3 * k };
+        // 출입구 반경 2.0 이내면 문 앞 지점은 건너뛴다
+        npc.route = Math.hypot(g.x - npc.position.x, g.z - npc.position.z) < CFG.GATE_REACH ? [B] : [A, B];
+        npc.routeRing = R;
+        stepTo(npc.route[0].x, npc.route[0].z);
+        return dFinal;
       }
     } else npc.wp = null;
     stepTo(tx, tz);
@@ -1103,8 +1287,10 @@
     npc.graceT -= dt;
     let state = '대기 중';
     let bob = 0;
+    if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
+    const busy = isDay && npc.promote ? (state = '훈련 중', promoteStep(dt)) : false;
 
-    if (isDay) {
+    if (busy) { /* 전직 훈련 이동 중 */ } else if (isDay) {
       // 주간 우선순위: 1) 수리  2) 건설(청사진)  3) 채집
       const PRIO = { repair: 0, build: 1, gather: 2 };
       let task = npc.task;
@@ -1119,25 +1305,26 @@
       if (task) {
         const o = task.target;
         state = { repair: '수리 중', build: '건설 중', gather: '채집 중' }[task.kind];
-        const stop = task.kind === 'build' ? 1.2 : o.userData.radius + PLAYER_R + (task.kind === 'repair' ? 0.4 : 0.3);
+        const stop = task.kind === 'build' ? (o.userData.stand ?? 1.2) : o.userData.radius + PLAYER_R + (task.kind === 'repair' ? 0.4 : 0.3);
         const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
         if (d > stop) { npcMove(o.position.x, o.position.z, 3.5, dt); npc.workT = 0; }
         else {
           npc.face = Math.atan2(o.position.x - npc.position.x, o.position.z - npc.position.z);
           npc.rotation.y = npc.face;
-          if (task.kind === 'build' && npc.workT === 0 && res[o.userData.res] < CFG.BP_COST[o.userData.res]) {
+          if (task.kind === 'build' && npc.workT === 0 && res[o.userData.res] < (o.userData.cost ?? CFG.BP_COST[o.userData.res])) {
             // 도착했는데 나무가 부족하면 건설 보류, 즉시 채집으로 전환
             npc.short = o.userData.res; setTask(null);
             toast(`${npc.short === 'stone' ? '돌' : '나무'} 자원이 부족해 건설을 보류하고 채집합니다`);
           } else {
             npc.workT += dt;
             bob = Math.abs(Math.sin(t * 14)) * 0.15;       // 들썩임
-            if (task.kind === 'build' && npc.workT >= CFG.BUILD_TIME) {
-              const kind = o.userData.res, cost = CFG.BP_COST[kind];
+            if (task.kind === 'build' && npc.workT >= (o.userData.buildTime ?? CFG.BUILD_TIME)) {
+              const kind = o.userData.res, cost = o.userData.cost ?? CFG.BP_COST[kind];
               if (res[kind] >= cost) {
                 res[kind] -= cost; updateHud();
                 blueprints.splice(blueprints.indexOf(o), 1); scene.remove(o);
-                createStructure(kind, o.position.x, o.position.z, o.rotation.y);
+                if (o.userData.bkind) createBuilding(o.userData.bkind, o.position.x, o.position.z);
+                else createStructure(kind, o.position.x, o.position.z, o.rotation.y);
                 dust(o.position.x, o.position.z);
               }
               setTask(null); npc.workT = 0;
@@ -1157,7 +1344,7 @@
     } else {
       // 야간: 모닥불 방어
       npc.target = null; npc.gatherT = 0; setTask(null); npc.workT = 0;
-      if (npc.archer) state = archerDefend(dt); else {
+      if (npc.role === 'citizen') state = citizenHide(dt); else if (npc.archer) state = archerDefend(dt); else {
       let foe = null, bd = CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
       for (const e of enemies) {
         if (e.userData.sinking || e.userData.siege) continue;
@@ -1179,7 +1366,8 @@
       }
       }
     }
-    npc.body.position.y = NPC_BASE_Y + bob;
+    npc.body.scale.y = npc.hidden ? 0.55 : 1;                              // 숨은 시민은 웅크린다
+    npc.body.position.y = (npc.hidden ? NPC_BASE_Y * 0.55 : NPC_BASE_Y) + bob;
     setLabel(state);
   }
 
@@ -1442,7 +1630,7 @@
         if (o.userData.type === 'fence' && !s.hit.has(o) && reach(o.position.x, o.position.z)) { s.hit.add(o); damageStructure(o, CFG.QUAKE_STRUCT_DMG); }
       }
       if (fireAlive && !s.hit.has('fire') && reach(0, 0)) { s.hit.add('fire'); fireHp -= CFG.QUAKE_FIRE_DMG; if (fireHp <= 0) destroyFire(); }
-      for (const n of npcs) {
+      for (const n of npcs.slice()) {
         if (n.down || s.hit.has(n) || !reach(n.position.x, n.position.z)) continue;
         s.hit.add(n);
         const dx = n.position.x - s.x, dz = n.position.z - s.z, d = Math.hypot(dx, dz) || 1;
@@ -1513,7 +1701,7 @@
                            npcs.every(n => Math.hypot(x - n.position.x, z - n.position.z) > 4) &&
                            blueprints.every(b => Math.hypot(x - b.position.x, z - b.position.z) > 3) &&
                            gateWaypoints.every(g => Math.hypot(x - g.x, z - g.z) > 3.5) &&
-                           gateWaypoints.every(g => Math.abs(Math.hypot(x, z) - g.r) > CFG.CORRIDOR_WIDTH + 1);   // 성벽 통행로에는 리스폰 금지     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
+                           gateWaypoints.every(g => Math.abs(cheb(x, z) - g.r) > CFG.CORRIDOR_WIDTH + 1);   // 성벽 통행로에는 리스폰 금지     // 플레이어/동료 근처 제외 (건물은 scatter가 검사)
     const before = obstacles.length;
     scatter(makeTree, Math.max(0, CFG.TREE_COUNT - countType('wood')), free);
     scatter(makeRock, Math.max(0, CFG.STONE_COUNT - countType('stone')), free);
@@ -1548,13 +1736,14 @@
       else showWarning(`Night ${dayNo} - 방어전을 준비하십시오!`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     updateNpcs(dt, hour, t);
     updateFx(dt);
     updateArrows(dt);
     updateRocks(dt);
     updateShocks(dt);
+    updatePopUi();
     updateDash(dt);
     updateFloaters(dt);
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
