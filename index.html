@@ -65,36 +65,36 @@
 
   #joy { position: fixed; left: 18px; bottom: 18px; width: 150px; height: 150px; z-index: 5; touch-action: none; }
 
-  #actions { position: fixed; right: 18px; bottom: 22px; display: flex; flex-direction: column; flex-wrap: wrap-reverse; justify-content: flex-end; align-content: flex-end;
-    max-height: calc(100vh - 180px); gap: 10px; z-index: 5; }
-  .btn { font: inherit; font-weight: 700; font-size: 16px; color: #3a1408; width: 80px; height: 80px; border-radius: 50%;
+  #actions { position: fixed; right: 10px; bottom: 12px; display: flex; flex-direction: column; flex-wrap: wrap-reverse; justify-content: flex-end; align-content: flex-end;
+    max-height: calc(100vh - 170px); gap: 6px; z-index: 5; }
+  .btn { font: inherit; font-weight: 700; color: #3a1408; width: 62px; height: 62px; border-radius: 50%; font-size: 13px; line-height: 1.1; padding: 0;
     border: 3px solid rgba(255,255,255,.6); background: radial-gradient(circle at 35% 30%, #ffd98a, #ff9a3c);
     box-shadow: 0 4px 0 #a8480f, 0 8px 18px rgba(0,0,0,.4); cursor: pointer; touch-action: none; }
-  .btn small { display: block; font-weight: 400; font-size: 11px; opacity: .75; }
+  .btn small { display: block; font-weight: 400; font-size: 10px; opacity: .75; }
   .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; }
   #dashBtn { background: radial-gradient(circle at 35% 30%, #c9f5ff, #2fa6d6); color: #06303f; }
   #dashBtn.cool { opacity: .45; }
-  #swapBtn { width: 92px; height: 52px; border-radius: 16px; font-size: 14px; align-self: flex-end;
+  #swapBtn { width: 72px; height: 42px; border-radius: 12px; font-size: 12px; align-self: flex-end;
     background: radial-gradient(circle at 35% 30%, #b9e8ff, #4a90c8); color: #08243a; line-height: 1.1; }
   #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; }
-  #upgBtn { position: fixed; top: 10px; right: 10px; z-index: 5; font: inherit; font-weight: 700; font-size: 15px; color: #fff;
-    padding: 8px 14px; border-radius: 12px; border: 2px solid rgba(255,255,255,.6); cursor: pointer; touch-action: none;
+  #upgBtn { position: fixed; top: 8px; right: 8px; z-index: 5; font: inherit; font-weight: 700; font-size: 12px; color: #fff;
+    padding: 5px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,.6); cursor: pointer; touch-action: none;
     background: linear-gradient(#5aa8ff, #2a5fc0); box-shadow: 0 3px 0 #173a80; line-height: 1.2; }
-  #designBtn { position: fixed; top: 78px; right: 10px; z-index: 5; width: 200px; font: inherit; font-weight: 800; font-size: 17px; color: #fff;
-    padding: 14px 12px; border-radius: 14px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.25;
+  #designBtn { position: fixed; top: 52px; right: 8px; z-index: 5; width: 150px; font: inherit; font-weight: 800; font-size: 13px; color: #fff;
+    padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
     background: linear-gradient(#4fb36a, #1f7a3d); box-shadow: 0 4px 0 #0f4a24, 0 8px 18px rgba(0,0,0,.4); }
-  #designBtn small { display: block; font-weight: 500; font-size: 12px; opacity: .9; margin-top: 3px; }
+  #designBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .9; margin-top: 1px; }
   #designBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0f4a24; }
   #designBtn.stone { background: linear-gradient(#8a9099, #4a4f57); box-shadow: 0 4px 0 #2a2d33, 0 8px 18px rgba(0,0,0,.4); }
   #designBtn.done { background: #555; box-shadow: none; opacity: .7; }
-  #townBtn { position: fixed; top: 156px; right: 10px; z-index: 5; width: 200px; font: inherit; font-weight: 800; font-size: 17px; color: #fff;
-    padding: 14px 12px; border-radius: 14px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.25;
+  #townBtn { position: fixed; top: 100px; right: 8px; z-index: 5; width: 150px; font: inherit; font-weight: 800; font-size: 13px; color: #fff;
+    padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
     background: linear-gradient(#d8a24a, #9a6420); box-shadow: 0 4px 0 #5c3a0e, 0 8px 18px rgba(0,0,0,.4); }
-  #townBtn small { display: block; font-weight: 500; font-size: 12px; opacity: .9; margin-top: 3px; }
+  #townBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .9; margin-top: 1px; }
   #townBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #5c3a0e; }
   #townBtn.done { background: #555; box-shadow: none; opacity: .7; }
   #popJobs { font-size: 12px; color: #d8e4ff; }
-  #upgBtn small { display: block; font-weight: 400; font-size: 11px; opacity: .85; }
+  #upgBtn small { display: block; font-weight: 400; font-size: 10px; opacity: .85; }
   #upgBtn:active { transform: translateY(2px); }
   #upgBtn.done { background: #666; box-shadow: none; opacity: .75; }
   #buildBtn { background: radial-gradient(circle at 35% 30%, #d9b48a, #8a5a34); color: #fff; }
@@ -340,7 +340,8 @@
   // ---------- 카메라 (Orbit + Lerp) ----------
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
-  const DIST = 8, LOOK_H = 1.6;
+  let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
+  const setDist = d => { DIST = Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
   function goalPos(out) {
     return out.set(
@@ -360,24 +361,37 @@
   resize();
 
   // ---------- 카메라 회전 입력 ----------
-  // 모바일: 화면 우측 터치 드래그 / PC: 마우스 우클릭 드래그
+  // Desktop: left-drag on the canvas (buttons are separate elements) / Mobile: drag on the right side, two-finger pinch to zoom
+  let tapStart = null;
   const look = { id: null, x: 0, y: 0 };
+  const ptrs = new Map();            // active canvas pointers (for pinch)
+  let pinchD = 0;
+  const pinchDist = () => { const [p, q] = [...ptrs.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('pointerdown', e => {
-    const ok = e.pointerType === 'mouse' ? e.button === 2 : e.clientX > innerWidth * 0.4;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; return; }
+    const ok = e.pointerType === 'mouse' ? e.button === 0 : e.clientX > innerWidth * 0.4;
     if (!ok || look.id !== null) return;
     look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
+    const p = ptrs.get(e.pointerId); if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (ptrs.size === 2 && e.pointerType === 'touch') {
+      const d = pinchDist();
+      if (pinchD > 0 && d > 0) setDist(DIST * pinchD / d);
+      pinchD = d; return;
+    }
     if (e.pointerId !== look.id) return;
     yaw -= (e.clientX - look.x) * 0.006;
     pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - look.y) * 0.005));
     look.x = e.clientX; look.y = e.clientY;
   });
-  const lookEnd = e => { if (e.pointerId === look.id) look.id = null; };
+  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === look.id) look.id = null; };
   canvas.addEventListener('pointerup', lookEnd);
   canvas.addEventListener('pointercancel', lookEnd);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); setDist(DIST * Math.exp(e.deltaY * 0.001)); }, { passive: false });
 
   // ---------- 가상 조이스틱 (Canvas) ----------
   const joyCanvas = document.getElementById('joy');
@@ -888,13 +902,12 @@
   });
   // 모닥불/회관 클릭(탭)으로 열기: 드래그가 아닌 짧은 클릭만
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-  let tapStart = null;
   canvas.addEventListener('pointerdown', e => { tapStart = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId }; });
   canvas.addEventListener('pointerup', e => {
     if (!tapStart || tapStart.id !== e.pointerId) return;
     const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y), dur = performance.now() - tapStart.t;
     tapStart = null;
-    if (moved > 10 || dur > 450 || e.button === 2) return;
+    if (moved > 10 || dur > 450 || e.button !== 0) return;
     ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
     if (ray.intersectObject(campfire, true).length) openTech();
