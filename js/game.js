@@ -930,7 +930,7 @@
     document.getElementById('gameover').style.display = 'flex';
     renderRewindButtons();
   }
-  document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+  document.getElementById('restartBtn').addEventListener('click', () => { clearSave(); location.reload(); });
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     n = Math.max(1, Math.round(n * (1 - gearDef(playerGear.armor).reduce)));      // 방어구 피해 감소
@@ -2597,6 +2597,7 @@
     checkpoints.push({ day, label, snap: makeSnapshot() });
     checkpoints.sort((a, b) => a.day - b.day);
     while (checkpoints.length > 4) checkpoints.shift();
+    saveGame();
   }
   function clearWorld() {
     for (const e of enemies.slice()) removeEnemy(e);
@@ -2752,18 +2753,18 @@
   addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat) eat(); });
 
   // ---------- 습격의 날 안내 UI ----------
-  const raidEl = document.getElementById('raidInfo');
+  const raidEl = document.getElementById('raidInfo'), raidTxtEl = document.getElementById('raidTxt');
   let raidTxt = '';
   function updateRaidUi(hour, dayNo) {
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
-    if (exActive) { const t = `Expedition: ${exActive.dest.name} - home by ${fmtH(CFG.EXP_FORCE)}`; if (t !== raidTxt) { raidTxt = t; raidEl.textContent = t; raidEl.className = 'soon'; } return; }
+    if (exActive) { const t = `Expedition: ${exActive.dest.name} - home by ${fmtH(CFG.EXP_FORCE)}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
     } else if (isRaid(dayNo)) { text = '⚠ Blood Moon raid tonight!'; cls = 'blood'; }
     else { const left = nextRaidFrom(dayNo) - dayNo, tp = nightTypeOf(dayNo); text = `${left} day${left > 1 ? 's' : ''} until the next big raid` + (tp !== 'calm' ? ` · Tonight: ${NIGHT_INFO[tp][0]}` : ''); cls = left <= 1 ? 'soon' : ''; }
-    if (text !== raidTxt) { raidTxt = text; raidEl.textContent = text; raidEl.className = cls; }
+    if (text !== raidTxt) { raidTxt = text; raidTxtEl.textContent = text; raidEl.className = cls; }
   }
 
   // ---------- 경고 UI / 자원 리스폰 ----------
@@ -2975,7 +2976,7 @@
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       cleanupZone(); exActive = null;
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
-      story.exps++; exEnding = false; updateExUi(); updateHud();
+      story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
       toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
       checkStory();
     });
@@ -3046,10 +3047,12 @@
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
+  let fpsT = 0, fpsN = 0;
 
   function tick() {
     requestAnimationFrame(tick);
-    const dt = Math.min(clock.getDelta(), 0.05) * (eventOpen ? 0 : 1);       // 아침 이벤트 창이 열려 있으면 시간이 멈춘다
+    const rawDt = clock.getDelta(); fpsT += rawDt; fpsN++; if (fpsT >= 1) { window.__nfFps = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
+    const dt = Math.min(rawDt, 0.05) * (eventOpen || uiPause ? 0 : 1);       // 아침 이벤트 창이 열려 있으면 시간이 멈춘다
     const t = clock.elapsedTime;
 
     // 시간 / 조명
@@ -3181,9 +3184,102 @@
     if (off) camera.position.sub(off);
   }
   applyPlayerGear(); updateHud();
-  if (/[?&]debug/.test(location.search)) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);      // 처음 시작할 때 역할 선택
+
+  // ---------- 8단계: 자동 저장 / 설정 / 팁 ----------
+  const SAVE_KEY = 'nf_save_v1', DEBUG = /[?&]debug/.test(location.search);
+  let saveReady = false, uiPause = false;
+  const tut = { done: false, step: 0, hints: {} };
+  function saveGame() {                                   // 매일 아침과 원정 귀환 때: 마을 상태만 저장한다 (원정 중에는 저장하지 않는다)
+    if (!saveReady || dead || exActive || exEnding) return;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, ts: Date.now(), day: Math.floor(gameMin / 1440) + 1, snap: makeSnapshot(), tut })); } catch (e) {}
+  }
+  function readSave() {
+    try {
+      const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+      return d && d.v === 1 && d.snap && d.snap.res && Array.isArray(d.snap.npcs) ? d : null;
+    } catch (e) { return null; }
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  function loadSave(d) {
+    applySnapshot(d.snap);
+    Object.assign(tut, { done: false, step: 0, hints: {} }, d.tut || {});
+    checkpoints.length = 0; saveCheckpoint('Loaded save');
+    toast(`Continuing from Day ${d.day}`);
+  }
+
+  // 설정 (볼륨 · 글자 크기 · 그래픽)
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi' };
+  try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
+  function applySettings() {
+    document.documentElement.dataset.ts = settings.text;
+    const lo = settings.gfx === 'lo';
+    renderer.setPixelRatio(lo ? 1 : Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight, false);
+    renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
+    scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
+  }
+  function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
+  function openSettings() {
+    document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
+    document.getElementById('setSfx').value = Math.round(Snd.getVol('sfx') * 100);
+    document.getElementById('setText').value = settings.text; document.getElementById('setGfx').value = settings.gfx;
+    const d = readSave(); document.getElementById('setSaveInfo').textContent = d ? `Saved: Day ${d.day} (auto-saves every morning)` : 'No save yet - the game auto-saves every morning';
+    uiPause = true; setEl.style.display = 'flex';
+  }
+  function closeSettings() { uiPause = false; setEl.style.display = 'none'; }
+  document.getElementById('setBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Snd.init(); setEl.style.display === 'flex' ? closeSettings() : openSettings(); });
+  document.getElementById('setClose').addEventListener('click', closeSettings);
+  document.getElementById('setMusic').addEventListener('input', e => Snd.setVol('music', e.target.value / 100));
+  document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
+  document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
+  document.getElementById('setDel').addEventListener('click', e => {
+    if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to confirm'; return; }
+    clearSave(); e.target.dataset.sure = ''; e.target.textContent = 'Delete save'; document.getElementById('setSaveInfo').textContent = 'Save deleted'; toast('Save deleted');
+  });
+  applySettings();
+
+  // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
+  const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
+  const TUT = [
+    { text: 'Gather wood: stand by a tree, press G', done: () => res.wood >= 10 || obstacles.some(o => o.userData.type === 'fence') || blueprints.length > 0 },
+    { text: 'Tap Defense Line to plan a fence', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
+    { text: 'Tap Plan Town Buildings', done: () => townStage > 0 },
+    { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
+  ];
+  function tutorStep() {
+    if (!saveReady || dead || eventOpen || uiPause || exActive) return;
+    if (!tut.done && tut.step < TUT.length && TUT[tut.step].done()) { tut.step++; toast('Good work!'); }
+    if (tut.step >= TUT.length) tut.done = true;
+    const show = !tut.done && !tut.off;
+    tutEl.style.display = show ? 'flex' : 'none';
+    if (show) tutTxt.textContent = TUT[tut.step].text;
+    const hint = (k, msg) => { if (!tut.hints[k]) { tut.hints[k] = 1; toast(msg); } };
+    if (smiths().length) hint('smith', 'Blacksmith ready: walk up and press C to craft gear');
+    if (npcs.length && res.food < 1 && gameMin > 1440 * 1) hint('food', 'Citizens eat at dawn - build farms to keep food stocked');
+    if (story.intro) hint('journal', 'New: Journal (J) - head out on expeditions for rare loot');
+  }
+  setInterval(tutorStep, 700);
+  document.getElementById('tutorX').addEventListener('click', () => { tut.off = true; tutEl.style.display = 'none'; });
+
+  // 시작 화면: 저장이 있으면 이어하기 / 새 게임
+  function bootGame() {
+    const d = readSave();
+    if (d && (!DEBUG || /[?&]load/.test(location.search))) {
+      const p = document.getElementById('startPanel'); uiPause = true;
+      document.getElementById('startInfo').textContent = `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}`;
+      p.style.display = 'flex';
+      document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
+      document.getElementById('startNew').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openClassChoice, 700); saveCheckpoint('Day 1 start'); });
+      return;
+    }
+    saveReady = true;
+    if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);
+    saveCheckpoint('Day 1 start');
+  }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
-  saveCheckpoint('Day 1 start');
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

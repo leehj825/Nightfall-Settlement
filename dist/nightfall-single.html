@@ -185,6 +185,23 @@
 #jExp .ex { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.07); border-radius: 10px; padding: 8px 10px; margin: 6px 0; } #jExp .info { flex: 1; font-size: 12.5px; line-height: 1.35; } #jExp .info b { font-size: 15px; color: #ffe7a8; } #jExp .info small { display: block; color: #b9c4d8; }
 #jExp button, #jClose { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 9px; cursor: pointer; border: 0; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; } #jExp button:disabled { opacity: .4; cursor: default; }
 #jClose { background: #666; color: #fff; box-shadow: 0 2px 0 #333; display: block; margin: 10px auto 0; }
+
+/* ---- stage 8: save / settings / tips ---- */
+#setBtn { position: fixed; left: 220px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 17px; padding: 0; cursor: pointer; }
+#tutor { box-sizing: border-box; display: none; align-items: center; justify-content: center; gap: 8px; width: fit-content; max-width: 100%; margin: 3px auto 0; pointer-events: auto; padding: 1px 10px; border-radius: 12px; background: rgba(20,10,30,.6); border: 1px solid rgba(255,210,122,.6); color: #ffe7a8; font-size: 12.5px; font-weight: 700; }
+#tutor span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #tutor b { cursor: pointer; color: #fff; padding: 0 2px; }
+#setPanel, #startPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); z-index: 30; padding: 12px; }
+.scard2 { background: rgba(28,22,16,.97); border: 2px solid #c8923a; border-radius: 16px; padding: 16px 20px; width: min(360px, 100%); max-height: 92%; overflow: auto; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+.scard2 h3 { margin: 0 0 10px; color: #ffd27a; font-size: 22px; text-align: center; } .scard2 p { text-align: center; font-size: 14px; margin: 6px 0 12px; } .scard2 p.shint { font-size: 11px; color: #a9a49a; }
+.scard2 label { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; font-size: 14px; } .scard2 input[type=range] { width: 150px; } .scard2 select { font: inherit; font-size: 13px; padding: 3px 6px; }
+.scard2 .tbtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; } .scard2 button { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 14px; border-radius: 10px; cursor: pointer; border: 0; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; }
+html[data-ts=l] .ecard, html[data-ts=l] .scard, html[data-ts=l] .jcard, html[data-ts=l] .ncard, html[data-ts=l] .scard2 { zoom: 1.12; }
+html[data-ts=s] .ecard, html[data-ts=s] .scard, html[data-ts=s] .jcard, html[data-ts=s] .ncard, html[data-ts=s] .scard2 { zoom: .9; }
+@media (max-height: 520px) and (orientation: landscape) { #setBtn { left: 170px; bottom: 12px; width: 32px; height: 32px; font-size: 14px; } #tutor { font-size: 11px; } }
+@media (max-width: 640px) and (orientation: portrait) { #setBtn { left: 178px; bottom: 12px; width: 32px; height: 32px; font-size: 14px; } #tutor { font-size: 11px; } }
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #setBtn { left: 162px; } }
+html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
+@media (min-width: 1000px) and (min-height: 560px) { html[data-ts=l] #hud { transform: scale(1.1); transform-origin: top left; } }
 </style>
 </head>
 <body>
@@ -194,7 +211,7 @@
 <button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
 <div id="clock">Day 1 - 08:00</div>
-<div id="raidInfo"></div>
+<div id="raidInfo"><span id="raidTxt"></span><div id="tutor"><span id="tutorTxt"></span><b id="tutorX" title="Hide tips">✕</b></div></div>
 <div id="techPanel"><div class="tcard"><h3 id="techTitle">Age Progression</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">Advance Age</button><button id="techClose">Close</button></div></div></div>
 <div id="smithPanel"><div class="scard"><h3>Blacksmith</h3><p id="smithRes"></p><div id="smithList"></div><p class="shint">Crafted gear is displayed on the rack. Soldiers walk over and equip it on their own - you can take pieces yourself with Equip.</p><div class="tbtns"><button id="smithClose">Close</button></div></div></div>
 <div id="dbg"><button id="dbgSetup">Day 7 Prep</button><button id="dbgBoss">Spawn Boss</button></div>
@@ -209,6 +226,15 @@
 <div id="eventPanel"><div class="ecard"><small>Morning event</small><h3 id="evTitle"></h3><p id="evText"></p><div id="evBtns"></div></div></div>
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
+<button id="setBtn" title="Settings">⚙️</button>
+<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button></div></div></div>
+<div id="setPanel"><div class="scard2"><h3>Settings</h3>
+  <label>Music<input type="range" id="setMusic" min="0" max="100"></label>
+  <label>Sound effects<input type="range" id="setSfx" min="0" max="100"></label>
+  <label>Text size<select id="setText"><option value="s">Small</option><option value="m">Normal</option><option value="l">Large</option></select></label>
+  <label>Graphics<select id="setGfx"><option value="hi">High</option><option value="lo">Low (faster)</option></select></label>
+  <p class="shint" id="setSaveInfo"></p>
+  <div class="tbtns"><button id="setTips">Replay tips</button><button id="setDel">Delete save</button><button id="setClose">Close</button></div></div></div>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
   <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
@@ -395,17 +421,17 @@
 <script>
 // Nightfall Settlement - synthesized sound effects and background music (WebAudio, no asset files).
   const Snd = (() => {
-    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, mood = { nf: 0, danger: false }, step = 0;
+    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, vol = { sfx: 1, music: 1 }, mood = { nf: 0, danger: false }, step = 0;
     const last = {};
-    try { muted = localStorage.getItem('nf_mute') === '1'; } catch (e) {}
+    try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1) vol.music = v.music; } catch (e) {}
     function init() {
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       ctx = new AC();
       master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ctx.destination);
-      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8; sfxBus.connect(master);
-      musicBus = ctx.createGain(); musicBus.gain.value = 0.3; musicBus.connect(master);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8 * vol.sfx; sfxBus.connect(master);
+      musicBus = ctx.createGain(); musicBus.gain.value = 0.3 * vol.music; musicBus.connect(master);
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       // 밤의 저음 드론 (밤이 깊을수록 커진다)
@@ -466,7 +492,11 @@
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05);
       const b = document.getElementById('muteBtn'); if (b) b.textContent = m ? '🔇' : '🔊';
     }
-    return { init, play, setMood: (nf, danger) => { mood.nf = nf; mood.danger = danger; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
+    function setVol(kind, v) {
+      vol[kind] = Math.max(0, Math.min(1, v)); try { localStorage.setItem('nf_vol', JSON.stringify(vol)); } catch (e) {}
+      if (ctx) { (kind === 'sfx' ? sfxBus : musicBus).gain.setTargetAtTime((kind === 'sfx' ? 0.8 : 0.3) * vol[kind], ctx.currentTime, 0.05); }
+    }
+    return { init, play, setVol, getVol: k => vol[k], setMood: (nf, danger) => { mood.nf = nf; mood.danger = danger; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
   })();
 
 </script>
@@ -1720,7 +1750,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     document.getElementById('gameover').style.display = 'flex';
     renderRewindButtons();
   }
-  document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+  document.getElementById('restartBtn').addEventListener('click', () => { clearSave(); location.reload(); });
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     n = Math.max(1, Math.round(n * (1 - gearDef(playerGear.armor).reduce)));      // 방어구 피해 감소
@@ -3387,6 +3417,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     checkpoints.push({ day, label, snap: makeSnapshot() });
     checkpoints.sort((a, b) => a.day - b.day);
     while (checkpoints.length > 4) checkpoints.shift();
+    saveGame();
   }
   function clearWorld() {
     for (const e of enemies.slice()) removeEnemy(e);
@@ -3542,18 +3573,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat) eat(); });
 
   // ---------- 습격의 날 안내 UI ----------
-  const raidEl = document.getElementById('raidInfo');
+  const raidEl = document.getElementById('raidInfo'), raidTxtEl = document.getElementById('raidTxt');
   let raidTxt = '';
   function updateRaidUi(hour, dayNo) {
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
-    if (exActive) { const t = `Expedition: ${exActive.dest.name} - home by ${fmtH(CFG.EXP_FORCE)}`; if (t !== raidTxt) { raidTxt = t; raidEl.textContent = t; raidEl.className = 'soon'; } return; }
+    if (exActive) { const t = `Expedition: ${exActive.dest.name} - home by ${fmtH(CFG.EXP_FORCE)}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
     } else if (isRaid(dayNo)) { text = '⚠ Blood Moon raid tonight!'; cls = 'blood'; }
     else { const left = nextRaidFrom(dayNo) - dayNo, tp = nightTypeOf(dayNo); text = `${left} day${left > 1 ? 's' : ''} until the next big raid` + (tp !== 'calm' ? ` · Tonight: ${NIGHT_INFO[tp][0]}` : ''); cls = left <= 1 ? 'soon' : ''; }
-    if (text !== raidTxt) { raidTxt = text; raidEl.textContent = text; raidEl.className = cls; }
+    if (text !== raidTxt) { raidTxt = text; raidTxtEl.textContent = text; raidEl.className = cls; }
   }
 
   // ---------- 경고 UI / 자원 리스폰 ----------
@@ -3765,7 +3796,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       cleanupZone(); exActive = null;
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
-      story.exps++; exEnding = false; updateExUi(); updateHud();
+      story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
       toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
       checkStory();
     });
@@ -3836,10 +3867,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
+  let fpsT = 0, fpsN = 0;
 
   function tick() {
     requestAnimationFrame(tick);
-    const dt = Math.min(clock.getDelta(), 0.05) * (eventOpen ? 0 : 1);       // 아침 이벤트 창이 열려 있으면 시간이 멈춘다
+    const rawDt = clock.getDelta(); fpsT += rawDt; fpsN++; if (fpsT >= 1) { window.__nfFps = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
+    const dt = Math.min(rawDt, 0.05) * (eventOpen || uiPause ? 0 : 1);       // 아침 이벤트 창이 열려 있으면 시간이 멈춘다
     const t = clock.elapsedTime;
 
     // 시간 / 조명
@@ -3971,10 +4004,103 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (off) camera.position.sub(off);
   }
   applyPlayerGear(); updateHud();
-  if (/[?&]debug/.test(location.search)) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);      // 처음 시작할 때 역할 선택
+
+  // ---------- 8단계: 자동 저장 / 설정 / 팁 ----------
+  const SAVE_KEY = 'nf_save_v1', DEBUG = /[?&]debug/.test(location.search);
+  let saveReady = false, uiPause = false;
+  const tut = { done: false, step: 0, hints: {} };
+  function saveGame() {                                   // 매일 아침과 원정 귀환 때: 마을 상태만 저장한다 (원정 중에는 저장하지 않는다)
+    if (!saveReady || dead || exActive || exEnding) return;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, ts: Date.now(), day: Math.floor(gameMin / 1440) + 1, snap: makeSnapshot(), tut })); } catch (e) {}
+  }
+  function readSave() {
+    try {
+      const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+      return d && d.v === 1 && d.snap && d.snap.res && Array.isArray(d.snap.npcs) ? d : null;
+    } catch (e) { return null; }
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  function loadSave(d) {
+    applySnapshot(d.snap);
+    Object.assign(tut, { done: false, step: 0, hints: {} }, d.tut || {});
+    checkpoints.length = 0; saveCheckpoint('Loaded save');
+    toast(`Continuing from Day ${d.day}`);
+  }
+
+  // 설정 (볼륨 · 글자 크기 · 그래픽)
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi' };
+  try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
+  function applySettings() {
+    document.documentElement.dataset.ts = settings.text;
+    const lo = settings.gfx === 'lo';
+    renderer.setPixelRatio(lo ? 1 : Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight, false);
+    renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
+    scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
+  }
+  function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
+  function openSettings() {
+    document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
+    document.getElementById('setSfx').value = Math.round(Snd.getVol('sfx') * 100);
+    document.getElementById('setText').value = settings.text; document.getElementById('setGfx').value = settings.gfx;
+    const d = readSave(); document.getElementById('setSaveInfo').textContent = d ? `Saved: Day ${d.day} (auto-saves every morning)` : 'No save yet - the game auto-saves every morning';
+    uiPause = true; setEl.style.display = 'flex';
+  }
+  function closeSettings() { uiPause = false; setEl.style.display = 'none'; }
+  document.getElementById('setBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Snd.init(); setEl.style.display === 'flex' ? closeSettings() : openSettings(); });
+  document.getElementById('setClose').addEventListener('click', closeSettings);
+  document.getElementById('setMusic').addEventListener('input', e => Snd.setVol('music', e.target.value / 100));
+  document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
+  document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
+  document.getElementById('setDel').addEventListener('click', e => {
+    if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to confirm'; return; }
+    clearSave(); e.target.dataset.sure = ''; e.target.textContent = 'Delete save'; document.getElementById('setSaveInfo').textContent = 'Save deleted'; toast('Save deleted');
+  });
+  applySettings();
+
+  // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
+  const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
+  const TUT = [
+    { text: 'Gather wood: stand by a tree, press G', done: () => res.wood >= 10 || obstacles.some(o => o.userData.type === 'fence') || blueprints.length > 0 },
+    { text: 'Tap Defense Line to plan a fence', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
+    { text: 'Tap Plan Town Buildings', done: () => townStage > 0 },
+    { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
+  ];
+  function tutorStep() {
+    if (!saveReady || dead || eventOpen || uiPause || exActive) return;
+    if (!tut.done && tut.step < TUT.length && TUT[tut.step].done()) { tut.step++; toast('Good work!'); }
+    if (tut.step >= TUT.length) tut.done = true;
+    const show = !tut.done && !tut.off;
+    tutEl.style.display = show ? 'flex' : 'none';
+    if (show) tutTxt.textContent = TUT[tut.step].text;
+    const hint = (k, msg) => { if (!tut.hints[k]) { tut.hints[k] = 1; toast(msg); } };
+    if (smiths().length) hint('smith', 'Blacksmith ready: walk up and press C to craft gear');
+    if (npcs.length && res.food < 1 && gameMin > 1440 * 1) hint('food', 'Citizens eat at dawn - build farms to keep food stocked');
+    if (story.intro) hint('journal', 'New: Journal (J) - head out on expeditions for rare loot');
+  }
+  setInterval(tutorStep, 700);
+  document.getElementById('tutorX').addEventListener('click', () => { tut.off = true; tutEl.style.display = 'none'; });
+
+  // 시작 화면: 저장이 있으면 이어하기 / 새 게임
+  function bootGame() {
+    const d = readSave();
+    if (d && (!DEBUG || /[?&]load/.test(location.search))) {
+      const p = document.getElementById('startPanel'); uiPause = true;
+      document.getElementById('startInfo').textContent = `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}`;
+      p.style.display = 'flex';
+      document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
+      document.getElementById('startNew').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openClassChoice, 700); saveCheckpoint('Day 1 start'); });
+      return;
+    }
+    saveReady = true;
+    if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);
+    saveCheckpoint('Day 1 start');
+  }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
-  saveCheckpoint('Day 1 start');
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 
