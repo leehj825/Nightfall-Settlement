@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -103,27 +103,27 @@
 <body>
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
-<div id="hud">🌲 나무: <b id="woodN">0</b><br>🪨 돌: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ 공격력: <b id="atkN">1</b><br>🍞 식량: <b id="foodN">0</b><br>🏕️ 시대: <b id="ageN">1시대 · 캠프</b><br>🏘️ 마을 인구: <b id="popN">3 / 3</b><br><small id="popJobs">(시민: 0명 | 근접: 2명 | 궁수: 1명)</small></div>
-<button id="designBtn"><span id="designLbl">1단계 방어선 설계</span><small id="designCost">나무 30개 소모</small></button>
-<button id="townBtn"><span id="townLbl">마을 인프라 설계</span><small id="townCost">나무 40개 소모</small></button>
-<button id="upgBtn">무기 강화<small>검 데미지 ↑ · 돌 10개</small></button>
+<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
+<button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
+<button id="upgBtn">Upgrade Weapon<small>Sword damage ↑ · 10 Stone</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="raidInfo"></div>
-<div id="techPanel"><div class="tcard"><h3 id="techTitle">시대 발전</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">시대 발전</button><button id="techClose">닫기</button></div></div></div>
-<div id="dbg"><button id="dbgSetup">Day7 준비</button><button id="dbgBoss">보스 소환</button></div>
-<div id="bossBar"><span id="bossName">베헤모스</span><div class="track"><div id="bossFill"></div></div></div>
-<div id="clear">1장 클리어 - 영지가 안정화되었습니다!</div>
+<div id="techPanel"><div class="tcard"><h3 id="techTitle">Age Progression</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">Advance Age</button><button id="techClose">Close</button></div></div></div>
+<div id="dbg"><button id="dbgSetup">Day 7 Prep</button><button id="dbgBoss">Spawn Boss</button></div>
+<div id="bossBar"><span id="bossName">Behemoth</span><div class="track"><div id="bossFill"></div></div></div>
+<div id="clear">Chapter 1 Clear - Your territory is stable!</div>
 <div id="warn"></div>
-<div id="gameover"><div class="card"><h2>당신의 마을은 무너졌습니다.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><div id="goRewind"></div><button id="restartBtn">처음부터 다시 시작</button></div></div>
+<div id="gameover"><div class="card"><h2>Your settlement has fallen.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><div id="goRewind"></div><button id="restartBtn">Restart from the beginning</button></div></div>
 <div id="toast"></div>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
-  <button class="btn" id="swapBtn"><span id="swapLbl">무기 교체</span><small id="swapCur">Q · 현재: 검</small></button>
-  <button class="btn" id="atkBtn">공격<small>Attack · F</small></button>
-  <button class="btn" id="buildBtn"><span id="buildLbl">성벽 강화</span><small>Upgrade · U</small></button>
-  <button class="btn" id="actBtn">채집<small>Action · G</small></button>
-  <button class="btn" id="ultBtn">궁극기<small id="ultCd">E</small></button>
-  <button class="btn" id="dashBtn">대시<small>Dash · Space</small></button>
+  <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
+  <button class="btn" id="atkBtn">Attack<small>F</small></button>
+  <button class="btn" id="buildBtn"><span id="buildLbl">Stone Wall</span><small>Upgrade · U</small></button>
+  <button class="btn" id="actBtn">Gather<small>G</small></button>
+  <button class="btn" id="ultBtn">Ultimate<small id="ultCd">E</small></button>
+  <button class="btn" id="dashBtn">Dash<small>Space</small></button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -170,24 +170,24 @@
     BP_COST: { wood: 5, stone: 5 },            // 동료가 청사진 1개를 지을 때 드는 자원 (나무 목책 / 돌 성벽)
     // 자동 방어선 도면: 모닥불(0,0) 기준 원형 배치. gaps = 비워 둘 슬롯 번호(출입구)
     DESIGN: [      // 사각형 방어선: half = 한 변의 절반(중앙 기준), perHalf = 중심에서 모서리까지 구간 수 (부재 간격 = half / perHalf)
-      { label: '1단계 방어선 설계', cost: { wood: 30 }, half: 15, perHalf: 5, kind: 'wood' },     // 30 x 30
-      { label: '2단계 석조 방어선 설계', cost: { stone: 50 }, half: 25, perHalf: 7, kind: 'stone', age: 3 },   // 50 x 50
+      { label: 'Defense Line: Tier 1', cost: { wood: 30 }, half: 15, perHalf: 5, kind: 'wood' },     // 30 x 30
+      { label: 'Defense Line: Tier 2 (Stone)', cost: { stone: 50 }, half: 25, perHalf: 7, kind: 'stone', age: 3 },   // 50 x 50
     ],
     // ----- 시대 발전 (테크 트리): 모닥불/마을 회관을 클릭해서 업그레이드 -----
     AGES: [
-      { name: '캠프', hall: '모닥불', unlock: '나무 목책 · 텐트' },
-      { name: '목조 마을', hall: '나무 마을 회관', cost: { wood: 50 }, unlock: '병영 · 사격장 · 농장 · 벌목장 · 채석장' },
-      { name: '석조 요새', hall: '석조 성채', cost: { wood: 100, stone: 100 }, unlock: '돌 성벽 · 방어 타워' },
+      { name: 'Camp', hall: 'Campfire', unlock: 'Wooden fences · Tents' },
+      { name: 'Wooden Town', hall: 'Wooden Town Hall', cost: { wood: 50 }, unlock: 'Barracks · Archery Range · Farm · Lumber Camp · Quarry' },
+      { name: 'Stone Fortress', hall: 'Stone Keep', cost: { wood: 100, stone: 100 }, unlock: 'Stone walls · Defense towers' },
     ],
     FIRE_HP_BY_AGE: [150, 260, 420], HALL_RADIUS: [0.8, 2.6, 3.4],      // 시대별 거점 체력 / 충돌 반지름
     UPGRADE_FENCE_AGE: 3,                                              // 목책 → 돌 성벽 강화는 3시대부터
     // 마을 인프라 설계: 시대가 열릴 때마다 다음 묶음을 설계할 수 있다. lots는 사각 방어선 안쪽 격자 배치 (auto: 벌목장/채석장은 숲/바위 근처에 자동 선정)
     TOWN_GROUPS: [
-      { age: 1, label: '텐트 마을 설계', cost: { wood: 40 }, lots: [{ kind: 'house', x: -9, z: -9 }, { kind: 'house', x: -4, z: -9 }, { kind: 'house', x: 4, z: -9 }] },
-      { age: 2, label: '2시대 인프라 설계', cost: { wood: 60 }, lots: [
+      { age: 1, label: 'Plan Tent Village', cost: { wood: 40 }, lots: [{ kind: 'house', x: -9, z: -9 }, { kind: 'house', x: -4, z: -9 }, { kind: 'house', x: 4, z: -9 }] },
+      { age: 2, label: 'Plan Age 2 Buildings', cost: { wood: 60 }, lots: [
         { kind: 'barracks', x: -7.5, z: 9 }, { kind: 'range', x: 6.5, z: 9 }, { kind: 'farm', x: 10.5, z: -8 }, { kind: 'farm', x: 11, z: 5 },
         { kind: 'lumber', auto: true }, { kind: 'quarry', auto: true }] },
-      { age: 3, label: '방어 타워 설계', cost: { wood: 30, stone: 60 }, lots: [
+      { age: 3, label: 'Plan Defense Towers', cost: { wood: 30, stone: 60 }, lots: [
         { kind: 'tower', x: -12.3, z: -12.3 }, { kind: 'tower', x: 12.3, z: -12.3 }, { kind: 'tower', x: -12.3, z: 12.3 }, { kind: 'tower', x: 12.3, z: 12.3 }] },
     ],
     BUILDING: {
@@ -438,7 +438,7 @@
   }
   const atkEl = document.getElementById('atkN');
   const foodEl = document.getElementById('foodN');
-  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; foodEl.textContent = Math.floor(res.food); atkEl.textContent = `검 ${swordDmg()} / 활 ${CFG.BOW_DMG}`; }
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; foodEl.textContent = Math.floor(res.food); atkEl.textContent = `Sword ${swordDmg()} / Bow ${CFG.BOW_DMG}`; }
 
   const GATHER_RANGE = 2.6;
   // 플레이어 채집: 버튼을 누르면 CFG.PLAYER_GATHER_TIME초 동안 들썩이며 진행 바가 차고, 이동하면 취소된다 (NPC와 같은 템포)
@@ -451,7 +451,7 @@
       const d = Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius;
       if (d < bestD) { bestD = d; best = o; }
     }
-    if (!best) return toast('가까이에 채집할 대상이 없습니다');
+    if (!best) return toast('Nothing to gather nearby');
     gathering = { target: best, t: 0 };
   }
 
@@ -642,33 +642,33 @@
     designBtnEl.classList.remove('done');
     if (!cfg) {
       designBtnEl.classList.add('done'); designBtnEl.classList.remove('stone');
-      document.getElementById('designLbl').textContent = '방어선 설계 완료';
-      document.getElementById('designCost').textContent = '모든 단계 설계됨';
+      document.getElementById('designLbl').textContent = 'Defense Lines Complete';
+      document.getElementById('designCost').textContent = 'All tiers planned';
       return;
     }
     const [type, n] = Object.entries(cfg.cost)[0];
     document.getElementById('designLbl').textContent = cfg.label;
-    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `${cfg.age}시대 필요 · ${type === 'wood' ? '나무' : '돌'} ${n}개` : `${type === 'wood' ? '나무' : '돌'} ${n}개 소모`;
+    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Age ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
     designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
   }
   function designDefense() {
     if (dead) return;
     const cfg = CFG.DESIGN[designTier];
     if (!cfg) return;
-    if (cfg.age && age < cfg.age) return toast(`${cfg.age}시대(${CFG.AGES[cfg.age - 1].name})부터 설계할 수 있습니다`);
+    if (cfg.age && age < cfg.age) return toast(`Available from Age ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
     const [type, n] = Object.entries(cfg.cost)[0];
-    if (res[type] < n) return toast(`${type === 'wood' ? '나무' : '돌'}가 ${n}개 필요합니다`);
+    if (res[type] < n) return toast(`Need ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`);
     res[type] -= n;
     const placed = designSquare(cfg);
     designTier++;
     updateHud(); updateDesignBtn();
-    toast(`${cfg.label} 완료! 청사진 ${placed}개 - 동료가 건설합니다`);
+    toast(`${cfg.label} planned! ${placed} blueprints - your companions will build them`);
   }
   // ----- 마을 인프라: 시대별 묶음 설계 -----
   let townStage = 0;                          // 지금까지 설계한 묶음 수
   const canPay = (c) => Object.entries(c).every(([k, v]) => res[k] >= v);
   const payCost = (c) => { for (const [k, v] of Object.entries(c)) res[k] -= v; };
-  const costText = (c) => Object.entries(c).map(([k, v]) => `${k === 'wood' ? '나무' : k === 'stone' ? '돌' : '식량'} ${v}개`).join(' + ');
+  const costText = (c) => Object.entries(c).map(([k, v]) => `${v} ${k === 'wood' ? 'Wood' : k === 'stone' ? 'Stone' : 'Food'}`).join(' + ');
   // 숲/바위가 가장 많이 모여 있는 빈 자리를 찾아 벌목장/채석장 위치로 삼는다
   function findClusterSpot(kind) {
     const type = kind === 'lumber' ? 'wood' : 'stone';
@@ -687,8 +687,8 @@
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
-    if (age < g.age) return toast(`${g.age}시대(${CFG.AGES[g.age - 1].name})에 설계할 수 있습니다`);
-    if (!canPay(g.cost)) return toast(`${costText(g.cost)}가 필요합니다`);
+    if (age < g.age) return toast(`Available in Age ${g.age} (${CFG.AGES[g.age - 1].name})`);
+    if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     payCost(g.cost);
     townStage++;
     const names = [];
@@ -699,40 +699,40 @@
       names.push(BUILDING_NAME[lot.kind]);
     }
     updateHud(); updateTownBtn();
-    toast(`${g.label} 완료! ${names.join(' · ')} - 동료가 건설합니다`);
+    toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { house: '거주지', barracks: '병영', range: '사격장', farm: '농장', lumber: '벌목장', quarry: '채석장', tower: '방어 타워' };
+  const BUILDING_NAME = { house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower' };
   function updateTownBtn() {
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
-    document.getElementById('townLbl').textContent = g ? g.label : '마을 인프라 설계 완료';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `${g.age}시대 필요` : `${costText(g.cost)} 소모`) : '모든 건물을 설계했습니다';
+    document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
+    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
-    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`돌 성벽은 ${CFG.UPGRADE_FENCE_AGE}시대(${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})부터 가능합니다`);
+    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Age ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
     const f = nearestFence('wood');
-    if (!f) return toast(nearestFence() ? '이미 돌 성벽입니다' : '가까이에 업그레이드할 나무 목책이 없습니다');
-    if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`돌이 ${CFG.FENCE_UPGRADE_STONE}개 필요합니다`);
+    if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
+    if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);
     res.stone -= CFG.FENCE_UPGRADE_STONE;
     f.material = wallMat;                         // 짙은 회색 돌 성벽
     f.scale.y = 1.25; f.position.y = 0.55 * 1.25;
     Object.assign(f.userData, { level: 'stone', hp: CFG.WALL_HP, maxHp: CFG.WALL_HP });
     updateHud();
-    toast('돌 성벽으로 업그레이드!');
+    toast('Upgraded to a stone wall!');
   }
   // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설
 
   function upgradeWeapon() {
     if (dead) return;
-    if (weaponUp) return toast('이미 무기가 강화되었습니다');
-    if (res.stone < CFG.WEAPON_UPGRADE_STONE) return toast(`돌이 ${CFG.WEAPON_UPGRADE_STONE}개 필요합니다`);
+    if (weaponUp) return toast('Weapon already upgraded');
+    if (res.stone < CFG.WEAPON_UPGRADE_STONE) return toast(`Need ${CFG.WEAPON_UPGRADE_STONE} Stone`);
     res.stone -= CFG.WEAPON_UPGRADE_STONE;
     weaponUp = true;
     updateHud();
     const btn = document.getElementById('upgBtn');
-    btn.classList.add('done'); btn.firstChild.textContent = '무기 강화 완료'; btn.lastChild.textContent = `검 공격력 ${swordDmg()}`;
-    toast('검 강화 완료! (활 데미지는 그대로)');
+    btn.classList.add('done'); btn.firstChild.textContent = 'Weapon Upgraded'; btn.lastChild.textContent = `Sword attack ${swordDmg()}`;
+    toast('Sword upgraded! (Bow damage unchanged)');
   }
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
@@ -820,7 +820,7 @@
   const fireMax = () => CFG.FIRE_HP_BY_AGE[age - 1];
   const hallGroup = new THREE.Group();
   campfire.add(hallGroup);
-  const hallHint = textSprite('시대 발전: 클릭 / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
+  const hallHint = textSprite('Upgrade Age: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
   campfire.add(hallHint);
   const hallWood = mat(0x8a5a34), hallRoof = mat(0x6b3a22), hallDark = mat(0x2e2218), keepStone = mat(0x8b8e95), keepTower = mat(0x7a7e87), keepTop = mat(0x5c606a);
   function buildHall() {
@@ -852,7 +852,7 @@
   buildHall();
 
   const ageEl = document.getElementById('ageN');
-  const ageName = (a) => `${a}시대 · ${CFG.AGES[a - 1].name}`;
+  const ageName = (a) => `Age ${a} · ${CFG.AGES[a - 1].name}`;
   function updateAgeUi() { ageEl.textContent = ageName(age); }
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
@@ -862,28 +862,28 @@
   const techEl = document.getElementById('techPanel'), techUpBtn = document.getElementById('techUp');
   function refreshTech() {
     document.getElementById('techTitle').textContent = `${CFG.AGES[age - 1].hall} · ${ageName(age)}`;
-    document.getElementById('techCur').textContent = `해금된 건설: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}`;
+    document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}`;
     const nx = CFG.AGES[age];
-    if (!nx) { document.getElementById('techNext').textContent = '최고 시대입니다. 마을 회관이 웅장한 성채로 완성되었습니다.'; techUpBtn.disabled = true; techUpBtn.textContent = '최고 시대'; return; }
-    document.getElementById('techNext').textContent = `다음: ${ageName(age + 1)} (${nx.hall}) - 비용 ${costText(nx.cost)} (보유: 나무 ${res.wood} · 돌 ${res.stone})\n해금: ${nx.unlock}`;
-    techUpBtn.disabled = !canPay(nx.cost); techUpBtn.textContent = `${age + 1}시대로 발전`;
+    if (!nx) { document.getElementById('techNext').textContent = 'Final age reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Age'; return; }
+    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone)\nUnlocks: ${nx.unlock}`;
+    techUpBtn.disabled = !canPay(nx.cost); techUpBtn.textContent = `Advance to Age ${age + 1}`;
   }
   function openTech() { if (dead) return; refreshTech(); techEl.style.display = 'flex'; }
   function closeTech() { techEl.style.display = 'none'; }
   function upgradeAge() {
     const nx = CFG.AGES[age];
     if (!nx) return;
-    if (!canPay(nx.cost)) return toast(`${costText(nx.cost)}가 필요합니다`);
+    if (!canPay(nx.cost)) return toast(`Need ${costText(nx.cost)}`);
     payCost(nx.cost);
     setAge(age + 1);
     burst({ x: 0, z: 0 }, 40); shake = Math.max(shake, 0.6);
     updateHud(); refreshTech();
-    toast(`시대 발전! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
+    toast(`Age advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
   }
   document.getElementById('techUp').addEventListener('click', upgradeAge);
   document.getElementById('techClose').addEventListener('click', closeTech);
   addEventListener('keydown', e => {
-    if (e.code === 'KeyT' && !e.repeat) { if (techEl.style.display === 'flex') closeTech(); else if (Math.hypot(player.position.x, player.position.z) < 14) openTech(); else toast('마을 회관(모닥불) 가까이에서 T를 누르세요'); }
+    if (e.code === 'KeyT' && !e.repeat) { if (techEl.style.display === 'flex') closeTech(); else if (Math.hypot(player.position.x, player.position.z) < 14) openTech(); else toast('Press T near the town hall (campfire)'); }
     if (e.code === 'Escape') closeTech();
   });
   // 모닥불/회관 클릭(탭)으로 열기: 드래그가 아닌 짧은 클릭만
@@ -914,7 +914,7 @@
   function gameOver(sub) {
     if (dead) return;
     dead = true;
-    document.getElementById('goDays').textContent = `생존 일수: ${Math.floor(gameMin / 1440) + 1}일`;
+    document.getElementById('goDays').textContent = `Days survived: ${Math.floor(gameMin / 1440) + 1}`;
     document.getElementById('goCause').textContent = sub;
     document.getElementById('gameover').style.display = 'flex';
     renderRewindButtons();
@@ -925,7 +925,7 @@
     hp = Math.max(0, hp - n);
     sinceHurt = 0;
     hpEl.textContent = Math.ceil(hp);
-    if (hp <= 0) gameOver('쓰러졌습니다');
+    if (hp <= 0) gameOver('You were slain');
   }
   function healPlayer(n) { hp = Math.min(CFG.PLAYER_MAX_HP, hp + n); hpEl.textContent = Math.ceil(hp); }
   // 회복: 모닥불 곁에서 일정 시간 맞지 않으면 초당 회복, 모닥불은 낮에 서서히 회복
@@ -939,7 +939,7 @@
     fireAlive = false;
     flame.visible = false;
     fireLight.intensity = 0;
-    gameOver('마을이 파괴되었습니다');
+    gameOver('The settlement was destroyed');
   }
 
   // ---------- 이펙트: 타격 궤적 / 파편 ----------
@@ -1037,7 +1037,7 @@
     if (boss) {                                       // 보스 머리 위 표시: 어그로 '!' / 기절 텍스트와 빙글 도는 별
       const bang = textSprite('!', '#ff2a1a', 0.5, 0.5, 'bold 96px sans-serif');
       bang.position.set(0, 1.25, 0); bang.visible = false; m.add(bang);
-      const stunTxt = textSprite('기절함! ★', '#ffe14a', 1.1, 0.28, 'bold 48px sans-serif');
+      const stunTxt = textSprite('STUNNED! ★', '#ffe14a', 1.1, 0.28, 'bold 48px sans-serif');
       stunTxt.position.set(0, 1.4, 0); stunTxt.visible = false; m.add(stunTxt);
       const stars = new THREE.Group();
       for (let i = 0; i < 3; i++) {
@@ -1074,7 +1074,7 @@
     const u = e.userData;
     if (u.stunT > 0) {                                  // 기절한 보스: 모든 피해 2배 (크리티컬)
       dmg *= CFG.STUN_DMG_MULT;
-      if (u.critT <= 0) { u.critT = 0.45; floatText('크리티컬 x2!', e.position.x, e.position.y + 5.2, e.position.z); }
+      if (u.critT <= 0) { u.critT = 0.45; floatText('CRITICAL x2!', e.position.x, e.position.y + 5.2, e.position.z); }
     }
     if (byPlayer && u.boss) u.lureT = CFG.BOSS_LURE_TIME;      // 플레이어가 때리면 10초간 플레이어만 쫓는다
     u.hp -= dmg;
@@ -1126,7 +1126,7 @@
     const nh = nowHour < 5 ? nowHour + 24 : nowHour;
     if (night && !dead && wave.bossLeft > 0 && nh >= CFG.BOSS_SPAWN_HOUR) {      // 보스는 밤이 시작되고 잠시 뒤 등장 (준비 시간)
       spawnEnemy('boss'); wave.bossLeft = 0;
-      showWarning('베헤모스가 나타났습니다!'); shake = Math.max(shake, 0.8);
+      showWarning('The Behemoth has appeared!'); shake = Math.max(shake, 0.8);
     }
     if (night && !dead && (wave.remaining > 0 || wave.siegeLeft > 0)) {
       spawnCd -= dt;
@@ -1251,8 +1251,8 @@
   const NPC_BASE_Y = H / 2 + R;
   const ROLE = {
     melee: { color: 0x3a6fe0, hp: 50, name: '' },
-    archer: { color: 0x3fae4a, hp: 50, name: '궁수 ' },
-    citizen: { color: 0xf2c230, hp: CFG.CITIZEN_HP, name: '시민 ' },
+    archer: { color: 0x3fae4a, hp: 50, name: 'Archer ' },
+    citizen: { color: 0xf2c230, hp: CFG.CITIZEN_HP, name: 'Citizen ' },
   };
   const npcs = [];
   const homeSlot = (k) => { const a = Math.PI / 4 + k * 0.85, r = NPC_HOME_RADIUS + (k % 3) * 1.0; return { x: Math.cos(a) * r, z: Math.sin(a) * r }; };
@@ -1317,7 +1317,7 @@
     scene.remove(n);
     npcs.splice(npcs.indexOf(n), 1);
     burst(n.position);
-    toast('주민이 쓰러졌습니다');
+    toast('A villager has fallen');
   }
   function damageNpc(target, n) {
     npc = target;
@@ -1363,7 +1363,7 @@
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
-    const a = `${npcs.length} / ${maxPop()}`, b = `(시민: ${countRole('citizen')}명 | 근접: ${countRole('melee')}명 | 궁수: ${countRole('archer')}명)`;
+    const a = `${npcs.length} / ${maxPop()}`, b = `(Citizens: ${countRole('citizen')} | Melee: ${countRole('melee')} | Archers: ${countRole('archer')})`;
     if (popEl.textContent !== a) popEl.textContent = a;
     if (popJobsEl.textContent !== b) popJobsEl.textContent = b;
   }
@@ -1386,7 +1386,7 @@
       c.position.set(door.x, 0, door.z);
       fresh.push(c);
     }
-    if (fresh.length) toast(`새 시민 ${fresh.length}명이 마을에 도착했습니다`);
+    if (fresh.length) toast(`${fresh.length} new citizen${fresh.length > 1 ? 's' : ''} arrived in the village`);
     const pool = fresh.concat(npcs.filter(n => n.role === 'citizen' && !fresh.includes(n) && !n.promote));
     const barracks = builtBuildings('barracks')[0], range = builtBuildings('range')[0];
     if (barracks && pool.length) pool.shift().promote = { to: 'melee', target: barracks };
@@ -1399,7 +1399,7 @@
     const door = doorOf(b);
     if (npcMove(door.x, door.z, 3.5, dt) < 1.6) {
       setRole(npc, pr.to);
-      toast(pr.to === 'melee' ? '시민이 근접 병사로 전직했습니다!' : '시민이 궁수로 전직했습니다!');
+      toast(pr.to === 'melee' ? 'A citizen became a melee soldier!' : 'A citizen became an archer!');
       return false;
     }
     return true;
@@ -1423,19 +1423,19 @@
     const site = npc.work, k = site.userData.kind;
     npc.bobAmt = 0;
     if (k === 'farm') {                                         // 농장: 밭에 서서 작물을 키우고 주기마다 식량 수확
-      if (Math.hypot(site.position.x - npc.position.x, site.position.z - npc.position.z) > 1.8) { npcMove(site.position.x, site.position.z, 3.5, dt); npc.stateLabel = '농장으로 이동'; return true; }
-      npc.farmT += dt; npc.bobAmt = Math.abs(Math.sin(npc.farmT * 6)) * 0.12; npc.stateLabel = '농사 중';
+      if (Math.hypot(site.position.x - npc.position.x, site.position.z - npc.position.z) > 1.8) { npcMove(site.position.x, site.position.z, 3.5, dt); npc.stateLabel = 'To farm'; return true; }
+      npc.farmT += dt; npc.bobAmt = Math.abs(Math.sin(npc.farmT * 6)) * 0.12; npc.stateLabel = 'Farming';
       site.userData.growth = 0.3 + 0.7 * Math.min(1, npc.farmT / CFG.FARM_CYCLE);
       for (const c of site.userData.crops) c.scale.y = site.userData.growth;
       if (npc.farmT >= CFG.FARM_CYCLE) {
         npc.farmT = 0; res.food += CFG.FARM_YIELD; updateHud();
-        floatText(`식량 +${CFG.FARM_YIELD}`, site.position.x, 2.2, site.position.z);
+        floatText(`Food +${CFG.FARM_YIELD}`, site.position.x, 2.2, site.position.z);
       }
       return true;
     }
     const type = k === 'lumber' ? 'wood' : 'stone', door = doorOf(site);          // 벌목장/채석장: 주변 자원을 캐서 건물로 가져와 쌓는다
     if (npc.wstate === 'carry') {
-      npc.stateLabel = '운반 중';
+      npc.stateLabel = 'Hauling';
       if (npcMove(door.x, door.z, 3.8, dt) < 2.0) { res[type] += npc.carry; npc.carry = 0; npc.wstate = 'seek'; npc.wtarget = null; updateHud(); }
       return true;
     }
@@ -1449,9 +1449,9 @@
       }
       if (npc.wtarget) { npc.wtarget.userData.owner = npc; npc.workT = 0; }
     }
-    if (!npc.wtarget) { npc.stateLabel = '대기 중'; npcMove(door.x, door.z, 3.5, dt); return true; }
+    if (!npc.wtarget) { npc.stateLabel = 'Idle'; npcMove(door.x, door.z, 3.5, dt); return true; }
     const o = npc.wtarget, stop = o.userData.radius + PLAYER_R + 0.3;
-    npc.stateLabel = k === 'lumber' ? '벌목 중' : '채석 중';
+    npc.stateLabel = k === 'lumber' ? 'Chopping' : 'Quarrying';
     if (Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) > stop) { npcMove(o.position.x, o.position.z, 3.8, dt); npc.workT = 0; return true; }
     npc.workT += dt; npc.bobAmt = Math.abs(Math.sin(npc.workT * 14)) * 0.15;
     if (npc.workT >= CFG.GATHER_TIME) {
@@ -1468,9 +1468,9 @@
       if (d < bd) { bd = d; spot = doorOf(h); }
     }
     if (!spot) { const l = Math.hypot(npc.position.x, npc.position.z) || 1; spot = { x: npc.position.x / l * 1.6, z: npc.position.z / l * 1.6 }; }
-    if (npcMove(spot.x, spot.z, 5, dt) < 0.7) { npc.hidden = true; return '숨는 중'; }
+    if (npcMove(spot.x, spot.z, 5, dt) < 0.7) { npc.hidden = true; return 'Hiding'; }
     npc.hidden = false;
-    return '도망 중';
+    return 'Fleeing';
   }
 
   // ---------- 출입구 경유지 길찾기 (사각형 성벽) ----------
@@ -1679,24 +1679,24 @@
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
       if (d < bd) { bd = d; foe = e; }
     }
-    if (!foe) return '대기 중';
+    if (!foe) return 'Idle';
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
     npc.face = ang; npc.rotation.y = ang;
     if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; fireArrow(npc.position.x, npc.position.z, ang); }
-    return '전투 중';
+    return 'Fighting';
   }
   function updateNpc(dt, hour, t) {
     if (dead) return;
     const isDay = hour >= 6 && hour < 18;
     if (npc.down) {
-      if (isDay) reviveNpc(); else { setLabel('쓰러짐'); return; }
+      if (isDay) reviveNpc(); else { setLabel('Down'); return; }
     }
     npc.atkCd -= dt;
     npc.graceT -= dt;
-    let state = '대기 중';
+    let state = 'Idle';
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
-    let busy = isDay && npc.promote ? (state = '훈련 중', promoteStep(dt)) : false;
+    let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
 
     if (busy) { /* 전직 훈련 이동 중 */ } else if (isDay) {
@@ -1711,7 +1711,7 @@
       }
       if (task) {
         const o = task.target;
-        state = { repair: '수리 중', build: '건설 중', gather: '채집 중' }[task.kind];
+        state = { repair: 'Repairing', build: 'Building', gather: 'Gathering' }[task.kind];
         const stop = task.kind === 'build' ? (o.userData.stand ?? 1.2) : o.userData.radius + PLAYER_R + (task.kind === 'repair' ? 0.4 : 0.3);
         const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
         if (d > stop) { npcMove(o.position.x, o.position.z, 3.5, dt); npc.workT = 0; }
@@ -1760,7 +1760,7 @@
       if (npc.returning || !foe) {
         if (npcMove(npc.home.x, npc.home.z, 5, dt) < 0.8) npc.returning = false;
       } else {
-        state = '전투 중';
+        state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < 1.7 && npc.atkCd <= 0) {
           npc.atkCd = 0.8;
@@ -1793,7 +1793,7 @@
     const hits = sectorHit(player.position.x, player.position.z, facing, true);
     if (hits >= 2) {
       shake = Math.min(0.7, 0.3 + hits * 0.06);
-      floatText(`광역 타격 x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+      floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
     }
   }
 
@@ -1802,8 +1802,8 @@
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
-    document.getElementById('swapCur').textContent = `Q · 현재: ${weaponMode === 'bow' ? '활' : '검'}`;
-    toast(weaponMode === 'bow' ? '활을 장착했습니다 (원거리)' : '검을 장착했습니다 (근접)');
+    document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
@@ -1865,7 +1865,7 @@
         if (px * px + pz * pz < (e.userData.r + 0.15) ** 2 && t < bestT) { bestT = t; hit = e; }
       }
       if (hit) {
-        if (hit.userData.shield) floatText('면역 (Immune)', hit.position.x, hit.position.y + 1.6, hit.position.z);   // 방패병: 화살 면역
+        if (hit.userData.shield) floatText('Immune', hit.position.x, hit.position.y + 1.6, hit.position.z);   // 방패병: 화살 면역
         else hitEnemy(hit, u.dmg ?? CFG.BOW_DMG, x0, z0, false, null, u.byPlayer);    // 활 데미지는 고정(무기 강화 영향 없음)
         scene.remove(a); arrows.splice(arrows.indexOf(a), 1);
         continue;
@@ -1933,7 +1933,7 @@
     }
     if (fireAlive && Math.hypot(x, z) < CFG.ROCK_SPLASH + FIRE_R) {       // 모닥불 직격
       fireHp -= CFG.ROCK_DAMAGE;
-      toast('모닥불이 공성 바위에 맞았습니다!');
+      toast('The campfire was hit by a siege boulder!');
       if (fireHp <= 0) destroyFire();
     }
   }
@@ -1972,7 +1972,7 @@
     const g = gathering, o = g.target;
     const gone = !obstacles.includes(o) || Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius > GATHER_RANGE + 1;
     if (dead || moving || gone) {
-      if (moving && !gone) toast('채집이 취소되었습니다');
+      if (moving && !gone) toast('Gathering cancelled');
       gathering = null; gBg.visible = gFill.visible = false; return;
     }
     g.t += dt;
@@ -2014,7 +2014,7 @@
         if (wasCasting && enemies.includes(e)) stunBoss(e);          // 캐스팅 중 궁극기 적중 → 지진 취소 + 기절
       }
     }
-    if (n) floatText(`회전 강타 x${n}!`, player.position.x, 2.8, player.position.z);
+    if (n) floatText(`WHIRLWIND x${n}!`, player.position.x, 2.8, player.position.z);
   }
 
   // ---------- 베헤모스: 예고 링 / 기절 ----------
@@ -2039,7 +2039,7 @@
     e.position.y = u.baseY;
     if (e.material.emissive) { e.material.emissive.setHex(0x000000); e.material.emissiveIntensity = 0; }
     e.material.color.setHex(0x8a8a92);                                           // 기절: 회색
-    floatText('카운터! 기절!', e.position.x, e.position.y + 5.8, e.position.z);
+    floatText('COUNTER! STUNNED!', e.position.x, e.position.y + 5.8, e.position.z);
     shake = Math.max(shake, 0.6);
   }
   function bossRecover(e) { resetBossLook(e); e.userData.slamCd = 2; }
@@ -2108,7 +2108,7 @@
     // 강제로 다음 아침(06:00)으로
     const dayIdx = Math.floor(gameMin / 1440), hourNow = (gameMin / 60) % 24;
     gameMin = (hourNow >= 6 ? dayIdx + 1 : dayIdx) * 1440 + 360;
-    toast('무한 생존 모드 시작 - Day 8부터 적이 점점 강해집니다');
+    toast('Endless Mode begins - enemies grow stronger from Day 8');
   }
 
   const dashBtnEl = document.getElementById('dashBtn');
@@ -2204,24 +2204,24 @@
     document.getElementById('gameover').style.display = 'none';
     clearEl.classList.remove('show'); warnEl.classList.remove('show');
     updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
-    document.getElementById('swapCur').textContent = `Q · 현재: ${weaponMode === 'bow' ? '활' : '검'}`;
+    document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     updateTownBtn();
     const ub = document.getElementById('upgBtn');
     ub.classList.toggle('done', weaponUp);
-    ub.firstChild.textContent = weaponUp ? '무기 강화 완료' : '무기 강화';
-    ub.lastChild.textContent = weaponUp ? `검 공격력 ${swordDmg()}` : '검 데미지 ↑ · 돌 10개';
+    ub.firstChild.textContent = weaponUp ? 'Weapon Upgraded' : 'Upgrade Weapon';
+    ub.lastChild.textContent = weaponUp ? `Sword attack ${swordDmg()}` : 'Sword damage ↑ · 10 Stone';
   }
   function rewindTo(cp) {
     applySnapshot(cp.snap);
     for (let i = checkpoints.length - 1; i >= 0; i--) if (checkpoints[i].day > cp.day) checkpoints.splice(i, 1);     // 되돌린 시점보다 미래의 저장은 폐기
-    toast(`${cp.label}으로 돌아왔습니다`);
+    toast(`Rewound to ${cp.label}`);
   }
   function renderRewindButtons() {
     const box = document.getElementById('goRewind');
     box.innerHTML = '';
     [...checkpoints].reverse().forEach((cp, i) => {
       const b = document.createElement('button');
-      b.textContent = i === 0 ? `${cp.label}으로 돌아가기 (가장 최근 아침)` : `${cp.label}으로 돌아가기`;
+      b.textContent = i === 0 ? `Rewind to ${cp.label} (most recent morning)` : `Rewind to ${cp.label}`;
       b.addEventListener('click', () => rewindTo(cp));
       box.appendChild(b);
     });
@@ -2248,7 +2248,7 @@
     gameMin = (CFG.BOSS_DAY - 1) * 1440 + 17 * 60 + 30;       // Day 7 17:30
     lastWarnDay = CFG.BOSS_DAY - 1; lastRespawnDay = CFG.BOSS_DAY;
     updateHud();
-    toast('DEBUG: Day 7 17:30 - 방어선·마을·병력 준비 완료');
+    toast('DEBUG: Day 7 17:30 - defenses, town, and troops ready');
   }
   function debugBoss() { debugSetup(); gameMin = (CFG.BOSS_DAY - 1) * 1440 + 21 * 60 + 40; }   // Day 7 21:40 → 곧 보스 등장
   addEventListener('keydown', e => { if (e.shiftKey && e.code === 'KeyB') debugSetup(); if (e.shiftKey && e.code === 'KeyN') debugBoss(); });
@@ -2279,7 +2279,7 @@
   function eat() {
     if (dead || res.food < CFG.FOOD_MEAL || hp >= CFG.PLAYER_MAX_HP || eatCd > 0) return;
     res.food -= CFG.FOOD_MEAL; healPlayer(CFG.FOOD_HEAL); eatCd = 6; updateHud();
-    floatText(`식사 +${CFG.FOOD_HEAL}`, player.position.x, 2.6, player.position.z);
+    floatText(`Meal +${CFG.FOOD_HEAL}`, player.position.x, 2.6, player.position.z);
   }
   function updateFood(dt) {
     eatCd -= dt;
@@ -2294,10 +2294,10 @@
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
     if (night) {
-      if (isRaid(nd)) { text = '🌑 붉은 달 습격 진행 중!'; cls = 'blood'; }
-      else { const left = nextRaidFrom(nd + 1) - nd; text = `조용한 밤 · 다음 대규모 습격까지 ${left}일 남음`; cls = left <= 1 ? 'soon' : ''; }
-    } else if (isRaid(dayNo)) { text = '⚠ 오늘 밤 붉은 달 습격!'; cls = 'blood'; }
-    else { const left = nextRaidFrom(dayNo) - dayNo; text = `다음 대규모 습격까지 ${left}일 남음`; cls = left <= 1 ? 'soon' : ''; }
+      if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
+      else { const left = nextRaidFrom(nd + 1) - nd; text = `Quiet night · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
+    } else if (isRaid(dayNo)) { text = '⚠ Blood Moon raid tonight!'; cls = 'blood'; }
+    else { const left = nextRaidFrom(dayNo) - dayNo; text = `${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
     if (text !== raidTxt) { raidTxt = text; raidEl.textContent = text; raidEl.className = cls; }
   }
 
@@ -2323,7 +2323,7 @@
     scatter(makeRock, Math.min(maxPerType, Math.max(0, CFG.STONE_COUNT - countType('stone'))), free);
     return obstacles.length - before;
   }
-  function respawnResources() { if (topUpResources() > 0) toast('아침이 밝았습니다. 자원이 다시 자라났습니다'); }
+  function respawnResources() { if (topUpResources() > 0) toast('Morning has come. Resources have regrown'); }
   let replenishCd = 0;
   function replenishTick(dt) {                 // 하루 한 번이 아니라 수시로 보충해서 자원이 바닥나지 않게 한다
     replenishCd -= dt;
@@ -2377,19 +2377,19 @@
     applyLighting(nf, isRaid(nightDay) ? nf : 0);                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
     torch.intensity = nf * 2.4;   // 횃불: 밤에 켜지고 낮에 꺼짐
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
-    clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ 무한 모드' : ''}`;
+    clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ Endless' : ''}`;
 
     const dayNo = Math.floor(gameMin / 1440) + 1;
     nowHour = hour;
     updateRaidUi(hour, dayNo);
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
-      if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('경고: 거대한 위협이 접근합니다!'); bossShakeT = 3; }
-      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - 붉은 달 습격! 방어를 준비하십시오!` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (내일 밤은 더 큰 위협)' : ''));
-      else showWarning(`Night ${dayNo} - 조용한 밤입니다. 짐승이 어슬렁거립니다`);
+      if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('WARNING: A massive threat approaches!'); bossShakeT = 3; }
+      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid! Prepare your defenses!` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
+      else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('아침이 밝아 체력이 완전히 회복되었습니다'); } saveCheckpoint(`Day ${dayNo} 아침`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     updateNpcs(dt, hour, t);
     updateFx(dt);
@@ -2478,7 +2478,7 @@
     if (off) camera.position.sub(off);
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
-  saveCheckpoint('Day 1 시작');
+  saveCheckpoint('Day 1 start');
   tick();
 })();
 </script>
