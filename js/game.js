@@ -2902,7 +2902,10 @@
   function updateRaidUi(hour, dayNo) {
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
-    if (exActive) { const t = `Expedition: ${exActive.dest.name} - home by ${fmtH(CFG.EXP_FORCE)}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
+    if (exActive) {
+      const left = Math.max(0, Math.ceil((CFG.EXP_FORCE * 60 - (gameMin % 1440)) / (MIN_PER_SEC * CFG.EXP_TIME_MULT))), mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
+      if (left <= 30 && !exActive.warned) { exActive.warned = true; toast('Dusk is near - about 30 seconds left. Grab the last chests!'); }
+      const t = `Expedition: ${exActive.dest.name} - called home in ${mm}:${ss}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
@@ -3110,7 +3113,7 @@
       buildZone(d);
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
-      exEnding = false; updateExUi(); toast(`${d.name}: find the chests - be home by ${fmtH(CFG.EXP_FORCE)}`); Snd.play('horn');
+      exEnding = false; updateExUi(); toast(`${d.name}: find the chests - you have a few minutes before dusk`); Snd.play('horn');
     });
   }
   function endExpedition(forced) {
@@ -3130,8 +3133,15 @@
     b.firstChild.textContent = exActive ? 'Return home' : 'Journal';
     b.classList.toggle('on', !!exActive);
   }
-  document.getElementById('expBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); exActive ? endExpedition(false) : toggleJournal(); });
-  addEventListener('keydown', e => { if (e.code === 'KeyJ' && !e.repeat) { if (exActive) endExpedition(false); else toggleJournal(); } });
+  let returnArm = 0;
+  function requestReturn() {                       // 상자·적이 남아 있으면 실수로 돌아가지 않도록 한 번 더 누르게 한다
+    if (!exActive || exEnding) return;
+    const chests = exObjs.filter(o => o.userData.type === 'chest').length, foes = enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
+    if ((chests || foes) && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast(`${chests} chest${chests === 1 ? '' : 's'} and ${foes} foe${foes === 1 ? '' : 's'} left - press again to go home`); return; }
+    endExpedition(false);
+  }
+  document.getElementById('expBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); exActive ? requestReturn() : toggleJournal(); });
+  addEventListener('keydown', e => { if (e.code === 'KeyJ' && !e.repeat) { if (exActive) requestReturn(); else toggleJournal(); } });
 
   // ---------- 일지(Journal): 이야기 목표 + 원정 목록 ----------
   const jEl = document.getElementById('journalPanel');
@@ -3141,7 +3151,7 @@
       (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
-    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. You are called home automatically at ${fmtH(CFG.EXP_FORCE)}. The village keeps working while you are away.`;
+    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile.`;
     document.getElementById('jExp').innerHTML = CFG.EXPEDITIONS.map(d => {
       const lock = age < d.age || (d.ch === 2 && !story.beacon), found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : ` · Requires Age ${d.age}`) : ''}</small></div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
@@ -3200,7 +3210,7 @@
     const t = clock.elapsedTime;
 
     // 시간 / 조명
-    gameMin += dt * MIN_PER_SEC;
+    gameMin += dt * MIN_PER_SEC * (exActive ? CFG.EXP_TIME_MULT : 1);          // 원정 중에는 시간이 천천히 흐른다
     const hour = (gameMin / 60) % 24;
     const night = hour >= 20 || hour < 5;
     const nf = nightFactor(hour);

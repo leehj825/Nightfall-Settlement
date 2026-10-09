@@ -70,7 +70,8 @@
       3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
     },
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
-    EXP_LATEST: 15.5, EXP_FORCE: 17.5,
+    EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.25,        // 원정 중에는 게임 시계가 4배 느리게 간다 (현실 1초 = 게임 2.5분): 8시 출발이면 현실 약 3분 50초
+   
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
       { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
