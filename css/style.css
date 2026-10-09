@@ -57,7 +57,7 @@
   #smithPanel button#smithClose { background: #666; color: #fff; box-shadow: 0 2px 0 #333; }
   #smithPanel .tbtns { display: flex; justify-content: center; margin-top: 8px; }
   #eventPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 19; padding: 14px; }
-  #eventPanel .ecard { background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 18px 22px; width: min(440px, 100%); color: #fff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  #eventPanel .ecard { max-height: 94%; overflow-y: auto; background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 18px 22px; width: min(440px, 100%); color: #fff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
   #eventPanel small { color: #a9a49a; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
   #eventPanel h3 { margin: 4px 0 8px; color: #ffd27a; font-size: 22px; }
   #eventPanel p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: #e8e4da; }

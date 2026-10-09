@@ -1594,6 +1594,26 @@
     }
     evEl.style.display = 'flex'; Snd.play('click');
   }
+  // ---------- 9-2: 떠돌이 상인: 시장이 있으면 3일마다(4일차부터) 찾아와 자원을 서로 바꿔 준다. 시장 레벨이 높을수록 환율이 좋다 ----------
+  let lastMerchantDay = 0;
+  const MVAL = { wood: 1, stone: 1.2, food: 1, iron: 4 }, MNAME = { wood: 'Wood', stone: 'Stone', food: 'Food', iron: 'Iron' };
+  const MLOTS = [{ g: 'food', n: 20, r: 'iron' }, { g: 'wood', n: 30, r: 'iron' }, { g: 'stone', n: 25, r: 'iron' }, { g: 'iron', n: 3, r: 'food' }, { g: 'iron', n: 3, r: 'wood' }, { g: 'iron', n: 3, r: 'stone' }];
+  function merchantMenu(lots, rate, p) {
+    openEvent({ tag: 'Travelling merchant', title: 'A Merchant Sets Up Camp', text: `Prices today are ${p > 1.1 ? 'good' : p < 0.95 ? 'poor' : 'fair'}. Trade as much as you like - the merchant leaves when you say farewell.`,
+      opts: lots.map(l => {
+        const get = Math.max(1, Math.round(l.n * MVAL[l.g] / MVAL[l.r] * rate));
+        return { label: `Give ${l.n} ${MNAME[l.g]}`, sub: `Get ${get} ${MNAME[l.r]} · you have ${Math.floor(res[l.g])}`, ok: () => res[l.g] >= l.n,
+          run: () => { if (res[l.g] < l.n) return 'Not enough to trade'; res[l.g] -= l.n; res[l.r] += get; updateHud(); report.traded = (report.traded || 0) + 1; setTimeout(() => merchantMenu(lots, rate, p), 450); return `Traded: +${get} ${MNAME[l.r]}`; } };
+      }).concat([{ label: 'Farewell', alt: true, run: () => 'The merchant moves on' }]) });
+  }
+  function merchantVisit(dayNo) {
+    if (!builtBuildings('market').length || dayNo < 4 || (dayNo - 4) % 3 !== 0 || lastMerchantDay === dayNo) return;
+    lastMerchantDay = dayNo;
+    const p = 0.85 + Math.random() * 0.4, rate = 0.9 * p * (1 + 0.1 * (bLevel('market') - 1));
+    const sells = MLOTS.slice(0, 3), buys = MLOTS.slice(3), pick = (a) => a.splice(Math.floor(Math.random() * a.length), 1)[0];
+    const lots = [pick(sells), pick(sells), pick(buys), pick(buys)];
+    setTimeout(() => merchantMenu(lots, rate, p), 3600);
+  }
   function rollEvent(dayNo) {
     if (dayNo < 2 || Math.random() > 0.65) return;
     const pool = EVENTS.filter(e => !e.avail || e.avail());
@@ -2137,6 +2157,19 @@
     soldierShoot(foe);
     return 'Fighting';
   }
+  // ---------- 9-2: 병사의 낮 순찰: 할 일이 없을 때 성벽 안쪽을 돌며 걷고, 해 질 녘(17시~)에는 문 앞 초소로 먼저 모인다 ----------
+  function guardIdle(dt, hour) {
+    if (hour >= 17) {
+      const post = sentryPost(npc) || npc.home;
+      if (npcMove(post.x, post.z, 3.5, dt) < 0.8) { faceTo(post.x * 2, post.z * 2); return 'On watch'; }
+      return 'Taking posts';
+    }
+    const H = designTier > 0 ? CFG.DESIGN[designTier - 1].half - 3 : 7, i = npc.patrolI = npc.patrolI ?? (npcs.indexOf(npc) * 3) % 8;
+    const P = [[1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1]][i % 8], tx = P[0] * H, tz = P[1] * H;
+    if (npc.patrolWait > 0) { npc.patrolWait -= dt; faceTo(tx * 2, tz * 2); return 'Patrolling'; }
+    if (npcMove(tx, tz, 3.2, dt) < 1.3) { npc.patrolI = (i + 1) % 8; npc.patrolWait = 2 + Math.random() * 2; }
+    return 'Patrolling';
+  }
   function updateNpc(dt, hour, t) {
     if (dead) return;
     const isDay = hour >= 6 && hour < 18;
@@ -2205,7 +2238,8 @@
             }
           }
         }
-      } else npcMove(npc.home.x, npc.home.z, 3.5, dt);
+      } else if (npc.role !== 'citizen' && order !== 'follow') state = guardIdle(dt, hour);
+      else npcMove(npc.home.x, npc.home.z, 3.5, dt);
     } else {
       // 야간: 모닥불 방어
       npc.target = null; npc.gatherT = 0; setTask(null); npc.workT = 0;
@@ -2243,6 +2277,7 @@
       if (npc.task) { npc.task.target.userData.skipUntil = gameMin + 180; setTask(null); npc.workT = 0; }
       if (npc.wtarget) { npc.wtarget.userData.skipUntil = gameMin + 180; npc.wtarget = null; }
       if (npc.promote) npc.promote = npc.promote;
+      if (npc.patrolI != null) npc.patrolI = (npc.patrolI + 1) % 8;
     }
     npc.stateNow = state;
     setLabel(state);
@@ -2881,7 +2916,7 @@
       if (near < 10) spawnNear(type === 'wood' ? makeTree : makeRock, b.position.x, b.position.z, 4, 11);
     }
   }
-  let lastWarnDay = 0, lastRespawnDay = 1, bossShakeT = 0;
+  let lastWarnDay = 0, lastRespawnDay = 1, bossShakeT = 0, lastGuardDay = 0;
 
 
   // ---------- 원정(Expedition): 낮에 마을 밖의 별도 지역으로 떠나 자원·유물을 얻고 해 지기 전에 돌아온다 ----------
@@ -3140,7 +3175,12 @@
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= 16 && hour < 18 && lastGuardDay !== dayNo && !exActive) {            // 해 지기 전 점검: 문보다 병사가 적으면 알려 준다
+      lastGuardDay = dayNo;
+      const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
+      if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
+    }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
