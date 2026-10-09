@@ -233,8 +233,8 @@
   const spdMul = () => hasPerk('scout') ? 1.1 : 1;
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
-  const soldierMult = (n) => (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1);
-  const res = { wood: 0, stone: 0, food: 0, iron: 0 };
+  const soldierMult = (n) => (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1);
+  const res = { wood: 0, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
@@ -252,7 +252,7 @@
   }
   const atkEl = document.getElementById('atkN');
   const foodEl = document.getElementById('foodN');
-  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; ironEl.textContent = res.iron; foodEl.textContent = Math.floor(res.food); { const sw = gearDef(playerGear.sword), bw = gearDef(playerGear.bow), ar = gearDef(playerGear.armor); atkEl.textContent = `${sw.short} ${sw.dmg} / ${bw.short} ${bw.dmg}`; document.getElementById('armN').textContent = ar.reduce ? `${ar.short} -${Math.round(ar.reduce * 100)}%` : 'None'; } }
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; ironEl.textContent = res.iron; if (res.shard > 0) { document.getElementById('shardRow').style.display = ''; document.getElementById('shardN').textContent = res.shard; } foodEl.textContent = Math.floor(res.food); { const sw = gearDef(playerGear.sword), bw = gearDef(playerGear.bow), ar = gearDef(playerGear.armor); atkEl.textContent = `${sw.short} ${sw.dmg} / ${bw.short} ${bw.dmg}`; document.getElementById('armN').textContent = ar.reduce ? `${ar.short} -${Math.round(ar.reduce * 100)}%` : 'None'; } }
 
   function rollIron(o) {                     // 바위를 캘 때 일정 확률로 철도 나온다 (대장간 재료)
     if (o.userData.type !== 'stone' || Math.random() > CFG.IRON_CHANCE) return;
@@ -581,7 +581,7 @@
   let townStage = 0;                          // 지금까지 설계한 묶음 수
   const canPay = (c) => Object.entries(c).every(([k, v]) => res[k] >= v);
   const payCost = (c) => { for (const [k, v] of Object.entries(c)) res[k] -= v; };
-  const costText = (c) => Object.entries(c).map(([k, v]) => `${v} ${k === 'wood' ? 'Wood' : k === 'stone' ? 'Stone' : k === 'iron' ? 'Iron' : 'Food'}`).join(' + ');
+  const costText = (c) => Object.entries(c).map(([k, v]) => `${v} ${k === 'wood' ? 'Wood' : k === 'stone' ? 'Stone' : k === 'iron' ? 'Iron' : k === 'shard' ? 'Shard' : 'Food'}`).join(' + ');
   // 숲/바위가 가장 많이 모여 있는 빈 자리를 찾아 벌목장/채석장 위치로 삼는다
   function findClusterSpot(kind) {
     const type = kind === 'lumber' ? 'wood' : 'stone';
@@ -666,13 +666,13 @@
   function renderSmith() {
     const sm = smithOpenFor;
     if (!sm || !obstacles.includes(sm)) return closeSmith();
-    document.getElementById('smithRes').textContent = `You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron  (Iron drops from rocks)`;
+    document.getElementById('smithRes').textContent = `You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron${res.shard || story.beacon ? ` · ${res.shard} Shards` : ''}  (Iron drops from rocks)`;
     smithList.innerHTML = '';
     for (const [id, d] of Object.entries(CFG.GEAR)) {
       if (!d.cost) continue;
-      const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age;
+      const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age || (d.req && !story[d.req]);
       const row = document.createElement('div'); row.className = 'srow';
-      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
+      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
       const [bc, be] = row.querySelectorAll('button');
       bc.disabled = locked || !canPay(gearCost(d)); be.disabled = stock <= 0 || equipped;
       bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
@@ -1094,6 +1094,7 @@
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
+    if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'plunder' && Math.random() < 0.4) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     hideTelegraph(e);
@@ -1396,7 +1397,7 @@
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) - n.shock;
     if (n.role === 'citizen') target += builtBuildings('house').length ? 4 : -8;
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -1664,7 +1665,7 @@
     const soldiers = npcs.filter(n => n.role !== 'citizen');
     let best = null;
     for (const [id, d] of Object.entries(CFG.GEAR)) {
-      if (!d.cost || (d.age || 1) > age || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
+      if (!d.cost || (d.age || 1) > age || (d.req && !story[d.req]) || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
       const need = soldiers.some(n => (d.slot === 'armor' || d.slot === (n.role === 'melee' ? 'sword' : 'bow')) && d.tier > gearDef(n.gear[d.slot]).tier);
       if (need && (!best || d.tier < best.tier)) best = d;                         // 낮은 등급부터 차례로
     }
@@ -2618,8 +2619,8 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon);
-    gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0;
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon);
+    gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openClassChoice, 700); }
     order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `R · ${order === 'follow' ? 'Follow' : 'Guard'}`;
@@ -2873,6 +2874,13 @@
     }
     for (let i = 0; i < d.chests; i++) { const p = spot(2.2); makeChest(p.x, p.z, !!d.relic && i === d.chests - 1); }
     for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); }
+    if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
+      const p = spot(4); spawnEnemy(d.guardian.kind, p);
+      const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale;
+      u.hp *= d.guardian.hpMul; u.maxHp = u.hp; u.guardian = true; u.contact *= 1.3; u.r *= s; u.baseY *= s;
+      e.scale.multiplyScalar(s); e.position.y = u.baseY;
+      const lbl = textSprite('Guardian', '#ffcf5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
+    }
   }
   function cleanupZone() {
     for (const o of exMeshes.concat(exObjs)) scene.remove(o);
@@ -2896,12 +2904,13 @@
   function openChest(o) {
     const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
+    if (d.ch === 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
     burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud();
     if (o.userData.relic) foundRelic(d);
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false };
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false };
   let beaconMesh = null;
   function setBeacon(on) {
     if (on && !beaconMesh) {
@@ -2917,7 +2926,7 @@
   const storyDone = (id) => id === 'first' ? story.exps >= 1 : !!story.relics[id];
   function storyDialog(title, text) { openEvent({ tag: 'Story', title, text, opts: [{ label: 'Continue', run: () => '' }] }); }
   function checkStory() {
-    for (const s of CFG.STORY) {
+    for (const s of CFG.STORY.concat(story.beacon ? CFG.STORY2 : [])) {
       if (!storyDone(s.id) || story.said[s.id]) continue;
       story.said[s.id] = true; story.log.push(`${s.title}: ${s.text}`);
       for (const [k, v] of Object.entries(s.reward)) res[k] += v;
@@ -2926,6 +2935,11 @@
     if (!story.beacon && CFG.STORY.every(s => storyDone(s.id))) {
       setBeacon(true); story.log.push(`${CFG.STORY_BEACON.title}: ${CFG.STORY_BEACON.text}`);
       storyDialog(CFG.STORY_BEACON.title, CFG.STORY_BEACON.text); shake = Math.max(shake, 0.5); Snd.play('horn');
+    }
+    if (story.beacon && !story.dawn && CFG.STORY2.every(s => storyDone(s.id))) {
+      story.dawn = true; story.log.push(`${CFG.STORY_DAWN.title}: ${CFG.STORY_DAWN.text}`);
+      storyDialog(CFG.STORY_DAWN.title, CFG.STORY_DAWN.text); shake = Math.max(shake, 0.6); Snd.play('horn');
+      if (beaconMesh) beaconMesh.children[0].material.opacity = 0.4;
     }
   }
   function foundRelic(d) {
@@ -2943,6 +2957,7 @@
     const d = CFG.EXPEDITIONS.find(x => x.id === id);
     if (!d || exActive || dead || exEnding) return;
     if (age < d.age) return toast(`Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})`);
+    if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
@@ -2957,7 +2972,7 @@
     if (!exActive || exEnding) return;
     const ex = exActive; exEnding = true; gathering = null;
     fadeTo(() => {
-      const gain = ['wood', 'stone', 'iron', 'food'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
+      const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       cleanupZone(); exActive = null;
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud();
@@ -2976,15 +2991,15 @@
   // ---------- 일지(Journal): 이야기 목표 + 원정 목록 ----------
   const jEl = document.getElementById('journalPanel');
   function renderJournal() {
-    const first = CFG.STORY.findIndex(s => !storyDone(s.id));
-    document.getElementById('jStory').innerHTML = (story.intro ? CFG.STORY.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
-      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit!</span></div>' : '') +
+    const chain = CFG.STORY.concat(story.beacon ? CFG.STORY2 : []), first = chain.findIndex(s => !storyDone(s.id));
+    document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
+      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. You are called home automatically at ${fmtH(CFG.EXP_FORCE)}. The village keeps working while you are away.`;
     document.getElementById('jExp').innerHTML = CFG.EXPEDITIONS.map(d => {
-      const lock = age < d.age, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? ` · Requires Age ${d.age}` : ''}</small></div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
+      const lock = age < d.age || (d.ch === 2 && !story.beacon), found = d.relic && story.relics[d.id];
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : ` · Requires Age ${d.age}`) : ''}</small></div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
   }
