@@ -195,3 +195,4 @@ html[data-ts=s] .ecard, html[data-ts=s] .scard, html[data-ts=s] .jcard, html[dat
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #setBtn { left: 162px; } }
 html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
 @media (min-width: 1000px) and (min-height: 560px) { html[data-ts=l] #hud { transform: scale(1.1); transform-origin: top left; } }
+#ncJob { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }

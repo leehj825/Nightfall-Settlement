@@ -39,6 +39,11 @@
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
+    // 9단계: 직업(일터)과 숙련도 / 건물 레벨
+    LEVELED: ['farm', 'lumber', 'quarry', 'smith', 'market', 'well'], BUILD_UPGRADE: { 2: { wood: 20, stone: 10 }, 3: { stone: 30, iron: 6 } }, BUILD_UPGRADES_PER_MORNING: 1,
+    JOBS: { farm: 'Farmer', lumber: 'Woodcutter', quarry: 'Stonecutter', smith: 'Blacksmith' },
+    TRAIT_JOB: { stout: 'quarry', nimble: 'lumber', cheerful: 'farm', easygoing: 'farm', diligent: 'smith', brave: 'smith' },          // 성격에 맞는 일터: 효율 +10%, 기분 +4
+    SKILL_XP: [0, 4, 10, 20], SKILL_NAMES: ['Novice', 'Skilled', 'Expert', 'Master'], SKILL_BONUS: 0.12,                          // 일 한 번 끝낼 때마다 경험치 +1, 숙련 단계마다 작업 속도 +12%
     HOUSE_UPGRADE: { 2: { wood: 15 }, 3: { stone: 20 } }, HOUSE_UPGRADES_PER_MORNING: 2,        // 집은 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 업그레이드된다
     PROSPERITY_LABELS: [[30, 'Fragile'], [55, 'Settled'], [80, 'Thriving'], [101, 'Flourishing']], PROSPERITY_POP_TARGET: 6,
     NAMES: ['Aldric', 'Bram', 'Cora', 'Dara', 'Edda', 'Finn', 'Gwen', 'Hale', 'Iris', 'Joss', 'Kira', 'Lars', 'Mira', 'Nell', 'Orin', 'Pia', 'Quinn', 'Rolf', 'Sela', 'Tomas', 'Una', 'Vik', 'Wren', 'Yara', 'Zane', 'Ada', 'Boris', 'Cato', 'Dina', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Jun', 'Kell', 'Lena', 'Milo', 'Nora', 'Otto'],

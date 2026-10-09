@@ -202,6 +202,7 @@ html[data-ts=s] .ecard, html[data-ts=s] .scard, html[data-ts=s] .jcard, html[dat
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #setBtn { left: 162px; } }
 html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
 @media (min-width: 1000px) and (min-height: 560px) { html[data-ts=l] #hud { transform: scale(1.1); transform-origin: top left; } }
+#ncJob { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
 </style>
 </head>
 <body>
@@ -222,7 +223,7 @@ html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
 <div id="toast"></div>
 <div id="journalPanel"><div class="jcard"><h3>Journal</h3><div id="jStory"></div><h4>Expeditions</h4><p class="jhint" id="jHint"></p><div id="jExp"></div><button id="jClose">Close</button></div></div>
 <div id="fade"></div>
-<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><button id="ncClose">Close</button></div></div>
+<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><button id="ncJob"></button><button id="ncClose">Close</button></div></div>
 <div id="eventPanel"><div class="ecard"><small>Morning event</small><h3 id="evTitle"></h3><p id="evText"></p><div id="evBtns"></div></div></div>
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
@@ -295,6 +296,11 @@ html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
+    // 9단계: 직업(일터)과 숙련도 / 건물 레벨
+    LEVELED: ['farm', 'lumber', 'quarry', 'smith', 'market', 'well'], BUILD_UPGRADE: { 2: { wood: 20, stone: 10 }, 3: { stone: 30, iron: 6 } }, BUILD_UPGRADES_PER_MORNING: 1,
+    JOBS: { farm: 'Farmer', lumber: 'Woodcutter', quarry: 'Stonecutter', smith: 'Blacksmith' },
+    TRAIT_JOB: { stout: 'quarry', nimble: 'lumber', cheerful: 'farm', easygoing: 'farm', diligent: 'smith', brave: 'smith' },          // 성격에 맞는 일터: 효율 +10%, 기분 +4
+    SKILL_XP: [0, 4, 10, 20], SKILL_NAMES: ['Novice', 'Skilled', 'Expert', 'Master'], SKILL_BONUS: 0.12,                          // 일 한 번 끝낼 때마다 경험치 +1, 숙련 단계마다 작업 속도 +12%
     HOUSE_UPGRADE: { 2: { wood: 15 }, 3: { stone: 20 } }, HOUSE_UPGRADES_PER_MORNING: 2,        // 집은 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 업그레이드된다
     PROSPERITY_LABELS: [[30, 'Fragile'], [55, 'Settled'], [80, 'Thriving'], [101, 'Flourishing']], PROSPERITY_POP_TARGET: 6,
     NAMES: ['Aldric', 'Bram', 'Cora', 'Dara', 'Edda', 'Finn', 'Gwen', 'Hale', 'Iris', 'Joss', 'Kira', 'Lars', 'Mira', 'Nell', 'Orin', 'Pia', 'Quinn', 'Rolf', 'Sela', 'Tomas', 'Una', 'Vik', 'Wren', 'Yara', 'Zane', 'Ada', 'Boris', 'Cato', 'Dina', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Jun', 'Kell', 'Lena', 'Milo', 'Nora', 'Otto'],
@@ -1179,6 +1185,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
     g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null };
+    if (CFG.LEVELED.includes(kind)) g.userData.level = 1;
     if (kind === 'house') {
       g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
@@ -2178,6 +2185,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       hp: npcMaxHp(role, tr), down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
       task: null, workT: 0, short: null, pickCd: delay, wp: null, route: null, routeRing: 0, graceT: 0, graceRing: 0,
       promote: null, hidden: false, decor: null, work: null, wstate: 'seek', carry: 0, farmT: 0, wtarget: null, stateLabel: '', bobAmt: 0 });
+    n.xp = preset.xp ? { ...preset.xp } : {}; n.pref = preset.pref || null;
     applyCitizenLook(n); applyGear(n);
     scene.add(n);
     npcs.push(n);
@@ -2216,9 +2224,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (n.moodT < 1) return;
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
-    let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 : 0) + (builtBuildings('market').length ? 4 : 0)
+    let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 + 2 * (bLevel('well') - 1) : 0) + (builtBuildings('market').length ? 4 : 0)
       + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) - n.shock;
-    if (n.role === 'citizen') target += builtBuildings('house').length ? 4 : -8;
+    if (n.role === 'citizen') target += (builtBuildings('house').length ? 4 : -8) + (jobKind(n) && likesJob(n, jobKind(n)) ? 4 : 0);
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
   }
@@ -2308,7 +2316,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const r = report, rows = [], d = (k) => res[k] - r.res[k];
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
-    if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Houses upgraded: ${r.upgraded}`);
+    if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
     if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
     if (r.traded) rows.push('Market: sold surplus food for iron');
     if (r.left.length) rows.push(`Left the village: ${r.left.join(', ')}`);
@@ -2349,17 +2357,25 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const rows = [`Doing: ${n.down ? 'Down' : n.stateNow}`];
     if (n.hungry) rows.push('Hungry: speed and work at half');
     if (n.role !== 'citizen') rows.push(`Gear: ${gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).name}${n.gear.armor !== 'armor_none' ? ' · ' + gearDef(n.gear.armor).name : ''}`);
-    else if (n.work) rows.push(`Works at: ${BUILDING_NAME[n.work.userData.kind] || 'the village'}`);
+    else {
+      rows.push(`Job: ${jobTitle(n)}`);
+      if (n.work) rows.push(`Works at: ${BUILDING_NAME[n.work.userData.kind] || 'the village'}`);
+      const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
+      const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
+    }
+    const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
   // 시장: 매일 아침 남는 식량을 팔아 철을 산다 (식량 30 이상이면 10 → 철 3)
   function marketTrade() {
     if (!builtBuildings('market').length || res.food < 30) return;
-    res.food -= 10; res.iron += 3; updateHud(); report.traded = (report.traded || 0) + 1;
-    const m = builtBuildings('market')[0]; floatText('Market: Food→Iron +3', m.position.x, 3.2, m.position.z);
+    const lv = bLevel('market'), gain = 2 + lv, m = builtBuildings('market')[0];
+    res.food -= 10; res.iron += gain; updateHud(); report.traded = (report.traded || 0) + 1;
+    floatText(`Market: Food→Iron +${gain}`, m.position.x, 3.2, m.position.z);
   }
   // ---------- 아침 이벤트: 선택에 따라 득실이 갈리는 짧은 사건 (창이 열려 있는 동안 시간이 멈춘다) ----------
   let eventOpen = false, pendingRaiders = 0; const eventQueue = [];
@@ -2409,6 +2425,50 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const pool = EVENTS.filter(e => !e.avail || e.avail());
     if (pool.length) setTimeout(() => openEvent(pool[Math.floor(Math.random() * pool.length)]), 1500);
   }
+  // ---------- 9단계: 건물 레벨 (농장·벌목장·채석장·대장간·시장·우물): 시대가 올라가면 매일 아침 여유 자원으로 한 채씩 ----------
+  const bLevel = (kind) => builtBuildings(kind).reduce((a, o) => Math.max(a, o.userData.level || 1), 0);
+  const lvOf = (o) => o.userData.level || 1;
+  const bannerMat = mat(0xd9a92a);
+  function setBuildingLevel(o, lv) {            // 레벨 2부터 모서리에 깃발이 서고, 레벨만큼 삼각기가 늘어난다
+    o.userData.level = lv;
+    if (o.userData.banner) { o.remove(o.userData.banner); o.userData.banner = null; }
+    if (lv < 2) return;
+    const b = new THREE.Group(), sz = CFG.BUILDING[o.userData.kind].size, r = o.userData.radius;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), woodMat2); pole.position.y = 1.3; b.add(pole);
+    for (let i = 0; i < lv - 1; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.26, 0.04), bannerMat); f.position.set(0.3, 2.3 - i * 0.34, 0); b.add(f); }
+    b.position.set(sz ? sz[0] / 2 + 0.3 : r + 0.3, 0, sz ? sz[2] / 2 : r * 0.7);
+    b.traverse(m => { if (m.isMesh) m.castShadow = true; });
+    o.add(b); o.userData.banner = b;
+  }
+  function upgradeBuildings() {
+    let n = 0;
+    for (const kind of CFG.LEVELED) for (const o of builtBuildings(kind)) {
+      const lv = lvOf(o), cost = CFG.BUILD_UPGRADE[lv + 1];
+      if (n >= CFG.BUILD_UPGRADES_PER_MORNING || lv >= age || !cost) continue;
+      if (!Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
+      payCost(cost); setBuildingLevel(o, lv + 1); n++; report.upgraded++;
+      dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); floatText(`${BUILDING_NAME[kind]} Lv${lv + 1}!`, o.position.x, 3.6, o.position.z);
+    }
+    if (n) updateHud();
+  }
+  // ---------- 9단계: 직업 / 숙련도 ----------
+  const jobKind = (n) => (n.work && obstacles.includes(n.work) ? n.work.userData.kind : null);
+  const skillLv = (n, k) => { const x = (n.xp && n.xp[k]) || 0; let l = 0; CFG.SKILL_XP.forEach((v, i) => { if (x >= v) l = i; }); return l; };
+  const likesJob = (n, k) => CFG.TRAIT_JOB[n.trait] === k;
+  function addXp(n, k) {
+    if (!n.xp) n.xp = {};
+    const before = skillLv(n, k); n.xp[k] = (n.xp[k] || 0) + 1;
+    if (skillLv(n, k) > before) floatText(`${CFG.JOBS[k]}: ${CFG.SKILL_NAMES[skillLv(n, k)]}!`, n.position.x, 3.2, n.position.z);
+  }
+  const jobTitle = (n) => { const k = jobKind(n); return k ? `${CFG.JOBS[k]} (${CFG.SKILL_NAMES[skillLv(n, k)]})` : 'Laborer'; };
+  const PREF_LABEL = (p) => p === 'free' ? 'Laborer' : p ? CFG.JOBS[p] : 'Auto';
+  function nextPref(n) {                           // 카드 버튼: Auto → (지어진 일터 종류들) → Laborer → Auto
+    const opts = [null, ...Object.keys(CFG.JOBS).filter(k => builtBuildings(k).length), 'free'];
+    const i = opts.indexOf(n.pref || null);
+    n.pref = opts[(i + 1) % opts.length];
+    if (n.work && (n.pref === 'free' || (n.pref && jobKind(n) !== n.pref))) { n.work.userData.worker = null; n.work = null; n.wstate = 'seek'; n.carry = 0; }
+  }
+
   // ---------- 집 업그레이드: 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 ----------
   function upgradeHouses() {
     let n = 0;
@@ -2471,12 +2531,16 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // ---------- 경제 건물: 시민이 정착해서 일한다 ----------
   const isWorksite = (o) => o.userData.type === 'building' && (o.userData.kind === 'smith' || o.userData.kind === 'farm' || o.userData.kind === 'lumber' || o.userData.kind === 'quarry');
   function claimWorksite() {
-    let best = null, bd = Infinity;
     const free = obstacles.filter(o => isWorksite(o) && !(o.userData.worker && npcs.includes(o.userData.worker)));
-    const pool = free.filter(o => o.userData.kind !== 'smith');
-    for (const o of (pool.length ? pool : free)) {                 // 대장간은 다른 일터가 모두 찼을 때 배정한다
-      const d = (o.position.x - npc.position.x) ** 2 + (o.position.z - npc.position.z) ** 2;
-      if (d < bd) { bd = d; best = o; }
+    let pool = free.filter(o => o.userData.kind !== 'smith' || npc.pref === 'smith');           // 대장간은 다른 일터가 모두 찼을 때(또는 지정했을 때) 배정한다
+    const want = npc.pref && npc.pref !== 'free' ? free.filter(o => o.userData.kind === npc.pref) : [];
+    if (want.length) pool = want; else if (!pool.length) pool = free;
+    const foodLow = res.food < npcs.filter(n => n.role === 'citizen').length * CFG.RATION * 2;
+    let best = null, bs = Infinity;
+    for (const o of pool) {
+      const k = o.userData.kind, d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
+      const s = d - (likesJob(npc, k) ? 12 : 0) - (k === 'farm' && foodLow ? 25 : 0);          // 성격에 맞는 일터와, 식량이 모자랄 때의 농장을 우선한다
+      if (s < bs) { bs = s; best = o; }
     }
     if (best) { best.userData.worker = npc; npc.work = best; npc.wstate = 'seek'; npc.carry = 0; npc.wtarget = null; npc.farmT = 0; npc.workT = 0; }
     return best;
@@ -2495,17 +2559,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   function workStep(dt) {
     if (npc.work && !obstacles.includes(npc.work)) npc.work = null;
+    if (npc.pref === 'free') { if (npc.work) { npc.work.userData.worker = null; npc.work = null; } return false; }         // 플레이어가 '잡일'로 지정: 일터 없이 건설·수리·채집을 한다
     if (!npc.work && !claimWorksite()) return false;
     if (npc.task) { setTask(null); npc.workT = 0; }
     const site = npc.work, k = site.userData.kind;
     npc.bobAmt = 0;
-    const wdt = dt * workMul(npc);        // 굶주림·성격·기분이 작업 효율을 정한다
+    const wdt = dt * workMul(npc) * (1 + CFG.SKILL_BONUS * skillLv(npc, k)) * (likesJob(npc, k) ? 1.1 : 1);        // 굶주림·성격·기분·숙련도·성격 적성이 작업 효율을 정한다
     if (k === 'smith') {                                        // 대장간 시민: 모루 앞에서 망치질하며 병사에게 필요한 장비를 주기적으로 자동 제작
       const door = doorOf(site);
       if (Math.hypot(door.x - npc.position.x, door.z - npc.position.z) > 1.2) { npcMove(door.x, door.z, 3.5, dt); npc.stateLabel = 'To smithy'; return true; }
       npc.face = Math.atan2(site.position.x - npc.position.x, site.position.z - npc.position.z); npc.rotation.y = npc.face;
       npc.stateLabel = 'Forging'; npc.forgeT = (npc.forgeT || 0) + wdt;
-      if (npc.forgeT >= CFG.FORGE_CYCLE * (hasPerk('smith') ? 0.6 : 1)) { npc.forgeT = 0; autoForge(site); }
+      if (npc.forgeT >= CFG.FORGE_CYCLE * (hasPerk('smith') ? 0.6 : 1) * (1 - 0.2 * (lvOf(site) - 1))) { npc.forgeT = 0; autoForge(site); addXp(npc, 'smith'); }
       return true;
     }
     if (k === 'farm') {                                         // 농장: 밭에 서서 작물을 키우고 주기마다 식량 수확
@@ -2514,15 +2579,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       site.userData.growth = 0.3 + 0.7 * Math.min(1, npc.farmT / CFG.FARM_CYCLE);
       for (const c of site.userData.crops) c.scale.y = site.userData.growth;
       if (npc.farmT >= CFG.FARM_CYCLE) {
-        npc.farmT = 0; res.food += CFG.FARM_YIELD; updateHud();
-        floatText(`Food +${CFG.FARM_YIELD}`, site.position.x, 2.2, site.position.z);
+        npc.farmT = 0; const fy = CFG.FARM_YIELD + (lvOf(site) - 1); res.food += fy; updateHud(); addXp(npc, 'farm');
+        floatText(`Food +${fy}`, site.position.x, 2.2, site.position.z);
       }
       return true;
     }
     const type = k === 'lumber' ? 'wood' : 'stone', door = doorOf(site);          // 벌목장/채석장: 주변 자원을 캐서 건물로 가져와 쌓는다
     if (npc.wstate === 'carry') {
       npc.stateLabel = 'Hauling';
-      if (npcMove(door.x, door.z, 3.8, dt) < 2.0) { res[type] += npc.carry; npc.carry = 0; npc.wstate = 'seek'; npc.wtarget = null; updateHud(); }
+      if (npcMove(door.x, door.z, 3.8, dt) < 2.0) { res[type] += npc.carry; npc.carry = 0; npc.wstate = 'seek'; npc.wtarget = null; updateHud(); addXp(npc, k); }
       return true;
     }
     if (!npc.wtarget || !obstacles.includes(npc.wtarget) || (npc.wtarget.userData.owner && npc.wtarget.userData.owner !== npc && npcs.includes(npc.wtarget.userData.owner))) {
@@ -2542,7 +2607,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     npc.workT += wdt; npc.bobAmt = Math.abs(Math.sin(npc.workT * 14)) * 0.15;
     if (npc.workT >= CFG.GATHER_TIME) {
       scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1); rollIron(o);
-      npc.carry = Math.round(gatherYield(type) * CFG.WORKSITE_YIELD_MULT * (hasPerk('merchant') ? 1.25 : 1)); npc.wstate = 'carry'; npc.wtarget = null; npc.workT = 0;
+      npc.carry = Math.round(gatherYield(type) * CFG.WORKSITE_YIELD_MULT * (1 + 0.4 * (lvOf(site) - 1)) * (hasPerk('merchant') ? 1.25 : 1)); npc.wstate = 'carry'; npc.wtarget = null; npc.workT = 0;
     }
     return true;
   }
@@ -3406,7 +3471,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -3454,11 +3519,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
     for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
-    for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { o.userData.level = b.level; setHouseModel(o); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
+    for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
     for (const d of sn.npcs) {
-      const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood }); n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
+      const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref }); n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); }
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
@@ -3901,7 +3966,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -4100,7 +4165,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), upgradeBuildings, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 
