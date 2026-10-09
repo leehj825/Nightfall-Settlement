@@ -73,6 +73,12 @@
     #joy { width: 120px; height: 120px; left: 10px; bottom: 10px; }
     #muteBtn { left: 140px; bottom: 12px; width: 32px; height: 32px; font-size: 15px; }
   }
+  #report { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); z-index: 12; width: min(360px, calc(100vw - 320px)); min-width: 230px; padding: 10px 16px; border-radius: 12px;
+    background: rgba(28,22,16,.92); border: 2px solid #c8923a; color: #fff; box-shadow: 0 8px 28px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .5s; cursor: pointer; }
+  #report.show { opacity: 1; pointer-events: auto; }
+  #report h4 { margin: 0 0 6px; color: #ffd27a; font-size: 15px; text-align: center; }
+  #report ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+  #report small { display: block; text-align: center; color: #a9a49a; font-size: 10.5px; margin-top: 4px; }
   #muteBtn { position: fixed; left: 176px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 18px; padding: 0; cursor: pointer; }
   #dbg { position: fixed; left: 50%; transform: translateX(-50%); bottom: 10px; z-index: 6; display: none; gap: 6px; }
   #dbg button { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px; border: 1px solid #fff8; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; }
@@ -123,7 +129,7 @@
 <body>
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
-<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
 <div id="clock">Day 1 - 08:00</div>
@@ -136,6 +142,7 @@
 <div id="warn"></div>
 <div id="gameover"><div class="card"><h2>Your settlement has fallen.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><div id="goRewind"></div><button id="restartBtn">Restart from the beginning</button></div></div>
 <div id="toast"></div>
+<div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="actions">
@@ -223,6 +230,8 @@
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
+    HOUSE_UPGRADE: { 2: { wood: 15 }, 3: { stone: 20 } }, HOUSE_UPGRADES_PER_MORNING: 2,        // 집은 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 업그레이드된다
+    PROSPERITY_LABELS: [[30, 'Fragile'], [55, 'Settled'], [80, 'Thriving'], [101, 'Flourishing']], PROSPERITY_POP_TARGET: 6,
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
@@ -924,12 +933,13 @@
   const dirt = bMat(0x6b4a2b), cropMat = bMat(0x4fae3a), logPile = bMat(0x7a4f2a), rockPile = bMat(0x9a9aa2), towerStone = bMat(0x7f838c), towerTop = bMat(0x5c606a);
   // 거주지 외형은 시대에 따라 바뀐다: 1시대 텐트(원뿔) → 2시대 나무집(삼각 지붕) → 3시대 돌집
   function setHouseModel(g) {
+    const lvl = g.userData.level || 1;
     while (g.children.length) g.remove(g.children[0]);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
-    if (age <= 1) {
+    if (lvl <= 1) {
       add(new THREE.ConeGeometry(1.9, 2.6, 8), tentMat, 0, 1.3, 0);
       add(new THREE.BoxGeometry(0.7, 1.1, 0.12), tentDoor, 0, 0.55, 1.6).rotation.x = -0.35;
-    } else if (age === 2) {
+    } else if (lvl === 2) {
       add(new THREE.BoxGeometry(2.6, 1.8, 2.6), houseWall, 0, 0.9, 0);
       add(new THREE.ConeGeometry(2.3, 1.4, 4), houseRoof, 0, 2.5, 0).rotation.y = Math.PI / 4;
     } else {
@@ -944,6 +954,7 @@
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
     g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null };
     if (kind === 'house') {
+      g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
       add(new THREE.BoxGeometry(6.4, 1.6, 4.4), barrackMat, 0, 0.8, 0);
@@ -1198,7 +1209,7 @@
   function craftGear(id) {
     const sm = smithOpenFor, d = gearDef(id);
     if (!sm || !canPay(d.cost)) return;
-    payCost(d.cost); sm.userData.stock[id]++; refreshRack(sm); updateHud();
+    payCost(d.cost); sm.userData.stock[id]++; refreshRack(sm); updateHud(); report.forged++;
     forgeEffect(sm);
     toast(`Forged: ${d.name}! Soldiers will come to pick it up`);
     renderSmith();
@@ -1333,7 +1344,7 @@
   function updateAgeUi() { ageEl.textContent = ageName(age); }
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
-    refreshHouses(); refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn();
+    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn();
     npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
   // ----- 시대 발전 패널 -----
@@ -1561,7 +1572,7 @@
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
-    sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z);
+    sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
     hideTelegraph(e);
     u.sinking = true; u.dying = 1.0; e.position.y = u.baseY; u.anim.die();
     if (u.bang) u.bang.visible = u.stunTxt.visible = u.stars.visible = false;
@@ -1831,7 +1842,7 @@
   }
 
   function removeNpc(n) {                  // 시민 출신은 쓰러지면 영구 사망 → 인구수 감소
-    npc = n; setTask(null); returnGear(n);
+    npc = n; setTask(null); returnGear(n); report.lostCit++;
     scene.remove(n);
     npcs.splice(npcs.indexOf(n), 1);
     burst(n.position);
@@ -1880,7 +1891,61 @@
 
   // ---------- 인구 / 직업 (문명 시스템) ----------
   const builtBuildings = (kind) => obstacles.filter(o => o.userData.type === 'building' && o.userData.kind === kind);
-  const maxPop = () => CFG.BASE_POP + builtBuildings('house').length;      // 거주지 1채당 최대 인구 +1
+  // ---------- 마을 번영도: 인구·식량·주거·방어·장비를 하나의 점수(0~100)로 ----------
+  let prosScore = 25, prosBonus = 0;
+  function prosperity() {
+    const cits = npcs.filter(n => n.role === 'citizen').length, houses = builtBuildings('house'), soldiers = npcs.filter(n => n.role !== 'citizen');
+    const pop = Math.min(1, npcs.length / CFG.PROSPERITY_POP_TARGET);
+    const food = cits ? (npcs.some(n => n.hungry) ? 0.15 : Math.min(1, 0.6 + 0.4 * res.food / (cits * CFG.RATION * 6))) : 0.5;
+    const housing = houses.length ? houses.reduce((a, h) => a + (h.userData.level || 1), 0) / (houses.length * 3) : 0;
+    const fences = obstacles.filter(o => o.userData.type === 'fence');
+    const wall = designTier > 0 ? 0.5 + 0.5 * (fences.length ? fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length : 0) : 0.1;
+    const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? gearDef(n.gear.sword).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
+    return Math.round(100 * (0.25 * pop + 0.2 * food + 0.2 * housing + 0.2 * wall + 0.15 * gear));
+  }
+  const prosLabel = (v) => CFG.PROSPERITY_LABELS.find(l => v < l[0])[1];
+  const prosEl = document.getElementById('prosN');
+  function updateProsperity() {
+    prosScore = prosperity();
+    prosBonus = prosScore >= 80 ? 2 : prosScore >= 55 ? 1 : 0;           // 안정된 마을에는 이주민이 더 모인다
+    const t = `${prosLabel(prosScore)} ${prosScore}`;
+    if (prosEl.textContent !== t) prosEl.textContent = t;
+  }
+  // ---------- 아침 요약 카드: 어젯밤과 어제 하루 동안 마을에서 일어난 일 ----------
+  const freshReport = () => ({ kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, res: { ...res }, pros: prosScore, pop: 0 });
+  let report = freshReport();
+  const repEl = document.getElementById('report'), repList = document.getElementById('repList');
+  let repTimer;
+  function showReport(dayNo) {
+    const r = report, rows = [], d = (k) => res[k] - r.res[k];
+    rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
+    if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
+    if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Houses upgraded: ${r.upgraded}`);
+    if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
+    if (r.equipped || r.forged) rows.push(`Gear: ${r.forged} forged · ${r.equipped} equipped`);
+    const dr = [['wood', 'Wood'], ['stone', 'Stone'], ['iron', 'Iron'], ['food', 'Food']].map(([k, n]) => [n, Math.floor(d(k))]).filter(x => x[1] !== 0).map(([n, v]) => `${n} ${v > 0 ? '+' : ''}${v}`);
+    if (dr.length) rows.push(`Stockpile: ${dr.join(' · ')}`);
+    const dp = prosScore - r.pros;
+    rows.push(`Prosperity: ${prosLabel(prosScore)} ${prosScore}${dp ? ` (${dp > 0 ? '▲' : '▼'}${Math.abs(dp)})` : ''}`);
+    document.getElementById('repTitle').textContent = `Day ${dayNo} · Morning report`;
+    repList.innerHTML = rows.map(t => `<li>${t}</li>`).join('');
+    repEl.classList.add('show'); clearTimeout(repTimer); repTimer = setTimeout(() => repEl.classList.remove('show'), 14000);
+    report = freshReport();
+  }
+  repEl.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); repEl.classList.remove('show'); });
+  // ---------- 집 업그레이드: 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 ----------
+  function upgradeHouses() {
+    let n = 0;
+    for (const h of builtBuildings('house')) {
+      const lv = h.userData.level || 1, cost = CFG.HOUSE_UPGRADE[lv + 1];
+      if (n >= CFG.HOUSE_UPGRADES_PER_MORNING || lv >= age || !cost) continue;
+      if (!Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;     // 여유가 있을 때만 (비축분을 다 쓰지 않는다)
+      payCost(cost); h.userData.level = lv + 1; setHouseModel(h); n++; report.upgraded++;
+      dust(h.position.x, h.position.z); sfxAt('build', h.position.x, h.position.z); floatText('House upgraded!', h.position.x, 3.6, h.position.z);
+    }
+    if (n) updateHud();
+  }
+  const maxPop = () => CFG.BASE_POP + builtBuildings('house').length + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
@@ -1908,6 +1973,7 @@
       c.position.set(door.x, 0, door.z);
       fresh.push(c);
     }
+    report.newCit += fresh.length;
     if (fresh.length) toast(`${fresh.length} new citizen${fresh.length > 1 ? 's' : ''} arrived in the village`);
     const pool = fresh.concat(npcs.filter(n => n.role === 'citizen' && !fresh.includes(n) && !n.promote));
     const barracks = builtBuildings('barracks')[0], range = builtBuildings('range')[0];
@@ -1949,7 +2015,7 @@
     }
     if (!best) return;
     payCost(best.cost); site.userData.stock[best.id] = (site.userData.stock[best.id] || 0) + 1; refreshRack(site); updateHud();
-    forgeEffect(site); floatText(`Forged ${best.name}`, site.position.x, 3.4, site.position.z);
+    forgeEffect(site); report.forged++; floatText(`Forged ${best.name}`, site.position.x, 3.4, site.position.z);
   }
   function workStep(dt) {
     if (npc.work && !obstacles.includes(npc.work)) npc.work = null;
@@ -2006,6 +2072,14 @@
   }
   // 평화로운 밤(주변에 적이 없음): 시민은 흩어지지 않고 모닥불 둘레에 둥글게 모여 앉는다
   const faceFire = () => { npc.face = Math.atan2(-npc.position.x, -npc.position.z); npc.rotation.y = npc.face; };
+  // 성문 경비: 밤에 적이 없을 때 근접 병사 일부가 성문 안쪽에 서서 지킨다 (성문 하나당 1명)
+  function sentryPost(n) {
+    if (n.role !== 'melee' || !gateWaypoints.length) return null;
+    const melees = npcs.filter(x => x.role === 'melee'), i = melees.indexOf(n);
+    if (i < 0 || i >= gateWaypoints.length) return null;
+    const g = gateWaypoints[i], sgn = Math.hypot(g.x - g.nx * 3, g.z - g.nz * 3) < Math.hypot(g.x + g.nx * 3, g.z + g.nz * 3) ? 1 : -1;
+    return { x: g.x - g.nx * 3 * sgn, z: g.z - g.nz * 3 * sgn };
+  }
   function citizenRest(dt) {
     const mates = npcs.filter(x => x.role === 'citizen'), k = Math.max(1, mates.length), i = Math.max(0, mates.indexOf(npc));
     const r = FIRE_R + 1.9, a = Math.PI / 4 + i / k * Math.PI * 2, sx = Math.cos(a) * r, sz = Math.sin(a) * r;
@@ -2032,7 +2106,7 @@
     const door = doorOf(sm);
     if (npcMove(door.x, door.z, 4, dt) < 1.5) {
       const d = gearDef(npc.carryGear);
-      npc.gear[d.slot] = npc.carryGear; npc.carryGear = null; applyGear(npc);
+      npc.gear[d.slot] = npc.carryGear; npc.carryGear = null; applyGear(npc); report.equipped++;
       floatText(`Equipped ${d.name}!`, npc.position.x, 2.9, npc.position.z); dust(npc.position.x, npc.position.z); sfxAt('chime', npc.position.x, npc.position.z);
     }
     return true;
@@ -2313,7 +2387,7 @@
                 blueprints.splice(blueprints.indexOf(o), 1); scene.remove(o);
                 if (o.userData.bkind) createBuilding(o.userData.bkind, o.position.x, o.position.z);
                 else createStructure(kind, o.position.x, o.position.z, o.rotation.y);
-                dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z);
+                dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); report.built++;
               }
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'repair' && npc.workT >= CFG.REPAIR_TIME) {
@@ -2340,7 +2414,8 @@
         if (d < bd) { bd = d; foe = e; }
       }
       if (npc.returning || !foe) {
-        if (npcMove(npc.home.x, npc.home.z, 5, dt) < 0.8) { npc.returning = false; if (peaceful) { state = 'Resting'; faceFire(); } }      // 평화로운 밤: 모닥불 곁에 앉아 쉰다
+        const post = sentryPost(npc), tgt = post || npc.home;
+        if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = 'Resting'; faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
@@ -2474,7 +2549,7 @@
   function collapseStructure(o) {
     const i = obstacles.indexOf(o);
     if (i < 0) return;
-    obstacles.splice(i, 1);
+    obstacles.splice(i, 1); report.wallsLost++;
     scene.remove(o);
     addBlueprint(o.userData.level === 'stone' ? 'stone' : 'wood', o.position.x, o.position.z, o.rotation.y);   // 같은 위치·회전의 반투명 청사진 (충돌 없음)
     dust(o.position.x, o.position.z);
@@ -2742,7 +2817,7 @@
       buildings: obstacles.filter(o => o.userData.type === 'building').map(o => {
         const stock = o.userData.stock ? { ...o.userData.stock } : null;
         if (stock) for (const n of npcs) if (n.carryGear) stock[n.carryGear]++;      // 수령하러 가던 장비는 선반으로 되돌려 저장
-        return { kind: o.userData.kind, ...pos(o), stock };
+        return { kind: o.userData.kind, ...pos(o), stock, level: o.userData.level };
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
@@ -2788,7 +2863,7 @@
     dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
     for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
-    for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
+    for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { o.userData.level = b.level; setHouseModel(o); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
     for (const d of sn.npcs) {
@@ -3009,7 +3084,7 @@
   }
   // ---------- 메인 루프 ----------
   const SPEED = 6;
-  let peaceful = false, peaceT = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
+  let propCd = 0, peaceful = false, peaceT = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
 
@@ -3039,7 +3114,7 @@
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); upgradeHouses(); updateProsperity(); if (dayNo > 1) showReport(dayNo); else report = freshReport(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3049,6 +3124,7 @@
     updateRocks(dt);
     updateShocks(dt);
     updatePopUi();
+    if ((propCd -= dt) <= 0) { propCd = 0.5; updateProsperity(); }
     updateRegen(dt);
     replenishTick(dt);
     siteRegrowTick(dt);
