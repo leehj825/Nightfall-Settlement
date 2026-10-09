@@ -174,6 +174,7 @@
   #npcCard .moodbar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; } #ncMoodBar { height: 100%; width: 50%; border-radius: 6px; transition: width .4s; }
   #ncMoodTxt { font-size: 12.5px; margin: 4px 0 8px; color: #d8e4ff; } #ncInfo { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #cfd6e6; }
   #ncClose { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: 0; cursor: pointer; color: #fff; background: #666; box-shadow: 0 2px 0 #333; display: block; margin: 0 auto; }
+  #birdBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
 </style>
 </head>
 <body>
@@ -200,6 +201,8 @@
 <div id="actions">
   <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
   <button class="btn" id="atkBtn">Attack<small>F</small></button>
+  <button class="btn" id="birdBtn">Map View<small>B</small></button>
+  <button class="btn" id="ordBtn" style="display:none">Orders<small id="ordSub">R · Guard</small></button>
   <button class="btn" id="hallBtn" style="display:none">Town Hall<small>T</small></button>
   <button class="btn" id="smithBtn" style="display:none">Smithy<small>C</small></button>
   <button class="btn" id="buildBtn"><span id="buildLbl">Stone Wall</span><small>Upgrade · U</small></button>
@@ -298,6 +301,18 @@
       gloomy: { label: 'Gloomy', desc: 'Hard to please', mood: -10 },
     },
     MOOD_LEAVE: 15, MOOD_UNHAPPY: 35, MOOD_HAPPY: 75,                  // 기분이 이 아래면 마을을 떠날 수 있다 / 불만 / 행복
+    // 플레이어 역할: 전투형(전위에서 싸운다) / 지휘형(병사를 이끈다)
+    CLASSES: {
+      warrior: { label: 'Warrior', desc: '130 HP, +25% weapon damage, faster Dash and Ultimate. Fights on the front line.' },
+      commander: { label: 'Commander', desc: '80 HP, -20% damage. Rally Cry (E) heals and empowers soldiers, Orders (R) calls them to your side, and soldiers near you hit 15% harder.' },
+    },
+    RALLY_CD: 20, RALLY_TIME: 8, RALLY_RADIUS: 20,
+    // 시대별 특성(퍼크): 각 시대에 하나씩 고른다
+    PERKS: {
+      1: [{ id: 'forager', label: 'Forager', desc: '+1 wood and stone from every gather' }, { id: 'fortifier', label: 'Fortifier', desc: 'Wooden fences have 50% more health' }, { id: 'scout', label: 'Scout', desc: '+10% move speed and faster healing by the fire' }],
+      2: [{ id: 'lord', label: 'Lord', desc: 'Soldiers have +15% health and +10% damage' }, { id: 'merchant', label: 'Merchant', desc: 'Market trades pay more, worksites haul 25% more' }, { id: 'smith', label: 'Master Smith', desc: 'Forging is faster and gear costs 25% less' }],
+      3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
+    },
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
@@ -715,13 +730,15 @@
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
   let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
-  const setDist = d => { DIST = Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
+  let bird = false, savedView = null;                                // 버드아이 뷰: 마을 전체를 한눈에
+  const camFocus = () => bird ? { x: 0, z: 0 } : player.position;
+  const setDist = d => { DIST = bird ? Math.min(95, Math.max(24, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
   function goalPos(out) {
     return out.set(
-      player.position.x + Math.sin(yaw) * Math.cos(pitch) * DIST,
+      camFocus().x + Math.sin(yaw) * Math.cos(pitch) * DIST,
       LOOK_H + Math.sin(pitch) * DIST,
-      player.position.z + Math.cos(yaw) * Math.cos(pitch) * DIST);
+      camFocus().z + Math.cos(yaw) * Math.cos(pitch) * DIST);
   }
   camera.position.copy(goalPos(camGoal));
   lookAt.set(0, LOOK_H, 0);
@@ -896,6 +913,18 @@
   Snd.setMuted(Snd.isMuted());
 
   // ---------- 자원 / 상호작용 ----------
+  let playerClass = null, order = 'guard', rallyT = 0;
+  const perks = {};                                                  // 시대 -> 퍼크 id
+  const hasPerk = (id) => Object.values(perks).includes(id);
+  const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0);
+  const pDmg = () => playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1;
+  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0);
+  const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1);
+  const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1);
+  const spdMul = () => hasPerk('scout') ? 1.1 : 1;
+  const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
+  const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
+  const soldierMult = (n) => (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1);
   const res = { wood: 0, stone: 0, food: 0, iron: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
@@ -958,7 +987,7 @@
     fence.position.set(x, 0.55, z);
     fence.rotation.y = rot;
     fence.castShadow = fence.receiveShadow = true;
-    fence.userData = { type: 'fence', level: 'wood', radius: 1.2, hp: CFG.FENCE_HP, maxHp: CFG.FENCE_HP };
+    fence.userData = { type: 'fence', level: 'wood', radius: 1.2, hp: fenceHp(), maxHp: fenceHp() };
     scene.add(fence);
     obstacles.push(fence);
     return fence;
@@ -969,7 +998,7 @@
     w.position.set(x, 0.7, z);
     w.rotation.y = rot;
     w.castShadow = w.receiveShadow = true;
-    w.userData = { type: 'fence', level: 'stone', radius: 1.5, hp: CFG.WALL_HP, maxHp: CFG.WALL_HP };
+    w.userData = { type: 'fence', level: 'stone', radius: 1.5, hp: wallHp(), maxHp: wallHp() };
     scene.add(w);
     obstacles.push(w);
     return w;
@@ -1282,7 +1311,7 @@
     res.stone -= CFG.FENCE_UPGRADE_STONE;
     f.material = wallMat;                         // 짙은 회색 돌 성벽
     f.scale.y = 1.25; f.position.y = 0.55 * 1.25;
-    Object.assign(f.userData, { level: 'stone', hp: CFG.WALL_HP, maxHp: CFG.WALL_HP });
+    Object.assign(f.userData, { level: 'stone', hp: wallHp(), maxHp: wallHp() });
     updateHud();
     toast('Upgraded to a stone wall!');
   }
@@ -1311,9 +1340,9 @@
       if (!d.cost) continue;
       const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age;
       const row = document.createElement('div'); row.className = 'srow';
-      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : `Cost: ${costText(d.cost)}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
+      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
       const [bc, be] = row.querySelectorAll('button');
-      bc.disabled = locked || !canPay(d.cost); be.disabled = stock <= 0 || equipped;
+      bc.disabled = locked || !canPay(gearCost(d)); be.disabled = stock <= 0 || equipped;
       bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
       smithList.appendChild(row);
     }
@@ -1324,8 +1353,8 @@
   }
   function craftGear(id) {
     const sm = smithOpenFor, d = gearDef(id);
-    if (!sm || !canPay(d.cost)) return;
-    payCost(d.cost); sm.userData.stock[id]++; refreshRack(sm); updateHud(); report.forged++;
+    if (!sm || !canPay(gearCost(d))) return;
+    payCost(gearCost(d)); sm.userData.stock[id]++; refreshRack(sm); updateHud(); report.forged++;
     forgeEffect(sm);
     toast(`Forged: ${d.name}! Soldiers will come to pick it up`);
     renderSmith();
@@ -1337,12 +1366,52 @@
     toast(`Equipped ${d.name}`); Snd.play('chime'); renderSmith();
   }
   document.getElementById('smithClose').addEventListener('click', closeSmith);
+  // ---------- 플레이어 역할 / 지휘 명령 / 시대 퍼크 ----------
+  function setClass(c) {
+    playerClass = c; hp = pMaxHp(); hpEl.textContent = Math.ceil(hp);
+    document.getElementById('ultBtn').firstChild.textContent = c === 'commander' ? 'Rally Cry' : 'Ultimate';
+    document.getElementById('ordBtn').style.display = c === 'commander' ? '' : 'none';
+    if (c !== 'commander') order = 'guard';
+    updateHud();
+  }
+  function toggleBird() {
+    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; }
+    else { bird = false; if (savedView) { DIST = savedView.d; pitch = savedView.p; } }
+    document.getElementById('birdBtn').classList.toggle('on', bird);
+    toast(bird ? "Bird's-eye view - press again to return" : 'Back to the hero view');
+  }
+  function toggleOrder() {
+    if (dead || playerClass !== 'commander') return;
+    order = order === 'guard' ? 'follow' : 'guard';
+    document.getElementById('ordSub').textContent = `R · ${order === 'follow' ? 'Follow' : 'Guard'}`;
+    toast(order === 'follow' ? 'Order: Follow me - soldiers gather at your side' : 'Order: Guard - soldiers return to their duties');
+    Snd.play('horn');
+  }
+  function choosePerk(a, id) {
+    perks[a] = id;
+    if (id === 'lord') for (const n of npcs) if (n.role !== 'citizen') { const m = npcMaxHp(n.role, n.trait); n.hp += m - n.maxHp; n.maxHp = m; n.labelText = ''; }
+    if (id === 'fortifier' || id === 'engineer') for (const o of obstacles) if (o.userData.type === 'fence' && o.userData.level === (id === 'engineer' ? 'stone' : 'wood')) { o.userData.hp *= 1.5; o.userData.maxHp *= 1.5; }
+    updateHud(); updateProsperity();
+  }
+  function openClassChoice() {
+    openEvent({ tag: 'Choose your path', title: 'Who will you be?', text: 'Fight on the front line, or lead others from just behind it. This choice lasts the whole game.',
+      opts: Object.entries(CFG.CLASSES).map(([id, c]) => ({ label: c.label, sub: c.desc, run: () => { setClass(id); setTimeout(() => openPerk(1), 500); return `You are the ${c.label}`; } })) });
+  }
+  function openPerk(a) {
+    const list = CFG.PERKS[a];
+    if (!list || perks[a] || dead) return;
+    openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
+      opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
+  }
+  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); });
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
   bindBtn('designBtn', designDefense);
   bindBtn('townBtn', designTown);
   bindBtn('smithBtn', openSmith);
+  bindBtn('ordBtn', toggleOrder);
+  bindBtn('birdBtn', toggleBird);
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
@@ -1467,7 +1536,7 @@
   const techEl = document.getElementById('techPanel'), techUpBtn = document.getElementById('techUp');
   function refreshTech() {
     document.getElementById('techTitle').textContent = `${CFG.AGES[age - 1].hall} · ${ageName(age)}`;
-    document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}`;
+    document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
     const nx = CFG.AGES[age];
     if (!nx) { document.getElementById('techNext').textContent = 'Final age reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Age'; return; }
     document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone)\nUnlocks: ${nx.unlock}`;
@@ -1484,6 +1553,7 @@
     burst({ x: 0, z: 0 }, 40); shake = Math.max(shake, 0.6);
     updateHud(); refreshTech();
     toast(`Age advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
+    setTimeout(() => openPerk(age), 900);
   }
   document.getElementById('techUp').addEventListener('click', upgradeAge);
   document.getElementById('techClose').addEventListener('click', closeTech);
@@ -1537,12 +1607,12 @@
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt');
     if (hp <= 0) gameOver('You were slain');
   }
-  function healPlayer(n) { hp = Math.min(CFG.PLAYER_MAX_HP, hp + n); hpEl.textContent = Math.ceil(hp); }
+  function healPlayer(n) { hp = Math.min(pMaxHp(), hp + n); hpEl.textContent = Math.ceil(hp); }
   // 회복: 모닥불 곁에서 일정 시간 맞지 않으면 초당 회복, 모닥불은 낮에 서서히 회복
   function updateRegen(dt) {
     if (dead) return;
     sinceHurt += dt;
-    if (fireAlive && hp < CFG.PLAYER_MAX_HP && sinceHurt >= CFG.REGEN_DELAY && Math.hypot(player.position.x, player.position.z) < CFG.REGEN_RADIUS) healPlayer(CFG.REGEN_RATE * dt);
+    if (fireAlive && hp < pMaxHp() && sinceHurt >= CFG.REGEN_DELAY && Math.hypot(player.position.x, player.position.z) < CFG.REGEN_RADIUS) healPlayer(CFG.REGEN_RATE * (hasPerk('scout') ? 1.5 : 1) * dt);
     if (fireAlive && fireHp < fireMax() && nowHour >= 6 && nowHour < 18) fireHp = Math.min(fireMax(), fireHp + CFG.FIRE_REGEN * dt);
   }
   function destroyFire() {
@@ -1948,8 +2018,8 @@
     hungerIcon.scale.set(0.95, 0.95, 1); hungerIcon.position.y = 3.4; hungerIcon.visible = false;
     n.add(hungerIcon);
 
-    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, name: nm, trait: tr, mood: preset.mood ?? 60, shock: 0, stateNow: 'Idle', maxHp: Math.round(def.hp * (CFG.TRAITS[tr].hp || 1)), mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
-      hp: Math.round(def.hp * (CFG.TRAITS[tr].hp || 1)), down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
+    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, name: nm, trait: tr, mood: preset.mood ?? 60, shock: 0, stateNow: 'Idle', maxHp: npcMaxHp(role, tr), mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
+      hp: npcMaxHp(role, tr), down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
       task: null, workT: 0, short: null, pickCd: delay, wp: null, route: null, routeRing: 0, graceT: 0, graceRing: 0,
       promote: null, hidden: false, decor: null, work: null, wstate: 'seek', carry: 0, farmT: 0, wtarget: null, stateLabel: '', bobAmt: 0 });
     applyCitizenLook(n); applyGear(n);
@@ -1991,7 +2061,7 @@
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) - n.shock;
     if (n.role === 'citizen') target += builtBuildings('house').length ? 4 : -8;
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -2060,7 +2130,7 @@
     const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? gearDef(n.gear.sword).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
     const amen = Math.min(1, (builtBuildings('well').length ? 0.5 : 0) + (builtBuildings('market').length ? 0.5 : 0));
     moodAvg = npcs.length ? npcs.reduce((a, n) => a + n.mood, 0) / npcs.length : 60;
-    return Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100)));
+    return Math.min(100, (hasPerk('steward') ? 10 : 0) + Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100))));
   }
   const prosLabel = (v) => CFG.PROSPERITY_LABELS.find(l => v < l[0])[1];
   const prosEl = document.getElementById('prosN'), moodEl = document.getElementById('moodN');
@@ -2164,6 +2234,7 @@
   function openEvent(ev) {
     if (dead || eventOpen) return;
     eventOpen = true; repEl.classList.remove('show'); if (typeof cardNpc !== 'undefined') { cardNpc = null; document.getElementById('npcCard').style.display = 'none'; }
+    document.querySelector('#eventPanel small').textContent = ev.tag || 'Morning event';
     document.getElementById('evTitle').textContent = ev.title; document.getElementById('evText').textContent = ev.text;
     evBtns.innerHTML = '';
     for (const o of ev.opts) {
@@ -2192,7 +2263,7 @@
     }
     if (n) updateHud();
   }
-  const maxPop = () => CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
+  const maxPop = () => CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + (hasPerk('steward') ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
@@ -2201,7 +2272,7 @@
     if (popJobsEl.textContent !== b) popJobsEl.textContent = b;
   }
   function setRole(n, role) {              // 직업 변경(전직): 색, 체력, 집 위치 갱신
-    n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = Math.round(ROLE[role].hp * (CFG.TRAITS[n.trait].hp || 1)); n.hp = n.maxHp;
+    n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = npcMaxHp(role, n.trait); n.hp = n.maxHp;
     n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
     if (n.work) { n.work.userData.worker = null; n.work = null; }          // 전직하면 일터를 떠난다
     applyCitizenLook(n);
@@ -2256,12 +2327,12 @@
     const soldiers = npcs.filter(n => n.role !== 'citizen');
     let best = null;
     for (const [id, d] of Object.entries(CFG.GEAR)) {
-      if (!d.cost || (d.age || 1) > age || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(d.cost)) continue;
+      if (!d.cost || (d.age || 1) > age || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
       const need = soldiers.some(n => (d.slot === 'armor' || d.slot === (n.role === 'melee' ? 'sword' : 'bow')) && d.tier > gearDef(n.gear[d.slot]).tier);
       if (need && (!best || d.tier < best.tier)) best = d;                         // 낮은 등급부터 차례로
     }
     if (!best) return;
-    payCost(best.cost); site.userData.stock[best.id] = (site.userData.stock[best.id] || 0) + 1; refreshRack(site); updateHud();
+    payCost(gearCost(best)); site.userData.stock[best.id] = (site.userData.stock[best.id] || 0) + 1; refreshRack(site); updateHud();
     forgeEffect(site); report.forged++; floatText(`Forged ${best.name}`, site.position.x, 3.4, site.position.z);
   }
   function workStep(dt) {
@@ -2276,7 +2347,7 @@
       if (Math.hypot(door.x - npc.position.x, door.z - npc.position.z) > 1.2) { npcMove(door.x, door.z, 3.5, dt); npc.stateLabel = 'To smithy'; return true; }
       npc.face = Math.atan2(site.position.x - npc.position.x, site.position.z - npc.position.z); npc.rotation.y = npc.face;
       npc.stateLabel = 'Forging'; npc.forgeT = (npc.forgeT || 0) + wdt;
-      if (npc.forgeT >= CFG.FORGE_CYCLE) { npc.forgeT = 0; autoForge(site); }
+      if (npc.forgeT >= CFG.FORGE_CYCLE * (hasPerk('smith') ? 0.6 : 1)) { npc.forgeT = 0; autoForge(site); }
       return true;
     }
     if (k === 'farm') {                                         // 농장: 밭에 서서 작물을 키우고 주기마다 식량 수확
@@ -2313,7 +2384,7 @@
     npc.workT += wdt; npc.bobAmt = Math.abs(Math.sin(npc.workT * 14)) * 0.15;
     if (npc.workT >= CFG.GATHER_TIME) {
       scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1); rollIron(o);
-      npc.carry = CFG.GATHER_YIELD[type] * CFG.WORKSITE_YIELD_MULT; npc.wstate = 'carry'; npc.wtarget = null; npc.workT = 0;
+      npc.carry = Math.round(gatherYield(type) * CFG.WORKSITE_YIELD_MULT * (hasPerk('merchant') ? 1.25 : 1)); npc.wstate = 'carry'; npc.wtarget = null; npc.workT = 0;
     }
     return true;
   }
@@ -2589,6 +2660,42 @@
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
+  function soldierStrike(foe) {
+    npc.atkCd = 0.8;
+    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z), base = gearDef(npc.gear.sword);
+    npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
+    spawnSlash(npc.position.x, npc.position.z, ang, base);
+    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) });
+  }
+  function soldierShoot(foe) {
+    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
+    npc.face = ang; npc.rotation.y = ang;
+    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; npc.anim.once('attackBow'); sfxAt('bow', npc.position.x, npc.position.z); fireArrow(npc.position.x, npc.position.z, ang, false, gearDef(npc.gear.bow).dmg * soldierMult(npc)); }
+  }
+  // 지휘 명령 'Follow': 병사들이 플레이어 곁에 모여 따라다니며, 플레이어 주변의 적을 함께 상대한다 (낮에도 일을 멈추고 따른다)
+  function followStep(dt) {
+    if (npc.task) { setTask(null); npc.workT = 0; }
+    npc.hidden = false; npc.returning = false;
+    let foe = null, bd = 16;
+    for (const e of enemies) {
+      if (e.userData.sinking || e.userData.siege) continue;
+      const d = Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z);
+      if (d < bd) { bd = d; foe = e; }
+    }
+    const idx = npcs.filter(x => x.role !== 'citizen').indexOf(npc), a = idx * 2.4 + player.rotation.y, r = 2.6 + (idx % 2) * 0.9;
+    if (foe) {
+      if (npc.archer) {
+        if (Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) <= CFG.ARCHER_AGGRO) { soldierShoot(foe); return 'Fighting'; }
+      } else {
+        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        if (d < 1.7 && npc.atkCd <= 0) soldierStrike(foe);
+        return 'Fighting';
+      }
+    }
+    const d = npcMove(player.position.x + Math.sin(a) * r, player.position.z + Math.cos(a) * r, 5.5, dt);
+    if (d < 0.8) { npc.face = Math.atan2(player.position.x - npc.position.x, player.position.z - npc.position.z); npc.rotation.y = npc.face; }
+    return 'Following';
+  }
   function archerDefend(dt) {
     const hx = npc.home.x, hz = npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
@@ -2602,9 +2709,7 @@
       if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { faceFire(); return 'Resting'; }
       return 'Idle';
     }
-    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
-    npc.face = ang; npc.rotation.y = ang;
-    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; npc.anim.once('attackBow'); sfxAt('bow', npc.position.x, npc.position.z); fireArrow(npc.position.x, npc.position.z, ang, false, gearDef(npc.gear.bow).dmg); }
+    soldierShoot(foe);
     return 'Fighting';
   }
   function updateNpc(dt, hour, t) {
@@ -2619,6 +2724,7 @@
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
     let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
+    if (order === 'follow' && npc.role !== 'citizen') { state = followStep(dt); busy = true; }       // 지휘 명령: 플레이어를 따른다
     if (!busy && isDay && gearFetchStep(dt)) { busy = true; state = 'Fetching gear'; }       // 병사: 대장간에서 새 장비 수령
     if (!busy && isDay && npc.role === 'citizen') { const rs = routineStep(dt, hour); if (rs) { busy = true; state = rs; } }
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
@@ -2665,7 +2771,7 @@
             } else if (task.kind === 'gather' && npc.workT >= CFG.GATHER_TIME) {
               const type = o.userData.type;
               scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
-              res[type] += CFG.GATHER_YIELD[type]; rollIron(o); updateHud(); sfxAt('chop', o.position.x, o.position.z);
+              res[type] += gatherYield(type); rollIron(o); updateHud(); sfxAt('chop', o.position.x, o.position.z);
               setTask(null); npc.workT = 0;
             }
           }
@@ -2688,12 +2794,7 @@
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < 1.7 && npc.atkCd <= 0) {
-          npc.atkCd = 0.8;
-          const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
-          const sd = gearDef(npc.gear.sword);
-          npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
-          spawnSlash(npc.position.x, npc.position.z, ang, sd);
-          sectorHit(npc.position.x, npc.position.z, ang, false, sd);
+          soldierStrike(foe);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }
       }
@@ -2721,14 +2822,14 @@
     if (weaponMode === 'bow') {
       shake = Math.max(shake, 0.08);
       playerAnim.once('attackBow'); Snd.play('bow');
-      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg);
+      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg());
       return;
     }
     atkT = SLASH_LIFE; shake = 0.3;
     playerAnim.once('attackSword'); Snd.play('swing');
     spawnSlash(player.position.x, player.position.z, facing);
     // 광역(Cleave): 부채꼴 안의 모든 적이 동시에 피해와 넉백을 받는다
-    const hits = sectorHit(player.position.x, player.position.z, facing, true);
+    const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...gearDef(playerGear.sword), dmg: gearDef(playerGear.sword).dmg * pDmg() });
     if (hits >= 2) {
       shake = Math.min(0.7, 0.3 + hits * 0.06);
       floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
@@ -2891,7 +2992,7 @@
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
     dashDX = Math.sin(facing); dashDZ = Math.cos(facing);
-    dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD; invincibleT = CFG.DASH_INVULN; Snd.play('dash');
+    dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
   const barBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthTest: false, fog: false }));
@@ -2923,7 +3024,7 @@
     gFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
     if (g.t >= CFG.PLAYER_GATHER_TIME) {
       scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
-      res[o.userData.type] += CFG.GATHER_YIELD[o.userData.type]; rollIron(o); Snd.play('chop');
+      res[o.userData.type] += gatherYield(o.userData.type); rollIron(o); Snd.play('chop');
       updateHud();
       gathering = null; gBg.visible = gFill.visible = false;
     }
@@ -2933,9 +3034,23 @@
   let ultCd = 0;
   const ultBtnEl = document.getElementById('ultBtn'), ultCdEl = document.getElementById('ultCd');
   const ultGeo = new THREE.CircleGeometry(CFG.ULT_RADIUS, 40);
+  function rally() {                                                  // 지휘형의 궁극기: 병사들 회복 + 8초간 공격력 +50%
+    ultCd = CFG.RALLY_CD * (hasPerk('warlord') ? 0.7 : 1); rallyT = CFG.RALLY_TIME; Snd.play('horn'); shake = Math.max(shake, 0.3);
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(ultGeo, new THREE.MeshBasicMaterial({ color: 0x8affc0, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.scale.setScalar(CFG.RALLY_RADIUS / CFG.ULT_RADIUS); g.add(m);
+    g.position.set(player.position.x, 0.12, player.position.z); g.userData.life = 0.45; scene.add(g); slashes.push(g);
+    let k = 0;
+    for (const n of npcs) {
+      if (n.role === 'citizen' || n.down || Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) > CFG.RALLY_RADIUS) continue;
+      n.hp = Math.min(n.maxHp, n.hp + Math.round(n.maxHp * 0.3)); k++; floatText('Rally!', n.position.x, 3.0, n.position.z);
+    }
+    toast(`Rally Cry! ${k} soldier${k === 1 ? '' : 's'} fight harder for ${CFG.RALLY_TIME}s`);
+  }
   function ultimate() {
     if (dead || ultCd > 0) return;
-    ultCd = CFG.ULT_CD; Snd.play('ult');
+    if (playerClass === 'commander') return rally();
+    ultCd = CFG.ULT_CD * (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.7 : 1); Snd.play('ult');
     gathering = null;
     const g = new THREE.Group();                                     // 360도 원반형 검기
     const m = new THREE.Mesh(ultGeo, new THREE.MeshBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
@@ -2948,7 +3063,7 @@
       if (e.userData.sinking) continue;
       if (Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z) < CFG.ULT_RADIUS + e.userData.r) {
         const wasCasting = e.userData.castT > 0;
-        hitEnemy(e, CFG.ULT_DAMAGE, player.position.x, player.position.z, true, CFG.ULT_KB, true); n++;
+        hitEnemy(e, CFG.ULT_DAMAGE * pDmg(), player.position.x, player.position.z, true, CFG.ULT_KB, true); n++;
         if (wasCasting && enemies.includes(e)) stunBoss(e);          // 캐스팅 중 궁극기 적중 → 지진 취소 + 기절
       }
     }
@@ -3058,7 +3173,7 @@
     const show = dashCd > 0;
     barBg.visible = barFill.visible = show;
     if (show) {
-      const prog = 1 - dashCd / CFG.DASH_CD, rx = Math.cos(yaw), rz = -Math.sin(yaw);
+      const prog = 1 - dashCd / (CFG.DASH_CD * dashMul()), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       barBg.position.set(player.position.x, 0.25, player.position.z);
       barFill.position.set(player.position.x - rx * 0.65, 0.25, player.position.z - rz * 0.65);
       barFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
@@ -3079,7 +3194,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, res: { ...res }, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, res: { ...res }, playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing },
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -3123,6 +3238,9 @@
   function applySnapshot(sn) {
     clearWorld();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0;
+    for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
+    if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openClassChoice, 700); }
+    order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `R · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, sn.playerGear || {}); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
     designTier = sn.designTier; townStage = sn.townStage || 0; age = sn.age || 1; chapterCleared = sn.chapterCleared;
@@ -3173,6 +3291,8 @@
     if (dead) return;
     res.wood += 400; res.stone += 400; res.iron += 60;
     setAge(3);                                                // 디버그: 3시대(석조 요새)로
+    if (!playerClass) setClass('warrior');
+    for (const a of [1, 2, 3]) if (!perks[a]) choosePerk(a, CFG.PERKS[a][0].id);
     while (townStage < CFG.TOWN_GROUPS.length) designTown();
     while (CFG.DESIGN[designTier]) designDefense();
     for (const b of blueprints.slice()) {                     // 도면을 즉시 완성
@@ -3187,7 +3307,7 @@
     playerGear.sword = 'iron_sword'; applyPlayerGear();
     for (const e of enemies.slice()) removeEnemy(e);
     for (const r of rocks.slice()) { scene.remove(r); scene.remove(r.userData.mark); rocks.splice(rocks.indexOf(r), 1); }
-    healPlayer(CFG.PLAYER_MAX_HP); fireHp = fireMax();
+    healPlayer(pMaxHp()); fireHp = fireMax();
     chapterCleared = false; wave.day = 0; wave.bossLeft = 0;
     gameMin = (CFG.BOSS_DAY - 1) * 1440 + 17 * 60 + 30;       // Day 7 17:30
     lastWarnDay = CFG.BOSS_DAY - 1; lastRespawnDay = CFG.BOSS_DAY;
@@ -3208,7 +3328,7 @@
       if (t.userData.type !== 'building' || t.userData.kind !== 'tower') continue;
       t.userData.shootCd -= dt;
       if (t.userData.shootCd > 0) continue;
-      let foe = null, bd = CFG.TOWER_RANGE;
+      let foe = null, bd = CFG.TOWER_RANGE * (hasPerk('engineer') ? 1.25 : 1);
       for (const e of enemies) {
         if (e.userData.sinking || e.userData.siege) continue;
         const d = Math.hypot(e.position.x - t.position.x, e.position.z - t.position.z);
@@ -3216,12 +3336,12 @@
       }
       if (!foe) continue;
       t.userData.shootCd = CFG.TOWER_INTERVAL;
-      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG, 4.9);
+      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1), 4.9);
     }
   }
   let eatCd = 0;
   function eat() {
-    if (dead || res.food < CFG.FOOD_MEAL || hp >= CFG.PLAYER_MAX_HP || eatCd > 0) return;
+    if (dead || res.food < CFG.FOOD_MEAL || hp >= pMaxHp() || eatCd > 0) return;
     res.food -= CFG.FOOD_MEAL; healPlayer(CFG.FOOD_HEAL); eatCd = 6; updateHud();
     floatText(`Meal +${CFG.FOOD_HEAL}`, player.position.x, 2.6, player.position.z);
   }
@@ -3244,7 +3364,7 @@
       const h = npcs.find(n => n.hungry && n.role === 'citizen' && !n.down && res.food >= rationOf(n));
       if (h) { res.food -= rationOf(h); h.hungry = false; updateHud(); floatText('Fed!', h.position.x, 3.2, h.position.z); }
     }
-    if (hp < CFG.PLAYER_MAX_HP * CFG.FOOD_AUTO_BELOW) eat();           // 체력이 절반 미만이면 자동 식사
+    if (hp < pMaxHp() * CFG.FOOD_AUTO_BELOW) eat();           // 체력이 절반 미만이면 자동 식사
   }
   addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat) eat(); });
 
@@ -3372,6 +3492,7 @@
     applyLighting(nf, isRaid(nightDay) ? nf : 0);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
+    if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
     { const g = Math.max(0, Math.min(1, (nf - 0.2) / 0.45)), fl = 0.94 + 0.06 * Math.sin(t * 9); windowGlow.color.setRGB(0.16 + 0.84 * g * fl, 0.16 + 0.62 * g * fl, 0.2 + 0.2 * g); lampGlow.color.copy(windowGlow.color); }      // 창문·가로등은 밤에 켜진다                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
     torch.intensity = nf * 2.4;   // 횃불: 밤에 켜지고 낮에 꺼짐
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
@@ -3387,7 +3508,7 @@
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); rollEvent(dayNo); } else report = freshReport(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); rollEvent(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3396,7 +3517,7 @@
     updateArrows(dt);
     updateRocks(dt);
     updateShocks(dt);
-    updatePopUi();
+    updatePopUi(); rallyT = Math.max(0, rallyT - dt);
     if (cardNpc && (cardT -= dt) <= 0) { cardT = 0.4; renderCard(); }
     if ((propCd -= dt) <= 0) { propCd = 0.5; updateProsperity(); }
     updateRegen(dt);
@@ -3437,8 +3558,8 @@
       let mx = rightX * ix + fwdX * iy, mz = rightZ * ix + fwdZ * iy;
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
-      player.position.x += mx * SPEED * mag * dt;
-      player.position.z += mz * SPEED * mag * dt;
+      player.position.x += mx * SPEED * spdMul() * mag * dt;
+      player.position.z += mz * SPEED * spdMul() * mag * dt;
 
       // 이동 방향으로 부드럽게 회전
       let diff = Math.atan2(mx, mz) - facing;
@@ -3463,7 +3584,7 @@
     // 카메라 Lerp 추적
     const k = 1 - Math.exp(-6 * dt);
     camera.position.lerp(goalPos(camGoal), k);
-    lookAt.lerp(new THREE.Vector3(player.position.x, LOOK_H, player.position.z), k);
+    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H, camFocus().z), k);
     camera.lookAt(lookAt);
 
     // 그림자 범위가 플레이어를 따라가게
@@ -3481,9 +3602,10 @@
     if (off) camera.position.sub(off);
   }
   applyPlayerGear(); updateHud();
+  if (/[?&]debug/.test(location.search)) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);      // 처음 시작할 때 역할 선택
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   saveCheckpoint('Day 1 start');
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 </script>
