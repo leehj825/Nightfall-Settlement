@@ -9,14 +9,15 @@
     -webkit-user-select: none; user-select: none; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
-  #title { position: fixed; top: 10px; left: 0; right: 0; text-align: center; margin: 0; pointer-events: none;
-    font-size: clamp(20px, 5vw, 40px); font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  :root { --hud-w: 262px; --rb-w: 168px; }                    /* 왼쪽 HUD / 오른쪽 버튼 열이 차지하는 폭: 상단 안내는 그 사이 공간에만 그린다 */
+  #title { position: fixed; top: 10px; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); text-align: center; margin: 0; pointer-events: none; white-space: nowrap;
+    font-size: clamp(14px, calc((100vw - 460px) / 16), 40px); font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
     background: linear-gradient(180deg, #ffe7a8, #ff9d3c 60%, #c2410c); -webkit-background-clip: text; background-clip: text;
     color: transparent; filter: drop-shadow(0 3px 0 #3a1408) drop-shadow(0 0 14px rgba(255,140,50,.5)); }
 
   #hud { position: fixed; top: 10px; left: 10px; padding: 8px 14px; border-radius: 10px; color: #fff;
     background: rgba(20,10,30,.55); font-size: 17px; line-height: 1.6; pointer-events: none; }
-  #clock { position: fixed; top: 58px; left: 0; right: 0; text-align: center; color: #fff; font-size: 18px; font-weight: 700;
+  #clock { position: fixed; top: 58px; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); text-align: center; color: #fff; font-size: 18px; font-weight: 700;
     text-shadow: 0 2px 4px #000; pointer-events: none; letter-spacing: .05em; }
   #gameover { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
     background: rgba(0,0,0,.78); z-index: 20; padding: 16px; }
@@ -33,11 +34,11 @@
   #restartBtn { margin-top: 18px; font: inherit; font-size: 20px; font-weight: 700; color: #3a1408; padding: 12px 38px; border: 0;
     border-radius: 999px; cursor: pointer; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 4px 0 #a8480f; }
   #restartBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; }
-  #bossBar { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); width: min(340px, 70vw); display: none; z-index: 6;
+  #bossBar { position: fixed; top: 112px; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); margin: 0 auto; max-width: 340px; display: none; z-index: 6;
     text-align: center; color: #ff8a7a; font-weight: 800; font-size: 14px; text-shadow: 0 2px 3px #000; pointer-events: none; }
   #bossBar .track { height: 10px; margin-top: 3px; border-radius: 6px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.4); overflow: hidden; }
   #bossFill { height: 100%; width: 100%; background: linear-gradient(#ff5a4a, #a01810); }
-  #raidInfo { position: fixed; top: 82px; left: 0; right: 0; text-align: center; font-size: 14px; font-weight: 700; color: #ffe7a8; text-shadow: 0 2px 4px #000; pointer-events: none; }
+  #raidInfo { position: fixed; top: 82px; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); text-align: center; font-size: 14px; font-weight: 700; color: #ffe7a8; text-shadow: 0 2px 4px #000; pointer-events: none; }
   #raidInfo.soon { color: #ff9a8a; }
   #raidInfo.blood { color: #ff4a3a; font-size: 16px; }
   #techPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.45); z-index: 18; padding: 16px; }
@@ -62,17 +63,6 @@
   #smithPanel button:disabled { opacity: .4; cursor: default; }
   #smithPanel button#smithClose { background: #666; color: #fff; box-shadow: 0 2px 0 #333; }
   #smithPanel .tbtns { display: flex; justify-content: center; margin-top: 8px; }
-  @media (max-height: 520px), (max-width: 640px) {
-    #hud { font-size: 12px; line-height: 1.35; padding: 5px 9px; top: 6px; left: 6px; }
-    #title { font-size: 18px; top: 6px; } #clock { top: 32px; font-size: 14px; } #raidInfo { top: 52px; font-size: 12px; }
-    .btn { width: 52px; height: 52px; font-size: 10.5px; border-width: 2px; } .btn small { font-size: 9px; }
-    #swapBtn { width: 62px; height: 34px; font-size: 10px; }
-    #designBtn, #townBtn { width: 124px; font-size: 11.5px; padding: 4px 6px; } #designBtn small, #townBtn small { font-size: 9px; }
-    #townBtn { top: 50px; }
-    #actions { gap: 4px; right: 6px; bottom: 8px; max-height: calc(100vh - 110px); }
-    #joy { width: 120px; height: 120px; left: 10px; bottom: 10px; }
-    #muteBtn { left: 140px; bottom: 12px; width: 32px; height: 32px; font-size: 15px; }
-  }
   #eventPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 19; padding: 14px; }
   #eventPanel .ecard { background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 18px 22px; width: min(440px, 100%); color: #fff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
   #eventPanel small { color: #a9a49a; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
@@ -83,7 +73,7 @@
   #evBtns button small { display: block; font-weight: 500; font-size: 11.5px; color: #5a2a10; text-transform: none; letter-spacing: 0; }
   #evBtns button:disabled { opacity: .4; cursor: default; }
   #evBtns button.alt { background: #666; color: #fff; box-shadow: 0 2px 0 #333; } #evBtns button.alt small { color: #ccc; }
-  #report { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); z-index: 12; width: min(360px, calc(100vw - 320px)); min-width: 230px; padding: 10px 16px; border-radius: 12px;
+  #report { position: fixed; top: 112px; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); margin: 0 auto; max-width: 360px; z-index: 12; padding: 10px 16px; border-radius: 12px;
     background: rgba(28,22,16,.92); border: 2px solid #c8923a; color: #fff; box-shadow: 0 8px 28px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .5s; cursor: pointer; }
   #report.show { opacity: 1; pointer-events: auto; }
   #report h4 { margin: 0 0 6px; color: #ffd27a; font-size: 15px; text-align: center; }
@@ -92,17 +82,17 @@
   #muteBtn { position: fixed; left: 176px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 18px; padding: 0; cursor: pointer; }
   #dbg { position: fixed; left: 50%; transform: translateX(-50%); bottom: 10px; z-index: 6; display: none; gap: 6px; }
   #dbg button { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px; border: 1px solid #fff8; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; }
-  #clear { position: fixed; top: 36%; left: 0; right: 0; text-align: center; color: #ffd54a; z-index: 16; padding: 0 12px;
+  #clear { position: fixed; top: 36%; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); text-align: center; color: #ffd54a; z-index: 16; padding: 0 12px;
     font-size: clamp(26px, 6.5vw, 58px); font-weight: 900; text-shadow: 0 4px 0 #5a3d00, 0 0 28px rgba(255,200,60,.8);
     opacity: 0; transition: opacity .6s; pointer-events: none; }
   #clear.show { opacity: 1; }
   #ultBtn { background: radial-gradient(circle at 35% 30%, #fff1a8, #e0a500); color: #4a2f00; }
   #ultBtn.cool { opacity: .45; }
-  #warn { position: fixed; top: 32%; left: 0; right: 0; text-align: center; color: #ff3b30; z-index: 15; padding: 0 12px;
+  #warn { position: fixed; top: 32%; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); text-align: center; color: #ff3b30; z-index: 15; padding: 0 12px;
     font-size: clamp(26px, 6.5vw, 60px); font-weight: 900; text-shadow: 0 4px 0 #3a0000, 0 0 24px rgba(255,40,20,.7);
     opacity: 0; transition: opacity .4s; pointer-events: none; }
   #warn.show { opacity: 1; }
-  #toast { position: fixed; top: 22%; left: 0; right: 0; text-align: center; color: #ffe7a8; font-size: 18px;
+  #toast { position: fixed; top: 22%; left: calc(var(--hud-w) + 8px); right: calc(var(--rb-w) + 8px); text-align: center; color: #ffe7a8; font-size: 18px;
     text-shadow: 0 2px 4px #000; opacity: 0; transition: opacity .3s; pointer-events: none; }
 
   #joy { position: fixed; left: 18px; bottom: 18px; width: 150px; height: 150px; z-index: 5; touch-action: none; }
@@ -134,6 +124,39 @@
   #townBtn.done { background: #555; box-shadow: none; opacity: .7; }
   #popJobs { font-size: 12px; color: #d8e4ff; }
   #buildBtn { background: radial-gradient(circle at 35% 30%, #d9b48a, #8a5a34); color: #fff; }
+  /* 가로로 누운 낮은 화면(폰 가로): 제목을 숨기고 시계·안내만 HUD와 버튼 열 사이에 둔다 */
+  @media (max-height: 520px) and (orientation: landscape) {
+    :root { --hud-w: 236px; --rb-w: 140px; }
+    #hud { font-size: 11.5px; line-height: 1.3; padding: 4px 8px; top: 6px; left: 6px; }
+    #title { display: none; } #clock { top: 6px; font-size: 14px; } #raidInfo { top: 26px; font-size: 11.5px; line-height: 1.25; }
+    .btn { width: 52px; height: 52px; font-size: 10.5px; border-width: 2px; } .btn small { font-size: 9px; }
+    #swapBtn { width: 62px; height: 34px; font-size: 10px; }
+    #designBtn, #townBtn { right: 6px; width: 124px; font-size: 11.5px; padding: 4px 6px; } #designBtn small, #townBtn small { font-size: 9px; }
+    #designBtn { top: 6px; } #townBtn { top: 64px; }
+    #actions { gap: 4px; right: 6px; bottom: 8px; max-height: calc(100vh - 128px); }
+    #joy { width: 112px; height: 112px; left: 10px; bottom: 10px; }
+    #muteBtn { left: 132px; bottom: 12px; width: 32px; height: 32px; font-size: 15px; }
+    #bossBar { top: 48px; max-width: 300px; }
+    #report { top: 52px; }
+    #toast { top: 74px; font-size: 14px; } #warn { top: 100px; font-size: clamp(18px, 4vw, 30px); } #clear { font-size: clamp(18px, 4vw, 30px); }
+  }
+  /* 세로 폰: 제목·시계·안내를 맨 위 한 줄씩 쌓고, HUD와 오른쪽 버튼은 그 아래에서 시작한다 */
+  @media (max-width: 640px) and (orientation: portrait) {
+    :root { --hud-w: 0px; --rb-w: 0px; }
+    #title { top: 6px; font-size: 16px; left: 8px; right: 8px; } #clock { top: 28px; font-size: 14px; left: 8px; right: 8px; } #raidInfo { top: 48px; font-size: 11.5px; left: 8px; right: 8px; line-height: 1.25; }
+    #hud { font-size: 12px; line-height: 1.35; padding: 5px 9px; top: 100px; left: 6px; }
+    .btn { width: 52px; height: 52px; font-size: 10.5px; border-width: 2px; } .btn small { font-size: 9px; }
+    #swapBtn { width: 62px; height: 34px; font-size: 10px; }
+    #designBtn, #townBtn { right: 6px; width: 124px; font-size: 11.5px; padding: 4px 6px; } #designBtn small, #townBtn small { font-size: 9px; }
+    #designBtn { top: 100px; } #townBtn { top: 158px; }
+    #actions { gap: 4px; right: 6px; bottom: 8px; max-height: calc(100vh - 232px); }
+    #joy { width: 120px; height: 120px; left: 10px; bottom: 10px; }
+    #muteBtn { left: 140px; bottom: 12px; width: 32px; height: 32px; font-size: 15px; }
+    #bossBar { top: 68px; }
+    #toast { top: 316px; left: 8px; right: 124px; font-size: 14px; } #warn { top: 316px; left: 8px; right: 124px; font-size: 22px; } #clear { left: 8px; right: 124px; font-size: 22px; }
+    #report { top: auto; bottom: 150px; left: 8px; right: 124px; margin: 0; max-width: none; padding: 7px 11px; max-height: calc(100vh - 460px); overflow-y: auto; }
+    #report h4 { font-size: 13px; margin-bottom: 3px; } #report ul { font-size: 11.5px; line-height: 1.35; padding-left: 15px; } #report small { display: none; }
+  }
 </style>
 </head>
 <body>
