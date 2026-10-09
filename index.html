@@ -48,6 +48,20 @@
   #techPanel button { font: inherit; font-size: 16px; font-weight: 700; padding: 10px 20px; border-radius: 12px; cursor: pointer; border: 0; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 3px 0 #a8480f; }
   #techPanel button#techClose { background: #666; color: #fff; box-shadow: 0 3px 0 #333; }
   #techPanel button:disabled { opacity: .45; }
+  #smithPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.45); z-index: 18; padding: 12px; }
+  #smithPanel .scard { background: rgba(28,22,16,.95); border: 2px solid #c8923a; border-radius: 16px; padding: 16px 20px; width: min(460px, 100%); color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); max-height: 92vh; overflow: auto; }
+  #smithPanel h3 { margin: 0 0 4px; color: #ffd27a; font-size: 22px; text-align: center; }
+  #smithPanel p { margin: 4px 0; font-size: 13px; text-align: center; color: #d8e4ff; }
+  #smithPanel p.shint { font-size: 11px; color: #a9a49a; }
+  #smithPanel .srow { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border-radius: 10px; padding: 8px 10px; margin: 6px 0; }
+  #smithPanel .sinfo { flex: 1; font-size: 13px; line-height: 1.35; }
+  #smithPanel .sinfo b { font-size: 15px; color: #ffe7a8; }
+  #smithPanel .sinfo small { display: block; color: #b9c4d8; font-size: 11px; }
+  #smithPanel .sbtns { display: flex; flex-direction: column; gap: 4px; }
+  #smithPanel button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 9px; cursor: pointer; border: 0; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; }
+  #smithPanel button:disabled { opacity: .4; cursor: default; }
+  #smithPanel button#smithClose { background: #666; color: #fff; box-shadow: 0 2px 0 #333; }
+  #smithPanel .tbtns { display: flex; justify-content: center; margin-top: 8px; }
   #dbg { position: fixed; left: 10px; top: 214px; z-index: 6; display: none; gap: 6px; }
   #dbg button { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px; border: 1px solid #fff8; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; }
   #clear { position: fixed; top: 36%; left: 0; right: 0; text-align: center; color: #ffd54a; z-index: 16; padding: 0 12px;
@@ -77,39 +91,33 @@
   #swapBtn { width: 72px; height: 42px; border-radius: 12px; font-size: 12px; align-self: flex-end;
     background: radial-gradient(circle at 35% 30%, #b9e8ff, #4a90c8); color: #08243a; line-height: 1.1; }
   #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; }
-  #upgBtn { position: fixed; top: 8px; right: 8px; z-index: 5; font: inherit; font-weight: 700; font-size: 12px; color: #fff;
-    padding: 5px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,.6); cursor: pointer; touch-action: none;
-    background: linear-gradient(#5aa8ff, #2a5fc0); box-shadow: 0 3px 0 #173a80; line-height: 1.2; }
-  #designBtn { position: fixed; top: 52px; right: 8px; z-index: 5; width: 150px; font: inherit; font-weight: 800; font-size: 13px; color: #fff;
+  #designBtn { position: fixed; top: 8px; right: 8px; z-index: 5; width: 150px; font: inherit; font-weight: 800; font-size: 13px; color: #fff;
     padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
     background: linear-gradient(#4fb36a, #1f7a3d); box-shadow: 0 4px 0 #0f4a24, 0 8px 18px rgba(0,0,0,.4); }
   #designBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .9; margin-top: 1px; }
   #designBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0f4a24; }
   #designBtn.stone { background: linear-gradient(#8a9099, #4a4f57); box-shadow: 0 4px 0 #2a2d33, 0 8px 18px rgba(0,0,0,.4); }
   #designBtn.done { background: #555; box-shadow: none; opacity: .7; }
-  #townBtn { position: fixed; top: 100px; right: 8px; z-index: 5; width: 150px; font: inherit; font-weight: 800; font-size: 13px; color: #fff;
+  #townBtn { position: fixed; top: 56px; right: 8px; z-index: 5; width: 150px; font: inherit; font-weight: 800; font-size: 13px; color: #fff;
     padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
     background: linear-gradient(#d8a24a, #9a6420); box-shadow: 0 4px 0 #5c3a0e, 0 8px 18px rgba(0,0,0,.4); }
   #townBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .9; margin-top: 1px; }
   #townBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #5c3a0e; }
   #townBtn.done { background: #555; box-shadow: none; opacity: .7; }
   #popJobs { font-size: 12px; color: #d8e4ff; }
-  #upgBtn small { display: block; font-weight: 400; font-size: 10px; opacity: .85; }
-  #upgBtn:active { transform: translateY(2px); }
-  #upgBtn.done { background: #666; box-shadow: none; opacity: .75; }
   #buildBtn { background: radial-gradient(circle at 35% 30%, #d9b48a, #8a5a34); color: #fff; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
-<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
-<button id="upgBtn">Upgrade Weapon<small>Sword damage ↑ · 10 Stone</small></button>
 <div id="clock">Day 1 - 08:00</div>
 <div id="raidInfo"></div>
 <div id="techPanel"><div class="tcard"><h3 id="techTitle">Age Progression</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">Advance Age</button><button id="techClose">Close</button></div></div></div>
+<div id="smithPanel"><div class="scard"><h3>Blacksmith</h3><p id="smithRes"></p><div id="smithList"></div><p class="shint">Crafted gear is displayed on the rack. Soldiers walk over and equip it on their own - you can take pieces yourself with Equip.</p><div class="tbtns"><button id="smithClose">Close</button></div></div></div>
 <div id="dbg"><button id="dbgSetup">Day 7 Prep</button><button id="dbgBoss">Spawn Boss</button></div>
 <div id="bossBar"><span id="bossName">Behemoth</span><div class="track"><div id="bossFill"></div></div></div>
 <div id="clear">Chapter 1 Clear - Your territory is stable!</div>
@@ -120,6 +128,7 @@
 <div id="actions">
   <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
   <button class="btn" id="atkBtn">Attack<small>F</small></button>
+  <button class="btn" id="smithBtn" style="display:none">Smithy<small>C</small></button>
   <button class="btn" id="buildBtn"><span id="buildLbl">Stone Wall</span><small>Upgrade · U</small></button>
   <button class="btn" id="actBtn">Gather<small>G</small></button>
   <button class="btn" id="ultBtn">Ultimate<small id="ultCd">E</small></button>
@@ -127,6 +136,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 (() => {
   // ---------- 렌더러 / 씬 ----------
@@ -184,8 +195,8 @@
     // 마을 인프라 설계: 시대가 열릴 때마다 다음 묶음을 설계할 수 있다. lots는 사각 방어선 안쪽 격자 배치 (auto: 벌목장/채석장은 숲/바위 근처에 자동 선정)
     TOWN_GROUPS: [
       { age: 1, label: 'Plan Tent Village', cost: { wood: 40 }, lots: [{ kind: 'house', x: -9, z: -9 }, { kind: 'house', x: -4, z: -9 }, { kind: 'house', x: 4, z: -9 }] },
-      { age: 2, label: 'Plan Age 2 Buildings', cost: { wood: 60 }, lots: [
-        { kind: 'barracks', x: -7.5, z: 9 }, { kind: 'range', x: 6.5, z: 9 }, { kind: 'farm', x: 10.5, z: -8 }, { kind: 'farm', x: 11, z: 5 },
+      { age: 2, label: 'Plan Age 2 Buildings', cost: { wood: 70 }, lots: [
+        { kind: 'smith', x: -11.5, z: -4.4 }, { kind: 'barracks', x: -7.5, z: 9 }, { kind: 'range', x: 6.5, z: 9 }, { kind: 'farm', x: 10.5, z: -8 }, { kind: 'farm', x: 11, z: 5 },
         { kind: 'lumber', auto: true }, { kind: 'quarry', auto: true }] },
       { age: 3, label: 'Plan Defense Towers', cost: { wood: 30, stone: 60 }, lots: [
         { kind: 'tower', x: -12.3, z: -12.3 }, { kind: 'tower', x: 12.3, z: -12.3 }, { kind: 'tower', x: -12.3, z: 12.3 }, { kind: 'tower', x: 12.3, z: 12.3 }] },
@@ -193,10 +204,12 @@
     BUILDING: {
       house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 },
       farm: { res: 'wood', cost: 6, radius: 0.3, size: [5, 0.4, 4] }, lumber: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] },
+      smith: { res: 'wood', cost: 10, radius: 2.4, size: [4.2, 2.6, 3.4] },
       quarry: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] }, tower: { res: 'stone', cost: 10, radius: 1.7, size: [3.2, 4.5, 3.2] },
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 5, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
+    RATION: 1, HUNGER_MULT: 0.5, IRON_CHANCE: 0.4,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 1.3,
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
@@ -244,13 +257,17 @@
     KNOCKBACK: 0.7, KNOCKBACK_UPGRADED: 1.6, BRUTE_KNOCKBACK_MUL: 0.7,   // 넉백 거리 (무기 강화 시 증가)
     ENEMY_HP: 2,                               // 적 체력
     // 무기 데미지: 검은 근접(고위험·고화력), 활은 안전하지만 약함. 무기 강화는 검에만 적용된다.
-    SWORD_DMG: 2, SWORD_DMG_UPGRADED: 4,       // 검 (플레이어·근접 동료 공통)
-    BOW_DMG: 1,                                // 활 (플레이어·궁수 동료 공통, 강화 불가)
+    BOW_DMG: 1,                                // 기본 활 데미지 (화살 데미지가 지정되지 않았을 때)
+    // 장비 데이터: cost가 있는 것은 대장간에서 제작. 병사는 대장간에서 직접 수령(Equip)한다. tier가 높을수록 상위 장비
+    GEAR: {
+      sword_basic: { slot: 'sword', name: 'Sword', short: 'Sword', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
+      iron_sword: { slot: 'sword', name: 'Iron Sword', short: 'Iron Sword', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { stone: 10, iron: 5 }, desc: 'Damage 4 · Wider slash · Stronger knockback' },
+      bow_basic: { slot: 'bow', name: 'Bow', short: 'Bow', dmg: 1, tier: 0, color: 0x8a5a2b },
+      strong_bow: { slot: 'bow', name: 'Reinforced Bow', short: 'Bow+', dmg: 2, tier: 1, color: 0x5a3a1a, cost: { wood: 12, iron: 4 }, desc: 'Arrow damage 2 · Iron-tipped limbs' },
+    },
     // 방패병 (Day 3부터): 화살 면역, 검/근접 동료 돌진에만 피해
     SHIELD_FROM_DAY: 3, SHIELD_CHANCE: 0.3, SHIELD_HP: 3, SHIELD_SPEED_MUL: 0.9,
     HP_SCALE_EVERY: 2,                         // 모든 적 최대 HP가 N일마다 +1 (보너스 = floor((Day-1)/N))
-    WEAPON_UPGRADE_STONE: 10,                  // 무기 강화 비용(돌)
-    UPGRADED_SLASH_SCALE: 1.5,                 // 강화 후 검기 크기 배율
   };
 
   // ---------- 절차적 맵: 나무 / 바위 ----------
@@ -318,22 +335,224 @@
   scatter(makeTree, CFG.TREE_COUNT);
   scatter(makeRock, CFG.STONE_COUNT);
 
+  // ---------- 캐릭터 리그: GLTFLoader 준비 + 코드로 만든 스틱맨(Bone 계층) + AnimationMixer ----------
+  const R = 0.45, H = 0.7;
+  // 외부 모델(.glb)을 쓰려면 아래 URL만 채우면 된다. 비어 있으면 코드로 만든 스틱맨 리그를 쓴다.
+  // glb 규칙: 클립 이름에 idle / walk / run / gather / attack / shoot / die / sit 포함, 손 뼈 이름에 RightHand·LeftHand(또는 hand_r / hand_l)
+  const MODEL_URLS = { player: null, melee: null, archer: null, citizen: null, enemy: null };
+  const modelCache = {};
+  (function preloadModels() {
+    if (typeof THREE.GLTFLoader === 'undefined') return;
+    const loader = new THREE.GLTFLoader();
+    for (const [kind, url] of Object.entries(MODEL_URLS)) {
+      if (url) loader.load(url, g => { modelCache[kind] = g; }, undefined, () => console.warn('Model load failed, using the stickman rig:', url));
+    }
+  })();
+  function rigFromGltf(g, color) {
+    const root = new THREE.Group(), model = (THREE.SkeletonUtils && THREE.SkeletonUtils.clone) ? THREE.SkeletonUtils.clone(g.scene) : g.scene.clone(true);
+    root.add(model);
+    const clips = {}, pick = (name, re) => { const c = g.animations.find(a => re.test(a.name)); if (c) clips[name] = c; };
+    pick('idle', /idle/i); pick('walk', /walk/i); pick('run', /run/i); pick('gather', /gather|mine|pick|chop/i);
+    pick('attackSword', /attack|slash|sword/i); pick('attackBow', /shoot|bow/i); pick('die', /die|death/i); pick('sit', /sit|rest/i);
+    let handR = null, handL = null, bodyMat = null;
+    model.traverse(o => {
+      if (o.isBone && !handR && /right.*hand|hand[._]?r$/i.test(o.name)) handR = o;
+      if (o.isBone && !handL && /left.*hand|hand[._]?l$/i.test(o.name)) handL = o;
+      if (o.isMesh) { o.castShadow = true; if (!bodyMat) { bodyMat = o.material = o.material.clone(); bodyMat.color && bodyMat.color.set(color); } }
+    });
+    return { root, clips, handR: handR || root, handL: handL || root, bodyMat: bodyMat || mat(color), baseScale: 1 };
+  }
+
+  // ----- 스틱맨: 관절(Bone)이 있는 단순 인체. 발이 y=0, 정면이 +Z -----
+  const skinMat = mat(0xf1c9a0), darkMat = mat(0x3a2a22), eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3a1a }), visorMat = mat(0x2a2a30);
+  const RG = {
+    hips: new THREE.BoxGeometry(0.42, 0.18, 0.26), torso: new THREE.BoxGeometry(0.5, 0.62, 0.28), head: new THREE.SphereGeometry(0.2, 10, 8),
+    upper: new THREE.CylinderGeometry(0.07, 0.06, 0.3, 6), lower: new THREE.CylinderGeometry(0.06, 0.05, 0.3, 6), hand: new THREE.SphereGeometry(0.07, 6, 5),
+    thigh: new THREE.CylinderGeometry(0.1, 0.08, 0.45, 6), shin: new THREE.CylinderGeometry(0.08, 0.07, 0.45, 6), foot: new THREE.BoxGeometry(0.14, 0.08, 0.26),
+    visor: new THREE.BoxGeometry(0.22, 0.06, 0.05),
+  };
+  function buildStickman(color, opts = {}) {
+    const bodyMat = opts.bodyMat || mat(color), root = new THREE.Group();
+    const bone = (name, parent, x, y, z) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, z); parent.add(b); return b; };
+    const part = (geo, m, parent, x, y, z, shadow = true) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = shadow; parent.add(o); return o; };
+    const hips = bone('hips', root, 0, 0.9, 0);
+    part(RG.hips, darkMat, hips, 0, 0, 0, !opts.enemy);
+    const spine = bone('spine', hips, 0, 0.05, 0);
+    part(RG.torso, bodyMat, spine, 0, 0.34, 0);
+    const head = bone('head', spine, 0, 0.66, 0);
+    part(RG.head, skinMat, head, 0, 0.17, 0);
+    part(RG.visor, opts.enemy ? eyeMat : visorMat, head, 0, 0.2, 0.17, false);
+    const out = { root, bodyMat, head, baseScale: opts.scale ?? 0.9 };
+    for (const s of [-1, 1]) {
+      const n = s < 0 ? 'L' : 'R';
+      const sh = bone('shoulder' + n, spine, s * 0.34, 0.58, 0);
+      part(RG.upper, bodyMat, sh, 0, -0.15, 0, !opts.enemy);
+      const el = bone('elbow' + n, sh, 0, -0.3, 0);
+      part(RG.lower, skinMat, el, 0, -0.15, 0, false);
+      out['hand' + n] = bone('hand' + n, el, 0, -0.3, 0);
+      part(RG.hand, skinMat, out['hand' + n], 0, 0, 0, false);
+      const hp = bone('hip' + n, hips, s * 0.14, -0.04, 0);
+      part(RG.thigh, darkMat, hp, 0, -0.225, 0, !opts.enemy);
+      const kn = bone('knee' + n, hp, 0, -0.45, 0);
+      part(RG.shin, darkMat, kn, 0, -0.225, 0, !opts.enemy);
+      part(RG.foot, darkMat, kn, 0, -0.43, 0.06, false);
+    }
+    out.clips = STICK_CLIPS;
+    return out;
+  }
+
+  // ----- 코드로 만든 애니메이션 클립 (모든 뼈에 키를 둬서 CrossFade 때 자세가 남지 않게 한다) -----
+  const BONES = ['hips', 'spine', 'head', 'shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'hipL', 'hipR', 'kneeL', 'kneeR'];
+  const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
+    for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }
+    return pts[pts.length - 1][1];
+  };
+  const STICK_CLIPS = (() => {
+    const clips = {}, eul = new THREE.Euler(), q = new THREE.Quaternion();
+    // fn(ph, u) -> { 뼈이름: [x, y, z], hipsY, hipsZ }. 루프 클립은 ph=0..2π, 1회 클립은 u=0..1
+    const make = (name, T, n, fn, loop = true) => {
+      const times = [], rot = {}, pos = [];
+      for (const b of BONES) rot[b] = [];
+      for (let i = 0; i <= n; i++) {
+        const u = i / n, f = fn(u * Math.PI * 2, u);
+        times.push(u * T);
+        for (const b of BONES) { const v = f[b] || [0, 0, 0]; eul.set(v[0] || 0, v[1] || 0, v[2] || 0); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
+        pos.push(0, f.hipsY ?? 0.9, f.hipsZ ?? 0);
+      }
+      const tracks = BONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
+      tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
+      clips[name] = new THREE.AnimationClip(name, T, tracks);
+    };
+    make('idle', 2.4, 8, ph => { const s = Math.sin(ph); return { spine: [0.02 * s], head: [-0.02 * s], shoulderL: [0.05 + 0.05 * s], shoulderR: [0.05 - 0.05 * s], elbowL: [-0.25], elbowR: [-0.25], hipsY: 0.9 + 0.006 * s }; });
+    const gait = (T, A, K, B, E, lean, bob) => ph => {
+      const s = Math.sin(ph), c = Math.cos(ph);
+      return { hipL: [-s * A], hipR: [s * A], kneeL: [Math.max(0, c) * K], kneeR: [Math.max(0, -c) * K], shoulderL: [s * B], shoulderR: [-s * B],
+        elbowL: [-E], elbowR: [-E], spine: [lean, s * 0.07], head: [-lean * 0.5], hipsY: 0.9 - lean * 0.1 + Math.cos(2 * ph) * bob };
+    };
+    make('walk', 0.9, 12, gait(0.9, 0.55, 0.75, 0.4, 0.35, 0.05, 0.02));
+    make('run', 0.55, 12, gait(0.55, 0.95, 1.5, 1.0, 1.2, 0.22, 0.05));
+    make('gather', 0.9, 14, (ph, u) => {       // 곡괭이질: 들어 올림 → 내려찍기 → 반동
+      const v = u < 0.7 ? Math.sin(u / 0.7 * Math.PI / 2) : u < 0.8 ? 1 - (u - 0.7) / 0.1 : 0;
+      const a = -0.5 - 2.1 * v, e = -0.3 - 0.6 * v;
+      return { shoulderR: [a], shoulderL: [a * 0.9], elbowR: [e], elbowL: [e], spine: [0.35 - 0.45 * v], head: [0.1], kneeL: [0.25], kneeR: [0.25], hipL: [-0.1], hipR: [-0.1], hipsY: 0.86 };
+    });
+    make('attackSword', 0.5, 10, (ph, u) => {  // 검 휘두르기: 뒤로 젖힘 → 내려베기 → 복귀
+      const w = kf(u, [[0, 0], [0.3, 1], [0.45, -0.25], [1, 0]]);
+      return { shoulderR: [-2.3 * Math.max(0, w) + 0.6 * Math.min(0, w), -0.3 * w], elbowR: [-0.7 * Math.max(0, w) - 0.1], spine: [-0.1 * w + 0.2 * Math.min(0, w), 0.45 * w], shoulderL: [-0.3 * w], hipL: [-0.3 * w], hipR: [0.3 * w], head: [0, -0.2 * w] };
+    }, false);
+    make('attackBow', 0.45, 10, (ph, u) => {   // 활 쏘기: 조준 → 시위를 당김 → 발사
+      const aim = kf(u, [[0, 0], [0.2, 1], [0.7, 1], [1, 0]]), draw = kf(u, [[0, 0], [0.2, -1.9], [0.55, -2.3], [0.62, -0.5], [1, 0]]);
+      return { shoulderL: [-1.5 * aim], elbowL: [-0.08 * aim], shoulderR: [-1.5 * aim], elbowR: [draw], spine: [0, -0.35 * aim], head: [0, 0.35 * aim], hipL: [0, 0, 0.1 * aim], hipR: [0, 0, -0.1 * aim] };
+    }, false);
+    make('die', 0.9, 9, (ph, u) => {           // 뒤로 쓰러져 눕기
+      const f = kf(u, [[0, 0], [0.7, 1], [1, 1]]);
+      return { hips: [-1.5 * f], hipsY: 0.9 - 0.78 * f, hipsZ: -0.2 * f, shoulderL: [0.3 * f, 0, 0.5 * f], shoulderR: [0.3 * f, 0, -0.5 * f], kneeL: [0.25 * f], kneeR: [0.2 * f], head: [0.2 * f] };
+    }, false);
+    make('sit', 3, 8, ph => { const s = Math.sin(ph); return { hipL: [-1.5], hipR: [-1.5], kneeL: [0.12], kneeR: [0.12], spine: [0.12 + 0.015 * s], head: [0.1 - 0.04 * s], shoulderL: [-0.5], shoulderR: [-0.5], elbowL: [-0.9], elbowR: [-0.9], hipsY: 0.2 }; });
+    return clips;
+  })();
+
+  // ----- 장비 메쉬 (손 뼈에 붙는다): 칼날이 팔 방향(+Z)으로 향하도록 inner.rotation.x = π/2 -----
+  const gearMatCache = {};
+  const gearMat = (id, color) => gearMatCache[id] || (gearMatCache[id] = new THREE.MeshStandardMaterial({ color, flatShading: true, metalness: 0.5, roughness: 0.4 }));
+  function makeSwordMesh(def) {
+    const g = new THREE.Group(), inner = new THREE.Group(), len = def.tier > 0 ? 1.05 : 0.8;
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 6), darkMat);
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(def.tier > 0 ? 0.34 : 0.26, 0.05, 0.07), gearMat('guard' + def.tier, def.tier > 0 ? 0xc9a23a : 0x6a5a48));
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(def.tier > 0 ? 0.09 : 0.07, len, 0.025), gearMat(def.id, def.color));
+    guard.position.y = 0.12; blade.position.y = 0.145 + len / 2;
+    inner.add(grip, guard, blade); inner.rotation.x = Math.PI / 2; g.add(inner);
+    return g;
+  }
+  function makeBowMesh(def) {
+    const g = new THREE.Group(), pivot = new THREE.Group(), R0 = def.tier > 0 ? 0.55 : 0.45;
+    const arcGeo = new THREE.TorusGeometry(R0, def.tier > 0 ? 0.04 : 0.028, 6, 14, Math.PI); arcGeo.rotateZ(Math.PI);     // 불룩한 쪽이 -Y
+    const arc = new THREE.Mesh(arcGeo, gearMat(def.id, def.color)); arc.rotation.y = Math.PI / 2;                          // 활의 긴 축이 Z
+    const string = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, R0 * 2), gearMat('string', 0xe8e0c8));
+    pivot.add(arc, string);
+    if (def.tier > 0) { const tip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), gearMat('bowtip', 0xd9d9e0)); tip.position.set(0, -R0 * 0.1, R0); const tip2 = tip.clone(); tip2.position.z = -R0; pivot.add(tip, tip2); }
+    g.add(pivot); g.userData.pivot = pivot; pivot.rotation.x = -Math.PI / 2;           // 평소엔 세워서 든다
+    return g;
+  }
+  function makePickMesh() {
+    const g = new THREE.Group(), inner = new THREE.Group();
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), gearMat('woodpick', 0x7a5530)), head = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.55), gearMat('ironpick', 0x9a9da4));
+    handle.position.y = 0.3; head.position.y = 0.78;
+    inner.add(handle, head); inner.rotation.x = Math.PI / 2; g.add(inner);
+    return g;
+  }
+
+  // ----- 리그 공용 API: setGear / hold / aim -----
+  function makeRig(kind, color, opts = {}) {
+    const rig = modelCache[kind] ? rigFromGltf(modelCache[kind], color) : buildStickman(color, opts);
+    rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
+    rig.root.scale.setScalar(rig.baseScale);
+    rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다
+      const hand = slot === 'sword' ? rig.handR : rig.handL;
+      if (rig.meshes[slot]) hand.remove(rig.meshes[slot]);
+      rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : makeBowMesh(def)) : null;
+      if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
+      rig.applyHold();
+    };
+    rig.applyHold = () => {
+      const w = rig.held, m = rig.meshes;
+      if (m.sword) m.sword.visible = w === 'sword';
+      if (m.bow) m.bow.visible = w === 'bow';
+      if (!m.pick) { m.pick = makePickMesh(); rig.handR.add(m.pick); }
+      m.pick.visible = w === 'pick';
+    };
+    rig.hold = (what) => { rig.held = what; rig.applyHold(); };
+    rig.aim = (on) => { const b = rig.meshes.bow; if (b) b.userData.pivot.rotation.x = on ? 0 : -Math.PI / 2; };
+    return rig;
+  }
+
+  // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
+  class Anim {
+    constructor(rig) {
+      this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
+      for (const [n, clip] of Object.entries(rig.clips)) {
+        const a = this.mixer.clipAction(clip);
+        if (n === 'attackSword' || n === 'attackBow' || n === 'die') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
+        this.acts[n] = a;
+      }
+      this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
+      this.base('idle');
+    }
+    _play(name, fade, force) {
+      const next = this.acts[name] || this.acts.idle;
+      if (!next || (next === this.cur && !force)) return;
+      next.reset(); next.enabled = true; next.setEffectiveWeight(1);
+      if (this.cur && this.cur !== next) { next.fadeIn(fade); this.cur.fadeOut(fade); }
+      next.play(); this.cur = next;
+    }
+    base(name, speed = 0) {
+      if (this.dead) return;
+      if (name !== this.baseName) { this.baseName = name; if (!this.shot) this._play(name, 0.2); }
+      const a = this.acts[name];
+      if (a && !this.shot) a.timeScale = name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1;
+    }
+    once(name) {
+      if (this.dead || !this.acts[name]) return;
+      this.shot = { t: 0, dur: this.acts[name].getClip().duration };
+      if (name === 'attackBow') this.rig.aim(true);
+      this._play(name, 0.08, true);
+    }
+    die() { this.dead = true; this.shot = null; this.rig.aim(false); this._play('die', 0.15, true); }
+    revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
+    update(dt) {
+      if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
+      const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
+      if (want !== this.rig.held) this.rig.hold(want);
+      this.mixer.update(dt);
+    }
+  }
+
   // ---------- 플레이어 ----------
   const player = new THREE.Group();
-  const R = 0.45, H = 0.7;
-  const bodyMat = mat(0xe8553c);
-  const capsule = new THREE.Group();
-  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), bodyMat);
-  const capTop = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 6), bodyMat);
-  const capBot = capTop.clone();
-  capTop.position.y = H / 2; capBot.position.y = -H / 2;
-  capsule.add(cyl, capTop, capBot);
-  capsule.position.y = H / 2 + R;
-  const face = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.2), mat(0xfff1c9));   // 얼굴(앞쪽 +Z)
-  face.position.set(0, 0.5, R * 0.95);
-  capsule.add(face);
-  capsule.traverse(m => { if (m.isMesh) m.castShadow = true; });
-  player.add(capsule);
+  const playerRig = makeRig('player', 0xe8553c);
+  const bodyMat = playerRig.bodyMat;
+  const playerAnim = new Anim(playerRig);
+  player.add(playerRig.root);
   scene.add(player);
   const PLAYER_R = 0.5;
 
@@ -434,16 +653,23 @@
     if (e.code === 'KeyU' && !e.repeat) upgradeFence();
     if (e.code === 'KeyF' && !e.repeat) attack();
     if (e.code === 'KeyQ' && !e.repeat) swapWeapon();
+    if (e.code === 'KeyC' && !e.repeat) { if (smithEl.style.display === 'flex') closeSmith(); else openSmith(); }
     keys[e.code] = true;
   });
   addEventListener('keyup', e => { keys[e.code] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
   // ---------- 자원 / 상호작용 ----------
-  const res = { wood: 0, stone: 0, food: 0 };
-  let weaponUp = false;
-  function swordDmg() { return weaponUp ? CFG.SWORD_DMG_UPGRADED : CFG.SWORD_DMG; }
-  const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN');
+  const res = { wood: 0, stone: 0, food: 0, iron: 0 };
+  let weaponMode = 'sword';
+  const playerGear = { sword: 'sword_basic', bow: 'bow_basic' };
+  const gearDef = (id) => CFG.GEAR[id];
+  function applyPlayerGear() {
+    playerRig.main = weaponMode;
+    playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow));
+    playerRig.hold(weaponMode);
+  }
+  const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN'), ironEl = document.getElementById('ironN');
   const toastEl = document.getElementById('toast');
   let toastTimer;
   function toast(msg) {
@@ -452,8 +678,12 @@
   }
   const atkEl = document.getElementById('atkN');
   const foodEl = document.getElementById('foodN');
-  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; foodEl.textContent = Math.floor(res.food); atkEl.textContent = `Sword ${swordDmg()} / Bow ${CFG.BOW_DMG}`; }
+  function updateHud() { woodEl.textContent = res.wood; stoneEl.textContent = res.stone; ironEl.textContent = res.iron; foodEl.textContent = Math.floor(res.food); { const sw = gearDef(playerGear.sword), bw = gearDef(playerGear.bow); atkEl.textContent = `${sw.short} ${sw.dmg} / ${bw.short} ${bw.dmg}`; } }
 
+  function rollIron(o) {                     // 바위를 캘 때 일정 확률로 철도 나온다 (대장간 재료)
+    if (o.userData.type !== 'stone' || Math.random() > CFG.IRON_CHANCE) return;
+    res.iron += 1; floatText('Iron +1', o.position.x, 2.2, o.position.z);
+  }
   const GATHER_RANGE = 2.6;
   // 플레이어 채집: 버튼을 누르면 CFG.PLAYER_GATHER_TIME초 동안 들썩이며 진행 바가 차고, 이동하면 취소된다 (NPC와 같은 템포)
   let gathering = null;
@@ -527,6 +757,7 @@
     const d = Math.hypot(b.position.x, b.position.z) || 1, off = b.userData.radius + 0.9;
     return { x: b.position.x - b.position.x / d * off, z: b.position.z - b.position.z / d * off };
   }
+  const forgeGlow = new THREE.MeshBasicMaterial({ color: 0xff7a1a }), anvilMat = bMat(0x34363c);
   const tentMat = bMat(0xd9c9a0), tentDoor = bMat(0x4a3a24), stoneWall = bMat(0x8d9099), slateRoof = bMat(0x4a4d57), chimneyMat = bMat(0x6a6d75);
   const dirt = bMat(0x6b4a2b), cropMat = bMat(0x4fae3a), logPile = bMat(0x7a4f2a), rockPile = bMat(0x9a9aa2), towerStone = bMat(0x7f838c), towerTop = bMat(0x5c606a);
   // 거주지 외형은 시대에 따라 바뀐다: 1시대 텐트(원뿔) → 2시대 나무집(삼각 지붕) → 3시대 돌집
@@ -577,6 +808,21 @@
       for (let i = 0; i < 4; i++) add(new THREE.DodecahedronGeometry(0.5 + i * 0.12, 0), rockPile, -0.9 + i * 0.7, 0.4, (i % 2) * 0.8);
       add(new THREE.BoxGeometry(0.15, 1.6, 0.15), woodMat2, 1.4, 0.8, 0);
       add(new THREE.BoxGeometry(1.0, 0.15, 0.15), woodMat2, 1.4, 1.6, 0);
+    } else if (kind === 'smith') {                                       // 대장간: 석조 작업장 + 굴뚝 + 모루 + 완성품 선반
+      add(new THREE.BoxGeometry(4.0, 1.5, 3.0), stoneWall, 0, 0.75, 0);
+      add(new THREE.BoxGeometry(4.5, 0.22, 3.5), slateRoof, 0, 1.62, 0);
+      add(new THREE.BoxGeometry(0.7, 2.4, 0.7), chimneyMat, -1.4, 2.0, -0.9);
+      add(new THREE.BoxGeometry(0.46, 0.1, 0.46), forgeGlow, -1.4, 3.22, -0.9);
+      add(new THREE.BoxGeometry(1.0, 0.7, 0.1), forgeGlow, 0.6, 0.65, 1.52);                // 화덕 불빛
+      add(new THREE.BoxGeometry(0.7, 0.3, 0.4), anvilMat, 1.2, 0.5, 2.5);                    // 모루 + 받침
+      add(new THREE.CylinderGeometry(0.28, 0.32, 0.35, 8), woodMat2, 1.2, 0.17, 2.5);
+      const rack = new THREE.Group(); rack.position.set(-2.9, 0, 0.2);                       // 완성된 장비가 걸리는 선반
+      for (const dz of [-1.1, 1.1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.5, 0.14), woodMat2); post.position.set(0, 0.75, dz); post.castShadow = true; rack.add(post); }
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 2.4), woodMat2); bar.position.set(0, 1.4, 0); rack.add(bar);
+      const items = new THREE.Group(); rack.add(items); g.add(rack);
+      g.userData.rackItems = items;
+      g.userData.stock = {};
+      for (const id in CFG.GEAR) if (CFG.GEAR[id].cost) g.userData.stock[id] = 0;
     } else {                                                             // 방어 타워: 돌 원기둥 + 흉벽
       add(new THREE.CylinderGeometry(1.2, 1.5, 4, 10), towerStone, 0, 2, 0);
       add(new THREE.CylinderGeometry(1.7, 1.7, 0.5, 10), towerTop, 0, 4.25, 0);
@@ -587,6 +833,21 @@
     scene.add(g);
     obstacles.push(g);
     return g;
+  }
+  // 선반에 완성품 진열 (재고 수만큼 칼/활을 걸어 둔다)
+  function refreshRack(sm) {
+    const grp = sm.userData.rackItems; if (!grp) return;
+    while (grp.children.length) grp.remove(grp.children[0]);
+    let i = 0;
+    for (const id in sm.userData.stock) {
+      for (let k = 0; k < Math.min(4, sm.userData.stock[id]); k++, i++) {
+        const d = gearDef(id), m = d.slot === 'sword' ? makeSwordMesh(d) : makeBowMesh(d);
+        m.scale.setScalar(0.8); m.position.set(0.12, 1.25, -1.0 + (i % 5) * 0.5);
+        if (d.slot === 'sword') { m.rotation.set(Math.PI / 2, 0, 0); m.position.y = 1.4; }       // 칼날이 아래로 걸리도록
+        else { m.rotation.y = Math.PI / 2; m.position.y = 0.85; }                                // 활은 세워서 (불룩한 쪽이 바깥)
+        grp.add(m);
+      }
+    }
   }
   function addBuildingBlueprint(kind, x, z) {
     const def = CFG.BUILDING[kind];
@@ -682,7 +943,7 @@
   let townStage = 0;                          // 지금까지 설계한 묶음 수
   const canPay = (c) => Object.entries(c).every(([k, v]) => res[k] >= v);
   const payCost = (c) => { for (const [k, v] of Object.entries(c)) res[k] -= v; };
-  const costText = (c) => Object.entries(c).map(([k, v]) => `${v} ${k === 'wood' ? 'Wood' : k === 'stone' ? 'Stone' : 'Food'}`).join(' + ');
+  const costText = (c) => Object.entries(c).map(([k, v]) => `${v} ${k === 'wood' ? 'Wood' : k === 'stone' ? 'Stone' : k === 'iron' ? 'Iron' : 'Food'}`).join(' + ');
   // 숲/바위가 가장 많이 모여 있는 빈 자리를 찾아 벌목장/채석장 위치로 삼는다
   function findClusterSpot(kind) {
     const type = kind === 'lumber' ? 'wood' : 'stone';
@@ -715,7 +976,7 @@
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower' };
+  const BUILDING_NAME = { smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower' };
   function updateTownBtn() {
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
@@ -737,23 +998,56 @@
   }
   // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설
 
-  function upgradeWeapon() {
+  // ---------- 대장간: 장비 제작 창 ----------
+  const smithEl = document.getElementById('smithPanel'), smithList = document.getElementById('smithList'), smithBtnEl = document.getElementById('smithBtn');
+  let smithOpenFor = null;
+  const SMITH_RANGE = 8;
+  const smiths = () => builtBuildings('smith');
+  const nearestSmith = () => smiths().find(m => Math.hypot(m.position.x - player.position.x, m.position.z - player.position.z) < SMITH_RANGE + m.userData.radius) || null;
+  function openSmith() {
     if (dead) return;
-    if (weaponUp) return toast('Weapon already upgraded');
-    if (res.stone < CFG.WEAPON_UPGRADE_STONE) return toast(`Need ${CFG.WEAPON_UPGRADE_STONE} Stone`);
-    res.stone -= CFG.WEAPON_UPGRADE_STONE;
-    weaponUp = true;
-    updateHud();
-    const btn = document.getElementById('upgBtn');
-    btn.classList.add('done'); btn.firstChild.textContent = 'Weapon Upgraded'; btn.lastChild.textContent = `Sword attack ${swordDmg()}`;
-    toast('Sword upgraded! (Bow damage unchanged)');
+    const sm = nearestSmith();
+    if (!sm) return toast(smiths().length ? 'Move closer to the Blacksmith' : 'No Blacksmith yet - plan Age 2 buildings first');
+    smithOpenFor = sm; renderSmith(); smithEl.style.display = 'flex';
   }
+  function closeSmith() { smithEl.style.display = 'none'; smithOpenFor = null; }
+  function renderSmith() {
+    const sm = smithOpenFor;
+    if (!sm || !obstacles.includes(sm)) return closeSmith();
+    document.getElementById('smithRes').textContent = `You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron  (Iron drops from rocks)`;
+    smithList.innerHTML = '';
+    for (const [id, d] of Object.entries(CFG.GEAR)) {
+      if (!d.cost) continue;
+      const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id;
+      const row = document.createElement('div'); row.className = 'srow';
+      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>Cost: ${costText(d.cost)} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
+      const [bc, be] = row.querySelectorAll('button');
+      bc.disabled = !canPay(d.cost); be.disabled = stock <= 0 || equipped;
+      bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
+      smithList.appendChild(row);
+    }
+  }
+  function craftGear(id) {
+    const sm = smithOpenFor, d = gearDef(id);
+    if (!sm || !canPay(d.cost)) return;
+    payCost(d.cost); sm.userData.stock[id]++; refreshRack(sm); updateHud();
+    burst({ x: sm.position.x + 1.2, z: sm.position.z + 2.5, y: 1 }, 14);
+    toast(`Forged: ${d.name}! Soldiers will come to pick it up`);
+    renderSmith();
+  }
+  function equipPlayer(id) {
+    const sm = smithOpenFor, d = gearDef(id);
+    if (!sm || !(sm.userData.stock[id] > 0)) return;
+    sm.userData.stock[id]--; playerGear[d.slot] = id; refreshRack(sm); applyPlayerGear(); updateHud();
+    toast(`Equipped ${d.name}`); renderSmith();
+  }
+  document.getElementById('smithClose').addEventListener('click', closeSmith);
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
   bindBtn('designBtn', designDefense);
   bindBtn('townBtn', designTown);
-  bindBtn('upgBtn', upgradeWeapon);
+  bindBtn('smithBtn', openSmith);
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
   bindBtn('ultBtn', ultimate);
@@ -871,6 +1165,7 @@
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
     refreshHouses(); refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn();
+    npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
   // ----- 시대 발전 패널 -----
   const techEl = document.getElementById('techPanel'), techUpBtn = document.getElementById('techUp');
@@ -898,7 +1193,7 @@
   document.getElementById('techClose').addEventListener('click', closeTech);
   addEventListener('keydown', e => {
     if (e.code === 'KeyT' && !e.repeat) { if (techEl.style.display === 'flex') closeTech(); else if (Math.hypot(player.position.x, player.position.z) < 14) openTech(); else toast('Press T near the town hall (campfire)'); }
-    if (e.code === 'Escape') closeTech();
+    if (e.code === 'Escape') { closeTech(); closeSmith(); }
   });
   // 모닥불/회관 클릭(탭)으로 열기: 드래그가 아닌 짧은 클릭만
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -911,6 +1206,7 @@
     ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
     if (ray.intersectObject(campfire, true).length) openTech();
+    else if (smiths().length && ray.intersectObjects(smiths(), true).length) openSmith();
   });
 
   function animateFire(t) {
@@ -959,16 +1255,16 @@
   const ATK_RANGE = 3, ATK_HALF = Math.PI / 3, ATK_CD = 0.4, SLASH_LIFE = 0.15;
   const slashGeo = new THREE.CircleGeometry(ATK_RANGE, 20, -Math.PI / 2 - ATK_HALF, ATK_HALF * 2);
   const slashes = [];
-  const slashScale = () => weaponUp ? CFG.UPGRADED_SLASH_SCALE : 1;
-  function spawnSlash(x, z, ang) {
+  const slashScale = (def) => def.slash || 1;
+  function spawnSlash(x, z, ang, def = gearDef(playerGear.sword)) {
     const g = new THREE.Group();
     const m = new THREE.Mesh(slashGeo, new THREE.MeshBasicMaterial({
-      color: weaponUp ? 0x4aa8ff : 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+      color: def.slashColor || 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2;
     g.add(m);
     g.position.set(x, 0.08, z);
     g.rotation.y = ang;
-    g.scale.setScalar(slashScale());
+    g.scale.setScalar(slashScale(def));
     g.userData.life = SLASH_LIFE;
     scene.add(g);
     slashes.push(g);
@@ -1016,7 +1312,8 @@
 
   // ---------- 적 (약탈자) ----------
   const enemies = [];
-  const enemyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 8);
+  const RAIDER_BLADE = { id: 'raider_blade', slot: 'sword', tier: 0, color: 0x6b6b70 };
+  const BRUTE_CLUB = { id: 'brute_club', slot: 'sword', tier: 0, color: 0x5a3a1e };
   const enemyMat = mat(0xc4231a), bruteMat = mat(0x5a0d0a);
   const ENEMY_R = 0.45, ENEMY_SPEED = 2.4;
   const AGGRO = 9, DEAGGRO = 13, FIRE_BREAK_TIME = 3;
@@ -1027,10 +1324,14 @@
     const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : 1;
-    const m = new THREE.Mesh(enemyGeo, beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat);
+    const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat;
+    const rig = makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88 });       // 스틱맨 리그 (몸통 색 = 적 종류)
+    if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
+    const m = new THREE.Group();
+    rig.root.position.y = -0.8;                          // 그룹 중심(= 예전 원기둥 중심) 기준으로 발을 바닥에 맞춘다
+    m.add(rig.root); m.material = rig.bodyMat;           // 보스 깜빡임/기절 색 변경은 m.material을 사용
     m.scale.setScalar(sc);
     m.position.set(Math.cos(a) * r, 0.8 * sc, Math.sin(a) * r);
-    m.castShadow = true;
     if (shield) {                                    // 앞쪽(+Z, 진행 방향)에 방패 판
       const plate = new THREE.Mesh(shieldPlateGeo, shieldPlateMat);
       plate.position.set(0, 0.05, 0.55);
@@ -1046,7 +1347,8 @@
       speed: ENEMY_SPEED * (beast ? 1.35 : boss ? CFG.BOSS_SPEED_MUL : brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : 1),
       contact: beast ? 6 : boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: boss ? CFG.BOSS_KB_MUL : brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
-      fireTimer: 0, aggro: false, sinking: false, castT: 0, stunT: 0, lureT: 0, critT: 0, tele: null };
+      fireTimer: 0, aggro: false, sinking: false, castT: 0, stunT: 0, lureT: 0, critT: 0, tele: null,
+      anim: new Anim(rig), px: m.position.x, pz: m.position.z, atkAnimCd: rand(0, 0.6) };
     if (boss) {                                       // 보스 머리 위 표시: 어그로 '!' / 기절 텍스트와 빙글 도는 별
       const bang = textSprite('!', '#ff2a1a', 0.5, 0.5, 'bold 96px sans-serif');
       bang.position.set(0, 1.25, 0); bang.visible = false; m.add(bang);
@@ -1100,16 +1402,16 @@
   }
 
   // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
-  function sectorHit(x, z, ang, byPlayer = false) {
+  function sectorHit(x, z, ang, byPlayer = false, def = gearDef(playerGear.sword)) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
-    const range = ATK_RANGE * slashScale();
+    const range = ATK_RANGE * slashScale(def);
     let n = 0;
     for (const e of enemies.slice()) {
       if (e.userData.sinking) continue;
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, swordDmg(), x, z, weaponUp, null, byPlayer); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
     }
     return n;
   }
@@ -1158,6 +1460,7 @@
     }
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
+      u.anim.update(dt);
       if (!night && !u.sinking && !u.boss) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
       if (u.sinking) {
         e.position.y -= dt * 0.8;
@@ -1197,6 +1500,10 @@
         if (blocked.userData.hp <= 0) collapseStructure(blocked);     // 파괴 시 청사진으로 되돌아간다
       }
 
+      const mvd = Math.hypot(e.position.x - u.px, e.position.z - u.pz) / Math.max(dt, 1e-4);      // 이동 속도에 맞춰 걷기/대기, 장애물·플레이어 앞에서는 공격 모션
+      u.px = e.position.x; u.pz = e.position.z; u.atkAnimCd -= dt;
+      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : 'walk', mvd);
+      if ((blocked || pd < PLAYER_R + er + 0.8) && u.atkAnimCd <= 0 && !(u.stunT > 0) && !u.siege) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
       // 베헤모스 지진 강타: 캐스팅(1.5초, 붉게 깜빡 + 예고 링) → 점프 → 내려찍기. 캐스팅 중 궁극기에 맞으면 취소되고 기절
       if (u.boss) {
         u.slamCd -= dt; u.lureT -= dt; u.critT -= dt;
@@ -1261,29 +1568,36 @@
   // 각 NPC는 자기 상태(task, hp, 라벨 등)를 가진 Group. updateNpcs()가 순서대로 `npc`(현재 처리 중인 NPC)를 바꿔가며 AI를 돌린다.
   // role: 'melee'(파랑 근접 병사) | 'archer'(초록 궁수) | 'citizen'(노랑 시민)
   const NPC_COUNT = 3, NPC_HOME_RADIUS = 3.4;
-  const NPC_BASE_Y = H / 2 + R;
   const ROLE = {
     melee: { color: 0x3a6fe0, hp: 50, name: '' },
     archer: { color: 0x3fae4a, hp: 50, name: 'Archer ' },
     citizen: { color: 0xf2c230, hp: CFG.CITIZEN_HP, name: 'Citizen ' },
   };
   const npcs = [];
-  const homeSlot = (k) => { const a = Math.PI / 4 + k * 0.85, r = NPC_HOME_RADIUS + (k % 3) * 1.0; return { x: Math.cos(a) * r, z: Math.sin(a) * r }; };
+  // 굶주림 말풍선 (모든 시민이 공유하는 텍스처)
+  const hungerMat = (() => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#fff'; c.strokeStyle = '#3a2a22'; c.lineWidth = 5;
+    c.beginPath(); c.moveTo(34, 112); c.lineTo(46, 92); c.lineTo(90, 92); c.quadraticCurveTo(116, 92, 116, 66); c.lineTo(116, 36);
+    c.quadraticCurveTo(116, 12, 90, 12); c.lineTo(40, 12); c.quadraticCurveTo(12, 12, 12, 38); c.lineTo(12, 66); c.quadraticCurveTo(12, 92, 40, 92); c.lineTo(34, 92); c.closePath(); c.fill(); c.stroke();
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '44px sans-serif'; c.fillStyle = '#000'; c.fillText('🍽️', 64, 38);
+    c.font = 'bold 20px sans-serif'; c.fillStyle = '#c0392b'; c.fillText('Grrr…', 64, 74);
+    return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false });
+  })();
+  function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
+    n.rig.main = n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
+    n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
+    n.rig.setGear('bow', n.role === 'archer' ? gearDef(n.gear.bow) : null);
+    n.rig.hold(n.rig.main);
+  }
+  const homeSlot = (k) => { const a = Math.PI / 4 + k * 0.85, r = Math.max(NPC_HOME_RADIUS, FIRE_R + 2.8) + (k % 3) * 1.0; return { x: Math.cos(a) * r, z: Math.sin(a) * r }; };      // 회관이 커지면 병사 대기 위치도 바깥으로
   function makeNpc(role, home, born = 'initial', delay = 0) {
     const n = new THREE.Group();
     const def = ROLE[role];
     const color = role === 'citizen' ? citizenColor() : def.color;
-    const m = mat(color);
-    const body = new THREE.Group();
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), m);
-    const t1 = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 6), m);
-    const t2 = t1.clone();
-    t1.position.y = H / 2; t2.position.y = -H / 2;
-    const f = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.2), mat(0xfff1c9));
-    f.position.set(0, 0.5, R * 0.95);
-    body.add(c, t1, t2, f);
-    body.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    body.position.y = NPC_BASE_Y;
+    const rig = makeRig(role, color);                  // 스틱맨 리그 + AnimationMixer
+    const anim = new Anim(rig), m = rig.bodyMat, body = rig.root;
     n.add(body);
     n.position.set(home.x, 0, home.z);
 
@@ -1295,12 +1609,15 @@
     label.scale.set(2.6, 0.98, 1);
     label.position.y = 2.7;
     n.add(label);
+    const hungerIcon = new THREE.Sprite(hungerMat);            // 굶주림(꼬르륵) 말풍선
+    hungerIcon.scale.set(0.95, 0.95, 1); hungerIcon.position.y = 3.4; hungerIcon.visible = false;
+    n.add(hungerIcon);
 
-    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, maxHp: def.hp, mat: m, body, lctx: cv.getContext('2d'), labelTex: tex,
+    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, maxHp: def.hp, mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
       hp: def.hp, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
       task: null, workT: 0, short: null, pickCd: delay, wp: null, route: null, routeRing: 0, graceT: 0, graceRing: 0,
       promote: null, hidden: false, decor: null, work: null, wstate: 'seek', carry: 0, farmT: 0, wtarget: null, stateLabel: '', bobAmt: 0 });
-    applyCitizenLook(n);
+    applyCitizenLook(n); applyGear(n);
     scene.add(n);
     npcs.push(n);
     return n;
@@ -1326,7 +1643,7 @@
   }
 
   function removeNpc(n) {                  // 시민 출신은 쓰러지면 영구 사망 → 인구수 감소
-    npc = n; setTask(null);
+    npc = n; setTask(null); returnGear(n);
     scene.remove(n);
     npcs.splice(npcs.indexOf(n), 1);
     burst(n.position);
@@ -1339,19 +1656,21 @@
       if (npc.born === 'citizen') { removeNpc(npc); return; }
       npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; setTask(null); npc.workT = 0; npc.promote = null;
       npc.mat.color.set(0x777777);                // 회색으로 변환
-      npc.body.rotation.z = Math.PI / 2;          // 바닥에 눕기
-      npc.body.position.y = R;
+      npc.anim.die();                             // 쓰러지는 애니메이션
       burst(npc.position);
     }
   }
   function reviveNpc() {
     npc.down = false; npc.hp = npc.maxHp;
-    npc.mat.color.set(npc.baseColor);
-    npc.body.rotation.z = 0; npc.body.position.y = NPC_BASE_Y;
-    npc.position.set(npc.home.x, 0, npc.home.z);
+    npc.mat.color.set(npc.baseColor); npc.anim.revive();
+    npc.position.set(npc.home.x, 0, npc.home.z); npc.px = npc.home.x; npc.pz = npc.home.z;
   }
   function updateNpcs(dt, hour, t) {
-    for (const n of npcs.slice()) { npc = n; updateNpc(dt, hour, t); }
+    for (const n of npcs.slice()) {
+      npc = n; updateNpc(dt, hour, t); n.anim.update(dt);
+      n.hungerIcon.visible = n.hungry && !n.down;
+      if (n.hungerIcon.visible) { n.hungerIcon.position.y = 3.4 + Math.sin(t * 5) * 0.09; const k = 0.95 + Math.sin(t * 9) * 0.05; n.hungerIcon.scale.set(k, k, 1); }
+    }
   }
 
   // 시민 외형은 시대에 따라 달라진다: 옷 색 + 2시대 모자 / 3시대 투구와 망토
@@ -1362,8 +1681,8 @@
     if (n.role !== 'citizen' || age < 2) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
-    if (age === 2) { add(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 12), hatMat, 0, 0.84, 0); add(new THREE.CylinderGeometry(0.34, 0.38, 0.28, 10), hatMat, 0, 0.98, 0); }
-    else { add(new THREE.SphereGeometry(0.5, 10, 6), helmMat, 0, 0.8, 0); add(new THREE.BoxGeometry(0.8, 1.0, 0.1), capeMat, 0, 0.05, -0.5); }
+    if (age === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
+    else { add(new THREE.SphereGeometry(0.24, 10, 6), helmMat, 0, 1.82, 0); add(new THREE.BoxGeometry(0.5, 0.9, 0.05), capeMat, 0, 1.15, -0.18); }
     n.body.add(g); n.decor = g;
   }
   function refreshCitizens() {
@@ -1376,7 +1695,7 @@
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
-    const a = `${npcs.length} / ${maxPop()}`, b = `(Citizens: ${countRole('citizen')} | Melee: ${countRole('melee')} | Archers: ${countRole('archer')})`;
+    const a = `${npcs.length} / ${maxPop()}`, b = `(Citizens: ${countRole('citizen')} | Melee: ${countRole('melee')} | Archers: ${countRole('archer')}${npcs.some(n => n.hungry) ? ` | Hungry: ${npcs.filter(n => n.hungry).length}` : ''})`;
     if (popEl.textContent !== a) popEl.textContent = a;
     if (popJobsEl.textContent !== b) popJobsEl.textContent = b;
   }
@@ -1387,6 +1706,7 @@
     applyCitizenLook(n);
     n.home = homeSlot(npcs.filter(x => x.role !== 'citizen').length);
     n.labelText = '';
+    applyGear(n);
     dust(n.position.x, n.position.z);
   }
   // 매일 아침: 인구가 최대 인구보다 적으면 완성된 거주지 앞에서 시민 스폰 → 병영/사격장이 있으면 시민 1명씩 전직 훈련
@@ -1435,9 +1755,10 @@
     if (npc.task) { setTask(null); npc.workT = 0; }
     const site = npc.work, k = site.userData.kind;
     npc.bobAmt = 0;
+    const wdt = dt * (npc.hungry ? CFG.HUNGER_MULT : 1);        // 굶주린 시민은 작업 효율 50%
     if (k === 'farm') {                                         // 농장: 밭에 서서 작물을 키우고 주기마다 식량 수확
       if (Math.hypot(site.position.x - npc.position.x, site.position.z - npc.position.z) > 1.8) { npcMove(site.position.x, site.position.z, 3.5, dt); npc.stateLabel = 'To farm'; return true; }
-      npc.farmT += dt; npc.bobAmt = Math.abs(Math.sin(npc.farmT * 6)) * 0.12; npc.stateLabel = 'Farming';
+      npc.farmT += wdt; npc.bobAmt = Math.abs(Math.sin(npc.farmT * 6)) * 0.12; npc.stateLabel = 'Farming';
       site.userData.growth = 0.3 + 0.7 * Math.min(1, npc.farmT / CFG.FARM_CYCLE);
       for (const c of site.userData.crops) c.scale.y = site.userData.growth;
       if (npc.farmT >= CFG.FARM_CYCLE) {
@@ -1466,10 +1787,44 @@
     const o = npc.wtarget, stop = o.userData.radius + PLAYER_R + 0.3;
     npc.stateLabel = k === 'lumber' ? 'Chopping' : 'Quarrying';
     if (Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) > stop) { npcMove(o.position.x, o.position.z, 3.8, dt); npc.workT = 0; return true; }
-    npc.workT += dt; npc.bobAmt = Math.abs(Math.sin(npc.workT * 14)) * 0.15;
+    npc.workT += wdt; npc.bobAmt = Math.abs(Math.sin(npc.workT * 14)) * 0.15;
     if (npc.workT >= CFG.GATHER_TIME) {
-      scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
+      scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1); rollIron(o);
       npc.carry = CFG.GATHER_YIELD[type] * CFG.WORKSITE_YIELD_MULT; npc.wstate = 'carry'; npc.wtarget = null; npc.workT = 0;
+    }
+    return true;
+  }
+  // 평화로운 밤(주변에 적이 없음): 시민은 흩어지지 않고 모닥불 둘레에 둥글게 모여 앉는다
+  const faceFire = () => { npc.face = Math.atan2(-npc.position.x, -npc.position.z); npc.rotation.y = npc.face; };
+  function citizenRest(dt) {
+    const mates = npcs.filter(x => x.role === 'citizen'), k = Math.max(1, mates.length), i = Math.max(0, mates.indexOf(npc));
+    const r = FIRE_R + 1.9, a = Math.PI / 4 + i / k * Math.PI * 2, sx = Math.cos(a) * r, sz = Math.sin(a) * r;
+    npc.hidden = false;
+    if (npcMove(sx, sz, 3.6, dt) < 0.35) { faceFire(); return 'Resting'; }
+    return 'To the fire';
+  }
+  // 병사: 대장간 선반에 완성된 상위 장비가 있으면 걸어가서 직접 수령(Equip)한다
+  function returnGear(n) { if (n.carryGear) { const sm = builtBuildings('smith')[0]; if (sm) { sm.userData.stock[n.carryGear]++; refreshRack(sm); } n.carryGear = null; } }
+  function gearFetchStep(dt) {
+    if (npc.role === 'citizen') return false;
+    const sm = builtBuildings('smith')[0];
+    if (!sm) { npc.carryGear = null; return false; }
+    if (!npc.carryGear) {
+      const slot = npc.role === 'melee' ? 'sword' : 'bow', cur = gearDef(npc.gear[slot]);
+      let best = null;
+      for (const id in sm.userData.stock) {
+        const d = gearDef(id);
+        if (sm.userData.stock[id] > 0 && d.slot === slot && d.tier > cur.tier && (!best || d.tier > gearDef(best).tier)) best = id;
+      }
+      if (!best) return false;
+      sm.userData.stock[best]--; npc.carryGear = best; refreshRack(sm);          // 수령 예약 (다른 병사와 중복 방지)
+      if (npc.task) { setTask(null); npc.workT = 0; }
+    }
+    const door = doorOf(sm);
+    if (npcMove(door.x, door.z, 4, dt) < 1.5) {
+      const d = gearDef(npc.carryGear);
+      npc.gear[d.slot] = npc.carryGear; npc.carryGear = null; applyGear(npc);
+      floatText(`Equipped ${d.name}!`, npc.position.x, 2.9, npc.position.z); dust(npc.position.x, npc.position.z);
     }
     return true;
   }
@@ -1555,6 +1910,7 @@
   }
   // 반환값은 최종 목적지까지의 (이동 전) 거리 - 호출부의 도착 판정에 그대로 쓰인다
   function npcMove(tx, tz, speed, dt) {
+    if (npc.hungry) speed *= CFG.HUNGER_MULT;                 // 굶주린 시민은 이동 속도 50%
     // 끼임 방지: 거의 못 움직이면 잠깐 옆으로 비켜 걷는다
     const moved = Math.hypot(npc.position.x - (npc.prevX ?? npc.position.x), npc.position.z - (npc.prevZ ?? npc.position.z));
     npc.prevX = npc.position.x; npc.prevZ = npc.position.z;
@@ -1692,10 +2048,13 @@
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
       if (d < bd) { bd = d; foe = e; }
     }
-    if (!foe) return 'Idle';
+    if (!foe) {
+      if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { faceFire(); return 'Resting'; }
+      return 'Idle';
+    }
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
     npc.face = ang; npc.rotation.y = ang;
-    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; fireArrow(npc.position.x, npc.position.z, ang); }
+    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; npc.anim.once('attackBow'); fireArrow(npc.position.x, npc.position.z, ang, false, gearDef(npc.gear.bow).dmg); }
     return 'Fighting';
   }
   function updateNpc(dt, hour, t) {
@@ -1710,6 +2069,7 @@
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
     let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
+    if (!busy && isDay && gearFetchStep(dt)) { busy = true; state = 'Fetching gear'; }       // 병사: 대장간에서 새 장비 수령
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
 
     if (busy) { /* 전직 훈련 이동 중 */ } else if (isDay) {
@@ -1735,8 +2095,8 @@
             // 도착했는데 나무가 부족하면 건설 보류, 즉시 채집으로 전환
             setTask(null);                       // (플레이어가 자원을 써 버린 경우) 건설 보류 → 다음 선택에서 채집으로 배정
           } else {
-            npc.workT += dt;
-            bob = Math.abs(Math.sin(t * 14)) * 0.15;       // 들썩임
+            npc.workT += dt * (npc.hungry ? CFG.HUNGER_MULT : 1);       // 굶주린 시민은 작업 효율 50%
+            bob = 0;
             if (task.kind === 'build' && npc.workT >= (o.userData.buildTime ?? CFG.BUILD_TIME)) {
               const kind = o.userData.res, cost = o.userData.cost ?? CFG.BP_COST[kind];
               if (res[kind] >= cost) {
@@ -1754,7 +2114,7 @@
             } else if (task.kind === 'gather' && npc.workT >= CFG.GATHER_TIME) {
               const type = o.userData.type;
               scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
-              res[type] += CFG.GATHER_YIELD[type]; updateHud();
+              res[type] += CFG.GATHER_YIELD[type]; rollIron(o); updateHud();
               setTask(null); npc.workT = 0;
             }
           }
@@ -1763,7 +2123,7 @@
     } else {
       // 야간: 모닥불 방어
       npc.target = null; npc.gatherT = 0; setTask(null); npc.workT = 0;
-      if (npc.role === 'citizen') state = citizenHide(dt); else if (npc.archer) state = archerDefend(dt); else {
+      if (npc.role === 'citizen') state = peaceful ? citizenRest(dt) : citizenHide(dt); else if (npc.archer) state = archerDefend(dt); else {
       let foe = null, bd = CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
       for (const e of enemies) {
         if (e.userData.sinking || e.userData.siege) continue;
@@ -1771,22 +2131,31 @@
         if (d < bd) { bd = d; foe = e; }
       }
       if (npc.returning || !foe) {
-        if (npcMove(npc.home.x, npc.home.z, 5, dt) < 0.8) npc.returning = false;
+        if (npcMove(npc.home.x, npc.home.z, 5, dt) < 0.8) { npc.returning = false; if (peaceful) { state = 'Resting'; faceFire(); } }      // 평화로운 밤: 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < 1.7 && npc.atkCd <= 0) {
           npc.atkCd = 0.8;
           const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
-          spawnSlash(npc.position.x, npc.position.z, ang);
-          sectorHit(npc.position.x, npc.position.z, ang);
+          const sd = gearDef(npc.gear.sword);
+          npc.anim.once('attackSword');
+          spawnSlash(npc.position.x, npc.position.z, ang, sd);
+          sectorHit(npc.position.x, npc.position.z, ang, false, sd);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }
       }
       }
     }
-    npc.body.scale.y = npc.hidden ? 0.55 : 1;                              // 숨은 시민은 웅크린다
-    npc.body.position.y = (npc.hidden ? NPC_BASE_Y * 0.55 : NPC_BASE_Y) + bob;
+    // 애니메이션 상태 머신: 실제 이동 속도 + 현재 행동으로 Idle / Walk / Run / Gather / Sit 을 고른다 (전환은 CrossFade)
+    const mv = Math.hypot(npc.position.x - npc.px, npc.position.z - npc.pz) / Math.max(dt, 1e-4);
+    npc.px = npc.position.x; npc.pz = npc.position.z;
+    const working = state === 'Gathering' || state === 'Building' || state === 'Repairing' || state === 'Chopping' || state === 'Quarrying' || state === 'Farming';
+    let anim = mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle';
+    if (state === 'Resting' && mv < 0.5) anim = 'sit'; else if (working && mv < 0.8) anim = 'gather';
+    npc.anim.base(anim, mv);
+    const bs = npc.rig.baseScale;
+    npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
     setLabel(state);
   }
 
@@ -1795,12 +2164,15 @@
   function attack() {
     if (dead || atkCd > 0) return;
     atkCd = ATK_CD;
+    gathering = null;
     if (weaponMode === 'bow') {
       shake = Math.max(shake, 0.08);
-      fireArrow(player.position.x, player.position.z, facing, true);
+      playerAnim.once('attackBow');
+      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg);
       return;
     }
     atkT = SLASH_LIFE; shake = 0.3;
+    playerAnim.once('attackSword');
     spawnSlash(player.position.x, player.position.z, facing);
     // 광역(Cleave): 부채꼴 안의 모든 적이 동시에 피해와 넉백을 받는다
     const hits = sectorHit(player.position.x, player.position.z, facing, true);
@@ -1811,10 +2183,10 @@
   }
 
   // ---------- 무기 교체 / 화살 ----------
-  let weaponMode = 'sword';
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
+    playerRig.main = weaponMode;
     document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
   }
@@ -1911,6 +2283,7 @@
   const boomGeo = new THREE.CircleGeometry(CFG.ROCK_SPLASH, 28);
   const ROCK_G = 16;
   function throwRock(e) {
+    e.userData.anim.once('attackSword');
     // 조준: 가장 가까운 구조물, 없으면 모닥불
     let tx = 0, tz = 0, bd = Infinity;
     for (const o of obstacles) {
@@ -1990,7 +2363,6 @@
     }
     g.t += dt;
     facing = Math.atan2(o.position.x - player.position.x, o.position.z - player.position.z); player.rotation.y = facing;
-    capsule.position.y = H / 2 + R + Math.abs(Math.sin(g.t * 14)) * 0.15;       // 들썩임
     const prog = Math.min(1, g.t / CFG.PLAYER_GATHER_TIME), rx = Math.cos(yaw), rz = -Math.sin(yaw);
     gBg.visible = gFill.visible = true;
     gBg.position.set(player.position.x, 0.02, player.position.z);
@@ -1998,7 +2370,7 @@
     gFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
     if (g.t >= CFG.PLAYER_GATHER_TIME) {
       scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
-      res[o.userData.type] += CFG.GATHER_YIELD[o.userData.type];
+      res[o.userData.type] += CFG.GATHER_YIELD[o.userData.type]; rollIron(o);
       updateHud();
       gathering = null; gBg.visible = gFill.visible = false;
     }
@@ -2128,7 +2500,7 @@
   function updateDash(dt) {
     dashCd = Math.max(0, dashCd - dt); invincibleT = Math.max(0, invincibleT - dt);
     bodyMat.transparent = true; bodyMat.opacity = invincibleT > 0 ? 0.45 : 1;       // 무적 중 반투명
-    capsule.rotation.x = dashT > 0 ? 0.6 : 0;
+    playerRig.root.rotation.x = dashT > 0 ? 0.35 : 0;
     // 쿨타임 게이지 (캐릭터 발밑, 카메라 기준 좌→우로 차오름)
     const show = dashCd > 0;
     barBg.visible = barFill.visible = show;
@@ -2154,14 +2526,18 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, res: { ...res }, weaponUp, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, res: { ...res }, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing },
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
-      buildings: obstacles.filter(o => o.userData.type === 'building').map(o => ({ kind: o.userData.kind, ...pos(o) })),
+      buildings: obstacles.filter(o => o.userData.type === 'building').map(o => {
+        const stock = o.userData.stock ? { ...o.userData.stock } : null;
+        if (stock) for (const n of npcs) if (n.carryGear) stock[n.carryGear]++;      // 수령하러 가던 장비는 선반으로 되돌려 저장
+        return { kind: o.userData.kind, ...pos(o), stock };
+      }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, gear: { ...n.gear }, hungry: n.hungry, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -2193,8 +2569,9 @@
   }
   function applySnapshot(sn) {
     clearWorld();
-    gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0;
-    weaponUp = sn.weaponUp; weaponMode = sn.weaponMode; hp = sn.hp; fireHp = sn.fireHp;
+    gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0;
+    Object.assign(playerGear, sn.playerGear || { sword: 'sword_basic', bow: 'bow_basic' }); weaponMode = sn.weaponMode; applyPlayerGear();
+    closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
     designTier = sn.designTier; townStage = sn.townStage || 0; age = sn.age || 1; chapterCleared = sn.chapterCleared;
     buildHall(); updateAgeUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
@@ -2202,11 +2579,13 @@
     dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
     for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
-    for (const b of sn.buildings) createBuilding(b.kind, b.x, b.z);
+    for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
     for (const d of sn.npcs) {
-      const n = makeNpc(d.role, d.home, d.born); n.position.set(d.x, 0, d.z); n.hp = d.hp;
+      const n = makeNpc(d.role, d.home, d.born); n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
+      if (d.gear) { n.gear = { ...d.gear }; applyGear(n); }
+      n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
     }
     npc = npcs[0];
@@ -2219,10 +2598,6 @@
     updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
     document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     updateTownBtn();
-    const ub = document.getElementById('upgBtn');
-    ub.classList.toggle('done', weaponUp);
-    ub.firstChild.textContent = weaponUp ? 'Weapon Upgraded' : 'Upgrade Weapon';
-    ub.lastChild.textContent = weaponUp ? `Sword attack ${swordDmg()}` : 'Sword damage ↑ · 10 Stone';
   }
   function rewindTo(cp) {
     applySnapshot(cp.snap);
@@ -2243,7 +2618,7 @@
   // ---------- 디버그: 보스전 바로 테스트 (Shift+B: Day 7 준비 / Shift+N: 보스 소환, 주소 뒤에 ?debug=1 이면 버튼 표시) ----------
   function debugSetup() {
     if (dead) return;
-    res.wood += 400; res.stone += 400; weaponUp = true;
+    res.wood += 400; res.stone += 400; res.iron += 60;
     setAge(3);                                                // 디버그: 3시대(석조 요새)로
     while (townStage < CFG.TOWN_GROUPS.length) designTown();
     while (CFG.DESIGN[designTier]) designDefense();
@@ -2254,6 +2629,9 @@
     }
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
     for (const c of npcs.filter(n => n.promote)) setRole(c, c.promote.to);
+    const sm = smiths()[0];                                   // 디버그: 대장간 선반에 장비를 채워 병사들이 수령하게 한다
+    if (sm) { sm.userData.stock.iron_sword += 3; sm.userData.stock.strong_bow += 2; refreshRack(sm); }
+    playerGear.sword = 'iron_sword'; applyPlayerGear();
     for (const e of enemies.slice()) removeEnemy(e);
     for (const r of rocks.slice()) { scene.remove(r); scene.remove(r.userData.mark); rocks.splice(rocks.indexOf(r), 1); }
     healPlayer(CFG.PLAYER_MAX_HP); fireHp = fireMax();
@@ -2294,8 +2672,24 @@
     res.food -= CFG.FOOD_MEAL; healPlayer(CFG.FOOD_HEAL); eatCd = 6; updateHud();
     floatText(`Meal +${CFG.FOOD_HEAL}`, player.position.x, 2.6, player.position.z);
   }
+  // 매일 아침(06:00) 시민 1명당 식량 1개를 소비한다. 식량이 모자라면 굶주린 시민은 이동·작업 속도 50%
+  function feedCitizens() {
+    const cs = npcs.filter(n => n.role === 'citizen');
+    if (!cs.length) return;
+    let fed = 0, starving = 0;
+    for (const c of cs) {
+      if (res.food >= CFG.RATION) { res.food -= CFG.RATION; c.hungry = false; fed++; } else { c.hungry = true; starving++; }
+    }
+    updateHud();
+    const msg = starving ? `${starving} citizen${starving > 1 ? 's are' : ' is'} starving! Speed and work halved - grow more food` : `Morning rations: ${fed} Food eaten by citizens`;
+    setTimeout(() => toast(msg), 1600);
+  }
   function updateFood(dt) {
     eatCd -= dt;
+    if (res.food >= CFG.RATION) {                                       // 굶주린 시민은 식량이 생기는 즉시 먹는다
+      const h = npcs.find(n => n.hungry && n.role === 'citizen' && !n.down);
+      if (h) { res.food -= CFG.RATION; h.hungry = false; updateHud(); floatText('Fed!', h.position.x, 3.2, h.position.z); }
+    }
     if (hp < CFG.PLAYER_MAX_HP * CFG.FOOD_AUTO_BELOW) eat();           // 체력이 절반 미만이면 자동 식사
   }
   addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat) eat(); });
@@ -2373,6 +2767,7 @@
 
   // ---------- 메인 루프 ----------
   const SPEED = 6;
+  let peaceful = false, peaceT = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
 
@@ -2402,8 +2797,10 @@
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
+    const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
+    peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
     updateNpcs(dt, hour, t);
     updateFx(dt);
     updateArrows(dt);
@@ -2422,9 +2819,10 @@
     atkCd -= dt;
     if (atkT > 0) {
       atkT -= dt;
-      capsule.position.z = Math.sin((1 - Math.max(atkT, 0) / SLASH_LIFE) * Math.PI) * 0.35;   // 앞으로 살짝 찌르는 모션
-      if (atkT <= 0) capsule.position.z = 0;
+      playerRig.root.position.z = Math.sin((1 - Math.max(atkT, 0) / SLASH_LIFE) * Math.PI) * 0.25;   // 베는 순간 앞으로 살짝 踏み込む
+      if (atkT <= 0) playerRig.root.position.z = 0;
     }
+    { const sm = dead ? null : nearestSmith(); smithBtnEl.style.display = sm ? '' : 'none'; if (!sm && smithOpenFor) closeSmith(); }
 
     // 입력 합산 (조이스틱 or WASD)
     let ix = joy.x, iy = joy.y;
@@ -2454,10 +2852,9 @@
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 14);
       player.rotation.y = facing;
-      capsule.position.y = H / 2 + R + Math.abs(Math.sin(t * 12)) * 0.08 * mag;
-    } else {
-      capsule.position.y += (H / 2 + R - capsule.position.y) * Math.min(1, dt * 10);
     }
+    playerAnim.base(gathering ? 'gather' : dashT > 0 ? 'run' : mag > 0.08 ? (mag > 0.6 ? 'run' : 'walk') : 'idle', SPEED * mag);   // Idle / Walk / Run / Gather CrossFade
+    playerAnim.update(dt);
 
     updateGather(dt, dashT > 0 || mag > 0.08);
 
@@ -2490,8 +2887,10 @@
     renderer.render(scene, camera);
     if (off) camera.position.sub(off);
   }
+  applyPlayerGear(); updateHud();
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   saveCheckpoint('Day 1 start');
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 </script>
