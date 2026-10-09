@@ -168,3 +168,13 @@
   #ncMoodTxt { font-size: 12.5px; margin: 4px 0 8px; color: #d8e4ff; } #ncInfo { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #cfd6e6; }
   #ncClose { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: 0; cursor: pointer; color: #fff; background: #666; box-shadow: 0 2px 0 #333; display: block; margin: 0 auto; }
   #birdBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
+
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 30; }
+#journalPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 18; padding: 12px; }
+#journalPanel .jcard { background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 14px 18px; width: min(520px, 100%); max-height: 92%; overflow: auto; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+#journalPanel h3 { margin: 0 0 6px; color: #ffd27a; font-size: 22px; text-align: center; } #journalPanel h4 { margin: 12px 0 2px; color: #ffd27a; font-size: 15px; }
+#journalPanel .jhint { margin: 0 0 6px; font-size: 11.5px; color: #a9a49a; }
+#jStory .q { display: flex; gap: 8px; font-size: 13px; padding: 3px 0; color: #8f8a80; } #jStory .q.done { color: #8fd49a; } #jStory .q.now { color: #ffe7a8; font-weight: 700; } #jStory .log { margin: 6px 0 2px; padding: 6px 8px; background: rgba(255,255,255,.06); border-radius: 8px; font-size: 12px; line-height: 1.4; color: #cfd6e6; }
+#jExp .ex { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.07); border-radius: 10px; padding: 8px 10px; margin: 6px 0; } #jExp .info { flex: 1; font-size: 12.5px; line-height: 1.35; } #jExp .info b { font-size: 15px; color: #ffe7a8; } #jExp .info small { display: block; color: #b9c4d8; }
+#jExp button, #jClose { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 9px; cursor: pointer; border: 0; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; } #jExp button:disabled { opacity: .4; cursor: default; }
+#jClose { background: #666; color: #fff; box-shadow: 0 2px 0 #333; display: block; margin: 10px auto 0; }
