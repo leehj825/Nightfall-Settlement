@@ -63,6 +63,23 @@
       2: [{ id: 'lord', label: 'Lord', desc: 'Soldiers have +15% health and +10% damage' }, { id: 'merchant', label: 'Merchant', desc: 'Market trades pay more, worksites haul 25% more' }, { id: 'smith', label: 'Master Smith', desc: 'Forging is faster and gear costs 25% less' }],
       3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
     },
+    // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
+    EXP_LATEST: 15.5, EXP_FORCE: 17.5,
+    EXPEDITIONS: [
+      { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
+      { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
+      { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
+      { id: 'mine', name: 'Iron Mine', age: 2, tint: 0x4a4048, risk: 'Medium', reward: 'Lots of iron, Iron Heart', desc: 'Rich veins of iron deep in the hill. The tunnels are crowded with guards.', trees: 0, rocks: 4, ore: 14, chests: 2, relic: 'Iron Heart', ruins: 4, foes: ['normal', 'shield', 'shield', 'brute', 'normal'] },
+      { id: 'citadel', name: 'Fallen Citadel', age: 3, tint: 0x55485a, risk: 'High', reward: 'Rich loot, Beacon Core', desc: 'The old fortress. Its guardians will not give up the last relic without a fight.', trees: 0, rocks: 6, ore: 6, chests: 4, relic: 'Beacon Core', ruins: 12, foes: ['brute', 'brute', 'shield', 'shield', 'normal', 'normal', 'normal'] },
+    ],
+    // 이야기: 목표는 순서대로 표시되지만 유물은 어느 순서로든 찾을 수 있다. 처음 달성하면 이야기 장면이 나온다
+    STORY: [
+      { id: 'first', goal: 'Take your first expedition and come back alive', title: 'Beyond the Walls', text: 'You walked past the walls and came home alive - the village noticed. Warden Edda marks the charred map: a toppled watchtower, an iron mine and a fallen citadel. The nearer roads open once the village grows into a Wooden Town.', reward: { wood: 10, stone: 5, iron: 2 } },
+      { id: 'tower', goal: 'Recover the Beacon Lens from the Ruined Watchtower (Age 2)', title: 'The Beacon Lens', text: 'A cracked lens of glass, warm to the touch. The first relic hums as if it remembers fire. Edda taps the map: "The old iron mine keeps the next one."', reward: { iron: 5 } },
+      { id: 'mine', goal: 'Recover the Iron Heart from the Iron Mine (Age 2)', title: 'The Iron Heart', text: 'A heart of dark iron, heavier than it should be. The second relic. Only one remains, in the citadel far to the north - taken long ago by the people who now guard it.', reward: { iron: 8 } },
+      { id: 'citadel', goal: 'Recover the Beacon Core from the Fallen Citadel (Age 3)', title: 'The Beacon Core', text: 'The last relic pulses in your hands, and the other two answer it. Hurry home - something wants to burn bright tonight.', reward: { iron: 10 } },
+    ],
+    STORY_BEACON: { title: 'The Beacon Is Lit', text: 'Back at the hall the old lantern flares, and a pillar of golden light climbs into the sky. Raiders will think twice, and your people stand a little taller. The village is safe tonight - yet the road beyond the citadel is dark and long...' },
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사

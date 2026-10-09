@@ -23,4 +23,4 @@ Scripts are plain (non-module) so the game also works when opened from `file://`
 
 ## Controls
 
-WASD move · F attack · Q swap weapon · Space dash · E ultimate (Commander: Rally Cry) · G gather · V eat · T town hall · C blacksmith · R orders (Commander) · B bird's-eye view · M mute. On touch screens use the on-screen joystick and buttons; pinch to zoom.
+WASD move · F attack · Q swap weapon · Space dash · E ultimate (Commander: Rally Cry) · G gather · V eat · T town hall · C blacksmith · R orders (Commander) · B bird's-eye view · J journal / expeditions (also "Return home") · M mute. On touch screens use the on-screen joystick and buttons; pinch to zoom.

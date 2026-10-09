@@ -175,6 +175,16 @@
   #ncMoodTxt { font-size: 12.5px; margin: 4px 0 8px; color: #d8e4ff; } #ncInfo { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #cfd6e6; }
   #ncClose { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: 0; cursor: pointer; color: #fff; background: #666; box-shadow: 0 2px 0 #333; display: block; margin: 0 auto; }
   #birdBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
+
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 30; }
+#journalPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 18; padding: 12px; }
+#journalPanel .jcard { background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 14px 18px; width: min(520px, 100%); max-height: 92%; overflow: auto; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+#journalPanel h3 { margin: 0 0 6px; color: #ffd27a; font-size: 22px; text-align: center; } #journalPanel h4 { margin: 12px 0 2px; color: #ffd27a; font-size: 15px; }
+#journalPanel .jhint { margin: 0 0 6px; font-size: 11.5px; color: #a9a49a; }
+#jStory .q { display: flex; gap: 8px; font-size: 13px; padding: 3px 0; color: #8f8a80; } #jStory .q.done { color: #8fd49a; } #jStory .q.now { color: #ffe7a8; font-weight: 700; } #jStory .log { margin: 6px 0 2px; padding: 6px 8px; background: rgba(255,255,255,.06); border-radius: 8px; font-size: 12px; line-height: 1.4; color: #cfd6e6; }
+#jExp .ex { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.07); border-radius: 10px; padding: 8px 10px; margin: 6px 0; } #jExp .info { flex: 1; font-size: 12.5px; line-height: 1.35; } #jExp .info b { font-size: 15px; color: #ffe7a8; } #jExp .info small { display: block; color: #b9c4d8; }
+#jExp button, #jClose { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 9px; cursor: pointer; border: 0; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; } #jExp button:disabled { opacity: .4; cursor: default; }
+#jClose { background: #666; color: #fff; box-shadow: 0 2px 0 #333; display: block; margin: 10px auto 0; }
 </style>
 </head>
 <body>
@@ -193,6 +203,8 @@
 <div id="warn"></div>
 <div id="gameover"><div class="card"><h2>Your settlement has fallen.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><div id="goRewind"></div><button id="restartBtn">Restart from the beginning</button></div></div>
 <div id="toast"></div>
+<div id="journalPanel"><div class="jcard"><h3>Journal</h3><div id="jStory"></div><h4>Expeditions</h4><p class="jhint" id="jHint"></p><div id="jExp"></div><button id="jClose">Close</button></div></div>
+<div id="fade"></div>
 <div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><button id="ncClose">Close</button></div></div>
 <div id="eventPanel"><div class="ecard"><small>Morning event</small><h3 id="evTitle"></h3><p id="evText"></p><div id="evBtns"></div></div></div>
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
@@ -201,6 +213,7 @@
 <div id="actions">
   <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
   <button class="btn" id="atkBtn">Attack<small>F</small></button>
+  <button class="btn" id="expBtn">Journal<small>J</small></button>
   <button class="btn" id="birdBtn">Map View<small>B</small></button>
   <button class="btn" id="ordBtn" style="display:none">Orders<small id="ordSub">R · Guard</small></button>
   <button class="btn" id="hallBtn" style="display:none">Town Hall<small>T</small></button>
@@ -280,6 +293,23 @@
       2: [{ id: 'lord', label: 'Lord', desc: 'Soldiers have +15% health and +10% damage' }, { id: 'merchant', label: 'Merchant', desc: 'Market trades pay more, worksites haul 25% more' }, { id: 'smith', label: 'Master Smith', desc: 'Forging is faster and gear costs 25% less' }],
       3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
     },
+    // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
+    EXP_LATEST: 15.5, EXP_FORCE: 17.5,
+    EXPEDITIONS: [
+      { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
+      { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
+      { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
+      { id: 'mine', name: 'Iron Mine', age: 2, tint: 0x4a4048, risk: 'Medium', reward: 'Lots of iron, Iron Heart', desc: 'Rich veins of iron deep in the hill. The tunnels are crowded with guards.', trees: 0, rocks: 4, ore: 14, chests: 2, relic: 'Iron Heart', ruins: 4, foes: ['normal', 'shield', 'shield', 'brute', 'normal'] },
+      { id: 'citadel', name: 'Fallen Citadel', age: 3, tint: 0x55485a, risk: 'High', reward: 'Rich loot, Beacon Core', desc: 'The old fortress. Its guardians will not give up the last relic without a fight.', trees: 0, rocks: 6, ore: 6, chests: 4, relic: 'Beacon Core', ruins: 12, foes: ['brute', 'brute', 'shield', 'shield', 'normal', 'normal', 'normal'] },
+    ],
+    // 이야기: 목표는 순서대로 표시되지만 유물은 어느 순서로든 찾을 수 있다. 처음 달성하면 이야기 장면이 나온다
+    STORY: [
+      { id: 'first', goal: 'Take your first expedition and come back alive', title: 'Beyond the Walls', text: 'You walked past the walls and came home alive - the village noticed. Warden Edda marks the charred map: a toppled watchtower, an iron mine and a fallen citadel. The nearer roads open once the village grows into a Wooden Town.', reward: { wood: 10, stone: 5, iron: 2 } },
+      { id: 'tower', goal: 'Recover the Beacon Lens from the Ruined Watchtower (Age 2)', title: 'The Beacon Lens', text: 'A cracked lens of glass, warm to the touch. The first relic hums as if it remembers fire. Edda taps the map: "The old iron mine keeps the next one."', reward: { iron: 5 } },
+      { id: 'mine', goal: 'Recover the Iron Heart from the Iron Mine (Age 2)', title: 'The Iron Heart', text: 'A heart of dark iron, heavier than it should be. The second relic. Only one remains, in the citadel far to the north - taken long ago by the people who now guard it.', reward: { iron: 8 } },
+      { id: 'citadel', goal: 'Recover the Beacon Core from the Fallen Citadel (Age 3)', title: 'The Beacon Core', text: 'The last relic pulses in your hands, and the other two answer it. Hurry home - something wants to burn bright tonight.', reward: { iron: 10 } },
+    ],
+    STORY_BEACON: { title: 'The Beacon Is Lit', text: 'Back at the hall the old lantern flares, and a pillar of golden light climbs into the sky. Raiders will think twice, and your people stand a little taller. The village is safe tonight - yet the road beyond the citadel is dark and long...' },
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
@@ -859,8 +889,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
   let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
+  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null;                                // 버드아이 뷰: 마을 전체를 한눈에
-  const camFocus = () => bird ? { x: 0, z: 0 } : player.position;
+  const camFocus = () => bird ? (exActive ? EXC : { x: 0, z: 0 }) : player.position;
   const setDist = d => { DIST = bird ? Math.min(95, Math.max(24, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
   function goalPos(out) {
@@ -1010,8 +1041,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function gather() {
     if (dead || gathering) return;
     let best = null, bestD = GATHER_RANGE;
-    for (const o of obstacles) {
-      if (o.userData.type !== 'wood' && o.userData.type !== 'stone') continue;
+    for (const o of (exActive ? exObjs : obstacles)) {
+      if (o.userData.type !== 'wood' && o.userData.type !== 'stone' && o.userData.type !== 'chest') continue;
       const d = Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius;
       if (d < bestD) { bestD = d; best = o; }
     }
@@ -1769,7 +1800,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   let spawnCd = 0;
   // kind: 'normal' | 'brute' | 'shield'. 최대 HP는 날짜에 따라 HP_SCALE_EVERY일마다 +1
   const beastMat = mat(0x8a6a40), bossMat = mat(0x0b0b0e), siegeMat = mat(0x8a3fc0), shieldMat = mat(0xb8c0cc), shieldPlateMat = mat(0x666b73), shieldPlateGeo = new THREE.BoxGeometry(0.95, 1.1, 0.14);
-  function spawnEnemy(kind = 'normal') {
+  function spawnEnemy(kind = 'normal', at = null) {
     const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : 1;
@@ -1790,6 +1821,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     m.add(rig.root); m.material = rig.bodyMat;           // 보스 깜빡임/기절 색 변경은 m.material을 사용
     m.scale.setScalar(sc);
     m.position.set(Math.cos(a) * r, 0.8 * sc, Math.sin(a) * r);
+    if (at) m.position.set(at.x, 0.8 * sc, at.z);
     if (shield) {                                    // 앞쪽(+Z, 진행 방향)에 방패 판
       const plate = new THREE.Mesh(shieldPlateGeo, shieldPlateMat);
       plate.position.set(0, 0.05, 0.55);
@@ -1806,7 +1838,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       contact: beast ? 6 : boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: boss ? CFG.BOSS_KB_MUL : brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
       fireTimer: 0, aggro: false, sinking: false, castT: 0, stunT: 0, lureT: 0, critT: 0, tele: null,
-      anim: new Anim(rig), px: m.position.x, pz: m.position.z, atkAnimCd: rand(0, 0.6) };
+      anim: new Anim(rig), ex: !!at, px: m.position.x, pz: m.position.z, atkAnimCd: rand(0, 0.6) };
     if (boss) {                                       // 보스 머리 위 표시: 어그로 '!' / 기절 텍스트와 빙글 도는 별
       const bang = textSprite('!', '#ff2a1a', 0.5, 0.5, 'bold 96px sans-serif');
       bang.position.set(0, 1.25, 0); bang.visible = false; m.add(bang);
@@ -1839,6 +1871,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
+    if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'plunder' && Math.random() < 0.4) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     hideTelegraph(e);
     u.sinking = true; u.dying = 1.0; e.position.y = u.baseY; u.anim.die();
@@ -1899,7 +1932,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     wave.quiet = !isRaid(day);
     wave.type = nightTypeOf(day);
     const extraRaiders = pendingRaiders; pendingRaiders = 0;               // 아침 이벤트 선택의 대가
-    const threat = 1 + Math.max(0, prosScore - 40) / 120;                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
@@ -1939,7 +1972,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
-      if (!night && !u.sinking && !u.boss) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
+      if (!night && !u.sinking && !u.boss && !u.ex) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
       if (u.sinking) {
         if (u.dying > 0) { u.dying -= dt; continue; }
         e.position.y -= dt * 0.8;
@@ -1947,6 +1980,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         continue;
       }
       if (dead) continue;
+      if (u.ex) { exEnemyStep(e, u, dt); continue; }                    // 원정 지역의 적은 별도 AI
 
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
       const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
@@ -2139,7 +2173,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) - n.shock;
     if (n.role === 'citizen') target += builtBuildings('house').length ? 4 : -8;
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -2209,7 +2243,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? gearDef(n.gear.sword).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
     const amen = Math.min(1, (builtBuildings('well').length ? 0.5 : 0) + (builtBuildings('market').length ? 0.5 : 0));
     moodAvg = npcs.length ? npcs.reduce((a, n) => a + n.mood, 0) / npcs.length : 60;
-    return Math.min(100, (hasPerk('steward') ? 10 : 0) + Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100))));
+    return Math.min(100, (hasPerk('steward') ? 10 : 0) + (story.beacon ? 5 : 0) + Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100))));
   }
   const prosLabel = (v) => CFG.PROSPERITY_LABELS.find(l => v < l[0])[1];
   const prosEl = document.getElementById('prosN'), moodEl = document.getElementById('moodN');
@@ -2284,7 +2318,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const m = builtBuildings('market')[0]; floatText('Market: Food→Iron +3', m.position.x, 3.2, m.position.z);
   }
   // ---------- 아침 이벤트: 선택에 따라 득실이 갈리는 짧은 사건 (창이 열려 있는 동안 시간이 멈춘다) ----------
-  let eventOpen = false, pendingRaiders = 0;
+  let eventOpen = false, pendingRaiders = 0; const eventQueue = [];
   const evEl = document.getElementById('eventPanel'), evBtns = document.getElementById('evBtns');
   const citizens = () => npcs.filter(n => n.role === 'citizen' && !n.down);
   function spawnCitizens(k) {
@@ -2311,7 +2345,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       { label: 'Not now', alt: true, run: () => 'Maybe next season' } ] },
   ];
   function openEvent(ev) {
-    if (dead || eventOpen) return;
+    if (dead) return;
+    if (eventOpen) { eventQueue.push(ev); return; }
     eventOpen = true; repEl.classList.remove('show'); if (typeof cardNpc !== 'undefined') { cardNpc = null; document.getElementById('npcCard').style.display = 'none'; }
     document.querySelector('#eventPanel small').textContent = ev.tag || 'Morning event';
     document.getElementById('evTitle').textContent = ev.title; document.getElementById('evText').textContent = ev.text;
@@ -2320,7 +2355,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const b = document.createElement('button'); b.className = o.alt ? 'alt' : '';
       b.innerHTML = `${o.label}${o.sub ? `<small>${o.sub}</small>` : ''}`;
       b.disabled = o.ok ? !o.ok() : false;
-      b.addEventListener('click', () => { const msg = o.run(); eventOpen = false; evEl.style.display = 'none'; updateHud(); updateProsperity(); toast(msg); Snd.play('chime'); });
+      b.addEventListener('click', () => { const msg = o.run(); eventOpen = false; evEl.style.display = 'none'; updateHud(); updateProsperity(); if (msg) toast(msg); Snd.play('chime'); if (eventQueue.length) setTimeout(() => openEvent(eventQueue.shift()), 350); });
       evBtns.appendChild(b);
     }
     evEl.style.display = 'flex'; Snd.play('click');
@@ -2629,6 +2664,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   // 반환값은 최종 목적지까지의 (이동 전) 거리 - 호출부의 도착 판정에 그대로 쓰인다
   function npcMove(tx, tz, speed, dt) {
+    // 끼임 감지: 5초 동안 거의 못 움직이면 stuckFlag를 세우고 살짝 밀어 준다 (호출한 쪽이 작업을 포기하도록)
+    const nowMs = performance.now();
+    if (!npc.sw || nowMs - npc.sw.last > 800) npc.sw = { x: npc.position.x, z: npc.position.z, t: 0, last: nowMs };
+    npc.sw.t += dt; npc.sw.last = nowMs;
+    if (npc.sw.t >= 6) {
+      const mvd = Math.hypot(npc.position.x - npc.sw.x, npc.position.z - npc.sw.z);
+      npc.sw = { x: npc.position.x, z: npc.position.z, t: 0, last: nowMs };
+      if (!window.__nfNoFix && mvd < 2.5 && Math.hypot(tx - npc.position.x, tz - npc.position.z) > 2) { npc.stuckFlag = true; npc.position.x += rand(-1.6, 1.6); npc.position.z += rand(-1.6, 1.6); }
+    }
     speed *= moveMul(npc);                                    // 굶주림·성격·기분이 이동 속도를 정한다
     // 끼임 방지: 거의 못 움직이면 잠깐 옆으로 비켜 걷는다
     const moved = Math.hypot(npc.position.x - (npc.prevX ?? npc.position.x), npc.position.z - (npc.prevZ ?? npc.position.z));
@@ -2716,7 +2760,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     return best;
   }
-  const unclaimed = (o) => !o.userData.owner || o.userData.owner === npc || !npcs.includes(o.userData.owner);
+  const unclaimed = (o) => !(o.userData.skipUntil > gameMin) && (!o.userData.owner || o.userData.owner === npc || !npcs.includes(o.userData.owner));      // 도달할 수 없어 포기한 대상은 한동안 제외
   const reserved = { wood: 0, stone: 0 };       // 건설 담당이 이미 '예약'한 자원 (여럿이 같은 자원을 보고 동시에 건설하러 가지 않게)
   const bpCost = (b) => b.userData.cost ?? CFG.BP_COST[b.userData.res];
   function setTask(nt) {                       // 대상 점유(claim)/해제 + 건설 자원 예약
@@ -2822,7 +2866,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
     let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
-    if (order === 'follow' && npc.role !== 'citizen') { state = followStep(dt); busy = true; }       // 지휘 명령: 플레이어를 따른다
+    if (order === 'follow' && !exActive && npc.role !== 'citizen') { state = followStep(dt); busy = true; }       // 지휘 명령: 플레이어를 따른다
     if (!busy && isDay && gearFetchStep(dt)) { busy = true; state = 'Fetching gear'; }       // 병사: 대장간에서 새 장비 수령
     if (!busy && isDay && npc.role === 'citizen') { const rs = routineStep(dt, hour); if (rs) { busy = true; state = rs; } }
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
@@ -2831,6 +2875,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       // 주간 우선순위: 1) 수리  2) 건설(청사진)  3) 채집
       let task = npc.task;
       if (task && !taskValid(task)) { setTask(null); task = null; npc.workT = 0; }
+      if (task) {                                                        // 워치독: 한 작업에 게임 시간 5시간(실제 약 30초) 넘게 매달리면 포기하고 그 대상은 잠시 제외
+        task.startMin = task.startMin ?? gameMin;
+        if (gameMin - task.startMin > 300) { task.target.userData.skipUntil = gameMin + 180; setTask(null); npc.workT = 0; task = null; }
+      }
       npc.pickCd -= dt;
       if (!task && npc.pickCd <= 0) {          // 작업이 끝나거나 사라졌을 때만 새 작업 선택 (중간에 바꾸지 않아 갈팡질팡 방지)
         npc.pickCd = 0.3;
@@ -2907,6 +2955,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     npc.anim.base(anim, mv);
     const bs = npc.rig.baseScale;
     npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
+    if (npc.stuckFlag) {                                                   // 끼인 NPC: 지금 목표를 한동안 포기하고 다른 일을 고른다
+      npc.stuckFlag = false;
+      if (npc.task) { npc.task.target.userData.skipUntil = gameMin + 180; setTask(null); npc.workT = 0; }
+      if (npc.wtarget) { npc.wtarget.userData.skipUntil = gameMin + 180; npc.wtarget = null; }
+      if (npc.promote) npc.promote = npc.promote;
+    }
     npc.stateNow = state;
     setLabel(state);
   }
@@ -3108,7 +3162,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function updateGather(dt, moving) {
     if (!gathering) { gBg.visible = gFill.visible = false; return; }
     const g = gathering, o = g.target;
-    const gone = !obstacles.includes(o) || Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius > GATHER_RANGE + 1;
+    const gone = !(exActive && exObjs.includes(o)) && !obstacles.includes(o) || Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius > GATHER_RANGE + 1;
     if (dead || moving || gone) {
       if (moving && !gone) toast('Gathering cancelled');
       gathering = null; gBg.visible = gFill.visible = false; return;
@@ -3121,8 +3175,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     gFill.position.set(player.position.x - rx * 0.65, 0.02, player.position.z - rz * 0.65);
     gFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
     if (g.t >= CFG.PLAYER_GATHER_TIME) {
-      scene.remove(o); obstacles.splice(obstacles.indexOf(o), 1);
-      res[o.userData.type] += gatherYield(o.userData.type); rollIron(o); Snd.play('chop');
+      scene.remove(o);
+      if (o.userData.type === 'chest') { exObjs.splice(exObjs.indexOf(o), 1); openChest(o); }
+      else {
+        const pool = exObjs.includes(o) ? exObjs : obstacles; pool.splice(pool.indexOf(o), 1);
+        res[o.userData.type] += gatherYield(o.userData.type); rollIron(o); Snd.play('chop');
+        if (o.userData.ore) { const k = 2 + Math.floor(Math.random() * 3); res.iron += k; floatText(`Ore: Iron +${k}`, o.position.x, 2.4, o.position.z); }
+      }
       updateHud();
       gathering = null; gBg.visible = gFill.visible = false;
     }
@@ -3292,7 +3351,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, res: { ...res }, playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing },
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -3335,6 +3394,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   function applySnapshot(sn) {
     clearWorld();
+    if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon);
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openClassChoice, 700); }
@@ -3472,6 +3533,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function updateRaidUi(hour, dayNo) {
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
+    if (exActive) { const t = `Expedition: ${exActive.dest.name} - home by ${fmtH(CFG.EXP_FORCE)}`; if (t !== raidTxt) { raidTxt = t; raidEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
@@ -3537,6 +3599,177 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   let lastWarnDay = 0, lastRespawnDay = 1, bossShakeT = 0;
 
+
+  // ---------- 원정(Expedition): 낮에 마을 밖의 별도 지역으로 떠나 자원·유물을 얻고 해 지기 전에 돌아온다 ----------
+  const fmtH = (h) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+  const exMeshes = [];
+  const fadeEl = document.getElementById('fade');
+  function fadeTo(fn) { fadeEl.style.opacity = 1; setTimeout(() => { fn(); fadeEl.style.opacity = 0; }, 380); }
+  const oreMat = mat(0x4a3f4c), chestWood = mat(0x7a4f2a), chestGold = new THREE.MeshBasicMaterial({ color: 0xffd45a }), chestBand = mat(0xb9892a), ruinMat = mat(0x7d7f86), flagMat = mat(0xc0392b);
+  const exAdd = (m, solid) => { scene.add(m); (solid ? exObjs : exMeshes).push(m); return m; };
+  function makeChest(x, z, relic) {
+    const gr = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.7), chestWood); body.position.y = 0.3;
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.22, 0.74), relic ? chestGold : chestBand); lid.position.y = 0.7;
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.64, 0.74), chestBand); band.position.y = 0.32;
+    gr.add(body, lid, band); gr.traverse(m => { if (m.isMesh) m.castShadow = true; });
+    gr.position.set(x, 0, z); gr.rotation.y = rand(0, 6.28);
+    gr.userData = { type: 'chest', radius: 0.9, relic: !!relic };
+    return exAdd(gr, true);
+  }
+  function buildZone(d) {
+    const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
+    const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.tint, flatShading: true, roughness: 1 }));
+    ground.position.set(EXC.x, 0.02, EXC.z); ground.receiveShadow = true; exAdd(ground, false);
+    for (let i = 0; i < 26; i++) {                                   // 지역 테두리: 큰 바위들
+      const a = i / 26 * Math.PI * 2, s = rand(1.4, 2.4), r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
+      r.position.set(EXC.x + Math.cos(a) * 44, s * 0.5, EXC.z + Math.sin(a) * 44); r.castShadow = true; exAdd(r, false);
+    }
+    const flag = new THREE.Group();                                   // 귀환 깃발 (입구)
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4, 6), lampPostMat); pole.position.y = 2;
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.05), flagMat); cloth.position.set(0.7, 3.5, 0);
+    flag.add(pole, cloth); flag.position.set(EXC.x, 0, EXC.z - 36); exAdd(flag, false);
+    const taken = [{ x: EXC.x, z: EXC.z - 34, r: 7 }];
+    const spot = (rad) => {                                           // 겹치지 않는 위치 찾기
+      for (let k = 0; k < 40; k++) {
+        const a = rand(0, 6.28), rr = Math.sqrt(Math.random()) * 38, x = EXC.x + Math.cos(a) * rr, z = EXC.z + Math.sin(a) * rr;
+        if (taken.every(t => Math.hypot(x - t.x, z - t.z) > t.r + rad)) { taken.push({ x, z, r: rad }); return { x, z }; }
+      }
+      return { x: EXC.x + rand(-30, 30), z: EXC.z + rand(-20, 30) };
+    };
+    for (let i = 0; i < d.trees; i++) { const o = makeTree(), p = spot(1.8); o.position.set(p.x, 0, p.z); exAdd(o, true); }
+    for (let i = 0; i < d.rocks; i++) { const o = makeRock(), p = spot(1.6); o.position.set(p.x, 0, p.z); exAdd(o, true); }
+    for (let i = 0; i < d.ore; i++) {
+      const o = makeRock(), p = spot(1.8); o.scale.setScalar(1.25); o.userData.radius *= 1.25; o.userData.ore = true;
+      o.traverse(m => { if (m.isMesh) m.material = oreMat; });
+      o.position.set(p.x, 0, p.z); exAdd(o, true);
+    }
+    for (let i = 0; i < (d.ruins || 0); i++) {                        // 폐허 기둥: 막히는 지형
+      const h = rand(1.6, 4), p = spot(1.6), m = new THREE.Mesh(new THREE.BoxGeometry(rand(0.8, 1.3), h, rand(0.8, 1.3)), ruinMat);
+      m.position.set(p.x, h / 2, p.z); m.rotation.y = rand(0, 3); m.castShadow = m.receiveShadow = true; m.userData = { type: 'ruin', radius: 0.9 }; exAdd(m, true);
+    }
+    for (let i = 0; i < d.chests; i++) { const p = spot(2.2); makeChest(p.x, p.z, !!d.relic && i === d.chests - 1); }
+    for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); }
+  }
+  function cleanupZone() {
+    for (const o of exMeshes.concat(exObjs)) scene.remove(o);
+    exMeshes.length = 0; exObjs.length = 0;
+    for (const e of enemies.slice()) if (e.userData.ex) removeEnemy(e);
+  }
+  function exEnemyStep(e, u, dt) {
+    const px = player.position.x - e.position.x, pz = player.position.z - e.position.z, pd = Math.hypot(px, pz);
+    u.aggro = exActive ? (u.aggro ? pd < 24 : pd < 13) : false;
+    let moving = false;
+    if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
+    else if (u.aggro && pd > 0.9 && !(u.stunT > 0)) { e.position.x += px / pd * u.speed * dt; e.position.z += pz / pd * u.speed * dt; e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
+    const dx = e.position.x - EXC.x, dz = e.position.z - EXC.z, dd = Math.hypot(dx, dz);
+    if (dd > 42) { e.position.x = EXC.x + dx / dd * 42; e.position.z = EXC.z + dz / dd * 42; }
+    u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
+    if (pd < PLAYER_R + u.r + 0.15) {
+      if (hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+      if (u.atkAnimCd <= 0) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
+    }
+  }
+  function openChest(o) {
+    const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
+    picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
+    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud();
+    if (o.userData.relic) foundRelic(d);
+  }
+
+  // ---------- 이야기 ----------
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false };
+  let beaconMesh = null;
+  function setBeacon(on) {
+    if (on && !beaconMesh) {
+      beaconMesh = new THREE.Group();
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 1.2, 40, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      beam.position.y = 20; beaconMesh.add(beam);
+      const glow = new THREE.PointLight(0xffd070, 1.6, 40, 1.4); glow.position.y = 6; beaconMesh.add(glow);
+      scene.add(beaconMesh);
+    }
+    if (beaconMesh) beaconMesh.visible = on;
+    story.beacon = on;
+  }
+  const storyDone = (id) => id === 'first' ? story.exps >= 1 : !!story.relics[id];
+  function storyDialog(title, text) { openEvent({ tag: 'Story', title, text, opts: [{ label: 'Continue', run: () => '' }] }); }
+  function checkStory() {
+    for (const s of CFG.STORY) {
+      if (!storyDone(s.id) || story.said[s.id]) continue;
+      story.said[s.id] = true; story.log.push(`${s.title}: ${s.text}`);
+      for (const [k, v] of Object.entries(s.reward)) res[k] += v;
+      updateHud(); storyDialog(s.title, `${s.text}\n\nReward: ${costText(s.reward)}`);
+    }
+    if (!story.beacon && CFG.STORY.every(s => storyDone(s.id))) {
+      setBeacon(true); story.log.push(`${CFG.STORY_BEACON.title}: ${CFG.STORY_BEACON.text}`);
+      storyDialog(CFG.STORY_BEACON.title, CFG.STORY_BEACON.text); shake = Math.max(shake, 0.5); Snd.play('horn');
+    }
+  }
+  function foundRelic(d) {
+    story.relics[d.id] = true; toast(`Relic found: ${d.relic}!`); floatText(`Relic: ${d.relic}`, player.position.x, 3.2, player.position.z);
+    burst({ x: player.position.x, z: player.position.z, y: 1.5 }, 40); shake = Math.max(shake, 0.35); Snd.play('horn');
+  }
+  function storyIntro() {
+    if (story.intro) return; story.intro = true;
+    const t = 'At dawn a traveler leaves a charred map at your gate. "There was a Beacon once, far past the old road. It kept the dark away. Three relics powered it - find them, and the night may lose its teeth." Open the Journal (J) to plan an expedition.';
+    story.log.push(`A Weathered Map: ${t}`); storyDialog('A Weathered Map', t);
+  }
+
+  // ---------- 원정 출발 / 귀환 ----------
+  function startExpedition(id) {
+    const d = CFG.EXPEDITIONS.find(x => x.id === id);
+    if (!d || exActive || dead || exEnding) return;
+    if (age < d.age) return toast(`Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})`);
+    if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
+    closeJournal(); exEnding = true; gathering = null;
+    fadeTo(() => {
+      exActive = { dest: d, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
+      buildZone(d);
+      player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
+      camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
+      exEnding = false; updateExUi(); toast(`${d.name}: find the chests - be home by ${fmtH(CFG.EXP_FORCE)}`); Snd.play('horn');
+    });
+  }
+  function endExpedition(forced) {
+    if (!exActive || exEnding) return;
+    const ex = exActive; exEnding = true; gathering = null;
+    fadeTo(() => {
+      const gain = ['wood', 'stone', 'iron', 'food'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
+      cleanupZone(); exActive = null;
+      player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
+      story.exps++; exEnding = false; updateExUi(); updateHud();
+      toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
+      checkStory();
+    });
+  }
+  function updateExUi() {
+    const b = document.getElementById('expBtn');
+    b.firstChild.textContent = exActive ? 'Return home' : 'Journal';
+    b.classList.toggle('on', !!exActive);
+  }
+  document.getElementById('expBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); exActive ? endExpedition(false) : toggleJournal(); });
+  addEventListener('keydown', e => { if (e.code === 'KeyJ' && !e.repeat) { if (exActive) endExpedition(false); else toggleJournal(); } });
+
+  // ---------- 일지(Journal): 이야기 목표 + 원정 목록 ----------
+  const jEl = document.getElementById('journalPanel');
+  function renderJournal() {
+    const first = CFG.STORY.findIndex(s => !storyDone(s.id));
+    document.getElementById('jStory').innerHTML = (story.intro ? CFG.STORY.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
+      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit!</span></div>' : '') +
+      story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
+    const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
+    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. You are called home automatically at ${fmtH(CFG.EXP_FORCE)}. The village keeps working while you are away.`;
+    document.getElementById('jExp').innerHTML = CFG.EXPEDITIONS.map(d => {
+      const lock = age < d.age, found = d.relic && story.relics[d.id];
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? ` · Requires Age ${d.age}` : ''}</small></div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
+    }).join('');
+    jEl.querySelectorAll('#jExp button').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
+  }
+  function openJournal() { if (dead || exActive) return; renderJournal(); jEl.style.display = 'flex'; }
+  function closeJournal() { jEl.style.display = 'none'; }
+  function toggleJournal() { jEl.style.display === 'flex' ? closeJournal() : openJournal(); }
+  document.getElementById('jClose').addEventListener('click', closeJournal);
+
   // ---------- 대장간 연출: 굴뚝 연기 + 화덕 깜빡임 ----------
   let forgeFlash = 0, smokeCd = 0;
   const puffs = [];
@@ -3598,6 +3831,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
     const dayNo = Math.floor(gameMin / 1440) + 1;
     nowHour = hour;
+    if (exActive && !exEnding && hour >= CFG.EXP_FORCE) endExpedition(true);       // 해 지기 전에 자동 귀환
     updateRaidUi(hour, dayNo);
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
@@ -3606,7 +3840,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); rollEvent(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3676,8 +3910,17 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const min = o.userData.radius + PLAYER_R, d = Math.hypot(dx, dz);
       if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
     }
-    player.position.x = Math.max(-MAP, Math.min(MAP, player.position.x));
-    player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));
+    if (exActive) {
+      for (const o of exObjs) {
+        const dx = player.position.x - o.position.x, dz = player.position.z - o.position.z, min = o.userData.radius + PLAYER_R, d = Math.hypot(dx, dz);
+        if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
+      }
+      const dx = player.position.x - EXC.x, dz = player.position.z - EXC.z, dd = Math.hypot(dx, dz);
+      if (dd > 41) { player.position.x = EXC.x + dx / dd * 41; player.position.z = EXC.z + dz / dd * 41; }
+    } else {
+      player.position.x = Math.max(-MAP, Math.min(MAP, player.position.x));
+      player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));
+    }
 
     // 카메라 Lerp 추적
     const k = 1 - Math.exp(-6 * dt);
@@ -3703,7 +3946,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   if (/[?&]debug/.test(location.search)) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);      // 처음 시작할 때 역할 선택
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   saveCheckpoint('Day 1 start');
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 
