@@ -27,39 +27,80 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return { root, clips, handR: handR || root, handL: handL || root, bodyMat: bodyMat || mat(color), baseScale: 1 };
   }
 
-  // ----- 스틱맨: 관절(Bone)이 있는 단순 인체. 발이 y=0, 정면이 +Z -----
+  // ----- 사람 리그: 관절(Bone) 위에 몸통·목·얼굴·머리카락·손·장화 등을 얹은 로우폴리 인체. 발이 y=0, 정면이 +Z -----
+  // 사람마다 피부색·머리색·머리 모양이 다르고(seed), 역할별 복장(병사: 사슬 + 튜닉 + 견갑 / 궁수: 후드 + 화살통 / 시민: 셔츠 / 주인공: 망토 / 적: 두건 + 복면)이 붙는다.
   const skinMat = mat(0xf1c9a0), darkMat = mat(0x3a2a22), eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3a1a }), visorMat = mat(0x2a2a30);
+  const SKINS = [0xf1c9a0, 0xe3b48a, 0xc88b63, 0x8d5a3b].map(mat), HAIRS = [0x2a1a10, 0x5a3a1e, 0x8a5a2b, 0xc9a23a, 0x9a9a9a, 0x151515].map(mat);
+  const bootMat = mat(0x2b1d14), beltMat = mat(0x4a3320), buckleMat = mat(0xc9a23a), steelMat = mat(0x8e939d), mailMat = mat(0x5d626c), eyeDark = new THREE.MeshBasicMaterial({ color: 0x1a1210 });
+  const PANTS = { citizen: mat(0x6b5a44), melee: mat(0x34373f), archer: mat(0x3f4a34), player: mat(0x3a2a22), enemy: mat(0x2a2024) };
+  const hashPick = (arr, seed, k) => arr[(Math.imul((seed | 0) ^ Math.imul(k + 1, 0x9e3779b1), 2654435761) >>> 0) % arr.length];
   const RG = {
-    hips: new THREE.BoxGeometry(0.42, 0.18, 0.26), torso: new THREE.BoxGeometry(0.5, 0.62, 0.28), head: new THREE.SphereGeometry(0.2, 10, 8),
-    upper: new THREE.CylinderGeometry(0.07, 0.06, 0.3, 6), lower: new THREE.CylinderGeometry(0.06, 0.05, 0.3, 6), hand: new THREE.SphereGeometry(0.07, 6, 5),
-    thigh: new THREE.CylinderGeometry(0.1, 0.08, 0.45, 6), shin: new THREE.CylinderGeometry(0.08, 0.07, 0.45, 6), foot: new THREE.BoxGeometry(0.14, 0.08, 0.26),
-    visor: new THREE.BoxGeometry(0.22, 0.06, 0.05),
+    hips: new THREE.BoxGeometry(0.42, 0.18, 0.26), chest: new THREE.BoxGeometry(0.5, 0.34, 0.28), waist: new THREE.BoxGeometry(0.4, 0.26, 0.24),
+    belt: new THREE.BoxGeometry(0.43, 0.06, 0.27), buckle: new THREE.BoxGeometry(0.07, 0.06, 0.02), neck: new THREE.CylinderGeometry(0.07, 0.08, 0.12, 6),
+    head: new THREE.SphereGeometry(0.2, 10, 8), eye: new THREE.BoxGeometry(0.035, 0.04, 0.02), nose: new THREE.BoxGeometry(0.03, 0.045, 0.045),
+    hairCap: new THREE.SphereGeometry(0.215, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.55), hairBack: new THREE.BoxGeometry(0.3, 0.34, 0.1), beard: new THREE.BoxGeometry(0.2, 0.1, 0.08),
+    hood: new THREE.SphereGeometry(0.235, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.68), mask: new THREE.BoxGeometry(0.2, 0.1, 0.06),
+    shoulder: new THREE.SphereGeometry(0.095, 8, 6), pauldron: new THREE.SphereGeometry(0.135, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), spike: new THREE.ConeGeometry(0.04, 0.16, 5),
+    upper: new THREE.CylinderGeometry(0.075, 0.065, 0.3, 6), lower: new THREE.CylinderGeometry(0.065, 0.055, 0.3, 6), hand: new THREE.SphereGeometry(0.07, 6, 5),
+    thigh: new THREE.CylinderGeometry(0.105, 0.085, 0.45, 6), shin: new THREE.CylinderGeometry(0.085, 0.07, 0.45, 6), shaft: new THREE.CylinderGeometry(0.09, 0.085, 0.15, 6), boot: new THREE.BoxGeometry(0.16, 0.1, 0.3),
+    tabard: new THREE.BoxGeometry(0.34, 0.52, 0.02), cape: new THREE.BoxGeometry(0.46, 0.9, 0.04), quiver: new THREE.CylinderGeometry(0.07, 0.06, 0.46, 6), tip: new THREE.ConeGeometry(0.03, 0.09, 5), strap: new THREE.BoxGeometry(0.06, 0.62, 0.02), apron: new THREE.BoxGeometry(0.3, 0.3, 0.02),
   };
   function buildStickman(color, opts = {}) {
-    const bodyMat = opts.bodyMat || mat(color), root = new THREE.Group();
+    const kind = opts.kind || 'citizen', enemy = !!opts.enemy, seed = opts.seed ?? 0, bodyMat = opts.bodyMat || mat(color), root = new THREE.Group();
+    const skin = enemy ? mat(0xb59a84) : hashPick(SKINS, seed, 1), hair = hashPick(HAIRS, seed, 2), hstyle = Math.abs(Math.imul(seed | 0, 2246822519) >>> 7) % 3;
+    const pants = PANTS[enemy ? 'enemy' : kind] || PANTS.citizen;
     const bone = (name, parent, x, y, z) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, z); parent.add(b); return b; };
-    const part = (geo, m, parent, x, y, z, shadow = true) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = shadow; parent.add(o); return o; };
+    const part = (geo, m, parent, x, y, z, shadow = true) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = shadow && !enemy ? true : (shadow && enemy && geo === RG.chest); parent.add(o); return o; };
+    const top = kind === 'melee' ? mailMat : bodyMat;                 // 병사는 사슬 갑옷 위에 튜닉(tabard)을 입는다
     const hips = bone('hips', root, 0, 0.9, 0);
-    part(RG.hips, darkMat, hips, 0, 0, 0, !opts.enemy);
+    part(RG.hips, pants, hips, 0, 0, 0);
     const spine = bone('spine', hips, 0, 0.05, 0);
-    part(RG.torso, bodyMat, spine, 0, 0.34, 0);
+    part(RG.waist, top, spine, 0, 0.17, 0); part(RG.chest, top, spine, 0, 0.47, 0);
+    part(RG.belt, beltMat, spine, 0, 0.05, 0, false); part(RG.buckle, buckleMat, spine, 0, 0.05, 0.14, false);
     const head = bone('head', spine, 0, 0.66, 0);
-    part(RG.head, skinMat, head, 0, 0.17, 0);
-    part(RG.visor, opts.enemy ? eyeMat : visorMat, head, 0, 0.2, 0.17, false);
+    part(RG.neck, skin, head, 0, 0.03, 0, false);
+    part(RG.head, skin, head, 0, 0.17, 0);
+    part(RG.eye, enemy ? eyeMat : eyeDark, head, -0.07, 0.2, 0.185, false); part(RG.eye, enemy ? eyeMat : eyeDark, head, 0.07, 0.2, 0.185, false);
+    part(RG.nose, skin, head, 0, 0.15, 0.2, false);
+    // 머리: 후드(궁수·적) 또는 머리카락(그 외)
+    if (kind === 'archer' || enemy) {
+      const hm = enemy ? mat(0x1a1214) : bodyMat; const h = part(RG.hood, hm, head, 0, 0.17, -0.01, false); h.rotation.x = -0.15;
+      if (enemy) part(RG.mask, hm, head, 0, 0.1, 0.19, false);
+    } else {
+      const h = part(RG.hairCap, hair, head, 0, 0.19, -0.01, false); h.rotation.x = -0.25;
+      if (hstyle === 1) part(RG.hairBack, hair, head, 0, 0.08, -0.16, false);
+      if (hstyle === 2 && kind !== 'player') part(RG.beard, hair, head, 0, 0.05, 0.15, false);
+    }
+    // 역할별 복장
+    if (kind === 'melee') {
+      part(RG.tabard, bodyMat, spine, 0, 0.3, 0.15, false); part(RG.tabard, bodyMat, spine, 0, 0.3, -0.15, false);
+    } else if (kind === 'archer') {
+      const q = part(RG.quiver, beltMat, spine, 0.1, 0.45, -0.2, false); q.rotation.z = 0.28;
+      for (const dx of [-0.03, 0.01, 0.05]) { const t = part(RG.tip, steelMat, spine, 0.1 + dx + 0.12, 0.7, -0.2, false); t.rotation.z = 0.28; }
+      const st = part(RG.strap, beltMat, spine, 0, 0.4, 0.145, false); st.rotation.z = -0.55;
+    } else if (kind === 'player') {
+      part(RG.cape, mat(0x8a2a1c), spine, 0, 0.18, -0.17, false);
+    } else if (kind === 'citizen' && Math.abs(seed | 0) % 2 === 0) {
+      part(RG.apron, mat(0xd9c9a0), spine, 0, 0.2, 0.13, false);
+    }
     const out = { root, bodyMat, head, spine, baseScale: opts.scale ?? 0.9 };
-    for (const s of [-1, 1]) {
-      const n = s < 0 ? 'L' : 'R';
-      const sh = bone('shoulder' + n, spine, s * 0.34, 0.58, 0);
-      part(RG.upper, bodyMat, sh, 0, -0.15, 0, !opts.enemy);
+    for (const sx of [-1, 1]) {
+      const n = sx < 0 ? 'L' : 'R';
+      const sh = bone('shoulder' + n, spine, sx * 0.34, 0.58, 0);
+      part(RG.shoulder, top === mailMat ? mailMat : bodyMat, sh, 0, 0, 0);
+      part(RG.upper, kind === 'melee' ? mailMat : bodyMat, sh, 0, -0.15, 0);
+      if (kind === 'melee') part(RG.pauldron, steelMat, sh, 0, 0.03, 0, false);
+      if (enemy) { const sp = part(RG.spike, mat(0x2a2024), sh, sx * 0.06, 0.14, 0, false); sp.rotation.z = -sx * 0.35; }
       const el = bone('elbow' + n, sh, 0, -0.3, 0);
-      part(RG.lower, skinMat, el, 0, -0.15, 0, false);
+      part(RG.lower, kind === 'melee' ? steelMat : skin, el, 0, -0.15, 0, false);
       out['hand' + n] = bone('hand' + n, el, 0, -0.3, 0);
-      part(RG.hand, skinMat, out['hand' + n], 0, 0, 0, false);
-      const hp = bone('hip' + n, hips, s * 0.14, -0.04, 0);
-      part(RG.thigh, darkMat, hp, 0, -0.225, 0, !opts.enemy);
+      part(RG.hand, skin, out['hand' + n], 0, 0, 0, false);
+      const hp = bone('hip' + n, hips, sx * 0.14, -0.04, 0);
+      part(RG.thigh, pants, hp, 0, -0.225, 0);
       const kn = bone('knee' + n, hp, 0, -0.45, 0);
-      part(RG.shin, darkMat, kn, 0, -0.225, 0, !opts.enemy);
-      part(RG.foot, darkMat, kn, 0, -0.43, 0.06, false);
+      part(RG.shin, pants, kn, 0, -0.225, 0);
+      part(RG.shaft, bootMat, kn, 0, -0.34, 0, false);
+      part(RG.boot, bootMat, kn, 0, -0.43, 0.06, false);
     }
     out.clips = STICK_CLIPS;
     return out;
@@ -198,7 +239,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
   // ----- 리그 공용 API: setGear / hold / aim -----
   function makeRig(kind, color, opts = {}) {
-    const rig = modelCache[kind] ? rigFromGltf(modelCache[kind], color) : kind === 'beast' ? buildBeast(color, opts) : buildStickman(color, opts);
+    const rig = modelCache[kind] ? rigFromGltf(modelCache[kind], color) : kind === 'beast' ? buildBeast(color, opts) : buildStickman(color, { kind, ...opts });
     rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
     rig.root.scale.setScalar(rig.baseScale);
     rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다

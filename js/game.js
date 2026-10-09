@@ -101,7 +101,7 @@
   const R = 0.45, H = 0.7;
   // ---------- 플레이어 ----------
   const player = new THREE.Group();
-  const playerRig = makeRig('player', 0xe8553c);
+  const playerRig = makeRig('player', 0xe8553c, { seed: 11 });
   const bodyMat = playerRig.bodyMat;
   const playerAnim = new Anim(playerRig);
   player.add(playerRig.root);
@@ -476,8 +476,30 @@
   function addLamp(x, z) {                                          // 가로등: 밤이 되면 불이 켜진다
     const g = new THREE.Group();
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.3, 6), lampPostMat); post.position.y = 1.15; post.castShadow = true;
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lampGlow); bulb.position.y = 2.4;
-    g.add(post, bulb); g.position.set(x, 0, z); scene.add(g); doormats.push(g);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), lampGlow); bulb.position.y = 2.45;
+    const halo = new THREE.Sprite(haloMat); halo.scale.set(2.6, 2.6, 1); halo.position.y = 2.45; halo.renderOrder = 5;       // 등불 주변의 번지는 빛
+    g.add(post, bulb, halo); g.position.set(x, 0, z); scene.add(g); doormats.push(g);
+    lampHalos.push(halo);
+  }
+  // 성문 조명: 문마다 실제 점광원 + 바닥에 퍼지는 따뜻한 빛 웅덩이 (밤에 문 앞이 충분히 밝도록)
+  const haloMat = (() => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const c = cv.getContext('2d'), gr = c.createRadialGradient(32, 32, 1, 32, 32, 31);
+    gr.addColorStop(0, 'rgba(255,214,140,1)'); gr.addColorStop(0.35, 'rgba(255,170,70,.45)'); gr.addColorStop(1, 'rgba(255,140,40,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 64, 64);
+    return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false });
+  })();
+  const poolMat = new THREE.MeshBasicMaterial({ map: haloMat.map, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false });
+  const lampHalos = [], gateLights = [];
+  let lampLevel = 0;
+  function updateGateLights(t) {
+    haloMat.opacity = Math.min(1, lampLevel * 1.1); poolMat.opacity = lampLevel * 0.3;
+    for (let i = gateLights.length - 1; i >= 0; i--) {
+      const l = gateLights[i];
+      if (!l.parent) { gateLights.splice(i, 1); continue; }
+      l.intensity = lampLevel * (2.2 + 0.2 * Math.sin(t * 7 + i * 1.7));
+    }
+    for (let i = lampHalos.length - 1; i >= 0; i--) if (!lampHalos[i].parent) lampHalos.splice(i, 1);
   }
   function addGate(x, z, r, nx, nz) {                                // 출입구 경유지 등록 + 바닥의 얇고 납작한 회색 도어 매트
     gateWaypoints.push({ x, z, r, nx, nz });
@@ -488,6 +510,8 @@
     doormats.push(doormat);
     addPath(x, z, 2.4);
     addLamp(x - nz * 2.6, z + nx * 2.6); addLamp(x + nz * 2.6, z - nx * 2.6);        // 출입구 양옆 가로등
+    const light = new THREE.PointLight(0xffc27a, 0, 18, 1.3); light.position.set(x, 3.2, z); scene.add(light); doormats.push(light); gateLights.push(light);
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(7.5, 28), poolMat); pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.04, z); pool.renderOrder = 4; scene.add(pool); doormats.push(pool);
   }
   // 정사각형 성벽 띠(중앙 기준 체비셰프 거리 R ± width) 안의 자원을 모두 치워, 벽과 나무/바위 사이에 NPC가 끼는 틈을 없앤다
   const cheb = (x, z) => Math.max(Math.abs(x), Math.abs(z));
@@ -1003,7 +1027,7 @@
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : 1;
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat;
-    const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88 });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
+    const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
@@ -1308,7 +1332,7 @@
     const nm = preset.name || (free.length ? free : CFG.NAMES)[Math.floor(Math.random() * (free.length || CFG.NAMES.length))];
     const tr = preset.trait || Object.keys(CFG.TRAITS)[Math.floor(Math.random() * Object.keys(CFG.TRAITS).length)];
     const color = role === 'citizen' ? citizenColor() : def.color;
-    const rig = makeRig(role, color);                  // 스틱맨 리그 + AnimationMixer
+    const rig = makeRig(role, color, { seed: [...nm].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) });                  // 스틱맨 리그 + AnimationMixer
     const anim = new Anim(rig), m = rig.bodyMat, body = rig.root;
     n.add(body);
     n.position.set(home.x, 0, home.z);
@@ -1325,7 +1349,7 @@
     hungerIcon.scale.set(0.95, 0.95, 1); hungerIcon.position.y = 3.4; hungerIcon.visible = false;
     n.add(hungerIcon);
 
-    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, name: nm, trait: tr, mood: preset.mood ?? 60, shock: 0, stateNow: 'Idle', maxHp: npcMaxHp(role, tr), mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
+    Object.assign(n, { labelSprite: label, home, role, born, archer: role === 'archer', baseColor: color, name: nm, trait: tr, mood: preset.mood ?? 60, shock: 0, stateNow: 'Idle', maxHp: npcMaxHp(role, tr), mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
       hp: npcMaxHp(role, tr), down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
       task: null, workT: 0, short: null, pickCd: delay, wp: null, route: null, routeRing: 0, graceT: 0, graceRing: 0,
       promote: null, hidden: false, decor: null, work: null, wstate: 'seek', carry: 0, farmT: 0, wtarget: null, stateLabel: '', bobAmt: 0 });
@@ -1402,6 +1426,7 @@
   function updateNpcs(dt, hour, t) {
     for (const n of npcs.slice()) {
       npc = n; updateNpc(dt, hour, t); n.anim.update(dt); updateMood(n, dt);
+      { const f = Math.min(1.7, Math.max(0.45, DIST / 11)); n.labelSprite.scale.set(2.6 * f, 0.98 * f, 1); n.labelSprite.position.y = 2.2 + 0.5 * f; }      // 카메라 거리에 맞춰 이름표 크기 조절
       n.hungerIcon.visible = n.hungry && !n.down;
       if (n.hungerIcon.visible) { n.hungerIcon.position.y = 3.4 + Math.sin(t * 5) * 0.09; const k = 0.95 + Math.sin(t * 9) * 0.05; n.hungerIcon.scale.set(k, k, 1); }
     }
@@ -1705,22 +1730,41 @@
     const g = gateWaypoints[i], sgn = Math.hypot(g.x - g.nx * 3, g.z - g.nz * 3) < Math.hypot(g.x + g.nx * 3, g.z + g.nz * 3) ? 1 : -1;
     return { x: g.x - g.nx * 3 * sgn, z: g.z - g.nz * 3 * sgn };
   }
+  const faceTo = (x, z) => { npc.face = Math.atan2(x - npc.position.x, z - npc.position.z); npc.rotation.y = npc.face; };
+  // 집·병영이 생긴 뒤(2시대~)에는 모닥불(회관) 둘레가 아니라, 시민은 각자 집 앞 계단에, 병사는 병영·사격장 앞에 앉아 쉰다. 점심은 시장·우물 앞.
+  function restSpot(n, purpose) {
+    if (age < 2) return null;
+    const cits = npcs.filter(x => x.role === 'citizen'), sold = npcs.filter(x => x.role !== 'citizen');
+    let b = null, slot = 0;
+    if (n.role === 'citizen') {
+      const houses = builtBuildings('house'), i = Math.max(0, cits.indexOf(n));
+      if (purpose === 'lunch') b = builtBuildings('market')[0] || builtBuildings('well')[0];
+      if (b) slot = i; else if (houses.length) { b = houses[i % houses.length]; slot = Math.floor(i / houses.length); }
+    } else {
+      b = builtBuildings(n.role === 'melee' ? 'barracks' : 'range')[0] || builtBuildings('barracks')[0] || builtBuildings('house')[0];
+      slot = Math.max(0, sold.filter(x => x.role === n.role).indexOf(n));
+    }
+    if (!b) return null;
+    const d = doorOf(b), len = Math.hypot(d.x, d.z) || 1, ux = d.x / len, uz = d.z / len;
+    const lat = ((slot % 4) - 1.5) * 1.1, out = 0.9 + Math.floor(slot / 4) * 1.0;
+    return { x: d.x + ux * out - uz * lat, z: d.z + uz * out + ux * lat, fx: b.position.x, fz: b.position.z };
+  }
   const seatSpot = () => {                       // 모닥불 둘레 좌석 (시민마다 고유한 각도)
     const mates = npcs.filter(x => x.role === 'citizen'), k = Math.max(1, mates.length), i = Math.max(0, mates.indexOf(npc));
     const r = FIRE_R + 1.9, a = Math.PI / 4 + i / k * Math.PI * 2;
     return { x: Math.cos(a) * r, z: Math.sin(a) * r };
   };
   function citizenRest(dt) {
-    const sp = seatSpot();
+    const rs = restSpot(npc, 'night'), sp = rs || seatSpot();
     npc.hidden = false;
-    if (npcMove(sp.x, sp.z, 3.6, dt) < 0.35) { faceFire(); return 'Resting'; }
-    return 'To the fire';
+    if (npcMove(sp.x, sp.z, 3.6, dt) < 0.35) { if (rs) faceTo(rs.fx, rs.fz); else faceFire(); return 'Resting'; }
+    return rs ? 'Heading home' : 'To the fire';
   }
   // 시민의 하루 루틴: 아침 물 긷기(우물) → 일 → 정오 점심 휴식(모닥불 곁) → 일 → 저녁 귀가(거주지 앞). 일하는 시간을 조금 쓰는 대신 마을에 생활감이 생긴다
   function routineStep(dt, hour) {
-    let spot, label;
+    let spot, label, lrs = null;
     if (hour >= 6 && hour < 7) { const w = builtBuildings('well')[0]; if (!w) return null; spot = doorOf(w); label = 'water'; }
-    else if (hour >= 12 && hour < 13) { spot = seatSpot(); label = 'lunch'; }
+    else if (hour >= 12 && hour < 13) { lrs = restSpot(npc, 'lunch'); spot = lrs || seatSpot(); label = 'lunch'; }
     else if (hour >= 17 && hour < 18) {
       let h = null, bd = Infinity;
       for (const x of builtBuildings('house')) { const d = (x.position.x - npc.position.x) ** 2 + (x.position.z - npc.position.z) ** 2; if (d < bd) { bd = d; h = x; } }
@@ -1728,7 +1772,7 @@
     } else return null;
     if (npc.task) { setTask(null); npc.workT = 0; }
     const d = npcMove(spot.x, spot.z, 3.6, dt);
-    if (label === 'lunch') { if (d < 0.35) { faceFire(); return 'Lunch break'; } return 'To lunch'; }
+    if (label === 'lunch') { if (d < 0.35) { if (lrs) faceTo(lrs.fx, lrs.fz); else faceFire(); return 'Lunch break'; } return 'To lunch'; }
     if (label === 'water') return d < 1.0 ? 'Drawing water' : 'To the well';
     return d < 1.0 ? 'At home' : 'Heading home';
   }
@@ -2004,7 +2048,7 @@
     return 'Following';
   }
   function archerDefend(dt) {
-    const hx = npc.home.x, hz = npc.home.z;
+    const rs = peaceful ? restSpot(npc, 'night') : null, hx = rs ? rs.x : npc.home.x, hz = rs ? rs.z : npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
     let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1);
     for (const e of enemies) {
@@ -2013,7 +2057,7 @@
       if (d < bd) { bd = d; foe = e; }
     }
     if (!foe) {
-      if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { faceFire(); return 'Resting'; }
+      if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { if (rs) faceTo(rs.fx, rs.fz); else faceFire(); return 'Resting'; }
       return 'Idle';
     }
     soldierShoot(foe);
@@ -2095,8 +2139,8 @@
         if (d < bd) { bd = d; foe = e; }
       }
       if (npc.returning || !foe) {
-        const post = sentryPost(npc), tgt = post || npc.home;
-        if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = 'Resting'; faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
+        const post = sentryPost(npc), rs = peaceful && !post ? restSpot(npc, 'night') : null, tgt = post || rs || npc.home;
+        if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = 'Resting'; if (rs) faceTo(rs.fx, rs.fz); else faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
@@ -2800,7 +2844,7 @@
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
-    { const g = Math.max(0, Math.min(1, (nf - 0.2) / 0.45)), fl = 0.94 + 0.06 * Math.sin(t * 9); windowGlow.color.setRGB(0.16 + 0.84 * g * fl, 0.16 + 0.62 * g * fl, 0.2 + 0.2 * g); lampGlow.color.copy(windowGlow.color); }      // 창문·가로등은 밤에 켜진다                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
+    { const g = Math.max(0, Math.min(1, (nf - 0.2) / 0.45)), fl = 0.94 + 0.06 * Math.sin(t * 9); windowGlow.color.setRGB(0.16 + 0.84 * g * fl, 0.16 + 0.62 * g * fl, 0.2 + 0.2 * g); lampGlow.color.copy(windowGlow.color); lampLevel = g * fl; updateGateLights(t); }      // 창문·가로등은 밤에 켜진다                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
     torch.intensity = nf * 2.4;   // 횃불: 밤에 켜지고 낮에 꺼짐
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
     clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ Endless' : ''}`;
