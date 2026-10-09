@@ -167,12 +167,19 @@
     #bossBar { top: 54px; } #toast, #warn { top: 280px; }
     #joy { width: 104px; height: 104px; } #muteBtn { left: 124px; }
   }
+  #npcCard { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.35); z-index: 17; padding: 14px; }
+  #npcCard .ncard { background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 16px 20px; width: min(340px, 100%); color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  #npcCard .nhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; } #npcCard .nhead b { font-size: 22px; color: #ffd27a; } #npcCard .nhead span { font-size: 13px; color: #b9c4d8; }
+  #npcCard p { margin: 4px 0 10px; font-size: 13px; color: #e8e4da; } #npcCard p b { color: #ffe7a8; }
+  #npcCard .moodbar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; } #ncMoodBar { height: 100%; width: 50%; border-radius: 6px; transition: width .4s; }
+  #ncMoodTxt { font-size: 12.5px; margin: 4px 0 8px; color: #d8e4ff; } #ncInfo { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #cfd6e6; }
+  #ncClose { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: 0; cursor: pointer; color: #fff; background: #666; box-shadow: 0 2px 0 #333; display: block; margin: 0 auto; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
-<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br>❤️ HP: <b id="hpN">100</b><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
 <div id="clock">Day 1 - 08:00</div>
@@ -185,6 +192,7 @@
 <div id="warn"></div>
 <div id="gameover"><div class="card"><h2>Your settlement has fallen.</h2><p id="goDays"></p><p class="cause" id="goCause"></p><div id="goRewind"></div><button id="restartBtn">Restart from the beginning</button></div></div>
 <div id="toast"></div>
+<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><button id="ncClose">Close</button></div></div>
 <div id="eventPanel"><div class="ecard"><small>Morning event</small><h3 id="evTitle"></h3><p id="evText"></p><div id="evBtns"></div></div></div>
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
@@ -280,6 +288,16 @@
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
     HOUSE_UPGRADE: { 2: { wood: 15 }, 3: { stone: 20 } }, HOUSE_UPGRADES_PER_MORNING: 2,        // 집은 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 업그레이드된다
     PROSPERITY_LABELS: [[30, 'Fragile'], [55, 'Settled'], [80, 'Thriving'], [101, 'Flourishing']], PROSPERITY_POP_TARGET: 6,
+    NAMES: ['Aldric', 'Bram', 'Cora', 'Dara', 'Edda', 'Finn', 'Gwen', 'Hale', 'Iris', 'Joss', 'Kira', 'Lars', 'Mira', 'Nell', 'Orin', 'Pia', 'Quinn', 'Rolf', 'Sela', 'Tomas', 'Una', 'Vik', 'Wren', 'Yara', 'Zane', 'Ada', 'Boris', 'Cato', 'Dina', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Jun', 'Kell', 'Lena', 'Milo', 'Nora', 'Otto'],
+    // 특성: work(작업 속도 배율), move(이동 속도), hp(체력), dmg(받는 피해), mood(기본 기분 보정), ration(배급량 배율), aura(주변 모두의 기분)
+    TRAITS: {
+      diligent: { label: 'Diligent', desc: 'Works 25% faster', work: 1.25 }, easygoing: { label: 'Easygoing', desc: 'Works 20% slower, but is rarely upset', work: 0.8, mood: 8 },
+      nimble: { label: 'Nimble', desc: 'Moves 15% faster', move: 1.15 }, stout: { label: 'Stout', desc: 'Has 30% more health', hp: 1.3 },
+      brave: { label: 'Brave', desc: 'Takes 15% less damage', dmg: 0.85 }, timid: { label: 'Timid', desc: 'Flees 30% faster, easily upset', mood: -8 },
+      glutton: { label: 'Hearty eater', desc: 'Eats double rations', ration: 2 }, cheerful: { label: 'Cheerful', desc: 'Lifts everyone\'s mood a little', mood: 10, aura: 2 },
+      gloomy: { label: 'Gloomy', desc: 'Hard to please', mood: -10 },
+    },
+    MOOD_LEAVE: 15, MOOD_UNHAPPY: 35, MOOD_HAPPY: 75,                  // 기분이 이 아래면 마을을 떠날 수 있다 / 불만 / 행복
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
@@ -1483,6 +1501,8 @@
     if (moved > 10 || dur > 450 || e.button !== 0) return;
     ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
+    const nh = ray.intersectObjects(npcs, true);                          // 주민을 누르면 주민 카드
+    if (nh.length) { let o = nh[0].object; while (o && !npcs.includes(o)) o = o.parent; if (o) { openNpcCard(o); return; } }
     const gp = new THREE.Vector3();
     const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);      // 건물 주변을 눌러도 열리도록 지면 좌표로도 판정
     if (ray.intersectObject(campfire, true).length || (onGround && Math.hypot(gp.x, gp.z) < FIRE_R + 1.2)) openTech();
@@ -1731,14 +1751,15 @@
     wave.quiet = !isRaid(day);
     wave.type = nightTypeOf(day);
     const extraRaiders = pendingRaiders; pendingRaiders = 0;               // 아침 이벤트 선택의 대가
+    const threat = 1 + Math.max(0, prosScore - 40) / 120;                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
-      wave.remaining += extraRaiders;
+      wave.remaining = Math.ceil(wave.remaining * threat) + extraRaiders;
       wave.brutes = 0; wave.siegeLeft = 0; wave.bossLeft = 0; spawnCd = 0;
       return;
     }
-    wave.remaining = CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY + extraRaiders;
+    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat) + extraRaiders;
     wave.brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0;
     wave.siegeLeft = day >= CFG.SIEGE_FROM_DAY ? 1 + (Math.random() < 0.5 ? 1 : 0) : 0;      // Day 4부터 밤마다 공성 투척병 1~2마리
     if (day === CFG.BOSS_DAY) { wave.remaining = Math.ceil(wave.remaining / 2); wave.bossLeft = 1; }     // 보스 밤: 일반 적 절반 + 베헤모스 1마리
@@ -1903,9 +1924,12 @@
     n.rig.hold(n.rig.main);
   }
   const homeSlot = (k) => { const a = Math.PI / 4 + k * 0.85, r = Math.max(NPC_HOME_RADIUS, FIRE_R + 2.8) + (k % 3) * 1.0; return { x: Math.cos(a) * r, z: Math.sin(a) * r }; };      // 회관이 커지면 병사 대기 위치도 바깥으로
-  function makeNpc(role, home, born = 'initial', delay = 0) {
+  function makeNpc(role, home, born = 'initial', delay = 0, preset = {}) {
     const n = new THREE.Group();
     const def = ROLE[role];
+    const used = new Set(npcs.map(x => x.name)), free = CFG.NAMES.filter(x => !used.has(x));
+    const nm = preset.name || (free.length ? free : CFG.NAMES)[Math.floor(Math.random() * (free.length || CFG.NAMES.length))];
+    const tr = preset.trait || Object.keys(CFG.TRAITS)[Math.floor(Math.random() * Object.keys(CFG.TRAITS).length)];
     const color = role === 'citizen' ? citizenColor() : def.color;
     const rig = makeRig(role, color);                  // 스틱맨 리그 + AnimationMixer
     const anim = new Anim(rig), m = rig.bodyMat, body = rig.root;
@@ -1924,8 +1948,8 @@
     hungerIcon.scale.set(0.95, 0.95, 1); hungerIcon.position.y = 3.4; hungerIcon.visible = false;
     n.add(hungerIcon);
 
-    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, maxHp: def.hp, mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
-      hp: def.hp, down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
+    Object.assign(n, { home, role, born, archer: role === 'archer', baseColor: color, name: nm, trait: tr, mood: preset.mood ?? 60, shock: 0, stateNow: 'Idle', maxHp: Math.round(def.hp * (CFG.TRAITS[tr].hp || 1)), mat: m, body, rig, anim, hungerIcon, gear: { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, carryGear: null, hungry: false, px: home.x, pz: home.z, lctx: cv.getContext('2d'), labelTex: tex,
+      hp: Math.round(def.hp * (CFG.TRAITS[tr].hp || 1)), down: false, target: null, gatherT: 0, atkCd: 0, hurtCd: 0, returning: false, face: 0, labelText: '',
       task: null, workT: 0, short: null, pickCd: delay, wp: null, route: null, routeRing: 0, graceT: 0, graceRing: 0,
       promote: null, hidden: false, decor: null, work: null, wstate: 'seek', carry: 0, farmT: 0, wtarget: null, stateLabel: '', bobAmt: 0 });
     applyCitizenLook(n); applyGear(n);
@@ -1940,7 +1964,7 @@
   let npc = npcs[0];                       // 현재 처리 중인 NPC
 
   function setLabel(state) {
-    const text = `${state}|${npc.hp}|${npc.role}`;
+    const text = `${state}|${npc.hp}|${npc.role}|${npc.name}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
     const lctx = npc.lctx;
@@ -1949,25 +1973,46 @@
     lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
     lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
     lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${ROLE[npc.role].name}HP ${npc.hp}/${npc.maxHp}`, 128, 76);
+    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.name} · HP ${npc.hp}/${npc.maxHp}`, 128, 76);
     npc.labelTex.needsUpdate = true;
   }
 
+  const TR = (n) => CFG.TRAITS[n.trait] || {};
+  const workMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (TR(n).work || 1) * (n.mood >= CFG.MOOD_HAPPY ? 1.1 : n.mood < CFG.MOOD_UNHAPPY ? 0.8 : 1);
+  const moveMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (TR(n).move || 1) * (n.mood < CFG.MOOD_UNHAPPY ? 0.9 : 1);
+  const rationOf = (n) => CFG.RATION * (TR(n).ration || 1);
+  const moodLabel = (v) => v < CFG.MOOD_LEAVE ? 'Miserable' : v < CFG.MOOD_UNHAPPY ? 'Unhappy' : v < 60 ? 'Content' : v < CFG.MOOD_HAPPY ? 'Happy' : 'Joyful';
+  const grieve = () => { for (const x of npcs) x.shock = Math.min(25, (x.shock || 0) + 10); };         // 동료가 쓰러지면 모두 마음이 가라앉는다
+  // 기분: 먹었는지, 집·우물·시장, 번영도, 휴식, 슬픔(충격), 성격에 따라 목표값이 정해지고 천천히 따라간다
+  function updateMood(n, dt) {
+    n.shock = Math.max(0, (n.shock || 0) - dt * 1.2);
+    n.moodT = (n.moodT || 0) + dt;
+    if (n.moodT < 1) return;
+    const k = n.moodT; n.moodT = 0;
+    const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
+    let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 : 0) + (builtBuildings('market').length ? 4 : 0)
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) - n.shock;
+    if (n.role === 'citizen') target += builtBuildings('house').length ? 4 : -8;
+    target = Math.max(0, Math.min(100, target));
+    n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
+  }
   function removeNpc(n) {                  // 시민 출신은 쓰러지면 영구 사망 → 인구수 감소
     npc = n; setTask(null); returnGear(n); report.lostCit++;
     scene.remove(n);
     npcs.splice(npcs.indexOf(n), 1);
-    burst(n.position);
-    toast('A villager has fallen');
+    burst(n.position); grieve();
+    toast(`${n.name} has fallen`);
   }
   function damageNpc(target, n) {
     npc = target;
     if (target.role !== 'citizen') n = Math.max(1, Math.round(n * (1 - gearDef(target.gear.armor).reduce)));      // 병사 방어구
+    if (TR(target).dmg) n = Math.max(1, Math.round(n * TR(target).dmg));                                         // 용감한 성격
     npc.hp = Math.max(0, npc.hp - n);
     if (npc.hp <= 0 && !npc.down) {
       if (npc.born === 'citizen') { removeNpc(npc); return; }
       npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; setTask(null); npc.workT = 0; npc.promote = null;
       npc.mat.color.set(0x777777);                // 회색으로 변환
+      grieve();
       npc.anim.die();                             // 쓰러지는 애니메이션
       burst(npc.position);
     }
@@ -1979,7 +2024,7 @@
   }
   function updateNpcs(dt, hour, t) {
     for (const n of npcs.slice()) {
-      npc = n; updateNpc(dt, hour, t); n.anim.update(dt);
+      npc = n; updateNpc(dt, hour, t); n.anim.update(dt); updateMood(n, dt);
       n.hungerIcon.visible = n.hungry && !n.down;
       if (n.hungerIcon.visible) { n.hungerIcon.position.y = 3.4 + Math.sin(t * 5) * 0.09; const k = 0.95 + Math.sin(t * 9) * 0.05; n.hungerIcon.scale.set(k, k, 1); }
     }
@@ -2004,7 +2049,7 @@
   // ---------- 인구 / 직업 (문명 시스템) ----------
   const builtBuildings = (kind) => obstacles.filter(o => o.userData.type === 'building' && o.userData.kind === kind);
   // ---------- 마을 번영도: 인구·식량·주거·방어·장비를 하나의 점수(0~100)로 ----------
-  let prosScore = 25, prosBonus = 0;
+  let prosScore = 25, prosBonus = 0, moodAvg = 60;
   function prosperity() {
     const cits = npcs.filter(n => n.role === 'citizen').length, houses = builtBuildings('house'), soldiers = npcs.filter(n => n.role !== 'citizen');
     const pop = Math.min(1, npcs.length / CFG.PROSPERITY_POP_TARGET);
@@ -2014,18 +2059,21 @@
     const wall = designTier > 0 ? 0.5 + 0.5 * (fences.length ? fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length : 0) : 0.1;
     const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? gearDef(n.gear.sword).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
     const amen = Math.min(1, (builtBuildings('well').length ? 0.5 : 0) + (builtBuildings('market').length ? 0.5 : 0));
-    return Math.round(100 * (0.2 * pop + 0.2 * food + 0.2 * housing + 0.15 * wall + 0.1 * gear + 0.15 * amen));
+    moodAvg = npcs.length ? npcs.reduce((a, n) => a + n.mood, 0) / npcs.length : 60;
+    return Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100)));
   }
   const prosLabel = (v) => CFG.PROSPERITY_LABELS.find(l => v < l[0])[1];
-  const prosEl = document.getElementById('prosN');
+  const prosEl = document.getElementById('prosN'), moodEl = document.getElementById('moodN');
   function updateProsperity() {
     prosScore = prosperity();
     prosBonus = prosScore >= 80 ? 2 : prosScore >= 55 ? 1 : 0;           // 안정된 마을에는 이주민이 더 모인다
     const t = `${prosLabel(prosScore)} ${prosScore}`;
     if (prosEl.textContent !== t) prosEl.textContent = t;
+    const mt = `${moodLabel(moodAvg)} ${Math.round(moodAvg)}`;
+    if (moodEl.textContent !== mt) moodEl.textContent = mt;
   }
   // ---------- 아침 요약 카드: 어젯밤과 어제 하루 동안 마을에서 일어난 일 ----------
-  const freshReport = () => ({ kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, res: { ...res }, pros: prosScore, pop: 0 });
+  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, res: { ...res }, pros: prosScore, pop: 0 });
   let report = freshReport();
   const repEl = document.getElementById('report'), repList = document.getElementById('repList');
   let repTimer;
@@ -2036,6 +2084,9 @@
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Houses upgraded: ${r.upgraded}`);
     if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
     if (r.traded) rows.push('Market: sold surplus food for iron');
+    if (r.left.length) rows.push(`Left the village: ${r.left.join(', ')}`);
+    { const un = npcs.filter(n => n.mood < CFG.MOOD_UNHAPPY).length; rows.push(`Mood: ${moodLabel(moodAvg)} ${Math.round(moodAvg)}${un ? ` · ${un} unhappy` : ''}`); }
+    if (prosScore > 40) rows.push(`Wealth draws raiders: +${Math.round((prosScore - 40) / 1.2)}% tonight`);
     if (r.equipped || r.forged) rows.push(`Gear: ${r.forged} forged · ${r.equipped} equipped`);
     const dr = [['wood', 'Wood'], ['stone', 'Stone'], ['iron', 'Iron'], ['food', 'Food']].map(([k, n]) => [n, Math.floor(d(k))]).filter(x => x[1] !== 0).map(([n, v]) => `${n} ${v > 0 ? '+' : ''}${v}`);
     if (dr.length) rows.push(`Stockpile: ${dr.join(' · ')}`);
@@ -2048,6 +2099,35 @@
     report = freshReport();
   }
   repEl.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); repEl.classList.remove('show'); });
+  // 마을을 떠나는 시민: 기분이 바닥(15 미만)이면 아침에 50% 확률로 짐을 싸서 떠난다
+  function checkDepartures() {
+    for (const n of npcs.filter(x => x.role === 'citizen' && x.mood < CFG.MOOD_LEAVE)) {
+      if (Math.random() > 0.5) continue;
+      npc = n; setTask(null); returnGear(n); if (n.work) { n.work.userData.worker = null; n.work = null; }
+      scene.remove(n); npcs.splice(npcs.indexOf(n), 1); report.left.push(n.name);
+    }
+    if (report.left.length) setTimeout(() => toast(`${report.left.join(', ')} left the village - keep your people fed and safe`), 2400);
+  }
+  // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
+  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
+  const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
+  function renderCard() {
+    const n = cardNpc;
+    if (!n || !npcs.includes(n)) { cardNpc = null; ncEl.style.display = 'none'; return; }
+    const tr = TR(n), m = Math.round(n.mood), col = m < CFG.MOOD_LEAVE ? '#d9534f' : m < CFG.MOOD_UNHAPPY ? '#e8923a' : m < CFG.MOOD_HAPPY ? '#d9c84a' : '#5cc86a';
+    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${ROLE_TITLE[n.role]} · HP ${n.hp}/${n.maxHp}`;
+    document.getElementById('ncTrait').innerHTML = `<b>${tr.label}</b> - ${tr.desc}`;
+    const bar = document.getElementById('ncMoodBar'); bar.style.width = `${m}%`; bar.style.background = col;
+    document.getElementById('ncMoodTxt').textContent = `Mood: ${moodLabel(m)} (${m}/100)` + (m < CFG.MOOD_UNHAPPY ? ' - works slower' : m >= CFG.MOOD_HAPPY ? ' - works a bit faster' : '');
+    const rows = [`Doing: ${n.down ? 'Down' : n.stateNow}`];
+    if (n.hungry) rows.push('Hungry: speed and work at half');
+    if (n.role !== 'citizen') rows.push(`Gear: ${gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).name}${n.gear.armor !== 'armor_none' ? ' · ' + gearDef(n.gear.armor).name : ''}`);
+    else if (n.work) rows.push(`Works at: ${BUILDING_NAME[n.work.userData.kind] || 'the village'}`);
+    document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
+  }
+  function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
+  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
   // 시장: 매일 아침 남는 식량을 팔아 철을 산다 (식량 30 이상이면 10 → 철 3)
   function marketTrade() {
     if (!builtBuildings('market').length || res.food < 30) return;
@@ -2083,7 +2163,7 @@
   ];
   function openEvent(ev) {
     if (dead || eventOpen) return;
-    eventOpen = true; repEl.classList.remove('show');
+    eventOpen = true; repEl.classList.remove('show'); if (typeof cardNpc !== 'undefined') { cardNpc = null; document.getElementById('npcCard').style.display = 'none'; }
     document.getElementById('evTitle').textContent = ev.title; document.getElementById('evText').textContent = ev.text;
     evBtns.innerHTML = '';
     for (const o of ev.opts) {
@@ -2121,7 +2201,7 @@
     if (popJobsEl.textContent !== b) popJobsEl.textContent = b;
   }
   function setRole(n, role) {              // 직업 변경(전직): 색, 체력, 집 위치 갱신
-    n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = ROLE[role].hp; n.hp = n.maxHp;
+    n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = Math.round(ROLE[role].hp * (CFG.TRAITS[n.trait].hp || 1)); n.hp = n.maxHp;
     n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
     if (n.work) { n.work.userData.worker = null; n.work = null; }          // 전직하면 일터를 떠난다
     applyCitizenLook(n);
@@ -2190,7 +2270,7 @@
     if (npc.task) { setTask(null); npc.workT = 0; }
     const site = npc.work, k = site.userData.kind;
     npc.bobAmt = 0;
-    const wdt = dt * (npc.hungry ? CFG.HUNGER_MULT : 1);        // 굶주린 시민은 작업 효율 50%
+    const wdt = dt * workMul(npc);        // 굶주림·성격·기분이 작업 효율을 정한다
     if (k === 'smith') {                                        // 대장간 시민: 모루 앞에서 망치질하며 병사에게 필요한 장비를 주기적으로 자동 제작
       const door = doorOf(site);
       if (Math.hypot(door.x - npc.position.x, door.z - npc.position.z) > 1.2) { npcMove(door.x, door.z, 3.5, dt); npc.stateLabel = 'To smithy'; return true; }
@@ -2306,7 +2386,7 @@
       if (d < bd) { bd = d; spot = doorOf(h); }
     }
     if (!spot) { const l = Math.hypot(npc.position.x, npc.position.z) || 1; spot = { x: npc.position.x / l * 1.6, z: npc.position.z / l * 1.6 }; }
-    if (npcMove(spot.x, spot.z, 5, dt) < 0.7) { npc.hidden = true; return 'Hiding'; }
+    if (npcMove(spot.x, spot.z, npc.trait === 'timid' ? 6.5 : 5, dt) < 0.7) { npc.hidden = true; return 'Hiding'; }
     npc.hidden = false;
     return 'Fleeing';
   }
@@ -2380,7 +2460,7 @@
   }
   // 반환값은 최종 목적지까지의 (이동 전) 거리 - 호출부의 도착 판정에 그대로 쓰인다
   function npcMove(tx, tz, speed, dt) {
-    if (npc.hungry) speed *= CFG.HUNGER_MULT;                 // 굶주린 시민은 이동 속도 50%
+    speed *= moveMul(npc);                                    // 굶주림·성격·기분이 이동 속도를 정한다
     // 끼임 방지: 거의 못 움직이면 잠깐 옆으로 비켜 걷는다
     const moved = Math.hypot(npc.position.x - (npc.prevX ?? npc.position.x), npc.position.z - (npc.prevZ ?? npc.position.z));
     npc.prevX = npc.position.x; npc.prevZ = npc.position.z;
@@ -2566,7 +2646,7 @@
             // 도착했는데 나무가 부족하면 건설 보류, 즉시 채집으로 전환
             setTask(null);                       // (플레이어가 자원을 써 버린 경우) 건설 보류 → 다음 선택에서 채집으로 배정
           } else {
-            npc.workT += dt * (npc.hungry ? CFG.HUNGER_MULT : 1);       // 굶주린 시민은 작업 효율 50%
+            npc.workT += dt * workMul(npc);       // 굶주림·성격·기분이 작업 효율을 정한다
             bob = 0;
             if (task.kind === 'build' && npc.workT >= (o.userData.buildTime ?? CFG.BUILD_TIME)) {
               const kind = o.userData.res, cost = o.userData.cost ?? CFG.BP_COST[kind];
@@ -2628,6 +2708,7 @@
     npc.anim.base(anim, mv);
     const bs = npc.rig.baseScale;
     npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
+    npc.stateNow = state;
     setLabel(state);
   }
 
@@ -3009,7 +3090,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, gear: { ...n.gear }, hungry: n.hungry, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -3055,7 +3136,7 @@
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
     for (const d of sn.npcs) {
-      const n = makeNpc(d.role, d.home, d.born); n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
+      const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood }); n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); }
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
@@ -3150,7 +3231,8 @@
     if (!cs.length) return;
     let fed = 0, starving = 0;
     for (const c of cs) {
-      if (res.food >= CFG.RATION) { res.food -= CFG.RATION; c.hungry = false; fed++; } else { c.hungry = true; starving++; }
+      const need = rationOf(c);
+      if (res.food >= need) { res.food -= need; c.hungry = false; fed++; } else { c.hungry = true; starving++; }
     }
     updateHud();
     const msg = starving ? `${starving} citizen${starving > 1 ? 's are' : ' is'} starving! Speed and work halved - grow more food` : `Morning rations: ${fed} Food eaten by citizens`;
@@ -3158,9 +3240,9 @@
   }
   function updateFood(dt) {
     eatCd -= dt;
-    if (res.food >= CFG.RATION) {                                       // 굶주린 시민은 식량이 생기는 즉시 먹는다
-      const h = npcs.find(n => n.hungry && n.role === 'citizen' && !n.down);
-      if (h) { res.food -= CFG.RATION; h.hungry = false; updateHud(); floatText('Fed!', h.position.x, 3.2, h.position.z); }
+    {                                                                    // 굶주린 시민은 식량이 생기는 즉시 먹는다
+      const h = npcs.find(n => n.hungry && n.role === 'citizen' && !n.down && res.food >= rationOf(n));
+      if (h) { res.food -= rationOf(h); h.hungry = false; updateHud(); floatText('Fed!', h.position.x, 3.2, h.position.z); }
     }
     if (hp < CFG.PLAYER_MAX_HP * CFG.FOOD_AUTO_BELOW) eat();           // 체력이 절반 미만이면 자동 식사
   }
@@ -3305,7 +3387,7 @@
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); rollEvent(dayNo); } else report = freshReport(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); updateProsperity(); if (dayNo > 1) { showReport(dayNo); rollEvent(dayNo); } else report = freshReport(); if (hp < CFG.PLAYER_MAX_HP) { healPlayer(CFG.PLAYER_MAX_HP); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3315,6 +3397,7 @@
     updateRocks(dt);
     updateShocks(dt);
     updatePopUi();
+    if (cardNpc && (cardT -= dt) <= 0) { cardT = 0.4; renderCard(); }
     if ((propCd -= dt) <= 0) { propCd = 0.5; updateProsperity(); }
     updateRegen(dt);
     replenishTick(dt);
@@ -3400,7 +3483,7 @@
   applyPlayerGear(); updateHud();
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   saveCheckpoint('Day 1 start');
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, EVENTS, openEvent, nightTypeOf, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 </script>
