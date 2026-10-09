@@ -81,7 +81,18 @@
       { id: 'pass', name: 'Frozen Pass', ch: 2, age: 3, tint: 0xb9cde0, risk: 'High', reward: 'Shards, iron, Frost Shard', desc: 'A frozen mountain road. Frostbitten raiders and a hulking guardian hold the way.', trees: 2, rocks: 8, ore: 6, chests: 4, relic: 'Frost Shard', ruins: 6, foes: ['normal', 'normal', 'shield', 'shield', 'brute', 'normal'], guardian: { kind: 'brute', hpMul: 3, scale: 1.4 } },
       { id: 'temple', name: 'Sunken Temple', ch: 2, age: 3, tint: 0x3f6d78, risk: 'High', reward: 'Shards, food, Tide Shard', desc: 'Flooded halls of an older civilization. The guardian here hides behind a great shield.', trees: 0, rocks: 6, ore: 0, chests: 5, relic: 'Tide Shard', ruins: 14, foes: ['normal', 'normal', 'normal', 'shield', 'shield', 'brute', 'beast'], guardian: { kind: 'shield', hpMul: 5, scale: 1.4 } },
       { id: 'forge', name: 'Ember Forge', ch: 2, age: 3, tint: 0x6a3a2a, risk: 'Very high', reward: 'Shards, lots of iron, Ember Shard', desc: 'A forge that never went cold. Its keeper strikes like a falling anvil.', trees: 0, rocks: 4, ore: 12, chests: 4, relic: 'Ember Shard', ruins: 6, foes: ['brute', 'shield', 'shield', 'normal', 'normal', 'normal', 'brute'], guardian: { kind: 'brute', hpMul: 4, scale: 1.5 } },
+      { id: 'frostmarch', name: 'Frostmarch', ch: 3, age: 3, tint: 0xdfe9f5, risk: 'Extreme', reward: 'Shards, iron, Winter Crown', desc: 'A frozen wasteland past the Dawn Gate where a pale host marches. Bring soldiers - the Frost Warden will not fall to one blade.', trees: 3, rocks: 6, ore: 6, chests: 5, relic: 'Winter Crown', ruins: 10, faction: 'frost',
+        foes: ['normal', 'normal', 'normal', 'normal', 'shield', 'shield', 'shield', 'brute', 'brute', 'brute'], guardian: { kind: 'brute', hpMul: 7, scale: 1.7, name: 'Frost Warden' } },
     ],
+    // 10단계: 원정지를 모두 정리(상자 전부 + 적 전부)하면 야영지를 세울 수 있다. 야영지는 매일 아침 자원을 가져다준다 (겨울에는 60%)
+    CAMPS: { quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 } },
+    CAMP_COST: { 1: { wood: 35, stone: 25 }, 2: { wood: 50, stone: 40 }, 3: { wood: 65, stone: 55, iron: 4 } },
+    ESCORT_MAX: 3,
+    // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
+    STORY3: [
+      { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
+    ],
+    STORY_CROWN: { title: 'A Quiet Dawn', text: 'With the Winter Crown on the Beacon, the cold pulls back from your borders. The nights will still be hard - but the road ahead is yours to walk. (More chapters will follow.)' },
     // 이야기 2장 (비콘을 켠 뒤): 세 개의 조각을 모아 새벽의 문을 연다
     STORY2: [
       { id: 'pass', goal: 'Recover the Frost Shard from the Frozen Pass', title: 'The Frost Shard', text: 'A shard of blue ice that never melts. It hums in answer to the Beacon, a note colder than any you have heard.', reward: { iron: 10, shard: 1 } },

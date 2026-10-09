@@ -35,3 +35,9 @@ The game auto-saves to the browser (localStorage) every morning and when you ret
 - **Patrols:** idle soldiers patrol inside the walls and take their posts at dusk; you get a warning if there are fewer soldiers than gates.
 - **Seasons:** 3 days each (Spring, Summer, Autumn, Winter). Crops, rations, mood and illness change; winter is hard. Illness slows citizens; wells reduce it and the merchant sells healing herbs. Both can be switched off in `js/config.js` (`SEASONS_ON`, `SICK_ON`).
 
+## Expeditions, camps and Chapter 3 (stage 10)
+- **Escort:** in the Journal choose up to 3 soldiers to come along. They follow you in the expedition zone and fight; if they fall they are carried home (no permanent loss).
+- **Camps:** clear an expedition site completely (every chest opened, every foe defeated), then build a camp from the Journal. Each camp delivers resources every morning (60% in winter) and shows a tent at the edge of the village.
+- **Chapter 3 - Frostmarch:** after the Dawn Gate opens, a new frozen region with a frost-tinted host and the Frost Warden. Taking the Winter Crown finishes the current story.
+- The game clock runs 4x slower while you are on an expedition; a countdown at the top shows when you will be called home.
+

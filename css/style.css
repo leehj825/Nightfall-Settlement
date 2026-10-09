@@ -196,3 +196,4 @@ html[data-ts=s] .ecard, html[data-ts=s] .scard, html[data-ts=s] .jcard, html[dat
 html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
 @media (min-width: 1000px) and (min-height: 560px) { html[data-ts=l] #hud { transform: scale(1.1); transform-origin: top left; } }
 #ncJob { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
+#jExp .campBtn { font-size: 11.5px; padding: 3px 8px; margin: 2px 6px 2px 0; }
