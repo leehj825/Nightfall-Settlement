@@ -1,16 +1,16 @@
 // Nightfall Settlement - synthesized sound effects and background music (WebAudio, no asset files).
   const Snd = (() => {
-    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, mood = { nf: 0, danger: false }, step = 0;
+    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, vol = { sfx: 1, music: 1 }, mood = { nf: 0, danger: false }, step = 0;
     const last = {};
-    try { muted = localStorage.getItem('nf_mute') === '1'; } catch (e) {}
+    try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1) vol.music = v.music; } catch (e) {}
     function init() {
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       ctx = new AC();
       master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ctx.destination);
-      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8; sfxBus.connect(master);
-      musicBus = ctx.createGain(); musicBus.gain.value = 0.3; musicBus.connect(master);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8 * vol.sfx; sfxBus.connect(master);
+      musicBus = ctx.createGain(); musicBus.gain.value = 0.3 * vol.music; musicBus.connect(master);
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       // 밤의 저음 드론 (밤이 깊을수록 커진다)
@@ -71,5 +71,9 @@
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05);
       const b = document.getElementById('muteBtn'); if (b) b.textContent = m ? '🔇' : '🔊';
     }
-    return { init, play, setMood: (nf, danger) => { mood.nf = nf; mood.danger = danger; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
+    function setVol(kind, v) {
+      vol[kind] = Math.max(0, Math.min(1, v)); try { localStorage.setItem('nf_vol', JSON.stringify(vol)); } catch (e) {}
+      if (ctx) { (kind === 'sfx' ? sfxBus : musicBus).gain.setTargetAtTime((kind === 'sfx' ? 0.8 : 0.3) * vol[kind], ctx.currentTime, 0.05); }
+    }
+    return { init, play, setVol, getVol: k => vol[k], setMood: (nf, danger) => { mood.nf = nf; mood.danger = danger; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
   })();

@@ -39,6 +39,12 @@
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
+    SEASONS_ON: true, SICK_ON: true, SEASON_DAYS: 3, SICK_DAYS: 2,                                   // 계절(3일마다 바뀜) / 질병 규칙은 끌 수 있다
+    // 9단계: 직업(일터)과 숙련도 / 건물 레벨
+    LEVELED: ['farm', 'lumber', 'quarry', 'smith', 'market', 'well'], BUILD_UPGRADE: { 2: { wood: 20, stone: 10 }, 3: { stone: 30, iron: 6 } }, BUILD_UPGRADES_PER_MORNING: 1,
+    JOBS: { farm: 'Farmer', lumber: 'Woodcutter', quarry: 'Stonecutter', smith: 'Blacksmith' },
+    TRAIT_JOB: { stout: 'quarry', nimble: 'lumber', cheerful: 'farm', easygoing: 'farm', diligent: 'smith', brave: 'smith' },          // 성격에 맞는 일터: 효율 +10%, 기분 +4
+    SKILL_XP: [0, 4, 10, 20], SKILL_NAMES: ['Novice', 'Skilled', 'Expert', 'Master'], SKILL_BONUS: 0.12,                          // 일 한 번 끝낼 때마다 경험치 +1, 숙련 단계마다 작업 속도 +12%
     HOUSE_UPGRADE: { 2: { wood: 15 }, 3: { stone: 20 } }, HOUSE_UPGRADES_PER_MORNING: 2,        // 집은 시대가 올라도 한 번에 바뀌지 않고, 매일 아침 여유 자원으로 한두 채씩 업그레이드된다
     PROSPERITY_LABELS: [[30, 'Fragile'], [55, 'Settled'], [80, 'Thriving'], [101, 'Flourishing']], PROSPERITY_POP_TARGET: 6,
     NAMES: ['Aldric', 'Bram', 'Cora', 'Dara', 'Edda', 'Finn', 'Gwen', 'Hale', 'Iris', 'Joss', 'Kira', 'Lars', 'Mira', 'Nell', 'Orin', 'Pia', 'Quinn', 'Rolf', 'Sela', 'Tomas', 'Una', 'Vik', 'Wren', 'Yara', 'Zane', 'Ada', 'Boris', 'Cato', 'Dina', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Jun', 'Kell', 'Lena', 'Milo', 'Nora', 'Otto'],
@@ -64,7 +70,8 @@
       3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
     },
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
-    EXP_LATEST: 15.5, EXP_FORCE: 17.5,
+    EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.25,        // 원정 중에는 게임 시계가 4배 느리게 간다 (현실 1초 = 게임 2.5분): 8시 출발이면 현실 약 3분 50초
+   
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
       { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
