@@ -205,3 +205,4 @@ html[data-ts=s] #hud { transform: scale(.9); transform-origin: top left; }
 @media (max-width: 640px) and (orientation: portrait) { #achBanner { top: 330px; font-size: 12.5px; } }
 @media (max-height: 520px) and (orientation: landscape) { #achBanner { top: 56px; font-size: 12.5px; } }
 #lvlRow { pointer-events: auto; cursor: default; } #lvlRow.pick { cursor: pointer; color: #ffe27a; animation: lvlblink 1s infinite; } @keyframes lvlblink { 50% { opacity: .55; } }
+#restBtn { background: radial-gradient(circle at 35% 30%, #b9a8ff, #5a46b8); color: #fff; }

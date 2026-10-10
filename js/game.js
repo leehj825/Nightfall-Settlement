@@ -236,7 +236,8 @@
   const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd);
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
-  const soldierMult = (n) => (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1);
+  const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
@@ -926,6 +927,7 @@
     const gp = new THREE.Vector3();
     const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);      // 건물 주변을 눌러도 열리도록 지면 좌표로도 판정
     if (ray.intersectObject(campfire, true).length || (onGround && Math.hypot(gp.x, gp.z) < FIRE_R + 1.2)) openTech();
+    else if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 1.2)))) nightMerchantMenu();
     else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 1.2)))) openSmith();
   });
 
@@ -1141,11 +1143,135 @@
     openLevelPick();
   }, 1200);
   document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); openLevelPick(); });
+  // ---------- 밤 활동: 새벽까지 쉬기 ----------
+  const restBtnEl = document.getElementById('restBtn');
+  function canRest() {
+    const h = (gameMin / 60) % 24, wd = Math.max(1, h < 5 ? dayNow() - 1 : dayNow());
+    if (dead || eventOpen || uiPause || exActive || !(h >= 20 || h < 5) || wave.day !== wd) return false;
+    if (wave.remaining > 0 || wave.siegeLeft > 0 || wave.bossLeft > 0) return false;
+    return !enemies.some(e => !e.userData.sinking && (!e.userData.prowl || Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z) < 22));
+  }
+  function toggleRest() {
+    if (resting) { resting = false; return toast('You get up'); }
+    if (!canRest()) return toast((gameMin / 60) % 24 >= 5 && (gameMin / 60) % 24 < 20 ? 'You can rest at night, once the fighting is over' : 'Enemies are near - you cannot rest');
+    resting = true; toast('Resting until dawn... (tap again to get up)');
+  }
+  bindBtn('restBtn', toggleRest);
+  addEventListener('keydown', e => { if (e.code === 'KeyZ' && !e.repeat) toggleRest(); });
+  function updateRestUi() {
+    if (resting && (!canRest() || ((gameMin / 60) % 24 >= 5.6 && (gameMin / 60) % 24 < 12))) { resting = false; toast('You wake up'); }
+    const show = resting || canRest();
+    if (restBtnEl.style.display !== (show ? '' : 'none')) restBtnEl.style.display = show ? '' : 'none';
+    const lab = resting ? 'Wake' : 'Rest'; if (restBtnEl.firstChild.textContent !== lab) restBtnEl.firstChild.textContent = lab;
+  }
+  // ---------- 밤사냥: 조용한 밤에는 성벽 밖을 떠도는 '밤 방랑자'가 나온다 (처치하면 경험치 2배 + 전리품, 마을은 공격하지 않는다) ----------
+  function spawnProwlers(day) {
+    const n = Math.min(6, 2 + Math.floor(day / 2));
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2), r = rand(39, 47), kind = day >= 4 && Math.random() < 0.3 ? 'normal' : 'beast';
+      spawnEnemy(kind, { x: Math.cos(a) * r, z: Math.sin(a) * r });
+      const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night');
+    }
+    setTimeout(() => toast('Night hunt: prowlers roam beyond the walls - double XP and loot, but it is dark out there'), 1500);
+  }
+  function prowlStep(e, u, dt) {
+    const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+    u.aggro = u.aggro ? pd < 18 : pd < 11;
+    let moving = false;
+    if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
+    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { e.position.x += (player.position.x - e.position.x) / pd * u.speed * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * dt; e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
+    else if (!u.aggro) {
+      u.wT = (u.wT || 0) - dt;
+      if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
+      const dx = u.wp.x - e.position.x, dz = u.wp.z - e.position.z, d = Math.hypot(dx, dz);
+      if (d > 0.8) { e.position.x += dx / d * u.speed * 0.45 * dt; e.position.z += dz / d * u.speed * 0.45 * dt; e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
+    }
+    const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; }
+    u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
+    if (pd < PLAYER_R + u.r + 0.15) {
+      if (hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+      if (u.atkAnimCd <= 0) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
+    }
+  }
+  // ---------- 밤 활동 2: 모닥불 이야기 / 등불 상인 / 밤 손님 ----------
+  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale };
+  const nightDayNo = () => { const h = (gameMin / 60) % 24; return h < 5 ? dayNow() - 1 : dayNow(); };
+  let taleT = 0, nmActive = null, nmLantern = null, lastNightEvDay = 0;
+  function nextTale() { return CFG.TALES.find(t => !story.tales[t.id] && TALE_REQ[t.req]()); }
+  function fireTale() {
+    const t = nextTale(); if (!t) return;
+    story.taleDay = nightDayNo();
+    openEvent({ tag: 'Fireside tale', title: t.title, text: t.text, opts: [
+      { label: 'Listen by the fire', sub: '+25 XP · everyone +6 mood', run: () => { story.tales[t.id] = 1; giveXp(25); moodAll(6); return 'The fire crackles. The story stays with you.'; } },
+      { label: 'Not tonight', alt: true, run: () => { story.taleDay = 0; return 'Another night, then'; } } ] });
+  }
+  function nightMerchantMenu() {
+    const lots = [
+      { label: 'Training manual', sub: 'Costs 15 Food · +60 XP', ok: () => res.food >= 15, run: () => { res.food -= 15; giveXp(60); return 'You study by lantern light'; } },
+      { label: 'Whetstones', sub: 'Costs 8 Iron · every soldier gets +4 drills', ok: () => res.iron >= 8 && npcs.some(n => n.role !== 'citizen'), run: () => { res.iron -= 8; npcs.filter(n => n.role !== 'citizen').forEach(n => { n.vxp = (n.vxp || 0) + 4; }); return 'The soldiers sharpen more than their blades'; } },
+      { label: 'Moon tonic', sub: 'Costs 6 Food · heals you and cures the sick', ok: () => res.food >= 6, run: () => { res.food -= 6; healPlayer(pMaxHp()); npcs.forEach(n => { n.sick = 0; }); return 'The tonic tastes of mint and silver'; } },
+    ];
+    if (story.beacon) lots.push({ label: 'Shard pedlar', sub: 'Costs 12 Iron · 1 Shard', ok: () => res.iron >= 12, run: () => { res.iron -= 12; res.shard++; return 'A cold shard changes hands'; } });
+    openEvent({ tag: 'Lantern merchant', title: 'A Merchant by Lantern Light', text: 'Wares you will not find in daylight. The lantern burns until dawn - trade as you like.',
+      opts: lots.map(l => ({ ...l, run: () => { const m = l.run(); unlockAch('nightmarket'); updateHud(); setTimeout(nightMerchantMenu, 450); return m; } })).concat([{ label: 'Farewell', alt: true, run: () => 'The lantern bobs away' }]) });
+  }
+  function setNmLantern(on) {
+    if (on && !nmLantern) {
+      const m = builtBuildings('market')[0]; if (!m) return;
+      nmLantern = new THREE.Group();
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd27a })), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 6), woodMat2);
+      bulb.position.y = 2.1; pole.position.y = 1; const lt = new THREE.PointLight(0xffb040, 1.6, 14, 1.5); lt.position.y = 2.2; nmLantern.add(pole, bulb, lt);
+      nmLantern.position.set(m.position.x + 3.2, 0, m.position.z + 1.6); scene.add(nmLantern);
+    } else if (!on && nmLantern) { scene.remove(nmLantern); nmLantern = null; }
+  }
+  function nightActivities(dt, hour, night) {
+    const nd = nightDayNo();
+    // 등불 상인: 비습격 밤에 3일마다(3일차부터) 시장에 찾아온다
+    if (!nmActive && night && !isRaid(nd) && nd >= 3 && nd % 3 === 2 && builtBuildings('market').length && !exActive && lastNmDay !== nd) { lastNmDay = nd; nmActive = { day: nd, prompted: false }; setNmLantern(true); toast('A lantern merchant has set up at the market - walk over or tap the market'); }
+    if (nmActive && (hour >= 6 && hour < 18 || nmActive.day !== nd)) { nmActive = null; setNmLantern(false); }
+    if (nmActive && !nmActive.prompted && !eventOpen && !exActive) {
+      const m = builtBuildings('market')[0];
+      if (m && Math.hypot(m.position.x - player.position.x, m.position.z - player.position.z) < m.userData.radius + 4) { nmActive.prompted = true; nightMerchantMenu(); }
+    }
+    // 모닥불 이야기: 평화로운 밤에 모닥불 곁에 3초 머물면
+    if (peaceful && night && !exActive && !dead && !eventOpen && story.taleDay !== nd && nextTale() && Math.hypot(player.position.x, player.position.z) < FIRE_R + 5) { if ((taleT += dt) >= 3) { taleT = 0; fireTale(); } } else taleT = 0;
+    // 밤 손님: 조용한 밤 21시 이후 한 번, 45% 확률
+    if (night && hour >= 21 && hour < 24 && !exActive && !eventOpen && !dead && wave.quiet && peaceful && lastNightEvDay !== nd && nd >= 2) {
+      lastNightEvDay = nd;
+      const pool = NIGHT_EVENTS.filter(e => !e.avail || e.avail());
+      if (Math.random() < 0.45 && pool.length) openEvent(pool[Math.floor(Math.random() * pool.length)]);
+    }
+  }
+  const NIGHT_EVENTS = [
+    { id: 'knock', tag: 'Night visitor', title: 'A Knock at the Gate', text: 'Someone is knocking, politely, long after dark.', opts: [
+      { label: 'Open the gate', sub: 'Usually a traveler who wants to stay... usually', run: () => { if (npcs.length < maxPop() && builtBuildings('house').length && Math.random() < 0.7) { const k = spawnCitizens(1); return k ? 'A traveler joins the village' : 'The traveler thanks you and moves on'; } res.food = Math.max(0, res.food - 10); moodAll(-4); return 'A thief! Ten food gone and everyone is uneasy'; } },
+      { label: 'Keep it shut', alt: true, run: () => 'The knocking stops after a while' } ] },
+    { id: 'owl', tag: 'Night visitor', title: 'A Wise Owl', text: 'An owl lands on the wall and stares at you with great purpose.', opts: [
+      { label: 'Follow its gaze', sub: '+10 XP · learn what the next big raid will be', run: () => { giveXp(10); let d = nightDayNo() + 1; while (!isRaid(d)) d++; return `Day ${d}: ${forecast(d)}`; } },
+      { label: 'Shoo it', alt: true, run: () => 'The owl looks offended' } ] },
+    { id: 'whispers', tag: 'Night visitor', title: 'Whispers in the Woods', text: 'The trees outside the wall are whispering. Something is out there, and it seems to want company.', opts: [
+      { label: 'Go and look', sub: 'Three more prowlers appear (double XP) - plus 6 Iron if you survive', run: () => { for (let i = 0; i < 3; i++) { const a = rand(0, 6.28), r = rand(39, 46); spawnEnemy('beast', { x: Math.cos(a) * r, z: Math.sin(a) * r }); const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night'); } res.iron += 6; return 'Shapes move at the edge of the torchlight...'; } },
+      { label: 'Close the shutters', alt: true, run: () => 'You wait for the whispering to pass' } ] },
+    { id: 'songs', tag: 'Night visitor', title: 'Singing by the Fire', text: 'The villagers have started singing. Badly, but with feeling.', avail: () => citizens().length > 0, opts: [
+      { label: 'Join in', sub: 'Costs 8 Food (snacks) · everyone +10 mood', ok: () => res.food >= 8, run: () => { res.food -= 8; moodAll(10); return 'You sing worse than anyone. It is wonderful.'; } },
+      { label: 'Listen from the wall', alt: true, run: () => 'It carries far in the quiet' } ] },
+    { id: 'hunter', tag: 'Night visitor', title: 'The Wounded Hunter', text: 'A hunter limps in, bleeding from a wolf bite. She offers to teach you what she knows if you patch her up.', opts: [
+      { label: 'Treat her wounds', sub: 'Costs 8 Food · a bonus level-up choice', ok: () => res.food >= 8, run: () => { res.food -= 8; pl.pend++; updateLvlUi(); return 'She shows you how to read the dark. (Level-up choice waiting)'; } },
+      { label: 'Send her to the healer\'s hut', alt: true, run: () => 'She nods, a little disappointed' } ] },
+  ];
+  let lastNmDay = 0;
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
-    giveXp((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0));
+    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * (u.prowl || (u.ex && exActive && exActive.night) ? 2 : 1));
+    if (u.guardian && exActive && exActive.night) { pl.pend++; updateLvlUi(); toast('The guardian falls - a bonus upgrade is waiting'); }
+    if (u.prowl) {                                                       // 밤사냥 전리품
+      if (Math.random() < 0.55) { res.iron++; floatText('Loot: Iron +1', e.position.x, 2.6, e.position.z); }
+      if (Math.random() < 0.45) { res.food += 2; floatText('Loot: Food +2', e.position.x, 3.0, e.position.z); }
+      if (story.beacon && Math.random() < 0.1) { res.shard++; floatText('Loot: Shard +1', e.position.x, 3.4, e.position.z); }
+      updateHud();
+    }
     if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
@@ -1233,6 +1359,7 @@
       if (wave.type === 'storm') wave.remaining = Math.ceil(wave.remaining * 1.2);
       wave.remaining = Math.ceil(wave.remaining * threat * ease) + extraRaiders;
       wave.brutes = 0; wave.siegeLeft = 0; wave.bossLeft = 0; spawnCd = 0;
+      spawnProwlers(day);
       return;
     }
     wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * ease) + extraRaiders;
@@ -1276,6 +1403,7 @@
       }
       if (dead) continue;
       if (u.ex) { exEnemyStep(e, u, dt); continue; }                    // 원정 지역의 적은 별도 AI
+      if (u.prowl) { prowlStep(e, u, dt); continue; }                   // 밤사냥 방랑자: 떠돌다가 플레이어를 보면 쫓는다
 
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
       const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
@@ -1617,6 +1745,7 @@
     const rows = [`Doing: ${n.down ? 'Down' : n.stateNow}`];
     if (n.hungry) rows.push('Hungry: speed and work at half');
     if (n.sick > 0) rows.push('Sick: slower and gloomy until it passes');
+    if (n.role !== 'citizen' && vetLv(n)) rows.push(`Veteran rank ${vetLv(n)} (${n.vxp} drills): +${6 * vetLv(n)}% damage`);
     if (n.role !== 'citizen') rows.push(`Gear: ${gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).name}${n.gear.armor !== 'armor_none' ? ' · ' + gearDef(n.gear.armor).name : ''}`);
     else {
       rows.push(`Job: ${jobTitle(n)}`);
@@ -1930,7 +2059,7 @@
       const door = doorOf(site);
       if (Math.hypot(door.x - npc.position.x, door.z - npc.position.z) > 1.2) { npcMove(door.x, door.z, 3.5, dt); npc.stateLabel = 'To smithy'; return true; }
       npc.face = Math.atan2(site.position.x - npc.position.x, site.position.z - npc.position.z); npc.rotation.y = npc.face;
-      npc.stateLabel = 'Forging'; npc.forgeT = (npc.forgeT || 0) + wdt;
+      npc.stateLabel = 'Forging'; npc.forgeT = (npc.forgeT || 0) + wdt * ((nowHour >= 18 || nowHour < 6) ? 1.5 : 1);
       if (npc.forgeT >= CFG.FORGE_CYCLE * (hasPerk('smith') ? 0.6 : 1) * (1 - 0.2 * (lvOf(site) - 1))) { npc.forgeT = 0; autoForge(site); addXp(npc, 'smith'); }
       return true;
     }
@@ -2290,7 +2419,7 @@
     npc.hidden = false; npc.returning = false;
     let foe = null, bd = 16;
     for (const e of enemies) {
-      if (e.userData.sinking || e.userData.siege) continue;
+      if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
       const d = Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z);
       if (d < bd) { bd = d; foe = e; }
     }
@@ -2308,17 +2437,25 @@
     if (d < 0.8) { npc.face = Math.atan2(player.position.x - npc.position.x, player.position.z - npc.position.z); npc.rotation.y = npc.face; }
     return 'Following';
   }
+  // 밤 훈련: 평화로운 밤에 병영·사격장에서 쉬는 병사는 훈련을 해서 숙련도(베테랑)를 쌓는다 (등급마다 공격력 +6%)
+  function trainTick(dt) {
+    if (!(builtBuildings('barracks').length || builtBuildings('range').length)) return false;
+    npc.trainT = (npc.trainT || 0) + dt;
+    if ((npc.trainA = (npc.trainA || 0) + dt) > 3.2) { npc.trainA = 0; npc.anim.once(npc.role === 'archer' ? 'attackBow' : 'attackSword'); }
+    if (npc.trainT >= 6) { npc.trainT = 0; const b = vetLv(npc); npc.vxp = (npc.vxp || 0) + 1; if (vetLv(npc) > b) floatText(`${npc.name}: Veteran ${vetLv(npc)}`, npc.position.x, 3.0, npc.position.z); }
+    return true;
+  }
   function archerDefend(dt) {
     const rs = peaceful ? restSpot(npc, 'night') : null, hx = rs ? rs.x : npc.home.x, hz = rs ? rs.z : npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
     let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1);
     for (const e of enemies) {
-      if (e.userData.sinking || e.userData.siege) continue;      // 공성 투척병은 궁수가 노릴 수 없다
+      if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;      // 공성 투척병은 궁수가 노릴 수 없다
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
       if (d < bd) { bd = d; foe = e; }
     }
     if (!foe) {
-      if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { if (rs) faceTo(rs.fx, rs.fz); else faceFire(); return 'Resting'; }
+      if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { if (rs) faceTo(rs.fx, rs.fz); else faceFire(); return trainTick(dt) ? 'Training' : 'Resting'; }
       return 'Idle';
     }
     soldierShoot(foe);
@@ -2411,16 +2548,20 @@
     } else {
       // 야간: 모닥불 방어
       npc.target = null; npc.gatherT = 0; setTask(null); npc.workT = 0;
-      if (npc.role === 'citizen') state = peaceful ? citizenRest(dt) : citizenHide(dt); else if (npc.archer) state = archerDefend(dt); else {
+      if (npc.role === 'citizen') {
+        if (peaceful && npc.work && obstacles.includes(npc.work) && npc.work.userData.kind === 'smith') {            // 대장장이는 평화로운 밤에도 불빛 아래서 일한다 (1.5배)
+          if (workStep(dt)) { state = npc.stateLabel; bob = npc.bobAmt; } else state = citizenRest(dt);
+        } else state = peaceful ? citizenRest(dt) : citizenHide(dt);
+      } else if (npc.archer) state = archerDefend(dt); else {
       let foe = null, bd = CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege) continue;
+        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
         const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
         if (d < bd) { bd = d; foe = e; }
       }
       if (npc.returning || !foe) {
         const post = sentryPost(npc), rs = peaceful && !post ? restSpot(npc, 'night') : null, tgt = post || rs || npc.home;
-        if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = 'Resting'; if (rs) faceTo(rs.fx, rs.fz); else faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
+        if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = trainTick(dt) ? 'Training' : 'Resting'; if (rs) faceTo(rs.fx, rs.fz); else faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
@@ -2821,7 +2962,7 @@
       barFill.position.set(player.position.x - rx * 0.65, 0.25, player.position.z - rz * 0.65);
       barFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
     }
-    dashBtnEl.classList.toggle('cool', show);
+    dashBtnEl.classList.toggle('cool', show); updateRestUi();
     ultCd = Math.max(0, ultCd - dt);
     ultBtnEl.classList.toggle('cool', ultCd > 0);
     ultCdEl.textContent = ultCd > 0 ? `${Math.ceil(ultCd)}s` : 'E';
@@ -2848,7 +2989,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -2882,7 +3023,7 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {}, tales: {}, taleDay: 0 }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
     Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
@@ -2901,7 +3042,7 @@
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
     for (const d of sn.npcs) {
-      const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
+      const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); }
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
@@ -2977,7 +3118,7 @@
       if (t.userData.shootCd > 0) continue;
       let foe = null, bd = CFG.TOWER_RANGE * (hasPerk('engineer') ? 1.25 : 1);
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege) continue;
+        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
         const d = Math.hypot(e.position.x - t.position.x, e.position.z - t.position.z);
         if (d < bd) { bd = d; foe = e; }
       }
@@ -3022,8 +3163,9 @@
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
     if (exActive) {
-      const left = Math.max(0, Math.ceil((CFG.EXP_FORCE * 60 - (gameMin % 1440)) / (MIN_PER_SEC * CFG.EXP_TIME_MULT))), mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
-      if (left <= 30 && !exActive.warned) { exActive.warned = true; toast('Dusk is near - about 30 seconds left. Grab the last chests!'); }
+      const nowM = gameMin % 1440, target = exActive.night ? (nowM >= 720 ? 1440 + CFG.EXP_NIGHT_FORCE * 60 : CFG.EXP_NIGHT_FORCE * 60) : CFG.EXP_FORCE * 60;
+      const left = Math.max(0, Math.ceil((target - nowM) / (MIN_PER_SEC * CFG.EXP_TIME_MULT))), mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
+      if (left <= 30 && !exActive.warned) { exActive.warned = true; toast(exActive.night ? 'Dawn is near - about 30 seconds left. Grab the last chests!' : 'Dusk is near - about 30 seconds left. Grab the last chests!'); }
       const t = `Expedition: ${exActive.dest.name} - called home in ${mm}:${ss}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
@@ -3108,7 +3250,7 @@
     gr.userData = { type: 'chest', radius: 0.9, relic: !!relic };
     return exAdd(gr, true);
   }
-  const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff) };
+  const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff), night: new THREE.Color(0x6f7cff), wisp: new THREE.Color(0x7affd0) };
   function frostTint(e, faction = 'frost') {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
     const map = new Map();
     e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.color.lerp(FACTION_COLOR[faction] || FACTION_COLOR.frost, 0.55); map.set(o.material, c); } o.material = c; } });
@@ -3235,12 +3377,12 @@
     const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
     if (d.ch >= 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
-    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud(); giveXp(8 + 4 * d.age);
+    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
     if (o.userData.relic) foundRelic(d);
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {} };
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {}, tales: {}, taleDay: 0 };
   const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []);
   let beaconMesh = null;
   function setBeacon(on) {
@@ -3301,11 +3443,18 @@
   let escortN = 0;
   const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function powerOf() {                                       // 마을의 전투력: 병사 + 주인공
-    const sold = npcs.filter(n => n.role !== 'citizen').reduce((a, n) => a + 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier, 0);
+    const sold = npcs.filter(n => n.role !== 'citizen').reduce((a, n) => a + 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n), 0);
     const me = 3 * pl.lvl + 3 * gearDef(playerGear.sword).tier + 2 * gearDef(playerGear.armor).tier;
     return { sold: Math.round(sold), me: Math.round(me), total: Math.round(sold + me) };
   }
   const needOf = (d) => CFG.EXP_NEED[d.id] || 0;
+  const nightExpWhy = () => {                                   // 밤 원정이 닫혀 있는 이유 (열려 있으면 '')
+    const h = (gameMin / 60) % 24;
+    if (!(h >= 20 || h < CFG.EXP_NIGHT_LATEST)) return 'Night only (20:00 - 02:00)';
+    if (isRaid(nightDayNo())) return 'A raid is coming tonight - stay and defend';
+    if (wave.day !== Math.max(1, nightDayNo()) || wave.remaining > 0 || wave.siegeLeft > 0 || wave.bossLeft > 0 || enemies.some(e => !e.userData.sinking && !e.userData.prowl && !e.userData.ex)) return 'Clear the night\'s raiders first';
+    return '';
+  };
   function startExpedition(id) {
     const d = CFG.EXPEDITIONS.find(x => x.id === id);
     if (!d || exActive || dead || exEnding) return;
@@ -3315,10 +3464,11 @@
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('You need the Echo Stone and the Mourning Bell to find the Spire');
     if (powerOf().total < needOf(d)) return toast(`Too dangerous for now: needs power ${needOf(d)} (you have ${powerOf().total}). Upgrade gear, train soldiers, level up.`);
-    if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
+    if (d.night) { const why = nightExpWhy(); if (why) return toast(why); }
+    else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
-      exActive = { dest: d, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
+      exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       buildZone(d);
       const party = escortPool().sort((a, b) => (a.role === 'melee' ? 0 : 1) - (b.role === 'melee' ? 0 : 1)).slice(0, Math.min(escortN, CFG.ESCORT_MAX));     // 동행 병사: 근접 병사 먼저
       party.forEach((n, i) => {
@@ -3348,7 +3498,7 @@
       if (cleared && !story.cleared[ex.dest.id]) { story.cleared[ex.dest.id] = true; setTimeout(() => toast(`${ex.dest.name} is cleared - build a camp from the Journal for daily supplies`), 2200); }
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
-      toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
+      toast(`${forced ? (ex.night ? 'You rushed home as dawn broke. ' : 'You rushed home as dusk fell. ') : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
       checkStoryAll();
     });
   }
@@ -3409,13 +3559,13 @@
       (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
-    const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
-    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile.`;
+    const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
+    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
     const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
     const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
       const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
@@ -3464,6 +3614,7 @@
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
+  let resting = false, sparT = 0;
   let fpsT = 0, fpsN = 0, stormT = 5, lightning = 0, thunderIn = 0;
 
   function tick() {
@@ -3473,7 +3624,8 @@
     const t = clock.elapsedTime;
 
     // 시간 / 조명
-    gameMin += dt * MIN_PER_SEC * (exActive ? CFG.EXP_TIME_MULT : 1);          // 원정 중에는 시간이 천천히 흐른다
+    { const h0 = (gameMin / 60) % 24, isNight = h0 >= 18 || h0 < 6;
+      gameMin += dt * MIN_PER_SEC * (exActive ? CFG.EXP_TIME_MULT : isNight ? (resting ? CFG.REST_SPEED : CFG.NIGHT_SPEED) : 1); }          // 원정 중에는 천천히, 밤에는 빠르게(쉬는 중에는 아주 빠르게)
     const hour = (gameMin / 60) % 24;
     const night = hour >= 20 || hour < 5;
     const nf = nightFactor(hour);
@@ -3490,11 +3642,11 @@
     { const g = Math.max(0, Math.min(1, (nf - 0.2) / 0.45)), fl = 0.94 + 0.06 * Math.sin(t * 9); windowGlow.color.setRGB(0.16 + 0.84 * g * fl, 0.16 + 0.62 * g * fl, 0.2 + 0.2 * g); lampGlow.color.copy(windowGlow.color); lampLevel = g * fl; updateGateLights(t); }      // 창문·가로등은 밤에 켜진다                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
     torch.intensity = nf * 2.4;   // 횃불: 밤에 켜지고 낮에 꺼짐
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
-    clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1}${CFG.SEASONS_ON ? ' · ' + season().name : ''} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ Endless' : ''}`;
+    clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1}${CFG.SEASONS_ON ? ' · ' + season().name : ''} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ Endless' : ''}${resting ? ' · 💤' : ''}`;
 
     const dayNo = Math.floor(gameMin / 1440) + 1;
     nowHour = hour;
-    if (exActive && !exEnding && hour >= CFG.EXP_FORCE) endExpedition(true);       // 해 지기 전에 자동 귀환
+    if (exActive && !exEnding && (exActive.night ? (hour >= CFG.EXP_NIGHT_FORCE && hour < 12) : hour >= CFG.EXP_FORCE)) endExpedition(true);       // 해 지기 전에 자동 귀환
     updateRaidUi(hour, dayNo);
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
@@ -3512,6 +3664,11 @@
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
+    if (peaceful && night && !exActive && !dead) {                                   // 병영·사격장 곁에서 병사와 함께 훈련하면 경험치를 얻는다
+      const camp = builtBuildings('barracks').concat(builtBuildings('range')).find(b => Math.hypot(b.position.x - player.position.x, b.position.z - player.position.z) < b.userData.radius + 5);
+      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + age * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
+    }
+    nightActivities(dt, hour, night);
     updateNpcs(dt, hour, t);
     updateFx(dt);
     updateArrows(dt);
@@ -3722,6 +3879,8 @@
     { id: 'camp3', name: 'Supply Line', desc: 'Build 3 camps', test: () => Object.keys(story.camps).length >= 3 },
     { id: 'storm', name: 'Stormproof', desc: 'Survive a thunderstorm night' },
     { id: 'hunt', name: 'Pack Breaker', desc: 'Survive a wolf hunt night' },
+    { id: 'nightmarket', name: 'Lantern Trade', desc: 'Buy something from the lantern merchant' },
+    { id: 'tales', name: 'Storyteller', desc: 'Hear 5 fireside tales', test: () => Object.keys(story.tales || {}).length >= 5 },
     { id: 'lvl5', name: 'Veteran', desc: 'Reach player level 5', test: () => pl.lvl >= 5 },
     { id: 'lvl10', name: 'Legend', desc: 'Reach player level 10', test: () => pl.lvl >= 10 },
     { id: 'beacon', name: 'Light in the Dark', desc: 'Light the Beacon', test: () => story.beacon },
@@ -3768,6 +3927,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

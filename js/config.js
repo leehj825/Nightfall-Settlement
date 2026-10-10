@@ -89,16 +89,33 @@
         foes: ['brute', 'brute', 'brute', 'brute', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal'], guardian: { kind: 'brute', hpMul: 9, scale: 1.65, name: 'Bell Ringer' } },
       { id: 'spire', name: 'Obsidian Spire', ch: 4, age: 3, tint: 0x1d1a2c, risk: 'Deadly', reward: 'Shards, lots of iron, Keeper\'s Oath', desc: 'The Hollow King\'s black tower. Only those who carry the Echo Stone and the Mourning Bell can find the door.', trees: 0, rocks: 8, ore: 8, chests: 6, relic: 'Keeper\'s Oath', ruins: 16, faction: 'hollow', needs: ['barrow', 'chapel'],
         foes: ['brute', 'brute', 'brute', 'shield', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal', 'normal', 'beast'], guardian: { kind: 'brute', hpMul: 13, scale: 2.1, name: 'The Hollow King' } },
+      { id: 'crypt', name: 'Moonlit Crypt', night: true, age: 2, tint: 0x24303f, risk: 'Medium', reward: 'Double XP, iron, food', desc: 'A crypt that only opens after dark. Pale wisps guard silver chests. Everything you defeat here gives double XP.', trees: 0, rocks: 5, ore: 4, chests: 4, ruins: 8, faction: 'wisp', foes: ['normal', 'normal', 'beast', 'beast', 'normal'] },
+      { id: 'marsh', name: 'Whispering Marsh', night: true, age: 2, tint: 0x1f3a35, risk: 'High', reward: 'Double XP, rich chests, a level-up choice', desc: 'A drowned bog under the moon. The Marsh Mother hides in the reeds - defeat her for a bonus upgrade.', trees: 6, rocks: 3, ore: 0, chests: 5, ruins: 4, faction: 'wisp', foes: ['normal', 'normal', 'normal', 'shield', 'beast', 'beast'], guardian: { kind: 'brute', hpMul: 4, scale: 1.4, name: 'Marsh Mother' } },
+      { id: 'mausoleum', name: 'Pale Mausoleum', night: true, age: 3, tint: 0x2a2a44, risk: 'Very high', reward: 'Double XP, shards, a level-up choice', desc: 'A white tomb that glows in moonlight. Its matron wears a shield made of old keys.', trees: 0, rocks: 6, ore: 6, chests: 6, ruins: 12, faction: 'wisp', foes: ['brute', 'brute', 'shield', 'shield', 'normal', 'normal', 'normal', 'beast'], guardian: { kind: 'shield', hpMul: 6, scale: 1.5, name: 'Pale Matron' } },
     ],
     // 10단계: 원정지를 모두 정리(상자 전부 + 적 전부)하면 야영지를 세울 수 있다. 야영지는 매일 아침 자원을 가져다준다 (겨울에는 60%)
-    CAMPS: { quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
+    CAMPS: { quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
     CAMP_COST: { 1: { wood: 35, stone: 25 }, 2: { wood: 50, stone: 40 }, 3: { wood: 65, stone: 55, iron: 4 } },
     ESCORT_MAX: 3,
+    EXP_NIGHT_LATEST: 2, EXP_NIGHT_FORCE: 4.5,        // 밤 원정: 그날 밤 습격을 정리한 뒤 20시~02시에 출발, 새벽 4시 30분에 자동 귀환
     // 원정이 열리는 전투력: 병사(기본 2 + 무기 등급×2 + 방어구 등급×1.5)의 합 + 주인공(레벨×3 + 무기 등급×3 + 방어구 등급×2). 장비와 레벨을 키워야 다음 원정이 열린다
-    EXP_NEED: { quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110 },
+    EXP_NEED: { quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, crypt: 26, marsh: 52, mausoleum: 88 },
     // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
     STORY3: [
       { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
+    ],
+    // 밤 모닥불 이야기: 평화로운 밤에 모닥불 곁에 앉으면 마을 노인이 이야기를 들려준다 (조건을 만족하는 첫 번째 안 들은 이야기부터). 앞선 장의 복선이 여기에 있다
+    TALES: [
+      { id: 'lanterns', req: 'any', title: 'The Lantern Years', text: 'Old Edda stirs the coals. "This village was never the first on this hill. Every few generations the fire goes out, and someone new has to light it again. We just happen to be holding the match."' },
+      { id: 'prowlers', req: 'any', title: 'Why the Wolves Wait', text: '"The beasts keep to the dark rim of the valley," says Edda. "They do not hate us. They are hungry, and they remember when the light reached further. Hunt them with a torch and they pay in iron and meat."' },
+      { id: 'mapmaker', req: 'exp', title: 'The Map-Maker', text: '"My mother drew that map from memory," Edda says, tapping the charred parchment. "She said the road was drawn by someone who walked it - and not just one someone. A whole line of people, each carrying it a little farther."' },
+      { id: 'orrin', req: 'age2', title: 'The Watchtower Keeper', text: '"A keeper named Orrin lit the watchtower beacon every night for forty years. When the light finally failed, they never found his body. Only his lantern, still warm, set carefully on the top step."' },
+      { id: 'winter', req: 'winter', title: 'Winter Stories', text: 'The wind leans on the walls. "In deep winter the old keepers told each other one thing," Edda murmurs. "That the cold is not an enemy. It is only what is left when everyone has gone home."' },
+      { id: 'hands', req: 'beacon', title: 'Three Hands', text: '"The Beacon wants three hands," Edda says. "One to carry the light, one to hold it, one to let it go. The keepers before us always said we do not light it for ourselves - we light it for whoever comes after."' },
+      { id: 'pale', req: 'dawn', title: 'Pale Soldiers', text: 'A traveler by the fire tells it quietly: "Pale soldiers march north in perfect step. None hungry. None afraid. They are not raiders - they look like people still waiting for an order nobody is left to give."' },
+      { id: 'bell', req: 'crown', title: 'The Bell at Dusk', text: '"A bell, once, at dusk," Edda remembers. "Rung once for every keeper who did not come home. I heard it as a girl and thought it was thunder. Now I think somebody was counting."' },
+      { id: 'name', req: 'hollow', title: 'The First Name', text: '"The first keeper\'s name is carved on the lowest stair of the Spire," says the traveler, "and nobody dares read it aloud. They say if you speak it, the bell stops. They say he is still listening for it."' },
+      { id: 'court', req: 'finale', title: 'The Court Remembers', text: 'Tonight the whole village sits by the fire and says the names - all of them, in order, from the first keeper to the last. When the final one is spoken, nobody flinches at the dark. It sounds, for once, like it is listening back.' },
     ],
     STORY_CROWN: { title: 'The Crown Wakes', text: 'With the Winter Crown on the Beacon, the cold pulls back from your borders. But the Crown does not rest: its frost-light bends toward the north, tracing a road you have never seen - and from somewhere along it, a bell begins to toll.' },
     // 4장 (겨울 왕관을 얻은 뒤): 속 빈 궁정 - 비콘을 켠 첫 수호자들의 흔적을 모아 속 빈 왕을 만난다
@@ -129,6 +146,7 @@
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 1.3,
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
+    NIGHT_SPEED: 1.8, REST_SPEED: 8,         // 밤에는 시계가 1.8배 빠르게 흐르고, '새벽까지 쉬기' 중에는 8배 빠르다
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
     QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
