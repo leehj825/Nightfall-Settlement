@@ -1090,6 +1090,7 @@
       stars.position.y = 1.1; stars.visible = false; m.add(stars);
       Object.assign(m.userData, { bang, stunTxt, stars });
     }
+    if (wave.type === 'storm' && !at) m.userData.speed *= 1.12;          // 폭풍우: 적이 조금 더 빠르다
     scene.add(m);
     enemies.push(m);
   }
@@ -1111,6 +1112,7 @@
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
     if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
+    if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'plunder' && Math.random() < 0.4) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     hideTelegraph(e);
     u.sinking = true; u.dying = 1.0; e.position.y = u.baseY; u.anim.die();
@@ -1156,8 +1158,8 @@
   let chapterCleared = false;                // Day 7 보스 처치 후 true → 무한 모드
   const wave = { day: 0, remaining: 0, brutes: 0, siegeLeft: 0, bossLeft: 0 };
   // 밤의 종류 (조용한 밤만 변주): calm / fog(안개: 시야·사거리 감소) / plunder(약탈: 적이 더 많지만 철을 떨어뜨린다). 아침 요약과 상단 안내로 미리 알려 준다
-  const NIGHT_PATTERN = ['calm', 'calm', 'fog', 'plunder', 'fog', 'calm', 'plunder', 'fog'];
-  const NIGHT_INFO = { calm: ['Calm night', 'Beasts and a few raiders'], fog: ['Foggy night', 'Shorter sight for you and the archers'], plunder: ['Plunder night', 'More raiders, but they drop iron'], raid: ['Blood Moon raid', 'A full assault'] };
+  const NIGHT_PATTERN = ['calm', 'calm', 'fog', 'plunder', 'storm', 'fog', 'hunt', 'calm', 'plunder', 'storm', 'hunt', 'fog'];
+  const NIGHT_INFO = { calm: ['Calm night', 'Beasts and a few raiders'], fog: ['Foggy night', 'Shorter sight for you and the archers'], plunder: ['Plunder night', 'More raiders, but they drop iron'], storm: ['Thunderstorm', 'Lightning flashes and raiders move faster'], hunt: ['Wolf hunt', 'A fast pack of beasts - they drop food'], raid: ['Blood Moon raid', 'A full assault'] };
   function nightTypeOf(d) {
     if (isRaid(d)) return 'raid';
     let q = 0;
@@ -1166,20 +1168,24 @@
   }
   const isRaid = (d) => d % CFG.RAID_EVERY === 0 || d === CFG.BOSS_DAY;       // 붉은 달 대규모 습격의 밤 (3, 6, 9 ... + 보스 밤)
   const nextRaidFrom = (d) => { while (!isRaid(d)) d++; return d; };
+  let nightEase = false;
   function startWave(day) {
     wave.day = day;
     wave.quiet = !isRaid(day);
     wave.type = nightTypeOf(day);
-    const extraRaiders = pendingRaiders; pendingRaiders = 0;               // 아침 이벤트 선택의 대가
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
+    const extraRaiders = pendingRaiders; pendingRaiders = 0;
+    const ease = nightEase ? 0.75 : 1; nightEase = false;                  // 정찰병의 경고에 대비했다면 오늘 밤 적이 25% 줄어든다               // 아침 이벤트 선택의 대가
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
-      wave.remaining = Math.ceil(wave.remaining * threat) + extraRaiders;
+      if (wave.type === 'hunt') wave.remaining = Math.ceil(wave.remaining * 1.6) + 1;
+      if (wave.type === 'storm') wave.remaining = Math.ceil(wave.remaining * 1.2);
+      wave.remaining = Math.ceil(wave.remaining * threat * ease) + extraRaiders;
       wave.brutes = 0; wave.siegeLeft = 0; wave.bossLeft = 0; spawnCd = 0;
       return;
     }
-    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat) + extraRaiders;
+    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * ease) + extraRaiders;
     wave.brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0;
     wave.siegeLeft = day >= CFG.SIEGE_FROM_DAY ? 1 + (Math.random() < 0.5 ? 1 : 0) : 0;      // Day 4부터 밤마다 공성 투척병 1~2마리
     if (day === CFG.BOSS_DAY) { wave.remaining = Math.ceil(wave.remaining / 2); wave.bossLeft = 1; }     // 보스 밤: 일반 적 절반 + 베헤모스 1마리
@@ -1199,7 +1205,7 @@
         if (wave.siegeLeft > 0 && (wave.remaining === 0 || Math.random() < 0.25)) {
           spawnEnemy('siege'); wave.siegeLeft--;
         } else {
-          const kind = wave.quiet ? (wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
+          const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
             : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
           spawnEnemy(kind);
@@ -1422,7 +1428,7 @@
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 + 2 * (bLevel('well') - 1) : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + (story.finale ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
     if (n.role === 'citizen') target += (builtBuildings('house').length ? 4 : -8) + (jobKind(n) && likesJob(n, jobKind(n)) ? 4 : 0);
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -1506,7 +1512,7 @@
     if (moodEl.textContent !== mt) moodEl.textContent = mt;
   }
   // ---------- 아침 요약 카드: 어젯밤과 어제 하루 동안 마을에서 일어난 일 ----------
-  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, ill: [], healed: [], season: '', res: { ...res }, pros: prosScore, pop: 0 });
+  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, ill: [], healed: [], season: '', camps: '', res: { ...res }, pros: prosScore, pop: 0 });
   let report = freshReport();
   const repEl = document.getElementById('report'), repList = document.getElementById('repList');
   let repTimer;
@@ -1516,6 +1522,7 @@
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
     if (r.season) rows.push(r.season);
+    if (r.camps) rows.push(`Camps delivered: ${r.camps}`);
     if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
     if (r.ill.length) rows.push(`Fell ill: ${r.ill.join(', ')}${builtBuildings('well').length ? '' : ' - a well would help'}`);
     if (r.healed.length) rows.push(`Recovered: ${r.healed.join(', ')}`);
@@ -1588,6 +1595,9 @@
     for (let i = 0; i < k && houses.length; i++) { const door = doorOf(houses[(npcs.length + i) % houses.length]); const c = makeNpc('citizen', door, 'citizen', i * 0.15); c.position.set(door.x, 0, door.z); made++; }
     report.newCit += made; return made;
   }
+  const moodAll = (x) => npcs.forEach(n => { n.mood = Math.max(0, Math.min(100, n.mood + x)); });
+  const dayNow = () => Math.floor(gameMin / 1440) + 1;
+  const tinkerTarget = () => CFG.LEVELED.flatMap(k => builtBuildings(k)).find(o => lvOf(o) < age);
   const EVENTS = [
     { id: 'merchant', title: 'Wandering Merchant', text: 'A cart rolls up to the gate. The merchant offers a few fair trades.', opts: [
       { label: 'Trade 12 Food for 4 Iron', ok: () => res.food >= 12, run: () => { res.food -= 12; res.iron += 4; return 'Deal done: +4 Iron'; } },
@@ -1602,6 +1612,59 @@
     { id: 'sickness', title: 'Sickness Rumor', text: 'Travelers brought coughs into the village. A few people look pale.', avail: () => citizens().length > 0, opts: [
       { label: 'Quarantine the travelers', sub: 'Costs 8 Food', ok: () => res.food >= 8, run: () => { res.food -= 8; return 'The sickness never spreads'; } },
       { label: 'Ignore it', sub: 'Up to 2 citizens fall ill for a few days (slower, gloomy)', alt: true, run: () => { const c = citizens().filter(n => !(n.sick > 0)).slice(0, 2); c.forEach(n => { n.sick = CFG.SICK_DAYS + 1; }); return c.length ? `${c.length} citizen${c.length > 1 ? 's' : ''} fell ill` : 'Nobody fell ill'; } } ] },
+    { id: 'bard', title: 'Travelling Bard', text: 'A bard with a battered lute asks for a meal and offers songs for the evening.', avail: () => citizens().length > 0, opts: [
+      { label: 'Feed the bard', sub: 'Costs 6 Food · everyone feels better (+15 mood)', ok: () => res.food >= 6, run: () => { res.food -= 6; moodAll(15); return 'Songs by the fire lift everyone\'s spirits'; } },
+      { label: 'No time for songs', alt: true, run: () => 'The bard wanders on' } ] },
+    { id: 'wolves', title: 'Hungry Wolves', text: 'Wolves circle the fields at dawn, thin and bold.', avail: () => dayNow() >= 3, opts: [
+      { label: 'Drive them off yourself', sub: 'You lose 25 HP · +6 Food from the pelts', run: () => { hp = Math.max(1, hp - 25); hpEl.textContent = Math.ceil(hp); res.food += 6; return 'The wolves flee. You are bruised.'; } },
+      { label: 'Leave food at the edge', sub: 'Costs 10 Food', ok: () => res.food >= 10, run: () => { res.food -= 10; return 'The wolves take the bait and leave'; } },
+      { label: 'Ignore them', sub: 'Two citizens panic (-12 mood)', alt: true, run: () => { citizens().slice(0, 2).forEach(n => { n.mood = Math.max(0, n.mood - 12); }); return 'The wolves are gone by noon, but nerves are frayed'; } } ] },
+    { id: 'stray', title: 'A Stray Dog', text: 'A scruffy dog trots into the village and refuses to leave.', avail: () => citizens().length > 0, opts: [
+      { label: 'Let it stay', sub: 'Everyone is a little happier (+8 mood)', run: () => { moodAll(8); return 'The dog has found a home'; } },
+      { label: 'Shoo it away', alt: true, run: () => 'The dog slinks off' } ] },
+    { id: 'tinker', title: 'Wandering Smith', text: 'A smith with a pack of tools offers to improve one of your workshops.', avail: () => !!tinkerTarget(), opts: [
+      { label: 'Hire the smith', sub: 'Costs 8 Iron + 10 Wood · upgrades a workshop by one level', ok: () => res.iron >= 8 && res.wood >= 10, run: () => { const t = tinkerTarget(); if (!t) return 'Nothing left to improve'; res.iron -= 8; res.wood -= 10; setBuildingLevel(t, lvOf(t) + 1); report.upgraded++; floatText(`${BUILDING_NAME[t.userData.kind]} Lv${lvOf(t)}!`, t.position.x, 3.6, t.position.z); return `${BUILDING_NAME[t.userData.kind]} upgraded`; } },
+      { label: 'Send the smith away', alt: true, run: () => 'The smith shoulders his pack' } ] },
+    { id: 'trainer', title: 'Master Craftsman', text: 'A retired craftsman offers to teach your workers a few tricks for a hot meal.', avail: () => citizens().some(n => jobKind(n)), opts: [
+      { label: 'Share a meal', sub: 'Costs 10 Food · every working citizen gains 2 experience', ok: () => res.food >= 10, run: () => { res.food -= 10; citizens().forEach(n => { const k = jobKind(n); if (k) { addXp(n, k); addXp(n, k); } }); return 'Your workers pick up new tricks'; } },
+      { label: 'Politely decline', alt: true, run: () => 'The craftsman moves on' } ] },
+    { id: 'storm', title: 'Storm Damage', text: 'A storm in the night has loosened planks along your walls.', avail: () => obstacles.some(o => o.userData.type === 'fence'), opts: [
+      { label: 'Brace the walls', sub: 'Costs 10 Wood', ok: () => res.wood >= 10, run: () => { res.wood -= 10; return 'The walls hold firm'; } },
+      { label: 'Hope for the best', sub: 'Several wall pieces are damaged', alt: true, run: () => { const f = obstacles.filter(o => o.userData.type === 'fence').sort(() => Math.random() - 0.5).slice(0, 6); f.forEach(o => { o.userData.hp = Math.max(1, o.userData.hp * 0.5); }); return 'Some planks are cracked - repairs are needed'; } } ] },
+    { id: 'harvest', title: 'Bountiful Harvest', text: 'The fields are heavy with grain this autumn.', avail: () => season().id === 'autumn', opts: [
+      { label: 'Store it all', sub: '+25 Food', run: () => { res.food += 25; return 'The granary is full'; } },
+      { label: 'Hold a harvest festival', sub: '+10 Food · everyone +10 mood', run: () => { res.food += 10; moodAll(10); return 'A merry festival'; } } ] },
+    { id: 'drought', title: 'Dry Spell', text: 'Weeks without rain have cracked the fields.', avail: () => season().id === 'summer' && builtBuildings('farm').length > 0, opts: [
+      { label: 'Dig irrigation channels', sub: 'Costs 8 Wood', ok: () => res.wood >= 8, run: () => { res.wood -= 8; return 'Water reaches the crops'; } },
+      { label: 'Wait for rain', sub: 'Lose 15 Food to spoilage', alt: true, run: () => { res.food = Math.max(0, res.food - 15); return 'The crops wither a little'; } } ] },
+    { id: 'lights', title: 'Strange Lights', text: 'Pale lights drift over the hills at dawn. Something is out there.', avail: () => dayNow() >= 3, opts: [
+      { label: 'Follow the lights', sub: 'A reward - and 2 more raiders tonight', run: () => { pendingRaiders += 2; if (story.beacon) { res.shard++; res.iron += 6; return 'You find a glowing shard and some iron'; } res.wood += 12; res.stone += 4; return 'You find a cache of wood and stone'; } },
+      { label: 'Stay inside', alt: true, run: () => 'The lights fade with the sun' } ] },
+    { id: 'deserter', title: 'Deserter', text: 'A soldier in torn armor asks to join your village.', avail: () => npcs.length < maxPop() && builtBuildings('house').length > 0, opts: [
+      { label: 'Take them in', sub: 'Costs 5 Food · joins as a melee soldier', ok: () => res.food >= 5, run: () => { res.food -= 5; const k = spawnCitizens(1), c = npcs[npcs.length - 1]; if (k && c) setRole(c, 'melee'); return k ? 'A new soldier joins you' : 'No room for them'; } },
+      { label: 'Turn them away', alt: true, run: () => 'The soldier trudges away' } ] },
+    { id: 'lost', title: 'Lost Child', text: 'A child wanders in from the woods, hungry and alone.', avail: () => npcs.length < maxPop() && builtBuildings('house').length > 0, opts: [
+      { label: 'Look after the child', sub: 'Costs 4 Food · a new citizen, everyone +6 mood', ok: () => res.food >= 4, run: () => { res.food -= 4; const k = spawnCitizens(1); moodAll(6); return k ? 'The child is welcomed' : 'No room, but hearts are warmed'; } },
+      { label: 'Send word to other villages', alt: true, run: () => 'Someone will come for the child' } ] },
+    { id: 'tax', title: 'Tax Collector', text: 'A royal tax collector has heard of your wealth.', avail: () => prosScore >= 45, opts: [
+      { label: 'Pay 20 Wood', ok: () => res.wood >= 20, run: () => { res.wood -= 20; return 'The collector is satisfied'; } },
+      { label: 'Pay 12 Stone', ok: () => res.stone >= 12, run: () => { res.stone -= 12; return 'The collector is satisfied'; } },
+      { label: 'Refuse', sub: 'Everyone -10 mood · 2 more raiders tonight', alt: true, run: () => { moodAll(-10); pendingRaiders += 2; return 'The collector storms off, muttering threats'; } } ] },
+    { id: 'rats', title: 'Rats in the Stores', text: 'Droppings and gnawed sacks - rats have found your food.', avail: () => res.food >= 20, opts: [
+      { label: 'Set traps', sub: 'Costs 6 Wood', ok: () => res.wood >= 6, run: () => { res.wood -= 6; return 'The traps do their work'; } },
+      { label: 'Ignore it', sub: 'Lose a quarter of your food', alt: true, run: () => { res.food = Math.floor(res.food * 0.75); return 'The rats feast'; } } ] },
+    { id: 'comet', title: 'Falling Star', text: 'A streak of fire crossed the sky last night and landed in the hills.', opts: [
+      { label: 'Search the crater', sub: '+4 Iron (and a shard if the Beacon is lit)', run: () => { res.iron += 4; if (story.beacon) res.shard++; return 'You pull glowing metal from the crater'; } },
+      { label: 'Leave it', alt: true, run: () => 'Better not to touch it' } ] },
+    { id: 'pilgrims', title: 'Pilgrims', text: 'A band of pilgrims on their way to a distant shrine asks for a meal.', avail: () => citizens().length > 0, opts: [
+      { label: 'Give 10 Food', sub: 'Everyone +15 mood · the sick recover', ok: () => res.food >= 10, run: () => { res.food -= 10; moodAll(15); npcs.forEach(n => { n.sick = 0; }); return 'Their blessing eases every heart'; } },
+      { label: 'Send them on', alt: true, run: () => 'The pilgrims walk on' } ] },
+    { id: 'scout', title: 'Scout\'s Warning', text: 'A scout reports movement in the dark beyond your walls.', avail: () => dayNow() >= 2, opts: [
+      { label: 'Reinforce the gate', sub: 'Costs 12 Wood · tonight\'s attack is 25% smaller', ok: () => res.wood >= 12, run: () => { res.wood -= 12; nightEase = true; return 'The gate is ready'; } },
+      { label: 'Trust your walls', alt: true, run: () => 'You wave the scout off' } ] },
+    { id: 'toll', title: 'Bandit Toll', text: 'Bandits block the road and demand a toll to let traders pass.', avail: () => dayNow() >= 4, opts: [
+      { label: 'Pay 8 Iron', ok: () => res.iron >= 8, run: () => { res.iron -= 8; return 'The road stays open'; } },
+      { label: 'Refuse', sub: '4 more raiders tonight', alt: true, run: () => { pendingRaiders += 4; return 'The bandits spit and ride off'; } } ] },
     { id: 'feast', title: 'Harvest Feast', text: 'The villagers ask to hold a feast to lift everyone\'s spirits.', avail: () => citizens().length > 0, opts: [
       { label: 'Hold the feast', sub: 'Costs 12 Food · everyone recovers, +1 newcomer if there is room', ok: () => res.food >= 12, run: () => { res.food -= 12; npcs.forEach(n => { n.hungry = false; }); const k = npcs.length < maxPop() ? spawnCitizens(1) : 0; citizens().forEach(n => floatText('Feast!', n.position.x, 3.0, n.position.z)); return k ? 'A great feast! A newcomer joined' : 'A great feast! Spirits are high'; } },
       { label: 'Not now', alt: true, run: () => 'Maybe next season' } ] },
@@ -1631,7 +1694,7 @@
       opts: lots.map(l => {
         const get = Math.max(1, Math.round(l.n * MVAL[l.g] / MVAL[l.r] * rate));
         return { label: `Give ${l.n} ${MNAME[l.g]}`, sub: `Get ${get} ${MNAME[l.r]} · you have ${Math.floor(res[l.g])}`, ok: () => res[l.g] >= l.n,
-          run: () => { if (res[l.g] < l.n) return 'Not enough to trade'; res[l.g] -= l.n; res[l.r] += get; updateHud(); report.traded = (report.traded || 0) + 1; setTimeout(() => merchantMenu(lots, rate, p), 450); return `Traded: +${get} ${MNAME[l.r]}`; } };
+          run: () => { if (res[l.g] < l.n) return 'Not enough to trade'; res[l.g] -= l.n; res[l.r] += get; updateHud(); report.traded = (report.traded || 0) + 1; unlockAch('merchant'); setTimeout(() => merchantMenu(lots, rate, p), 450); return `Traded: +${get} ${MNAME[l.r]}`; } };
       }).concat(npcs.some(n => n.sick > 0) ? [{ label: 'Buy healing herbs', sub: 'Costs 2 Iron · cures every sick citizen', ok: () => res.iron >= 2, run: () => { res.iron -= 2; npcs.forEach(n => { n.sick = 0; }); setTimeout(() => merchantMenu(lots, rate, p), 450); return 'The sick are on their feet again'; } }] : [])
         .concat([{ label: 'Farewell', alt: true, run: () => 'The merchant moves on' }]) });
   }
@@ -1643,10 +1706,12 @@
     const lots = [pick(sells), pick(sells), pick(buys), pick(buys)];
     setTimeout(() => merchantMenu(lots, rate, p), 3600);
   }
+  const recentEv = [];
   function rollEvent(dayNo) {
     if (dayNo < 2 || Math.random() > 0.65) return;
-    const pool = EVENTS.filter(e => !e.avail || e.avail());
-    if (pool.length) setTimeout(() => openEvent(pool[Math.floor(Math.random() * pool.length)]), 1500);
+    let pool = EVENTS.filter(e => (!e.avail || e.avail()) && !recentEv.includes(e.id));      // 최근 3번 나온 이벤트는 제외
+    if (!pool.length) pool = EVENTS.filter(e => !e.avail || e.avail());
+    if (pool.length) { const ev = pool[Math.floor(Math.random() * pool.length)]; recentEv.push(ev.id); if (recentEv.length > 3) recentEv.shift(); setTimeout(() => openEvent(ev), 1500); }
   }
   // ---------- 9단계: 건물 레벨 (농장·벌목장·채석장·대장간·시장·우물): 시대가 올라가면 매일 아침 여유 자원으로 한 채씩 ----------
   const bLevel = (kind) => builtBuildings(kind).reduce((a, o) => Math.max(a, o.userData.level || 1), 0);
@@ -2222,6 +2287,7 @@
   }
   function updateNpc(dt, hour, t) {
     if (dead) return;
+    if (npc.escort) { escortStep(dt); return; }                       // 원정에 동행 중인 병사
     const isDay = hour >= 6 && hour < 18;
     if (npc.down) {
       if (isDay) reviveNpc(); else { setLabel('Down'); return; }
@@ -2764,7 +2830,7 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon);
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openClassChoice, 700); }
@@ -2989,6 +3055,12 @@
     gr.userData = { type: 'chest', radius: 0.9, relic: !!relic };
     return exAdd(gr, true);
   }
+  const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff) };
+  function frostTint(e, faction = 'frost') {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
+    const map = new Map();
+    e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.color.lerp(FACTION_COLOR[faction] || FACTION_COLOR.frost, 0.55); map.set(o.material, c); } o.material = c; } });
+    if (map.has(e.material)) e.material = map.get(e.material);
+  }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
     const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.tint, flatShading: true, roughness: 1 }));
@@ -3021,13 +3093,14 @@
       m.position.set(p.x, h / 2, p.z); m.rotation.y = rand(0, 3); m.castShadow = m.receiveShadow = true; m.userData = { type: 'ruin', radius: 0.9 }; exAdd(m, true);
     }
     for (let i = 0; i < d.chests; i++) { const p = spot(2.2); makeChest(p.x, p.z, !!d.relic && i === d.chests - 1); }
-    for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); }
+    for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
       const p = spot(4); spawnEnemy(d.guardian.kind, p);
       const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale;
       u.hp *= d.guardian.hpMul; u.maxHp = u.hp; u.guardian = true; u.contact *= 1.3; u.r *= s; u.baseY *= s;
       e.scale.multiplyScalar(s); e.position.y = u.baseY;
-      const lbl = textSprite('Guardian', '#ffcf5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
+      if (d.faction) frostTint(e, d.faction);
+      const lbl = textSprite(d.guardian.name || 'Guardian', '#ffcf5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
     }
   }
   function cleanupZone() {
@@ -3037,28 +3110,85 @@
   }
   function exEnemyStep(e, u, dt) {
     const px = player.position.x - e.position.x, pz = player.position.z - e.position.z, pd = Math.hypot(px, pz);
-    u.aggro = exActive ? (u.aggro ? pd < 24 : pd < 13) : false;
-    let moving = false;
+    let tx = player.position.x, tz = player.position.z, td = pd, tn = null, near = pd;           // 가장 가까운 상대: 플레이어 또는 동행 병사
+    for (const n of npcs) if (n.escort && !n.down) {
+      const d = Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z);
+      if (d < near) near = d;
+      if (d < td - 1.5 && d < 10) { td = d; tx = n.position.x; tz = n.position.z; tn = n; }
+    }
+    u.aggro = exActive ? (u.aggro ? near < 24 : near < 13) : false;
+    let moving = false; u.escortCd = (u.escortCd || 0) - dt;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
-    else if (u.aggro && pd > 0.9 && !(u.stunT > 0)) { e.position.x += px / pd * u.speed * dt; e.position.z += pz / pd * u.speed * dt; e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
+    else if (u.aggro && td > 0.9 && !(u.stunT > 0)) { e.position.x += (tx - e.position.x) / td * u.speed * dt; e.position.z += (tz - e.position.z) / td * u.speed * dt; e.lookAt(tx, e.position.y, tz); moving = true; }
     const dx = e.position.x - EXC.x, dz = e.position.z - EXC.z, dd = Math.hypot(dx, dz);
     if (dd > 42) { e.position.x = EXC.x + dx / dd * 42; e.position.z = EXC.z + dz / dd * 42; }
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
-    if (pd < PLAYER_R + u.r + 0.15) {
-      if (hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+    if (td < (tn ? 0.45 : PLAYER_R) + u.r + 0.15) {
+      if (tn) { if (u.escortCd <= 0 && !(u.stunT > 0)) { u.escortCd = 0.9; damageEscort(tn, u.contact * 0.7); } }
+      else if (hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
       if (u.atkAnimCd <= 0) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
     }
+  }
+  // ---------- 10단계: 동행 병사 (원정에 함께 간 병사는 플레이어를 따라다니며 원정 지역의 적과 싸운다. 쓰러져도 영구 사망하지 않고 집으로 옮겨진다) ----------
+  function damageEscort(n, dmg) {
+    if (n.down) return;
+    n.hp = Math.max(0, n.hp - Math.max(1, Math.round(dmg * (1 - gearDef(n.gear.armor).reduce) * (TR(n).dmg || 1))));
+    if (n.hp <= 0) { n.down = true; n.mat.color.set(0x777777); n.anim.die(); grieve(); toast(`${n.name} is down - they will be carried home`); }
+  }
+  function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
+    const dx = tx - n.position.x, dz = tz - n.position.z, d = Math.hypot(dx, dz);
+    if (d < 0.05) return d;
+    const st = Math.min(d, speed * moveMul(n) * dt);
+    n.position.x += dx / d * st; n.position.z += dz / d * st; n.face = Math.atan2(dx, dz); n.rotation.y = n.face;
+    for (const o of exObjs) {
+      const ox = n.position.x - o.position.x, oz = n.position.z - o.position.z, m = o.userData.radius + 0.45, od = Math.hypot(ox, oz);
+      if (od < m && od > 1e-4) { n.position.x = o.position.x + ox / od * m; n.position.z = o.position.z + oz / od * m; }
+    }
+    const cx = n.position.x - EXC.x, cz = n.position.z - EXC.z, cd = Math.hypot(cx, cz);
+    if (cd > 41) { n.position.x = EXC.x + cx / cd * 41; n.position.z = EXC.z + cz / cd * 41; }
+    return d;
+  }
+  function escortStep(dt) {
+    const n = npc;
+    if (n.down) { setLabel('Down'); n.anim.base('idle', 0); n.stateNow = 'Down'; return; }
+    n.atkCd -= dt;
+    let foe = null, bd = 16;
+    for (const e of enemies) {
+      if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
+      const d = Math.hypot(e.position.x - n.position.x, e.position.z - n.position.z);
+      if (d < bd) { bd = d; foe = e; }
+    }
+    let state = 'Escorting';
+    if (foe) {
+      state = 'Fighting';
+      if (n.role === 'melee') {
+        if (bd > 1.7) exMove(n, foe.position.x, foe.position.z, 5.2, dt);
+        else { n.face = Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z); n.rotation.y = n.face; if (n.atkCd <= 0) soldierStrike(foe); }
+      } else {
+        if (bd > 9) exMove(n, foe.position.x, foe.position.z, 4.5, dt);
+        else if (bd < 4) exMove(n, n.position.x * 2 - foe.position.x, n.position.z * 2 - foe.position.z, 4.5, dt);
+        if (bd <= 11) soldierShoot(foe);
+      }
+    } else {
+      const k = npcs.filter(x => x.escort).indexOf(n), a = facing + Math.PI + (k - 1) * 0.9, tx = player.position.x + Math.sin(a) * 2.6, tz = player.position.z + Math.cos(a) * 2.6;
+      const d = Math.hypot(tx - n.position.x, tz - n.position.z);
+      if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
+    }
+    const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
+    n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
+    n.stateNow = state; setLabel(state);
   }
   function openChest(o) {
     const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
-    if (d.ch === 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
+    if (d.ch >= 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
     burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud();
     if (o.userData.relic) foundRelic(d);
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false };
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {} };
+  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []);
   let beaconMesh = null;
   function setBeacon(on) {
     if (on && !beaconMesh) {
@@ -3074,7 +3204,7 @@
   const storyDone = (id) => id === 'first' ? story.exps >= 1 : !!story.relics[id];
   function storyDialog(title, text) { openEvent({ tag: 'Story', title, text, opts: [{ label: 'Continue', run: () => '' }] }); }
   function checkStory() {
-    for (const s of CFG.STORY.concat(story.beacon ? CFG.STORY2 : [])) {
+    for (const s of storyChain()) {
       if (!storyDone(s.id) || story.said[s.id]) continue;
       story.said[s.id] = true; story.log.push(`${s.title}: ${s.text}`);
       for (const [k, v] of Object.entries(s.reward)) res[k] += v;
@@ -3089,7 +3219,21 @@
       storyDialog(CFG.STORY_DAWN.title, CFG.STORY_DAWN.text); shake = Math.max(shake, 0.6); Snd.play('horn');
       if (beaconMesh) beaconMesh.children[0].material.opacity = 0.4;
     }
+    if (story.crown && !story.hollow) {
+      story.hollow = true; story.log.push(`${CFG.STORY_HOLLOW.title}: ${CFG.STORY_HOLLOW.text}`);
+      storyDialog(CFG.STORY_HOLLOW.title, CFG.STORY_HOLLOW.text); shake = Math.max(shake, 0.4); Snd.play('horn');
+    }
+    if (story.hollow && !story.finale && CFG.STORY4.every(s => storyDone(s.id))) {
+      story.finale = true; story.log.push(`${CFG.STORY_FINALE.title}: ${CFG.STORY_FINALE.text}`);
+      storyDialog(CFG.STORY_FINALE.title, CFG.STORY_FINALE.text); shake = Math.max(shake, 0.6); Snd.play('horn');
+      if (beaconMesh) { beaconMesh.children[0].material.opacity = 0.55; }
+    }
+    if (story.dawn && !story.crown && CFG.STORY3.every(s => storyDone(s.id))) {
+      story.crown = true; story.log.push(`${CFG.STORY_CROWN.title}: ${CFG.STORY_CROWN.text}`);
+      storyDialog(CFG.STORY_CROWN.title, CFG.STORY_CROWN.text); shake = Math.max(shake, 0.5); Snd.play('horn');
+    }
   }
+  function checkStoryAll() { checkStory(); checkStory(); }                    // 한 번에 여러 이야기가 이어질 때(왕관 → 4장 시작 → ...)를 위해 두 번 돈다
   function foundRelic(d) {
     story.relics[d.id] = true; toast(`Relic found: ${d.relic}!`); floatText(`Relic: ${d.relic}`, player.position.x, 3.2, player.position.z);
     burst({ x: player.position.x, z: player.position.z, y: 1.5 }, 40); shake = Math.max(shake, 0.35); Snd.play('horn');
@@ -3101,16 +3245,27 @@
   }
 
   // ---------- 원정 출발 / 귀환 ----------
+  let escortN = 0;
+  const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function startExpedition(id) {
     const d = CFG.EXPEDITIONS.find(x => x.id === id);
     if (!d || exActive || dead || exEnding) return;
     if (age < d.age) return toast(`Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})`);
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
+    if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
+    if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
+    if (d.needs && !d.needs.every(r => story.relics[r])) return toast('You need the Echo Stone and the Mourning Bell to find the Spire');
     if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
       exActive = { dest: d, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       buildZone(d);
+      const party = escortPool().sort((a, b) => (a.role === 'melee' ? 0 : 1) - (b.role === 'melee' ? 0 : 1)).slice(0, Math.min(escortN, CFG.ESCORT_MAX));     // 동행 병사: 근접 병사 먼저
+      party.forEach((n, i) => {
+        npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
+        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 2.2, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+      });
+      exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       exEnding = false; updateExUi(); toast(`${d.name}: find the chests - you have a few minutes before dusk`); Snd.play('horn');
@@ -3121,12 +3276,49 @@
     const ex = exActive; exEnding = true; gathering = null;
     fadeTo(() => {
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
+      const left = exObjs.filter(o => o.userData.type === 'chest').length + enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
+      const cleared = left === 0;
+      for (const n of npcs.filter(x => x.escort)) {                           // 동행 병사 귀환 (쓰러진 병사는 집에서 회복)
+        n.escort = false; n.position.set(n.home.x, 0, n.home.z); n.px = n.home.x; n.pz = n.home.z; n.atkCd = 0;
+        if (n.down) { n.hp = n.maxHp; }
+      }
       cleanupZone(); exActive = null;
+      if (ex.party > 0) unlockAch('escort');
+      if (cleared) unlockAch('clear');
+      if (cleared && !story.cleared[ex.dest.id]) { story.cleared[ex.dest.id] = true; setTimeout(() => toast(`${ex.dest.name} is cleared - build a camp from the Journal for daily supplies`), 2200); }
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
       toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
-      checkStory();
+      checkStoryAll();
     });
+  }
+  // ---------- 10단계: 야영지 (정리한 원정지에 세우면 매일 아침 자원이 들어온다) ----------
+  const campMeshes = [], campTentMat = mat(0xcbb48a), campFlagMat = mat(0x2f7fc0);
+  function rebuildCamps() {
+    for (const m of campMeshes) scene.remove(m);
+    campMeshes.length = 0;
+    CFG.EXPEDITIONS.filter(d => story.camps[d.id]).forEach((d, i) => {
+      const a = 0.55 + i * 0.62, r = 47, g = new THREE.Group();
+      const tent = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2.1, 5), campTentMat); tent.position.y = 1.05;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.2, 6), woodMat2); pole.position.set(1.8, 1.6, 0);
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.04), campFlagMat); flag.position.set(2.15, 2.9, 0);
+      g.add(tent, pole, flag); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); g.rotation.y = -a; scene.add(g); campMeshes.push(g);
+    });
+  }
+  function buildCamp(id) {
+    const d = CFG.EXPEDITIONS.find(x => x.id === id), cost = CFG.CAMP_COST[d.age];
+    if (!d || !story.cleared[id] || story.camps[id] || !canPay(cost)) return;
+    payCost(cost); story.camps[id] = true; updateHud(); rebuildCamps(); Snd.play('chime');
+    toast(`${d.name} camp established: ${Object.entries(CFG.CAMPS[id]).map(([k, v]) => `+${v} ${k}`).join(', ')} each morning`);
+    renderJournal(); saveGame();
+  }
+  function campIncome() {
+    const tot = {}; let any = false;
+    for (const d of CFG.EXPEDITIONS) if (story.camps[d.id] && CFG.CAMPS[d.id]) for (const [k, v] of Object.entries(CFG.CAMPS[d.id])) {
+      const g = Math.max(1, Math.round(v * (season().id === 'winter' ? 0.6 : 1))); res[k] += g; tot[k] = (tot[k] || 0) + g; any = true;
+    }
+    if (any) { report.camps = Object.entries(tot).map(([k, v]) => `${k} +${v}`).join(' · '); updateHud(); }
   }
   function updateExUi() {
     const b = document.getElementById('expBtn');
@@ -3145,18 +3337,28 @@
 
   // ---------- 일지(Journal): 이야기 목표 + 원정 목록 ----------
   const jEl = document.getElementById('journalPanel');
+  function campHtml(d) {
+    if (story.camps[d.id]) return `<small>Camp ✔ ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
+    if (!story.cleared[d.id]) return '';
+    const cost = CFG.CAMP_COST[d.age];
+    return `<small><button class="campBtn" data-camp="${d.id}" ${canPay(cost) ? '' : 'disabled'}>Build camp (${costText(cost)})</button> ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
+  }
   function renderJournal() {
-    const chain = CFG.STORY.concat(story.beacon ? CFG.STORY2 : []), first = chain.findIndex(s => !storyDone(s.id));
+    const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
-      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') +
+      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile.`;
-    document.getElementById('jExp').innerHTML = CFG.EXPEDITIONS.map(d => {
-      const lock = age < d.age || (d.ch === 2 && !story.beacon), found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : ` · Requires Age ${d.age}`) : ''}</small></div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
+    const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
+    const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
+    document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
+      const lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.needs && !d.needs.every(r => story.relics[r])), found = d.relic && story.relics[d.id];
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : ` · Requires Age ${d.age}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
     }).join('');
-    jEl.querySelectorAll('#jExp button').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
+    jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
+    jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
+    const eb = document.getElementById('escBtn'); if (eb) eb.addEventListener('click', () => { escortN = (escortN + 1) % (Math.min(pool, CFG.ESCORT_MAX) + 1); renderJournal(); });
   }
   function openJournal() { if (dead || exActive) return; renderJournal(); jEl.style.display = 'flex'; }
   function closeJournal() { jEl.style.display = 'none'; }
@@ -3201,7 +3403,7 @@
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
-  let fpsT = 0, fpsN = 0;
+  let fpsT = 0, fpsN = 0, stormT = 5, lightning = 0, thunderIn = 0;
 
   function tick() {
     requestAnimationFrame(tick);
@@ -3216,6 +3418,11 @@
     const nf = nightFactor(hour);
     const dayNo0 = Math.floor(gameMin / 1440) + 1, nightDay = hour < 7 ? dayNo0 - 1 : dayNo0;
     applyLighting(nf, isRaid(nightDay) ? nf : 0); seasonVisual(Math.min(1, dt * 0.6 + 0.0005));
+    if (wave.type === 'storm' && nf > 0.4 && !exActive) {                      // 폭풍우: 번개가 번쩍이고 조금 뒤에 천둥이 친다
+      stormT -= dt; if (stormT <= 0) { stormT = 3.5 + Math.random() * 7; lightning = 1; thunderIn = 0.5 + Math.random() * 0.8; }
+      if (thunderIn > 0 && (thunderIn -= dt) <= 0) Snd.play('thunder');
+    }
+    if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
@@ -3240,7 +3447,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3376,6 +3583,15 @@
     renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
     scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
   }
+  // 느린 기기 자동 대응: 터치 기기에서 처음 몇 초의 프레임이 낮으면 그래픽을 '낮음'으로 바꾸고 알려 준다 (한 번만, 직접 고른 설정은 건드리지 않는다)
+  const fpsLog = [];
+  setInterval(() => {
+    if (settings.auto || settings.gfx === 'lo' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
+    fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
+    if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
+      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
+    }
+  }, 1000);
   function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
   function openSettings() {
     document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
@@ -3390,7 +3606,7 @@
   document.getElementById('setMusic').addEventListener('input', e => Snd.setVol('music', e.target.value / 100));
   document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
   document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
-  document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
   document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
   document.getElementById('setDel').addEventListener('click', e => {
     if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to confirm'; return; }
@@ -3408,7 +3624,8 @@
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
   function tutorStep() {
-    if (!saveReady || dead || eventOpen || uiPause || exActive) return;
+    if (exActive) { tutEl.style.display = 'none'; return; }
+    if (!saveReady || dead || eventOpen || uiPause) return;
     if (!tut.done && tut.step < TUT.length && TUT[tut.step].done()) { tut.step++; toast('Good work!'); }
     if (tut.step >= TUT.length) tut.done = true;
     const show = !tut.done && !tut.off;
@@ -3421,6 +3638,55 @@
   }
   setInterval(tutorStep, 700);
   document.getElementById('tutorX').addEventListener('click', () => { tut.off = true; tutEl.style.display = 'none'; });
+
+  // ---------- 11단계: 업적 (브라우저에 저장되어 새 게임을 해도 남는다) ----------
+  const ACH = [
+    { id: 'night1', name: 'First Dawn', desc: 'Survive the first night', test: () => dayNow() >= 2 },
+    { id: 'week', name: 'A Whole Week', desc: 'Reach Day 7', test: () => dayNow() >= 7 },
+    { id: 'boss', name: 'Behemoth Slayer', desc: 'Defeat the Behemoth', test: () => chapterCleared },
+    { id: 'age2', name: 'Wooden Town', desc: 'Reach Age 2', test: () => age >= 2 },
+    { id: 'age3', name: 'Stone Keep', desc: 'Reach Age 3', test: () => age >= 3 },
+    { id: 'pop10', name: 'Busy Streets', desc: 'Have 10 villagers', test: () => npcs.length >= 10 },
+    { id: 'smith', name: 'Hammer and Anvil', desc: 'Build a Blacksmith', test: () => smiths().length > 0 },
+    { id: 'armed', name: 'Armed to the Teeth', desc: 'Have 3 soldiers wearing armor', test: () => npcs.filter(n => n.role !== 'citizen' && n.gear.armor !== 'armor_none').length >= 3 },
+    { id: 'master', name: 'Master Craftsman', desc: 'Train a citizen to Master level', test: () => npcs.some(n => Object.values(n.xp || {}).some(v => v >= CFG.SKILL_XP[3])) },
+    { id: 'lvl3', name: 'Grand Works', desc: 'Upgrade a workshop to level 3', test: () => CFG.LEVELED.some(k => builtBuildings(k).some(o => lvOf(o) >= 3)) },
+    { id: 'rich', name: 'Full Granary', desc: 'Store 100 Food', test: () => res.food >= 100 },
+    { id: 'prosper', name: 'Flourishing', desc: 'Reach Flourishing prosperity (80+)', test: () => prosScore >= 80 },
+    { id: 'winter', name: 'Through the Cold', desc: 'Live through a whole winter', test: () => CFG.SEASONS_ON && dayNow() >= CFG.SEASON_DAYS * 4 + 1 },
+    { id: 'merchant', name: 'Good Business', desc: 'Trade with a travelling merchant' },
+    { id: 'clear', name: 'Site Cleared', desc: 'Clear an expedition site completely' },
+    { id: 'escort', name: 'Never Alone', desc: 'Return from an expedition with an escort' },
+    { id: 'camp1', name: 'Outpost', desc: 'Build a camp', test: () => Object.keys(story.camps).length >= 1 },
+    { id: 'camp3', name: 'Supply Line', desc: 'Build 3 camps', test: () => Object.keys(story.camps).length >= 3 },
+    { id: 'storm', name: 'Stormproof', desc: 'Survive a thunderstorm night' },
+    { id: 'hunt', name: 'Pack Breaker', desc: 'Survive a wolf hunt night' },
+    { id: 'beacon', name: 'Light in the Dark', desc: 'Light the Beacon', test: () => story.beacon },
+    { id: 'dawn', name: 'Dawn Gate', desc: 'Open the Dawn Gate', test: () => story.dawn },
+    { id: 'crown', name: 'Winter Crown', desc: 'Take the Winter Crown', test: () => story.crown },
+    { id: 'echo', name: 'Voices of the Keepers', desc: 'Recover the Echo Stone', test: () => !!story.relics.barrow },
+    { id: 'finale', name: 'The Last Keeper', desc: 'Defeat the Hollow King and swear the Keeper\'s Oath', test: () => story.finale },
+  ];
+  let achSave = {};
+  try { achSave = JSON.parse(localStorage.getItem('nf_ach') || '{}') || {}; } catch (e) { achSave = {}; }
+  const achBanner = document.createElement('div'); achBanner.id = 'achBanner'; document.body.appendChild(achBanner); let achTimer;
+  function unlockAch(id) {
+    const a = ACH.find(x => x.id === id);
+    if (!a || achSave[id]) return;
+    achSave[id] = Date.now(); try { localStorage.setItem('nf_ach', JSON.stringify(achSave)); } catch (e) {}
+    achBanner.textContent = `🏆 ${a.name} - ${a.desc}`; achBanner.classList.add('show'); clearTimeout(achTimer); achTimer = setTimeout(() => achBanner.classList.remove('show'), 3800); Snd.play('chime');
+  }
+  function achStep() { if (!saveReady || dead) return; for (const a of ACH) if (a.test && !achSave[a.id]) { let ok = false; try { ok = !!a.test(); } catch (e) {} if (ok) unlockAch(a.id); } }
+  setInterval(achStep, 1000);
+  const achEl = document.getElementById('achPanel');
+  function openAch() {
+    const n = ACH.filter(a => achSave[a.id]).length;
+    document.getElementById('achCount').textContent = `${n} / ${ACH.length} unlocked`;
+    document.getElementById('achList').innerHTML = ACH.map(a => `<div class="ach ${achSave[a.id] ? 'got' : ''}"><span>${achSave[a.id] ? '🏆' : '🔒'}</span><div><b>${a.name}</b><small>${a.desc}</small></div></div>`).join('');
+    achEl.style.display = 'flex';
+  }
+  document.getElementById('setAch').addEventListener('click', () => { closeSettings(); uiPause = true; openAch(); });
+  document.getElementById('achClose').addEventListener('click', () => { achEl.style.display = 'none'; uiPause = false; });
 
   // 시작 화면: 저장이 있으면 이어하기 / 새 게임
   function bootGame() {
@@ -3439,6 +3705,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

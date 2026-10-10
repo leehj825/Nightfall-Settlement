@@ -35,3 +35,19 @@ The game auto-saves to the browser (localStorage) every morning and when you ret
 - **Patrols:** idle soldiers patrol inside the walls and take their posts at dusk; you get a warning if there are fewer soldiers than gates.
 - **Seasons:** 3 days each (Spring, Summer, Autumn, Winter). Crops, rations, mood and illness change; winter is hard. Illness slows citizens; wells reduce it and the merchant sells healing herbs. Both can be switched off in `js/config.js` (`SEASONS_ON`, `SICK_ON`).
 
+## Expeditions, camps and Chapter 3 (stage 10)
+- **Escort:** in the Journal choose up to 3 soldiers to come along. They follow you in the expedition zone and fight; if they fall they are carried home (no permanent loss).
+- **Camps:** clear an expedition site completely (every chest opened, every foe defeated), then build a camp from the Journal. Each camp delivers resources every morning (60% in winter) and shows a tent at the edge of the village.
+- **Chapter 3 - Frostmarch:** after the Dawn Gate opens, a new frozen region with a frost-tinted host and the Frost Warden. Taking the Winter Crown finishes the current story.
+- The game clock runs 4x slower while you are on an expedition; a countdown at the top shows when you will be called home.
+
+## Content and polish (stage 11)
+- **22 morning events** (bard, wolves, wandering smith, storm damage, tax collector, ...) with seasonal and state conditions; the same event will not come back within 3 rolls.
+- **New nights:** Thunderstorm (lightning, faster raiders) and Wolf Hunt (a fast pack of beasts that drop food) join calm, fog, plunder and the Blood Moon.
+- **23 achievements,** saved in the browser (Settings > Achievements).
+- **Install as an app (PWA):** when the game is served over http(s) it can be installed ("Add to Home Screen") and works offline after the first visit (`manifest.json`, `sw.js`, `icons/`). Bump `VERSION` in `sw.js` when you publish a new build. Opening `index.html` from disk (file://) works as before without the service worker.
+- **Slow devices:** on touch devices the game switches graphics to Low automatically if the frame rate stays under ~26 FPS for the first seconds (you can change it back in Settings).
+
+## Chapter 4 - The Hollow Court
+After the Winter Crown the story continues: a tolling bell and a road the Crown draws to three places. Recover the **Echo Stone** (Sunken Barrow) and the **Mourning Bell** (Mourning Chapel), then the Obsidian Spire opens: defeat **The Hollow King** and swear the Keeper's Oath. The ending makes nights 15% smaller and the villagers a little happier, and the game keeps going in endless mode. The hollow host is violet-tinted; each site can also get a camp. Story text lives in `js/config.js` (`STORY_HOLLOW`, `STORY4`, `STORY_FINALE`).
+
