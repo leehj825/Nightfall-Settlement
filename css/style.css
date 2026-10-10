@@ -264,3 +264,9 @@ html[data-hand="l"] #planBox { margin-top: 0; }
 html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 @media (max-width: 640px) and (orientation: portrait) { html[data-hand="l"] #planBox { right: 6px; } }
 @media (max-height: 520px) and (orientation: landscape) { html[data-hand="l"] #leftActions { bottom: 124px !important; gap: 2px; } html[data-hand="l"] #planBox { right: 6px; } }
+#planBox #planBtn { position: static; width: 150px; font: inherit; font-weight: 800; font-size: 12.5px; color: #fff; padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
+  background: linear-gradient(#5b8fd6, #2c5aa0); box-shadow: 0 4px 0 #1a3a6a, 0 8px 18px rgba(0,0,0,.4); }
+#planBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .92; margin-top: 1px; white-space: normal; }
+#planBtn.done { background: #555; box-shadow: none; opacity: .7; }
+#planBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a3a6a; }
+@media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #planBox #planBtn { width: 132px; font-size: 11px; padding: 4px 6px; } #planBtn small { font-size: 9px; } }

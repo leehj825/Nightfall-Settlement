@@ -76,7 +76,7 @@
     updateTowers(dt);
     updateFood(dt);
     updateDash(dt);
-    updateFloaters(dt); updateSmith(dt, t);
+    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt);
     Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);

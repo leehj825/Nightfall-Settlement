@@ -712,6 +712,34 @@
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
   const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower' };
+  // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
+  const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
+  const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
+  function planCandidates() {
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown };
+    const m = settings.plan || 'balanced';
+    const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
+    return order.filter(Boolean);
+  }
+  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
+  function updatePlanBtn() {
+    const b = document.getElementById('planBtn'); if (!b) return;
+    const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
+    if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? `Waiting for Age ${planCandidates()[0].age}` : 'Everything is planned';
+    if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
+    b.classList.toggle('done', !planCandidates().length);
+  }
+  function cyclePlan() { const i = PLAN_MODES.findIndex(m => m === planModeNow()); settings.plan = PLAN_MODES[(i + 1) % PLAN_MODES.length][0]; saveSettings(); updatePlanBtn(); toast(`Village plan: ${planModeNow()[1]}`); }
+  let planCd = 0;
+  function autoPlanTick(dt) {
+    planCd -= dt; if (planCd > 0) return; planCd = 2.5;
+    updatePlanBtn();
+    if (dead || exActive || eventOpen || uiPause || !saveReady) return;
+    const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
+    if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
+    const n = nextPlan(); if (n && canPay(n.cost)) n.run();
+  }
   function updateTownBtn() {
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
@@ -830,6 +858,7 @@
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
+  bindBtn('planBtn', cyclePlan);
   bindBtn('designBtn', designDefense);
   bindBtn('townBtn', designTown);
   bindBtn('smithBtn', openSmith);
@@ -3882,7 +3911,7 @@
     updateTowers(dt);
     updateFood(dt);
     updateDash(dt);
-    updateFloaters(dt); updateSmith(dt, t);
+    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt);
     Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
@@ -4016,7 +4045,7 @@
   }
 
   // 설정 (볼륨 · 글자 크기 · 그래픽)
-  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true, hand: 'r', bsz: 'm' };
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true, hand: 'r', bsz: 'm', plan: 'balanced' };
   try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
   function applySettings() {
     document.documentElement.dataset.ts = settings.text; document.documentElement.dataset.hand = settings.hand; document.documentElement.dataset.bsz = settings.bsz;
@@ -4066,10 +4095,10 @@
   // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
   const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
   const TUT = [
-    { text: 'Tap Defense Line to plan a fence - soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Gather wood: the village plan sets up a fence by itself and soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
     { text: 'Defeat raiders to level up, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
-    { text: 'Tap Plan Town Buildings', done: () => townStage > 0 },
+    { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
   function tutorStep() {

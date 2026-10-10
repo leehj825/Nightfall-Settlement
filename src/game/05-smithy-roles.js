@@ -92,6 +92,7 @@
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
+  bindBtn('planBtn', cyclePlan);
   bindBtn('designBtn', designDefense);
   bindBtn('townBtn', designTown);
   bindBtn('smithBtn', openSmith);

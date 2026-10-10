@@ -26,7 +26,7 @@
   }
 
   // 설정 (볼륨 · 글자 크기 · 그래픽)
-  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true, hand: 'r', bsz: 'm' };
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true, hand: 'r', bsz: 'm', plan: 'balanced' };
   try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
   function applySettings() {
     document.documentElement.dataset.ts = settings.text; document.documentElement.dataset.hand = settings.hand; document.documentElement.dataset.bsz = settings.bsz;
@@ -76,10 +76,10 @@
   // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
   const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
   const TUT = [
-    { text: 'Tap Defense Line to plan a fence - soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Gather wood: the village plan sets up a fence by itself and soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
     { text: 'Defeat raiders to level up, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
-    { text: 'Tap Plan Town Buildings', done: () => townStage > 0 },
+    { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
   function tutorStep() {
