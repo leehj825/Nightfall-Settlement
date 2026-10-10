@@ -65,4 +65,12 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - **Fireside tales:** stand by the campfire on a peaceful night for old Edda's stories (+25 XP, mood). Ten tales that foreshadow the story chapters.
 - **Night visitors:** five random night events on quiet nights (a knock at the gate, an owl that foretells the next raid, whispers in the woods, ...).
 - **Moonlit expeditions:** Moonlit Crypt, Whispering Marsh and Pale Mausoleum open from 20:00 to 02:00 once the night's raiders are cleared (not on raid nights). Double XP, and their guardians give a bonus level-up choice. You are called home at 04:30.
+- **Seeing in the dark:** in expedition zones chests have light beams (faint up close), enemies have glowing halos (gold for guardians, colored by faction), the moon lights the ground and your torch reaches farther. The top line shows time left, chests left with the nearest chest's direction and distance, and foes left.
+
+## Difficulty and New Game+
+- **Difficulty** is chosen when a new game starts (and can be changed in Settings): Easy, Normal, Hard, Nightmare. They scale enemy health, raid size and the damage you, your soldiers and your walls take (`DIFFS` in `js/config.js`). Normal is much tougher than the first versions.
+- **New Game+:** after the ending (the Keeper's Oath) the start screen offers New Game+. It keeps your player level and upgrade picks, and each New Game+ makes enemies tougher (+40% health, +25% numbers, +20% damage per cycle). Achievements always carry over.
+
+## Android (debug APK)
+See [ANDROID.md](ANDROID.md): a Capacitor wrapper plus a GitHub Actions workflow that builds `app-debug.apk` (Actions -> "Android debug APK" -> Run workflow). three.js is now bundled in `vendor/`, so the game (and the app) work fully offline.
 

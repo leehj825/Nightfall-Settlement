@@ -227,6 +227,10 @@
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
   const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 } };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
+  let diff = 'normal', ngLevel = 0;
+  try { const d0 = localStorage.getItem('nf_diff'); if (d0 && CFG.DIFFS[d0]) diff = d0; } catch (e) {}
+  const dm = () => { const d = CFG.DIFFS[diff]; return { hp: d.hp * (1 + 0.4 * ngLevel), n: d.n * (1 + 0.25 * ngLevel), dmg: d.dmg * (1 + 0.2 * ngLevel) }; };
+  const scaleHp = (h) => Math.round((h * dm().hp + (dm().hp - 1) * 1.2) * 10) / 10;
   const hasPerk = (id) => Object.values(perks).includes(id);
   const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp;
   const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg);
@@ -730,6 +734,10 @@
     if (id === 'fortifier' || id === 'engineer') for (const o of obstacles) if (o.userData.type === 'fence' && o.userData.level === (id === 'engineer' ? 'stone' : 'wood')) { o.userData.hp *= 1.5; o.userData.maxHp *= 1.5; }
     updateHud(); updateProsperity();
   }
+  function openDifficultyChoice() {
+    openEvent({ tag: 'New game', title: 'Choose a difficulty', text: 'How hard should the nights be? You can change this later in Settings.',
+      opts: Object.entries(CFG.DIFFS).map(([id, d]) => ({ label: d.label + (id === diff ? ' (current)' : ''), sub: d.desc, run: () => { diff = id; try { localStorage.setItem('nf_diff', id); } catch (e) {} setTimeout(openClassChoice, 500); return `Difficulty: ${d.label}`; } })) });
+  }
   function openClassChoice() {
     openEvent({ tag: 'Choose your path', title: 'Who will you be?', text: 'Fight on the front line, or lead others from just behind it. This choice lasts the whole game.',
       opts: Object.entries(CFG.CLASSES).map(([id, c]) => ({ label: c.label, sub: c.desc, run: () => { setClass(id); setTimeout(() => openPerk(1), 500); return `You are the ${c.label}`; } })) });
@@ -953,7 +961,7 @@
   document.getElementById('restartBtn').addEventListener('click', () => { clearSave(); location.reload(); });
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
-    n = Math.max(1, Math.round(n * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 방어구 + 성장 피해 감소
+    n = Math.max(1, Math.round(n * dm().dmg * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 난이도 + 방어구 + 성장 피해 감소
     hp = Math.max(0, hp - n);
     sinceHurt = 0;
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt');
@@ -1073,7 +1081,7 @@
     }
     const hpBonus = Math.floor((Math.max(1, wave.day) - 1) / CFG.HP_SCALE_EVERY) +
       (chapterCleared ? Math.max(0, wave.day - CFG.BOSS_DAY) * CFG.ENDLESS_HP_PER_DAY : 0);      // 무한 모드: 날마다 체력 추가 증가
-    const hp = beast ? CFG.BEAST_HP : (boss ? CFG.BOSS_HP : brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : siege ? CFG.SIEGE_HP : CFG.ENEMY_HP) + hpBonus;
+    const hp = scaleHp((beast ? CFG.BEAST_HP : (boss ? CFG.BOSS_HP : brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : siege ? CFG.SIEGE_HP : CFG.ENEMY_HP) + hpBonus));
     m.userData = {
       kind, brute, shield, siege, boss, throwCd: rand(1.5, 3), hp, maxHp: hp,
       dpsKey: boss ? 'boss' : brute ? 'brute' : 'normal', slamCd: 3, slamT: 0, baseY: 0.8 * sc, r: ENEMY_R * sc,
@@ -1170,7 +1178,7 @@
     for (let i = 0; i < n; i++) {
       const a = rand(0, Math.PI * 2), r = rand(39, 47), kind = day >= 4 && Math.random() < 0.3 ? 'normal' : 'beast';
       spawnEnemy(kind, { x: Math.cos(a) * r, z: Math.sin(a) * r });
-      const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night');
+      const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night'); addGlow(e, 0x8f9cff, 1.5, 1.1);
     }
     setTimeout(() => toast('Night hunt: prowlers roam beyond the walls - double XP and loot, but it is dark out there'), 1500);
   }
@@ -1250,7 +1258,7 @@
       { label: 'Follow its gaze', sub: '+10 XP · learn what the next big raid will be', run: () => { giveXp(10); let d = nightDayNo() + 1; while (!isRaid(d)) d++; return `Day ${d}: ${forecast(d)}`; } },
       { label: 'Shoo it', alt: true, run: () => 'The owl looks offended' } ] },
     { id: 'whispers', tag: 'Night visitor', title: 'Whispers in the Woods', text: 'The trees outside the wall are whispering. Something is out there, and it seems to want company.', opts: [
-      { label: 'Go and look', sub: 'Three more prowlers appear (double XP) - plus 6 Iron if you survive', run: () => { for (let i = 0; i < 3; i++) { const a = rand(0, 6.28), r = rand(39, 46); spawnEnemy('beast', { x: Math.cos(a) * r, z: Math.sin(a) * r }); const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night'); } res.iron += 6; return 'Shapes move at the edge of the torchlight...'; } },
+      { label: 'Go and look', sub: 'Three more prowlers appear (double XP) - plus 6 Iron if you survive', run: () => { for (let i = 0; i < 3; i++) { const a = rand(0, 6.28), r = rand(39, 46); spawnEnemy('beast', { x: Math.cos(a) * r, z: Math.sin(a) * r }); const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night'); addGlow(e, 0x8f9cff, 1.5, 1.1); } res.iron += 6; return 'Shapes move at the edge of the torchlight...'; } },
       { label: 'Close the shutters', alt: true, run: () => 'You wait for the whispering to pass' } ] },
     { id: 'songs', tag: 'Night visitor', title: 'Singing by the Fire', text: 'The villagers have started singing. Badly, but with feeling.', avail: () => citizens().length > 0, opts: [
       { label: 'Join in', sub: 'Costs 8 Food (snacks) · everyone +10 mood', ok: () => res.food >= 8, run: () => { res.food -= 8; moodAll(10); return 'You sing worse than anyone. It is wonderful.'; } },
@@ -1336,7 +1344,7 @@
   function forecast(day) {
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);
     const boss = day === CFG.BOSS_DAY && !chapterCleared;
-    let n = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat); if (boss) n = Math.ceil(n / 2);
+    let n = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n); if (boss) n = Math.ceil(n / 2);
     const brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0, siege = day >= CFG.SIEGE_FROM_DAY ? 1 : 0;
     return `about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
   }
@@ -1357,12 +1365,12 @@
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
       if (wave.type === 'hunt') wave.remaining = Math.ceil(wave.remaining * 1.6) + 1;
       if (wave.type === 'storm') wave.remaining = Math.ceil(wave.remaining * 1.2);
-      wave.remaining = Math.ceil(wave.remaining * threat * ease) + extraRaiders;
+      wave.remaining = Math.ceil(wave.remaining * threat * ease * dm().n) + extraRaiders;
       wave.brutes = 0; wave.siegeLeft = 0; wave.bossLeft = 0; spawnCd = 0;
       spawnProwlers(day);
       return;
     }
-    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * ease) + extraRaiders;
+    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * ease * dm().n) + extraRaiders;
     wave.brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0;
     wave.siegeLeft = day >= CFG.SIEGE_FROM_DAY ? 1 + (Math.random() < 0.5 ? 1 : 0) : 0;      // Day 4부터 밤마다 공성 투척병 1~2마리
     if (day === CFG.BOSS_DAY) { wave.remaining = Math.ceil(wave.remaining / 2); wave.bossLeft = 1; }     // 보스 밤: 일반 적 절반 + 베헤모스 1마리
@@ -1432,7 +1440,7 @@
       }
       if (blocked) {
         e.position.x += (Math.random() - .5) * 0.02;
-        if (!(u.stunT > 0)) blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt;   // 구조물 체력 감소
+        if (!(u.stunT > 0)) blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt * dm().dmg;   // 구조물 체력 감소
         if (blocked.userData.hp <= 0) collapseStructure(blocked);     // 파괴 시 청사진으로 되돌아간다
       }
 
@@ -1473,7 +1481,7 @@
       if (fireAlive && Math.hypot(e.position.x, e.position.z) < FIRE_R + er + 0.3) {
         if (u.boss) {                                             // 보스: 즉사 대신 초당 피해, 오래 붙어 있으면 밀려난다
           if (!(u.stunT > 0)) {
-            fireHp -= CFG.BOSS_FIRE_DPS * dt; u.fireTimer += dt;
+            fireHp -= CFG.BOSS_FIRE_DPS * dt * dm().dmg; u.fireTimer += dt;
             if (fireHp <= 0) destroyFire();
             else if (u.fireTimer >= CFG.BOSS_FIRE_BUMP_TIME) {
               u.fireTimer = 0;
@@ -1619,7 +1627,7 @@
     toast(`${n.name} has fallen`);
   }
   function damageNpc(target, n) {
-    npc = target;
+    npc = target; n = n * dm().dmg;
     if (target.role !== 'citizen') n = Math.max(1, Math.round(n * (1 - gearDef(target.gear.armor).reduce)));      // 병사 방어구
     if (TR(target).dmg) n = Math.max(1, Math.round(n * TR(target).dmg));                                         // 용감한 성격
     npc.hp = Math.max(0, npc.hp - n);
@@ -2704,7 +2712,7 @@
     dust(o.position.x, o.position.z);
   }
   function damageStructure(o, dmg) {
-    o.userData.hp -= dmg;
+    o.userData.hp -= dmg * dm().dmg;
     if (o.userData.hp <= 0) collapseStructure(o);
   }
 
@@ -2751,7 +2759,7 @@
       if (o.userData.type === 'fence' && Math.hypot(o.position.x - x, o.position.z - z) < CFG.ROCK_SPLASH) damageStructure(o, CFG.ROCK_DAMAGE);
     }
     if (fireAlive && Math.hypot(x, z) < CFG.ROCK_SPLASH + FIRE_R) {       // 모닥불 직격
-      fireHp -= CFG.ROCK_DAMAGE;
+      fireHp -= CFG.ROCK_DAMAGE * dm().dmg;
       toast('The campfire was hit by a siege boulder!');
       if (fireHp <= 0) destroyFire();
     }
@@ -2913,7 +2921,7 @@
           damageStructure(o, CFG.QUAKE_STRUCT_DMG * (1 - CFG.QUAKE_FALLOFF * Math.min(1, dd / CFG.QUAKE_MAX)));
         }
       }
-      if (fireAlive && !s.hit.has('fire') && reach(0, 0)) { s.hit.add('fire'); fireHp -= CFG.QUAKE_FIRE_DMG; if (fireHp <= 0) destroyFire(); }
+      if (fireAlive && !s.hit.has('fire') && reach(0, 0)) { s.hit.add('fire'); fireHp -= CFG.QUAKE_FIRE_DMG * dm().dmg; if (fireHp <= 0) destroyFire(); }
       for (const n of npcs.slice()) {                                       // 동료/시민: 피해는 거의 없이 넉백만 (벽/건물/맵 밖으로 날아가지 않게 보정)
         if (n.down || s.hit.has(n) || !reach(n.position.x, n.position.z)) continue;
         s.hit.add(n);
@@ -3027,7 +3035,7 @@
     Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
-    if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openClassChoice, 700); }
+    if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
     order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `R · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, sn.playerGear || {}); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
@@ -3166,7 +3174,13 @@
       const nowM = gameMin % 1440, target = exActive.night ? (nowM >= 720 ? 1440 + CFG.EXP_NIGHT_FORCE * 60 : CFG.EXP_NIGHT_FORCE * 60) : CFG.EXP_FORCE * 60;
       const left = Math.max(0, Math.ceil((target - nowM) / (MIN_PER_SEC * CFG.EXP_TIME_MULT))), mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
       if (left <= 30 && !exActive.warned) { exActive.warned = true; toast(exActive.night ? 'Dawn is near - about 30 seconds left. Grab the last chests!' : 'Dusk is near - about 30 seconds left. Grab the last chests!'); }
-      const t = `Expedition: ${exActive.dest.name} - called home in ${mm}:${ss}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
+      const chests = exObjs.filter(o => o.userData.type === 'chest'), foes = enemies.filter(e => e.userData.ex && !(e.userData.dying > 0));
+      let near = null, nd0 = Infinity; for (const c of chests) { const d = Math.hypot(c.position.x - player.position.x, c.position.z - player.position.z); if (d < nd0) { nd0 = d; near = c; } }
+      let arrow = ''; if (near) {
+        const f = camera.getWorldDirection(new THREE.Vector3()), tx = near.position.x - player.position.x, tz = near.position.z - player.position.z;
+        const rel = Math.atan2(tx * -f.z + tz * f.x, tx * f.x + tz * f.z); arrow = ` ${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(rel / (Math.PI / 4)) + 8) % 8]}${Math.round(nd0)}m`;
+      }
+      const t = `${exActive.dest.name} · home in ${mm}:${ss} · 🎁${chests.length}${arrow} · ☠${foes.length}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
@@ -3248,8 +3262,18 @@
     gr.add(body, lid, band); gr.traverse(m => { if (m.isMesh) m.castShadow = true; });
     gr.position.set(x, 0, z); gr.rotation.y = rand(0, 6.28);
     gr.userData = { type: 'chest', radius: 0.9, relic: !!relic };
+    const col = relic ? 0xffe27a : 0xffc060;                                         // 상자: 멀리서도 보이는 빛기둥 + 빛무리
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.26, 22, 10, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    beam.position.y = 11; gr.add(beam); exBeams.push(beam); addGlow(gr, col, relic ? 3.2 : 2.2, 0.8);
     return exAdd(gr, true);
   }
+  const glowCache = new Map();
+  function addGlow(parent, color, scale, y) {                    // 어두운 곳에서도 보이는 빛무리 (추가 조명 없이 스프라이트만 사용)
+    let m = glowCache.get(color);
+    if (!m) { m = new THREE.SpriteMaterial({ map: smokeTex, color, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }); glowCache.set(color, m); }
+    const s = new THREE.Sprite(m); s.scale.setScalar(scale); s.position.y = y; parent.add(s); return s;
+  }
+  const exBeams = [], FOE_GLOW = { frost: 0x8fd0ff, hollow: 0xb08cff, wisp: 0x7affd0 };
   const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff), night: new THREE.Color(0x6f7cff), wisp: new THREE.Color(0x7affd0) };
   function frostTint(e, faction = 'frost') {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
     const map = new Map();
@@ -3288,19 +3312,21 @@
       m.position.set(p.x, h / 2, p.z); m.rotation.y = rand(0, 3); m.castShadow = m.receiveShadow = true; m.userData = { type: 'ruin', radius: 0.9 }; exAdd(m, true);
     }
     for (let i = 0; i < d.chests; i++) { const p = spot(2.2); makeChest(p.x, p.z, !!d.relic && i === d.chests - 1); }
-    for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); }
+    const foeList = d.foes.slice(); for (let i = Math.round(d.foes.length * (dm().n - 1)); i > 0; i--) foeList.push(d.foes[Math.floor(Math.random() * d.foes.length)]);
+    for (const kind of foeList) { const p = spot(2.5); spawnEnemy(kind, p); if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); addGlow(enemies[enemies.length - 1], FOE_GLOW[d.faction] || 0xff6a4a, 1.7, 1.2); }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
       const p = spot(4); spawnEnemy(d.guardian.kind, p);
       const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale;
       u.hp *= d.guardian.hpMul; u.maxHp = u.hp; u.guardian = true; u.contact *= 1.3; u.r *= s; u.baseY *= s;
       e.scale.multiplyScalar(s); e.position.y = u.baseY;
       if (d.faction) frostTint(e, d.faction);
+      addGlow(e, 0xffd45a, 3.4, 1.4);
       const lbl = textSprite(d.guardian.name || 'Guardian', '#ffcf5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
     }
   }
   function cleanupZone() {
     for (const o of exMeshes.concat(exObjs)) scene.remove(o);
-    exMeshes.length = 0; exObjs.length = 0;
+    exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0;
     for (const e of enemies.slice()) if (e.userData.ex) removeEnemy(e);
   }
   function exEnemyStep(e, u, dt) {
@@ -3327,7 +3353,7 @@
   // ---------- 10단계: 동행 병사 (원정에 함께 간 병사는 플레이어를 따라다니며 원정 지역의 적과 싸운다. 쓰러져도 영구 사망하지 않고 집으로 옮겨진다) ----------
   function damageEscort(n, dmg) {
     if (n.down) return;
-    n.hp = Math.max(0, n.hp - Math.max(1, Math.round(dmg * (1 - gearDef(n.gear.armor).reduce) * (TR(n).dmg || 1))));
+    n.hp = Math.max(0, n.hp - Math.max(1, Math.round(dmg * dm().dmg * (1 - gearDef(n.gear.armor).reduce) * (TR(n).dmg || 1))));
     if (n.hp <= 0) { n.down = true; n.mat.color.set(0x777777); n.anim.die(); grieve(); toast(`${n.name} is down - they will be carried home`); }
   }
   function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
@@ -3422,6 +3448,7 @@
       story.finale = true; story.log.push(`${CFG.STORY_FINALE.title}: ${CFG.STORY_FINALE.text}`);
       storyDialog(CFG.STORY_FINALE.title, CFG.STORY_FINALE.text); shake = Math.max(shake, 0.6); Snd.play('horn');
       if (beaconMesh) { beaconMesh.children[0].material.opacity = 0.55; }
+      try { localStorage.setItem('nf_carry', JSON.stringify({ ng: ngLevel + 1, lvl: pl.lvl, st: { ...pl.st } })); } catch (e) {} setTimeout(() => toast('New Game+ unlocked: start a new game to carry your level into a tougher world'), 3000);
     }
     if (story.dawn && !story.crown && CFG.STORY3.every(s => storyDone(s.id))) {
       story.crown = true; story.log.push(`${CFG.STORY_CROWN.title}: ${CFG.STORY_CROWN.text}`);
@@ -3635,14 +3662,18 @@
       stormT -= dt; if (stormT <= 0) { stormT = 3.5 + Math.random() * 7; lightning = 1; thunderIn = 0.5 + Math.random() * 0.8; }
       if (thunderIn > 0 && (thunderIn -= dt) <= 0) Snd.play('thunder');
     }
+    if (exActive) {                                                                  // 원정 지역: 밤에도 달빛이 있어 상자와 적을 찾을 수 있다
+      ambient.intensity += 0.45 * nf; sun.intensity += 0.3 * nf; scene.fog.near *= 2.4; scene.fog.far *= 2.0;
+      for (const b of exBeams) { const d = Math.hypot(b.parent.position.x - player.position.x, b.parent.position.z - player.position.z); b.material.opacity = (0.1 + 0.2 * nf) * Math.min(1, d / 9); }       // 가까이 가면 기둥이 옅어진다
+    }
     if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
     { const g = Math.max(0, Math.min(1, (nf - 0.2) / 0.45)), fl = 0.94 + 0.06 * Math.sin(t * 9); windowGlow.color.setRGB(0.16 + 0.84 * g * fl, 0.16 + 0.62 * g * fl, 0.2 + 0.2 * g); lampGlow.color.copy(windowGlow.color); lampLevel = g * fl; updateGateLights(t); }      // 창문·가로등은 밤에 켜진다                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
-    torch.intensity = nf * 2.4;   // 횃불: 밤에 켜지고 낮에 꺼짐
+    torch.intensity = nf * (exActive ? 3.4 : 2.4); torch.distance = exActive ? 34 : 18;   // 횃불: 밤에 켜지고 낮에 꺼짐 (원정 지역에서는 더 넓게)
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
-    clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1}${CFG.SEASONS_ON ? ' · ' + season().name : ''} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ Endless' : ''}${resting ? ' · 💤' : ''}`;
+    clockEl.textContent = `Day ${Math.floor(gameMin / 1440) + 1}${CFG.SEASONS_ON ? ' · ' + season().name : ''} - ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${chapterCleared ? ' · ∞ Endless' : ''}${resting ? ' · 💤' : ''}${ngLevel ? ' · NG+' + ngLevel : ''}`;
 
     const dayNo = Math.floor(gameMin / 1440) + 1;
     nowHour = hour;
@@ -3775,7 +3806,7 @@
   const tut = { done: false, step: 0, hints: {} };
   function saveGame() {                                   // 매일 아침과 원정 귀환 때: 마을 상태만 저장한다 (원정 중에는 저장하지 않는다)
     if (!saveReady || dead || exActive || exEnding) return;
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, ts: Date.now(), day: Math.floor(gameMin / 1440) + 1, snap: makeSnapshot(), tut })); } catch (e) {}
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, ts: Date.now(), day: Math.floor(gameMin / 1440) + 1, snap: makeSnapshot(), tut, diff, ng: ngLevel })); } catch (e) {}
   }
   function readSave() {
     try {
@@ -3786,7 +3817,7 @@
   function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
   function loadSave(d) {
     applySnapshot(d.snap);
-    Object.assign(tut, { done: false, step: 0, hints: {} }, d.tut || {});
+    Object.assign(tut, { done: false, step: 0, hints: {} }, d.tut || {}); diff = CFG.DIFFS[d.diff] ? d.diff : 'normal'; ngLevel = d.ng || 0;
     checkpoints.length = 0; saveCheckpoint('Loaded save');
     toast(`Continuing from Day ${d.day}`);
   }
@@ -3814,6 +3845,7 @@
   function openSettings() {
     document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
     document.getElementById('setSfx').value = Math.round(Snd.getVol('sfx') * 100);
+    { const sd = document.getElementById('setDiff'); if (!sd.options.length) Object.entries(CFG.DIFFS).forEach(([id, d]) => sd.add(new Option(d.label, id))); sd.value = diff; }
     document.getElementById('setText').value = settings.text; document.getElementById('setGfx').value = settings.gfx;
     const d = readSave(); document.getElementById('setSaveInfo').textContent = d ? `Saved: Day ${d.day} (auto-saves every morning)` : 'No save yet - the game auto-saves every morning';
     uiPause = true; setEl.style.display = 'flex';
@@ -3824,6 +3856,7 @@
   document.getElementById('setMusic').addEventListener('input', e => Snd.setVol('music', e.target.value / 100));
   document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
   document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setDiff').addEventListener('change', e => { diff = e.target.value; try { localStorage.setItem('nf_diff', diff); } catch (x) {} toast(`Difficulty: ${CFG.DIFFS[diff].label}`); saveGame(); });
   document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
   document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
   document.getElementById('setDel').addEventListener('click', e => {
@@ -3881,6 +3914,8 @@
     { id: 'hunt', name: 'Pack Breaker', desc: 'Survive a wolf hunt night' },
     { id: 'nightmarket', name: 'Lantern Trade', desc: 'Buy something from the lantern merchant' },
     { id: 'tales', name: 'Storyteller', desc: 'Hear 5 fireside tales', test: () => Object.keys(story.tales || {}).length >= 5 },
+    { id: 'ng1', name: 'Again, Stronger', desc: 'Begin a New Game+', test: () => ngLevel >= 1 },
+    { id: 'hardwin', name: 'Hard Road', desc: 'Finish the story on Hard or Nightmare', test: () => story.finale && (diff === 'hard' || diff === 'nightmare') },
     { id: 'lvl5', name: 'Veteran', desc: 'Reach player level 5', test: () => pl.lvl >= 5 },
     { id: 'lvl10', name: 'Legend', desc: 'Reach player level 10', test: () => pl.lvl >= 10 },
     { id: 'beacon', name: 'Light in the Dark', desc: 'Light the Beacon', test: () => story.beacon },
@@ -3910,23 +3945,28 @@
   document.getElementById('setAch').addEventListener('click', () => { closeSettings(); uiPause = true; openAch(); });
   document.getElementById('achClose').addEventListener('click', () => { achEl.style.display = 'none'; uiPause = false; });
 
-  // 시작 화면: 저장이 있으면 이어하기 / 새 게임
+  // 시작 화면: 저장이 있으면 이어하기 / 새 게임 / (엔딩을 본 적이 있으면) 새 게임+
+  const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function bootGame() {
-    const d = readSave();
-    if (d && (!DEBUG || /[?&]load/.test(location.search))) {
+    const d = readSave(), carry = readCarry();
+    if ((d || carry) && (!DEBUG || /[?&]load/.test(location.search))) {
       const p = document.getElementById('startPanel'); uiPause = true;
-      document.getElementById('startInfo').textContent = `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}`;
+      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Welcome back';
+      document.getElementById('startContinue').style.display = d ? '' : 'none';
+      const ngBtn = document.getElementById('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
       p.style.display = 'flex';
+      const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
       document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
-      document.getElementById('startNew').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openClassChoice, 700); saveCheckpoint('Day 1 start'); });
+      document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
+      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, carry.st || {}); updateLvlUi(); begin(); });
       return;
     }
     saveReady = true;
-    if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openClassChoice, 700);
+    if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openDifficultyChoice, 700);
     saveCheckpoint('Day 1 start');
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

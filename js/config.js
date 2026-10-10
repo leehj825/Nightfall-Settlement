@@ -146,6 +146,9 @@
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 1.3,
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
+    // 난이도: 적 체력 / 적 수 / 받는 피해(플레이어·병사·구조물). 보통은 예전보다 훨씬 거칠어졌다. NG+ 한 번마다 체력 +40%, 수 +25%, 피해 +20%
+    DIFFS: { easy: { label: 'Easy', desc: 'Weaker, fewer raiders. For a relaxed build.', hp: 0.8, n: 0.8, dmg: 0.8 }, normal: { label: 'Normal', desc: 'Raiders hit hard and come in numbers. Gear and walls matter.', hp: 1.6, n: 1.35, dmg: 1.4 },
+      hard: { label: 'Hard', desc: 'Tough raiders, big waves. You will lose walls and soldiers.', hp: 2.4, n: 1.8, dmg: 1.9 }, nightmare: { label: 'Nightmare', desc: 'Everything wants you dead. Plan every night.', hp: 3.5, n: 2.5, dmg: 2.6 } },
     NIGHT_SPEED: 1.8, REST_SPEED: 8,         // 밤에는 시계가 1.8배 빠르게 흐르고, '새벽까지 쉬기' 중에는 8배 빠르다
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
     QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
