@@ -215,3 +215,12 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-height: 520px) and (orientation: landscape) { #hudBar { top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); font-size: 12px; padding: 3px 8px; } #hudBar small { font-size: 11px; } #hud { font-size: 15px !important; line-height: 1.45 !important; padding: 10px 18px !important; } }
 @media (max-width: 640px) and (orientation: portrait) { #hudBar { top: 100px; left: 6px; font-size: 12.5px; } #hudBar small { font-size: 11.5px; } #hud { font-size: 17px !important; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #hudBar { top: 88px; } }
+
+/* simple controls: tap the screen to attack; journal/map/town hall sit above the stick; contextual buttons keep their slot */
+#leftActions { position: fixed; left: 18px; bottom: 182px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+#ctxActions { position: fixed; right: 82px; bottom: 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; z-index: 5; }
+#leftActions .btn, #ctxActions .btn { display: block; }
+#leftActions .btn[style*="display: none"], #ctxActions .btn[style*="display: none"] { display: block !important; visibility: hidden; pointer-events: none; }
+@media (max-height: 520px) and (orientation: landscape) { #leftActions { left: 10px; bottom: 128px; gap: 4px; } #ctxActions { right: 68px; bottom: 8px; gap: 4px; } }
+@media (max-width: 640px) and (orientation: portrait) { #leftActions { left: 10px; bottom: 138px; gap: 4px; } #ctxActions { right: 64px; bottom: 8px; gap: 4px; } }
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #leftActions { bottom: 122px; } }

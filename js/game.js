@@ -934,9 +934,9 @@
     if (nh.length) { let o = nh[0].object; while (o && !npcs.includes(o)) o = o.parent; if (o) { openNpcCard(o); return; } }
     const gp = new THREE.Vector3();
     const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);      // 건물 주변을 눌러도 열리도록 지면 좌표로도 판정
-    if (ray.intersectObject(campfire, true).length || (onGround && Math.hypot(gp.x, gp.z) < FIRE_R + 1.2)) openTech();
-    else if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 1.2)))) nightMerchantMenu();
-    else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 1.2)))) openSmith();
+    if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) nightMerchantMenu();
+    else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) openSmith();
+    else if (!dead && !uiPause && !eventOpen) attack();                    // 빈 곳을 탭하면 기본 공격
   });
 
   function animateFire(t) {

@@ -16,7 +16,7 @@
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
 <div id="hudBar" title="Tap for all stats (I)"><span id="barA"></span><small id="barB"></small></div>
-<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display:none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display: none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
 <div id="clock">Day 1 - 08:00</div>
@@ -37,7 +37,7 @@
 <button id="muteBtn" title="Sound (M)">🔊</button>
 <button id="setBtn" title="Settings">⚙️</button>
 <div id="achPanel"><div class="scard2"><h3>Achievements</h3><p id="achCount"></p><div id="achList"></div><div class="tbtns"><button id="achClose">Close</button></div></div></div>
-<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display:none"></button></div></div></div>
+<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div></div></div>
 <div id="setPanel"><div class="scard2"><h3>Settings</h3>
   <label>Music<input type="range" id="setMusic" min="0" max="100"></label>
   <label>Sound effects<input type="range" id="setSfx" min="0" max="100"></label>
@@ -49,15 +49,19 @@
   <div class="tbtns"><button id="setAch">Achievements</button></div>
   <div class="tbtns"><button id="setTips">Replay tips</button><button id="setDel">Delete save</button><button id="setClose">Close</button></div></div></div>
 <canvas id="joy" width="150" height="150"></canvas>
-<div id="actions">
-  <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
-  <button class="btn" id="atkBtn">Attack<small>F</small></button>
+<div id="leftActions">
+  <button class="btn" id="hallBtn" style="display: none">Town Hall<small>T</small></button>
   <button class="btn" id="expBtn">Journal<small>J</small></button>
   <button class="btn" id="birdBtn">Map View<small>B</small></button>
-  <button class="btn" id="restBtn" style="display:none">Rest<small>Z</small></button>
-  <button class="btn" id="ordBtn" style="display:none">Orders<small id="ordSub">R · Guard</small></button>
-  <button class="btn" id="hallBtn" style="display:none">Town Hall<small>T</small></button>
-  <button class="btn" id="smithBtn" style="display:none">Smithy<small>C</small></button>
+</div>
+<div id="ctxActions">
+  <button class="btn" id="restBtn" style="display: none">Rest<small>Z</small></button>
+  <button class="btn" id="ordBtn" style="display: none">Orders<small id="ordSub">R · Guard</small></button>
+  <button class="btn" id="smithBtn" style="display: none">Smithy<small>C</small></button>
+</div>
+<div id="actions">
+  <button class="btn" id="atkBtn" style="display: none">Attack<small>F</small></button>
+  <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
   <button class="btn" id="buildBtn"><span id="buildLbl">Stone Wall</span><small>Upgrade · U</small></button>
   <button class="btn" id="actBtn">Gather<small>G</small></button>
   <button class="btn" id="ultBtn">Ultimate<small id="ultCd">E</small></button>
