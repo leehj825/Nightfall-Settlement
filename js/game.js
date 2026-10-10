@@ -1090,6 +1090,7 @@
       stars.position.y = 1.1; stars.visible = false; m.add(stars);
       Object.assign(m.userData, { bang, stunTxt, stars });
     }
+    if (wave.type === 'storm' && !at) m.userData.speed *= 1.12;          // 폭풍우: 적이 조금 더 빠르다
     scene.add(m);
     enemies.push(m);
   }
@@ -1111,6 +1112,7 @@
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
     if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
+    if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'plunder' && Math.random() < 0.4) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     hideTelegraph(e);
     u.sinking = true; u.dying = 1.0; e.position.y = u.baseY; u.anim.die();
@@ -1156,8 +1158,8 @@
   let chapterCleared = false;                // Day 7 보스 처치 후 true → 무한 모드
   const wave = { day: 0, remaining: 0, brutes: 0, siegeLeft: 0, bossLeft: 0 };
   // 밤의 종류 (조용한 밤만 변주): calm / fog(안개: 시야·사거리 감소) / plunder(약탈: 적이 더 많지만 철을 떨어뜨린다). 아침 요약과 상단 안내로 미리 알려 준다
-  const NIGHT_PATTERN = ['calm', 'calm', 'fog', 'plunder', 'fog', 'calm', 'plunder', 'fog'];
-  const NIGHT_INFO = { calm: ['Calm night', 'Beasts and a few raiders'], fog: ['Foggy night', 'Shorter sight for you and the archers'], plunder: ['Plunder night', 'More raiders, but they drop iron'], raid: ['Blood Moon raid', 'A full assault'] };
+  const NIGHT_PATTERN = ['calm', 'calm', 'fog', 'plunder', 'storm', 'fog', 'hunt', 'calm', 'plunder', 'storm', 'hunt', 'fog'];
+  const NIGHT_INFO = { calm: ['Calm night', 'Beasts and a few raiders'], fog: ['Foggy night', 'Shorter sight for you and the archers'], plunder: ['Plunder night', 'More raiders, but they drop iron'], storm: ['Thunderstorm', 'Lightning flashes and raiders move faster'], hunt: ['Wolf hunt', 'A fast pack of beasts - they drop food'], raid: ['Blood Moon raid', 'A full assault'] };
   function nightTypeOf(d) {
     if (isRaid(d)) return 'raid';
     let q = 0;
@@ -1166,20 +1168,24 @@
   }
   const isRaid = (d) => d % CFG.RAID_EVERY === 0 || d === CFG.BOSS_DAY;       // 붉은 달 대규모 습격의 밤 (3, 6, 9 ... + 보스 밤)
   const nextRaidFrom = (d) => { while (!isRaid(d)) d++; return d; };
+  let nightEase = false;
   function startWave(day) {
     wave.day = day;
     wave.quiet = !isRaid(day);
     wave.type = nightTypeOf(day);
-    const extraRaiders = pendingRaiders; pendingRaiders = 0;               // 아침 이벤트 선택의 대가
+    const extraRaiders = pendingRaiders; pendingRaiders = 0;
+    const ease = nightEase ? 0.75 : 1; nightEase = false;                  // 정찰병의 경고에 대비했다면 오늘 밤 적이 25% 줄어든다               // 아침 이벤트 선택의 대가
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
-      wave.remaining = Math.ceil(wave.remaining * threat) + extraRaiders;
+      if (wave.type === 'hunt') wave.remaining = Math.ceil(wave.remaining * 1.6) + 1;
+      if (wave.type === 'storm') wave.remaining = Math.ceil(wave.remaining * 1.2);
+      wave.remaining = Math.ceil(wave.remaining * threat * ease) + extraRaiders;
       wave.brutes = 0; wave.siegeLeft = 0; wave.bossLeft = 0; spawnCd = 0;
       return;
     }
-    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat) + extraRaiders;
+    wave.remaining = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * ease) + extraRaiders;
     wave.brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0;
     wave.siegeLeft = day >= CFG.SIEGE_FROM_DAY ? 1 + (Math.random() < 0.5 ? 1 : 0) : 0;      // Day 4부터 밤마다 공성 투척병 1~2마리
     if (day === CFG.BOSS_DAY) { wave.remaining = Math.ceil(wave.remaining / 2); wave.bossLeft = 1; }     // 보스 밤: 일반 적 절반 + 베헤모스 1마리
@@ -1199,7 +1205,7 @@
         if (wave.siegeLeft > 0 && (wave.remaining === 0 || Math.random() < 0.25)) {
           spawnEnemy('siege'); wave.siegeLeft--;
         } else {
-          const kind = wave.quiet ? (wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
+          const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
             : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
           spawnEnemy(kind);
@@ -1589,6 +1595,9 @@
     for (let i = 0; i < k && houses.length; i++) { const door = doorOf(houses[(npcs.length + i) % houses.length]); const c = makeNpc('citizen', door, 'citizen', i * 0.15); c.position.set(door.x, 0, door.z); made++; }
     report.newCit += made; return made;
   }
+  const moodAll = (x) => npcs.forEach(n => { n.mood = Math.max(0, Math.min(100, n.mood + x)); });
+  const dayNow = () => Math.floor(gameMin / 1440) + 1;
+  const tinkerTarget = () => CFG.LEVELED.flatMap(k => builtBuildings(k)).find(o => lvOf(o) < age);
   const EVENTS = [
     { id: 'merchant', title: 'Wandering Merchant', text: 'A cart rolls up to the gate. The merchant offers a few fair trades.', opts: [
       { label: 'Trade 12 Food for 4 Iron', ok: () => res.food >= 12, run: () => { res.food -= 12; res.iron += 4; return 'Deal done: +4 Iron'; } },
@@ -1603,6 +1612,59 @@
     { id: 'sickness', title: 'Sickness Rumor', text: 'Travelers brought coughs into the village. A few people look pale.', avail: () => citizens().length > 0, opts: [
       { label: 'Quarantine the travelers', sub: 'Costs 8 Food', ok: () => res.food >= 8, run: () => { res.food -= 8; return 'The sickness never spreads'; } },
       { label: 'Ignore it', sub: 'Up to 2 citizens fall ill for a few days (slower, gloomy)', alt: true, run: () => { const c = citizens().filter(n => !(n.sick > 0)).slice(0, 2); c.forEach(n => { n.sick = CFG.SICK_DAYS + 1; }); return c.length ? `${c.length} citizen${c.length > 1 ? 's' : ''} fell ill` : 'Nobody fell ill'; } } ] },
+    { id: 'bard', title: 'Travelling Bard', text: 'A bard with a battered lute asks for a meal and offers songs for the evening.', avail: () => citizens().length > 0, opts: [
+      { label: 'Feed the bard', sub: 'Costs 6 Food · everyone feels better (+15 mood)', ok: () => res.food >= 6, run: () => { res.food -= 6; moodAll(15); return 'Songs by the fire lift everyone\'s spirits'; } },
+      { label: 'No time for songs', alt: true, run: () => 'The bard wanders on' } ] },
+    { id: 'wolves', title: 'Hungry Wolves', text: 'Wolves circle the fields at dawn, thin and bold.', avail: () => dayNow() >= 3, opts: [
+      { label: 'Drive them off yourself', sub: 'You lose 25 HP · +6 Food from the pelts', run: () => { hp = Math.max(1, hp - 25); hpEl.textContent = Math.ceil(hp); res.food += 6; return 'The wolves flee. You are bruised.'; } },
+      { label: 'Leave food at the edge', sub: 'Costs 10 Food', ok: () => res.food >= 10, run: () => { res.food -= 10; return 'The wolves take the bait and leave'; } },
+      { label: 'Ignore them', sub: 'Two citizens panic (-12 mood)', alt: true, run: () => { citizens().slice(0, 2).forEach(n => { n.mood = Math.max(0, n.mood - 12); }); return 'The wolves are gone by noon, but nerves are frayed'; } } ] },
+    { id: 'stray', title: 'A Stray Dog', text: 'A scruffy dog trots into the village and refuses to leave.', avail: () => citizens().length > 0, opts: [
+      { label: 'Let it stay', sub: 'Everyone is a little happier (+8 mood)', run: () => { moodAll(8); return 'The dog has found a home'; } },
+      { label: 'Shoo it away', alt: true, run: () => 'The dog slinks off' } ] },
+    { id: 'tinker', title: 'Wandering Smith', text: 'A smith with a pack of tools offers to improve one of your workshops.', avail: () => !!tinkerTarget(), opts: [
+      { label: 'Hire the smith', sub: 'Costs 8 Iron + 10 Wood · upgrades a workshop by one level', ok: () => res.iron >= 8 && res.wood >= 10, run: () => { const t = tinkerTarget(); if (!t) return 'Nothing left to improve'; res.iron -= 8; res.wood -= 10; setBuildingLevel(t, lvOf(t) + 1); report.upgraded++; floatText(`${BUILDING_NAME[t.userData.kind]} Lv${lvOf(t)}!`, t.position.x, 3.6, t.position.z); return `${BUILDING_NAME[t.userData.kind]} upgraded`; } },
+      { label: 'Send the smith away', alt: true, run: () => 'The smith shoulders his pack' } ] },
+    { id: 'trainer', title: 'Master Craftsman', text: 'A retired craftsman offers to teach your workers a few tricks for a hot meal.', avail: () => citizens().some(n => jobKind(n)), opts: [
+      { label: 'Share a meal', sub: 'Costs 10 Food · every working citizen gains 2 experience', ok: () => res.food >= 10, run: () => { res.food -= 10; citizens().forEach(n => { const k = jobKind(n); if (k) { addXp(n, k); addXp(n, k); } }); return 'Your workers pick up new tricks'; } },
+      { label: 'Politely decline', alt: true, run: () => 'The craftsman moves on' } ] },
+    { id: 'storm', title: 'Storm Damage', text: 'A storm in the night has loosened planks along your walls.', avail: () => obstacles.some(o => o.userData.type === 'fence'), opts: [
+      { label: 'Brace the walls', sub: 'Costs 10 Wood', ok: () => res.wood >= 10, run: () => { res.wood -= 10; return 'The walls hold firm'; } },
+      { label: 'Hope for the best', sub: 'Several wall pieces are damaged', alt: true, run: () => { const f = obstacles.filter(o => o.userData.type === 'fence').sort(() => Math.random() - 0.5).slice(0, 6); f.forEach(o => { o.userData.hp = Math.max(1, o.userData.hp * 0.5); }); return 'Some planks are cracked - repairs are needed'; } } ] },
+    { id: 'harvest', title: 'Bountiful Harvest', text: 'The fields are heavy with grain this autumn.', avail: () => season().id === 'autumn', opts: [
+      { label: 'Store it all', sub: '+25 Food', run: () => { res.food += 25; return 'The granary is full'; } },
+      { label: 'Hold a harvest festival', sub: '+10 Food · everyone +10 mood', run: () => { res.food += 10; moodAll(10); return 'A merry festival'; } } ] },
+    { id: 'drought', title: 'Dry Spell', text: 'Weeks without rain have cracked the fields.', avail: () => season().id === 'summer' && builtBuildings('farm').length > 0, opts: [
+      { label: 'Dig irrigation channels', sub: 'Costs 8 Wood', ok: () => res.wood >= 8, run: () => { res.wood -= 8; return 'Water reaches the crops'; } },
+      { label: 'Wait for rain', sub: 'Lose 15 Food to spoilage', alt: true, run: () => { res.food = Math.max(0, res.food - 15); return 'The crops wither a little'; } } ] },
+    { id: 'lights', title: 'Strange Lights', text: 'Pale lights drift over the hills at dawn. Something is out there.', avail: () => dayNow() >= 3, opts: [
+      { label: 'Follow the lights', sub: 'A reward - and 2 more raiders tonight', run: () => { pendingRaiders += 2; if (story.beacon) { res.shard++; res.iron += 6; return 'You find a glowing shard and some iron'; } res.wood += 12; res.stone += 4; return 'You find a cache of wood and stone'; } },
+      { label: 'Stay inside', alt: true, run: () => 'The lights fade with the sun' } ] },
+    { id: 'deserter', title: 'Deserter', text: 'A soldier in torn armor asks to join your village.', avail: () => npcs.length < maxPop() && builtBuildings('house').length > 0, opts: [
+      { label: 'Take them in', sub: 'Costs 5 Food · joins as a melee soldier', ok: () => res.food >= 5, run: () => { res.food -= 5; const k = spawnCitizens(1), c = npcs[npcs.length - 1]; if (k && c) setRole(c, 'melee'); return k ? 'A new soldier joins you' : 'No room for them'; } },
+      { label: 'Turn them away', alt: true, run: () => 'The soldier trudges away' } ] },
+    { id: 'lost', title: 'Lost Child', text: 'A child wanders in from the woods, hungry and alone.', avail: () => npcs.length < maxPop() && builtBuildings('house').length > 0, opts: [
+      { label: 'Look after the child', sub: 'Costs 4 Food · a new citizen, everyone +6 mood', ok: () => res.food >= 4, run: () => { res.food -= 4; const k = spawnCitizens(1); moodAll(6); return k ? 'The child is welcomed' : 'No room, but hearts are warmed'; } },
+      { label: 'Send word to other villages', alt: true, run: () => 'Someone will come for the child' } ] },
+    { id: 'tax', title: 'Tax Collector', text: 'A royal tax collector has heard of your wealth.', avail: () => prosScore >= 45, opts: [
+      { label: 'Pay 20 Wood', ok: () => res.wood >= 20, run: () => { res.wood -= 20; return 'The collector is satisfied'; } },
+      { label: 'Pay 12 Stone', ok: () => res.stone >= 12, run: () => { res.stone -= 12; return 'The collector is satisfied'; } },
+      { label: 'Refuse', sub: 'Everyone -10 mood · 2 more raiders tonight', alt: true, run: () => { moodAll(-10); pendingRaiders += 2; return 'The collector storms off, muttering threats'; } } ] },
+    { id: 'rats', title: 'Rats in the Stores', text: 'Droppings and gnawed sacks - rats have found your food.', avail: () => res.food >= 20, opts: [
+      { label: 'Set traps', sub: 'Costs 6 Wood', ok: () => res.wood >= 6, run: () => { res.wood -= 6; return 'The traps do their work'; } },
+      { label: 'Ignore it', sub: 'Lose a quarter of your food', alt: true, run: () => { res.food = Math.floor(res.food * 0.75); return 'The rats feast'; } } ] },
+    { id: 'comet', title: 'Falling Star', text: 'A streak of fire crossed the sky last night and landed in the hills.', opts: [
+      { label: 'Search the crater', sub: '+4 Iron (and a shard if the Beacon is lit)', run: () => { res.iron += 4; if (story.beacon) res.shard++; return 'You pull glowing metal from the crater'; } },
+      { label: 'Leave it', alt: true, run: () => 'Better not to touch it' } ] },
+    { id: 'pilgrims', title: 'Pilgrims', text: 'A band of pilgrims on their way to a distant shrine asks for a meal.', avail: () => citizens().length > 0, opts: [
+      { label: 'Give 10 Food', sub: 'Everyone +15 mood · the sick recover', ok: () => res.food >= 10, run: () => { res.food -= 10; moodAll(15); npcs.forEach(n => { n.sick = 0; }); return 'Their blessing eases every heart'; } },
+      { label: 'Send them on', alt: true, run: () => 'The pilgrims walk on' } ] },
+    { id: 'scout', title: 'Scout\'s Warning', text: 'A scout reports movement in the dark beyond your walls.', avail: () => dayNow() >= 2, opts: [
+      { label: 'Reinforce the gate', sub: 'Costs 12 Wood · tonight\'s attack is 25% smaller', ok: () => res.wood >= 12, run: () => { res.wood -= 12; nightEase = true; return 'The gate is ready'; } },
+      { label: 'Trust your walls', alt: true, run: () => 'You wave the scout off' } ] },
+    { id: 'toll', title: 'Bandit Toll', text: 'Bandits block the road and demand a toll to let traders pass.', avail: () => dayNow() >= 4, opts: [
+      { label: 'Pay 8 Iron', ok: () => res.iron >= 8, run: () => { res.iron -= 8; return 'The road stays open'; } },
+      { label: 'Refuse', sub: '4 more raiders tonight', alt: true, run: () => { pendingRaiders += 4; return 'The bandits spit and ride off'; } } ] },
     { id: 'feast', title: 'Harvest Feast', text: 'The villagers ask to hold a feast to lift everyone\'s spirits.', avail: () => citizens().length > 0, opts: [
       { label: 'Hold the feast', sub: 'Costs 12 Food · everyone recovers, +1 newcomer if there is room', ok: () => res.food >= 12, run: () => { res.food -= 12; npcs.forEach(n => { n.hungry = false; }); const k = npcs.length < maxPop() ? spawnCitizens(1) : 0; citizens().forEach(n => floatText('Feast!', n.position.x, 3.0, n.position.z)); return k ? 'A great feast! A newcomer joined' : 'A great feast! Spirits are high'; } },
       { label: 'Not now', alt: true, run: () => 'Maybe next season' } ] },
@@ -1644,10 +1706,12 @@
     const lots = [pick(sells), pick(sells), pick(buys), pick(buys)];
     setTimeout(() => merchantMenu(lots, rate, p), 3600);
   }
+  const recentEv = [];
   function rollEvent(dayNo) {
     if (dayNo < 2 || Math.random() > 0.65) return;
-    const pool = EVENTS.filter(e => !e.avail || e.avail());
-    if (pool.length) setTimeout(() => openEvent(pool[Math.floor(Math.random() * pool.length)]), 1500);
+    let pool = EVENTS.filter(e => (!e.avail || e.avail()) && !recentEv.includes(e.id));      // 최근 3번 나온 이벤트는 제외
+    if (!pool.length) pool = EVENTS.filter(e => !e.avail || e.avail());
+    if (pool.length) { const ev = pool[Math.floor(Math.random() * pool.length)]; recentEv.push(ev.id); if (recentEv.length > 3) recentEv.shift(); setTimeout(() => openEvent(ev), 1500); }
   }
   // ---------- 9단계: 건물 레벨 (농장·벌목장·채석장·대장간·시장·우물): 시대가 올라가면 매일 아침 여유 자원으로 한 채씩 ----------
   const bLevel = (kind) => builtBuildings(kind).reduce((a, o) => Math.max(a, o.userData.level || 1), 0);
@@ -3325,7 +3389,7 @@
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
-  let fpsT = 0, fpsN = 0;
+  let fpsT = 0, fpsN = 0, stormT = 5, lightning = 0, thunderIn = 0;
 
   function tick() {
     requestAnimationFrame(tick);
@@ -3340,6 +3404,11 @@
     const nf = nightFactor(hour);
     const dayNo0 = Math.floor(gameMin / 1440) + 1, nightDay = hour < 7 ? dayNo0 - 1 : dayNo0;
     applyLighting(nf, isRaid(nightDay) ? nf : 0); seasonVisual(Math.min(1, dt * 0.6 + 0.0005));
+    if (wave.type === 'storm' && nf > 0.4 && !exActive) {                      // 폭풍우: 번개가 번쩍이고 조금 뒤에 천둥이 친다
+      stormT -= dt; if (stormT <= 0) { stormT = 3.5 + Math.random() * 7; lightning = 1; thunderIn = 0.5 + Math.random() * 0.8; }
+      if (thunderIn > 0 && (thunderIn -= dt) <= 0) Snd.play('thunder');
+    }
+    if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
@@ -3564,6 +3633,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

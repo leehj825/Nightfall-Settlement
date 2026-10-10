@@ -49,6 +49,7 @@
       boom: v => { tone(55, 0.7, 'sine', 0.55 * v, 25); noise(0.6, 0.35 * v, 'lowpass', 1400, 80); },
       horn: v => { tone(196, 0.9, 'sawtooth', 0.22 * v, 190); tone(147, 0.9, 'sawtooth', 0.18 * v, 140, 0.0); tone(220, 1.0, 'sawtooth', 0.2 * v, 215, 0.7); },
       click: v => tone(700, 0.05, 'square', 0.1 * v, 500),
+      thunder: v => { noise(1.8, 0.55 * v, 'lowpass', 500, 50); tone(48, 1.4, 'sine', 0.5 * v, 28); noise(0.9, 0.3 * v, 'lowpass', 300, 40, 0.5); },
     };
     function play(name, v = 1) {
       if (!ctx || muted || !SFX[name]) return;
