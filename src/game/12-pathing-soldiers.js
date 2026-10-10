@@ -178,9 +178,14 @@
     }
   }
   // 낮 작업 배분: 수리 > (채집조/건설조 분업). 자원이 부족하면 채집 담당을 먼저 정해 두고, 나머지는 '살 수 있는' 청사진만 지으러 간다
+  let fortifyTold = false;
   function pickDayTask() {
     const damaged = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.hp < o.userData.maxHp && unclaimed(o));
     if (damaged) return { kind: 'repair', target: damaged };
+    if (age >= CFG.UPGRADE_FENCE_AGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
+      const wf = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.level === 'wood' && unclaimed(o));
+      if (wf) { if (!fortifyTold) { fortifyTold = true; toast('Your workers will now rebuild the wooden fences in stone'); } return { kind: 'fortify', target: wf }; }
+    }
     const workers = npcs.filter(n => !n.down && !n.promote);
     const gatherers = workers.filter(n => n !== npc && n.task && n.task.kind === 'gather').length;
     const need = { wood: -res.wood, stone: -res.stone };                 // 청사진 전체 비용 - 보유량 = 부족분
@@ -202,6 +207,7 @@
   function taskValid(tk) {
     if (tk.kind === 'build') return blueprints.includes(tk.target);
     if (!obstacles.includes(tk.target)) return false;
+    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && age >= CFG.UPGRADE_FENCE_AGE;
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
@@ -312,8 +318,8 @@
       }
       if (task) {
         const o = task.target;
-        state = { repair: 'Repairing', build: 'Building', gather: 'Gathering' }[task.kind];
-        const stop = task.kind === 'build' ? (o.userData.stand ?? 1.2) : o.userData.radius + PLAYER_R + (task.kind === 'repair' ? 0.4 : 0.3);
+        state = { repair: 'Repairing', build: 'Building', gather: 'Gathering', fortify: 'Fortifying' }[task.kind];
+        const stop = task.kind === 'build' ? (o.userData.stand ?? 1.2) : o.userData.radius + PLAYER_R + (task.kind === 'repair' || task.kind === 'fortify' ? 0.4 : 0.3);
         const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
         if (d > stop) { npcMove(o.position.x, o.position.z, 3.5, dt); npc.workT = 0; }
         else {
@@ -338,6 +344,10 @@
             } else if (task.kind === 'repair' && npc.workT >= CFG.REPAIR_TIME) {
               o.userData.hp = o.userData.maxHp;
               dust(o.position.x, o.position.z);
+              setTask(null); npc.workT = 0;
+            } else if (task.kind === 'fortify' && npc.workT >= CFG.REPAIR_TIME * 1.5) {
+              if (res.stone >= CFG.FENCE_UPGRADE_STONE) { res.stone -= CFG.FENCE_UPGRADE_STONE; makeStoneFence(o); updateHud(); dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); report.built++; }
+              else o.userData.skipUntil = gameMin + 120;
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'gather' && npc.workT >= CFG.GATHER_TIME) {
               const type = o.userData.type;

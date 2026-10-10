@@ -328,11 +328,14 @@
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);
     res.stone -= CFG.FENCE_UPGRADE_STONE;
+    makeStoneFence(f);
+    updateHud();
+    toast('Upgraded to a stone wall!');
+  }
+  function makeStoneFence(f) {
     f.material = wallMat;                         // 짙은 회색 돌 성벽
     f.scale.y = 1.25; f.position.y = 0.55 * 1.25;
     Object.assign(f.userData, { level: 'stone', hp: wallHp(), maxHp: wallHp() });
-    updateHud();
-    toast('Upgraded to a stone wall!');
   }
   // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설
 

@@ -84,6 +84,8 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - Tap an empty spot on the screen to attack (or press `F`). Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
 - Settings: left-handed layout, button size (small / normal / large), text size, vibration, volumes.
 
+- Stone walls are no longer built by hand: from Age 3 your workers and soldiers replace wooden fences with stone on their own (5 stone each, taken from your stock), after repairs and building plans. The Stone Wall button and `U` key are gone.
+
 ## Terrain
 The village stays on flat ground; beyond the walls the land rolls into hills, and a river runs along the south-east with one wooden bridge. Wading through the river slows the hero and raiders to 60% speed; the bridge is full speed. Trees and rocks do not grow in the water.
 

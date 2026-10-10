@@ -170,7 +170,6 @@
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) dash(); }
     if (e.code === 'KeyG' && !e.repeat) gather();
     if (e.code === 'KeyE' && !e.repeat) ultimate();
-    if (e.code === 'KeyU' && !e.repeat) upgradeFence();
     if (e.code === 'KeyF' && !e.repeat) attack();
     if (e.code === 'KeyQ' && !e.repeat) swapWeapon();
     if (e.code === 'KeyC' && !e.repeat) { if (smithEl.style.display === 'flex') closeSmith(); else openSmith(); }
