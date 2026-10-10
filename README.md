@@ -71,6 +71,15 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - **Difficulty** is chosen when a new game starts (and can be changed in Settings): Easy, Normal, Hard, Nightmare. They scale enemy health, raid size and the damage you, your soldiers and your walls take (`DIFFS` in `js/config.js`). Normal is much tougher than the first versions.
 - **New Game+:** after the ending (the Keeper's Oath) the start screen offers New Game+. It keeps your player level and upgrade picks, and each New Game+ makes enemies tougher (+40% health, +25% numbers, +20% damage per cycle). Achievements always carry over.
 
+## Phone polish, Chapter 5 and records
+- Stats are hidden behind a compact top strip; tap it (or press `I`) to open a large stats panel, tap anywhere else to close it.
+- Haptic feedback on hits, level-ups and warnings (Settings -> Haptics); audio pauses when the app is in the background.
+- Chapter 5 - The Wide Road: after the finale, Ashford, Reedhaven and Stonegate open; collecting their embers ends the story with permanent perks.
+- Endless milestones every 5 days after the story is cleared (iron, XP, shards) and per-difficulty best records shown on the game-over screen.
+
+## Releasing to Google Play
+See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `docs/privacy-policy.md`.
+
 ## Android (debug APK)
 See [ANDROID.md](ANDROID.md): a Capacitor wrapper plus a GitHub Actions workflow that builds `app-debug.apk` (Actions -> "Android debug APK" -> Run workflow). three.js is now bundled in `vendor/`, so the game (and the app) work fully offline.
 

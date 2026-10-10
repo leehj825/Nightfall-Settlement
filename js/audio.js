@@ -8,6 +8,7 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       ctx = new AC();
+      document.addEventListener('visibilitychange', () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (!muted) ctx.resume(); });      // 앱이 백그라운드로 가면 소리를 멈춘다
       master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ctx.destination);
       sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8 * vol.sfx; sfxBus.connect(master);
       musicBus = ctx.createGain(); musicBus.gain.value = 0.3 * vol.music; musicBus.connect(master);
