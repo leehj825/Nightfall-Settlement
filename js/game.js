@@ -232,8 +232,8 @@
   const dm = () => { const d = CFG.DIFFS[diff]; return { hp: d.hp * (1 + 0.4 * ngLevel), n: d.n * (1 + 0.25 * ngLevel), dmg: d.dmg * (1 + 0.2 * ngLevel) }; };
   const scaleHp = (h) => Math.round((h * dm().hp + (dm().hp - 1) * 1.2) * 10) / 10;
   const hasPerk = (id) => Object.values(perks).includes(id);
-  const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp;
-  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg);
+  const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
+  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1);
   const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0);
   const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
@@ -241,7 +241,7 @@
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1);
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
@@ -1227,7 +1227,7 @@
     }
   }
   // ---------- 밤 활동 2: 모닥불 이야기 / 등불 상인 / 밤 손님 ----------
-  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide };
+  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide, eclipse: () => story.eclipse };
   const nightDayNo = () => { const h = (gameMin / 60) % 24; return h < 5 ? dayNow() - 1 : dayNow(); };
   let taleT = 0, nmActive = null, nmLantern = null, lastNightEvDay = 0;
   function nextTale() { return CFG.TALES.find(t => !story.tales[t.id] && TALE_REQ[t.req]()); }
@@ -1305,6 +1305,7 @@
       if (story.beacon && Math.random() < 0.1) { res.shard++; floatText('Loot: Shard +1', e.position.x, 3.4, e.position.z); }
       updateHud();
     }
+    if (u.champ) { story.champs = (story.champs || 0) + 1; const k = 8 + dayNow(); res.iron += k; res.shard++; giveXp(80); floatText(`Champion down! +${k} Iron, +1 Shard`, e.position.x, 3.2, e.position.z); Snd.play('victory'); updateHud(); }
     if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
@@ -1400,7 +1401,18 @@
     wave.siegeLeft = day >= CFG.SIEGE_FROM_DAY ? 1 + (Math.random() < 0.5 ? 1 : 0) : 0;      // Day 4부터 밤마다 공성 투척병 1~2마리
     if (day === CFG.BOSS_DAY) { wave.remaining = Math.ceil(wave.remaining / 2); wave.bossLeft = 1; }     // 보스 밤: 일반 적 절반 + 베헤모스 1마리
     if (chapterCleared && day > CFG.BOSS_DAY) wave.remaining += (day - CFG.BOSS_DAY) * CFG.ENDLESS_EXTRA_PER_DAY;   // 무한 모드 물량 증가
+    wave.champ = 0;
+    if (chapterCleared && day > CFG.BOSS_DAY) { story.raidN = (story.raidN || 0) + 1; if (story.raidN % 2 === 0) { wave.champ = 1; } }       // 무한 모드: 두 번째 큰 습격마다 이름 있는 챔피언이 온다
     spawnCd = 0;
+  }
+  function spawnChampion() {
+    const ch = CFG.CHAMPIONS[(story.champs || 0) % CFG.CHAMPIONS.length], before = enemies.length;
+    spawnEnemy('brute'); if (enemies.length === before) return;
+    const e = enemies[enemies.length - 1], u = e.userData, s = ch.scale;
+    u.hp *= ch.hpMul; u.maxHp = u.hp; u.champ = true; u.contact *= 1.25; u.r *= s; u.baseY *= s; e.scale.multiplyScalar(s); e.position.y = u.baseY;
+    frostTint(e, ch.faction); addGlow(e, FOE_GLOW[ch.faction] || 0xff6a4a, 3.2, 1.4);
+    const lbl = textSprite(ch.name, '#ff9a5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
+    showWarning(`Champion: the ${ch.name} has come!`);
   }
   function updateEnemies(dt, night, waveDay) {
     if (night && wave.day !== waveDay) startWave(waveDay);
@@ -1409,6 +1421,7 @@
       spawnEnemy('boss'); wave.bossLeft = 0;
       showWarning('The Behemoth has appeared!'); shake = Math.max(shake, 0.8);
     }
+    if (night && !dead && wave.champ > 0 && nh >= CFG.BOSS_SPAWN_HOUR) { wave.champ = 0; spawnChampion(); }
     if (night && !dead && (wave.remaining > 0 || wave.siegeLeft > 0)) {
       spawnCd -= dt;
       if (spawnCd <= 0 && enemies.length < CFG.MAX_ALIVE) {
@@ -3064,7 +3077,7 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
     totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
@@ -3441,8 +3454,8 @@
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} };
-  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []).concat(story.road ? CFG.STORY5 : []);
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} };
+  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []).concat(story.road ? CFG.STORY5 : []).concat(story.eclipse ? CFG.STORY6 : []);
   let beaconMesh = null;
   function setBeacon(on) {
     if (on && !beaconMesh) {
@@ -3491,6 +3504,14 @@
       story.wide = true; story.log.push(`${CFG.STORY_WIDE.title}: ${CFG.STORY_WIDE.text}`);
       storyDialog(CFG.STORY_WIDE.title, CFG.STORY_WIDE.text); shake = Math.max(shake, 0.5); Snd.play('horn');
     }
+    if (story.wide && !story.eclipse) {
+      story.eclipse = true; story.log.push(`${CFG.STORY_ECLIPSE.title}: ${CFG.STORY_ECLIPSE.text}`);
+      setTimeout(() => storyDialog(CFG.STORY_ECLIPSE.title, CFG.STORY_ECLIPSE.text), 2500);
+    }
+    if (story.eclipse && !story.dusk && CFG.STORY6.every(s => storyDone(s.id))) {
+      story.dusk = true; story.log.push(`${CFG.STORY_END6.title}: ${CFG.STORY_END6.text}`);
+      storyDialog(CFG.STORY_END6.title, CFG.STORY_END6.text); shake = Math.max(shake, 0.6); Snd.play('victory'); updateHud();
+    }
     if (story.dawn && !story.crown && CFG.STORY3.every(s => storyDone(s.id))) {
       story.crown = true; story.log.push(`${CFG.STORY_CROWN.title}: ${CFG.STORY_CROWN.text}`);
       storyDialog(CFG.STORY_CROWN.title, CFG.STORY_CROWN.text); shake = Math.max(shake, 0.5); Snd.play('horn');
@@ -3530,6 +3551,7 @@
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
+    if (d.ch === 6 && !story.eclipse) return toast('Light the Wide Road first');
     if (d.ch === 5 && !story.road) return toast('Swear the Keeper\'s Oath first');
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('Recover the earlier relics first: this place stays hidden until you carry them');
     if (powerOf().total < needOf(d)) return toast(`Too dangerous for now: needs power ${needOf(d)} (you have ${powerOf().total}). Upgrade gear, train soldiers, level up.`);
@@ -3633,7 +3655,7 @@
     const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
     const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
-      const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
+      const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
@@ -3964,6 +3986,11 @@
     { id: 'ng1', name: 'Again, Stronger', desc: 'Begin a New Game+', test: () => ngLevel >= 1 },
     { id: 'hardwin', name: 'Hard Road', desc: 'Finish the story on Hard or Nightmare', test: () => story.finale && (diff === 'hard' || diff === 'nightmare') },
     { id: 'wide', name: 'Keeper of the Road', desc: 'Light the Wide Road (Chapter 5)', test: () => story.wide },
+    { id: 'dusk', name: 'The Long Dawn', desc: 'End the Eclipse (Chapter 6)', test: () => story.dusk },
+    { id: 'champ3', name: 'Champion Slayer', desc: 'Defeat 3 Champions in endless mode', test: () => (story.champs || 0) >= 3 },
+    { id: 'champ10', name: 'Name Taker', desc: 'Defeat 10 Champions in endless mode', test: () => (story.champs || 0) >= 10 },
+    { id: 'kills500', name: 'Five Hundred', desc: 'Defeat 500 enemies in one run', test: () => totalKills >= 500 },
+    { id: 'day50', name: 'Half a Hundred', desc: 'Survive to Day 50', test: () => dayNow() >= 50 },
     { id: 'day15', name: 'Fifteen Days', desc: 'Survive to Day 15', test: () => dayNow() >= 15 },
     { id: 'day30', name: 'A Month of Nights', desc: 'Survive to Day 30', test: () => dayNow() >= 30 },
     { id: 'lvl5', name: 'Veteran', desc: 'Reach player level 5', test: () => pl.lvl >= 5 },
@@ -4017,6 +4044,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
