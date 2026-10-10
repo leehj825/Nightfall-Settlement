@@ -77,6 +77,9 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - Chapter 5 - The Wide Road: after the finale, Ashford, Reedhaven and Stonegate open; collecting their embers ends the story with permanent perks.
 - Endless milestones every 5 days after the story is cleared (iron, XP, shards) and per-difficulty best records shown on the game-over screen.
 
+## Source layout
+`js/game.js` is generated from `src/game/*.js` (numbered parts) by `python3 tools/build_game.py`; edit the parts, rebuild, commit both. See `src/game/README.md`.
+
 ## Controls (simplified)
 - Tap an empty spot on the screen to attack (or press `F`). Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
 - Settings: left-handed layout, button size (small / normal / large), text size, vibration, volumes.

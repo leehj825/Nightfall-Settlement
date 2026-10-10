@@ -8,7 +8,7 @@ on:
   push:
     tags: ['v*']
     branches: ['ccr-*']          # also builds when the game files change on the work branch, so it works before the workflow is merged into main
-    paths: ['js/**', 'css/**', 'vendor/**', 'icons/**', 'index.html', 'manifest.json', 'package.json', 'package-lock.json', 'capacitor.config.json', 'android/**', '.github/workflows/android-debug.yml']
+    paths: ['js/**', 'src/**', 'tools/**', 'css/**', 'vendor/**', 'icons/**', 'index.html', 'manifest.json', 'package.json', 'package-lock.json', 'capacitor.config.json', 'android/**', '.github/workflows/android-debug.yml']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,6 +24,8 @@ jobs:
           java-version: 17
       - name: Accept Android SDK licenses (the runner already has the SDK)
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Check js/game.js matches src/game parts
+        run: python3 tools/build_game.py --check
       - name: Install web dependencies
         run: npm ci
       - name: Copy the game into the Android project
