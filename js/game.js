@@ -23,14 +23,44 @@
   scene.add(sun, sun.target);
 
   // ---------- 바닥 ----------
-  const MAP = 50;   // 맵 반경
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(MAP * 2 + 40, MAP * 2 + 40),
-    new THREE.MeshStandardMaterial({ color: 0x9a6b44, flatShading: true, roughness: 1 })
-  );
-  ground.rotation.x = -Math.PI / 2;
+  const MAP = 62;   // 맵 반경 (마을은 평지, 바깥은 언덕과 강)
+  // ---------- 지형: 마을 주변은 평지, 바깥은 완만한 언덕. 동남쪽에는 강이 흐르고 다리가 하나 있다 (강은 걸어서 건널 수 있지만 느려진다) ----------
+  const TERR = { flat: 32, blend: 12, hill: 1.7, riverR: 50, riverW: 3.1, bridgeA: -0.42 };
+  const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const RIVER = []; for (let i = 0; i <= 40; i++) { const a = -1.25 + i * (1.75 / 40); RIVER.push([Math.cos(a) * (TERR.riverR + Math.sin(a * 6) * 2.2), Math.sin(a) * (TERR.riverR + Math.sin(a * 6) * 2.2)]); }
+  const riverDist = (x, z) => { let m = 1e9; for (let i = 0; i < RIVER.length - 1; i++) { const [ax, az] = RIVER[i], [bx, bz] = RIVER[i + 1], dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz))); m = Math.min(m, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return m; };
+  const BR = { x: Math.cos(TERR.bridgeA) * TERR.riverR, z: Math.sin(TERR.bridgeA) * TERR.riverR, ux: Math.cos(TERR.bridgeA), uz: Math.sin(TERR.bridgeA), len: 7, wid: 1.9, y: 0.32 };
+  const onBridge = (x, z) => { const dx = x - BR.x, dz = z - BR.z, a = dx * BR.ux + dz * BR.uz, l = -dx * BR.uz + dz * BR.ux; return Math.abs(a) < BR.len && Math.abs(l) < BR.wid; };
+  function terrH(x, z) {
+    if (Math.abs(x) > MAP + 24 || Math.abs(z) > MAP + 24) return 0;
+    const edge = sstep(TERR.flat, TERR.flat + TERR.blend, Math.max(Math.abs(x), Math.abs(z)));
+    const n = 0.9 * Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09) + 0.6 * Math.sin((x + z) * 0.07 + 2) + 0.35 * Math.sin(x * 0.23) * Math.sin(z * 0.21 + 1);       // 대략 -1.85 ~ 1.85
+    let h = (n * 0.27 + 0.5) * TERR.hill * edge;
+    const bd = Math.hypot(x - BR.x, z - BR.z); h += (BR.y - h) * (1 - sstep(5, 10, bd));                  // 다리 근처는 둑을 평평하게
+    const rd = riverDist(x, z); return h + (-0.55 - h) * (1 - sstep(TERR.riverW - 0.6, TERR.riverW + 1.6, rd));
+  }
+  const actorH = (x, z) => onBridge(x, z) ? BR.y : terrH(x, z);
+  const inRiver = (x, z) => !onBridge(x, z) && riverDist(x, z) < TERR.riverW + 0.2;
+  const terrSpd = (x, z) => (Math.abs(x) < MAP + 2 && Math.abs(z) < MAP + 2 && inRiver(x, z)) ? 0.6 : 1;
+  const groundGeo = new THREE.PlaneGeometry((MAP + 20) * 2, (MAP + 20) * 2, 164, 164); groundGeo.rotateX(-Math.PI / 2);
+  { const p = groundGeo.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, terrH(p.getX(i), p.getZ(i))); groundGeo.computeVertexNormals(); }
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x9a6b44, flatShading: true, roughness: 1 }));
   ground.receiveShadow = true;
   scene.add(ground);
+  const iceC = new THREE.Color(0xcfe6f5), waterC = new THREE.Color(0x3a78a8);
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x3a78a8, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.82, side: THREE.DoubleSide });
+  { const pos = [], idx = [];
+    for (let i = 0; i < RIVER.length; i++) {
+      const a = RIVER[Math.max(0, i - 1)], b = RIVER[Math.min(RIVER.length - 1, i + 1)], tx = b[0] - a[0], tz = b[1] - a[1], tl = Math.hypot(tx, tz), nx = -tz / tl, nz = tx / tl, w = TERR.riverW + 0.7;
+      pos.push(RIVER[i][0] + nx * w, -0.12, RIVER[i][1] + nz * w, RIVER[i][0] - nx * w, -0.12, RIVER[i][1] - nz * w);
+      if (i > 0) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+    }
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wg.setIndex(idx); wg.computeVertexNormals();
+    const water = new THREE.Mesh(wg, waterMat); water.receiveShadow = true; scene.add(water);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(BR.len * 2, 0.22, BR.wid * 2), new THREE.MeshStandardMaterial({ color: 0xb88a56, flatShading: true, roughness: 1 }));
+    deck.position.set(BR.x, BR.y - 0.12, BR.z); deck.rotation.y = -TERR.bridgeA; deck.castShadow = deck.receiveShadow = true; scene.add(deck);
+    for (const s of [-1, 1]) for (const e of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.0, 6), new THREE.MeshStandardMaterial({ color: 0x5a3b22, flatShading: true })); post.position.set(BR.x + BR.ux * e * (BR.len - 0.3) - BR.uz * s * BR.wid, BR.y + 0.4, BR.z + BR.uz * e * (BR.len - 0.3) + BR.ux * s * BR.wid); post.castShadow = true; scene.add(post); }
+  }
 
 
   // ---------- 절차적 맵: 나무 / 바위 ----------
@@ -85,7 +115,7 @@
       const o = factory();
       for (let tries = 0; tries < 60; tries++) {
         const [x, z] = samplePoint();
-        if (Math.hypot(x, z) < 6 || !ok(x, z)) continue;   // 모닥불 주변 비우기
+        if (Math.hypot(x, z) < 6 || inRiver(x, z) || !ok(x, z)) continue;   // 모닥불 주변 비우기
         if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
         o.position.set(x, 0, z);
         o.rotation.y = rand(0, Math.PI * 2);
@@ -120,7 +150,7 @@
   function goalPos(out) {
     return out.set(
       camFocus().x + Math.sin(yaw) * Math.cos(pitch) * DIST,
-      LOOK_H + Math.sin(pitch) * DIST,
+      LOOK_H + (bird ? 0 : player.position.y) + Math.sin(pitch) * DIST,
       camFocus().z + Math.cos(yaw) * Math.cos(pitch) * DIST);
   }
   camera.position.copy(goalPos(camGoal));
@@ -795,7 +825,7 @@
   const season = () => seasonOfDay(Math.floor(gameMin / 1440) + 1);
   function seasonVisual(k) {
     const s = season();
-    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k);
+    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k); waterMat.color.lerp(s.id === 'winter' ? iceC : waterC, k);
   }
   function applyLighting(n, b = 0) {           // n: 밤 정도, b: 붉은 달 정도 (습격의 밤에만)
     sun.color.copy(L.sunDay).lerp(L.sunNight, n).lerp(L.sunBlood, b * 0.85);
@@ -1212,12 +1242,12 @@
     u.aggro = u.aggro ? pd < 18 : pd < 11;
     let moving = false;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
-    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { e.position.x += (player.position.x - e.position.x) / pd * u.speed * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * dt; e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
+    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { { const ts = terrSpd(e.position.x, e.position.z); e.position.x += (player.position.x - e.position.x) / pd * u.speed * ts * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * ts * dt; } e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
     else if (!u.aggro) {
       u.wT = (u.wT || 0) - dt;
       if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
       const dx = u.wp.x - e.position.x, dz = u.wp.z - e.position.z, d = Math.hypot(dx, dz);
-      if (d > 0.8) { e.position.x += dx / d * u.speed * 0.45 * dt; e.position.z += dz / d * u.speed * 0.45 * dt; e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
+      if (d > 0.8) { { const ts = terrSpd(e.position.x, e.position.z); e.position.x += dx / d * u.speed * 0.45 * ts * dt; e.position.z += dz / d * u.speed * 0.45 * ts * dt; } e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
     }
     const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; }
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
@@ -1311,7 +1341,7 @@
     if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'plunder' && Math.random() < 0.4) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     hideTelegraph(e);
-    u.sinking = true; u.dying = 1.0; e.position.y = u.baseY; u.anim.die();
+    u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die();
     if (u.bang) u.bang.visible = u.stunTxt.visible = u.stars.visible = false;
     if (u.boss) onBossDefeated();
   }
@@ -1497,8 +1527,8 @@
           if (u.stunT <= 0) bossRecover(e);
         } else if (u.slamT > 0) {
           u.slamT -= dt;
-          e.position.y = u.baseY + Math.sin((1 - Math.max(u.slamT, 0) / CFG.BOSS_JUMP_TIME) * Math.PI) * 1.8;
-          if (u.slamT <= 0) { e.position.y = u.baseY; spawnShockwave(e.position.x, e.position.z); }
+          e.position.y = u.baseY + (u.gy || 0) + Math.sin((1 - Math.max(u.slamT, 0) / CFG.BOSS_JUMP_TIME) * Math.PI) * 1.8;
+          if (u.slamT <= 0) { e.position.y = u.baseY + (u.gy || 0); spawnShockwave(e.position.x, e.position.z); }
         } else if (u.castT > 0) {
           u.castT -= dt;
           const pulse = 0.5 + 0.5 * Math.sin(u.castT * 24);
@@ -2927,7 +2957,7 @@
     const u = e.userData;
     u.castT = 0; u.slamT = 0; hideTelegraph(e);
     u.stunT = CFG.BOSS_STUN_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL;
-    e.position.y = u.baseY;
+    e.position.y = u.baseY + (u.gy || 0);
     if (e.material.emissive) { e.material.emissive.setHex(0x000000); e.material.emissiveIntensity = 0; }
     e.material.color.setHex(0x8a8a92);                                           // 기절: 회색
     floatText('COUNTER! STUNNED!', e.position.x, e.position.y + 5.8, e.position.z);
@@ -3271,7 +3301,7 @@
     const o = factory();
     for (let i = 0; i < 30; i++) {
       const a = rand(0, Math.PI * 2), r = rand(rMin, rMax), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-      if (Math.max(Math.abs(x), Math.abs(z)) > MAP - 3 || Math.hypot(x, z) < 6 || !free(x, z)) continue;
+      if (Math.max(Math.abs(x), Math.abs(z)) > MAP - 3 || Math.hypot(x, z) < 6 || inRiver(x, z) || !free(x, z)) continue;
       if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
       o.position.set(x, 0, z); o.rotation.y = rand(0, Math.PI * 2); scene.add(o); obstacles.push(o);
       return true;
@@ -3604,7 +3634,7 @@
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.2, 6), woodMat2); pole.position.set(1.8, 1.6, 0);
       const flag = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.04), campFlagMat); flag.position.set(2.15, 2.9, 0);
       g.add(tent, pole, flag); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
-      g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); g.rotation.y = -a; scene.add(g); campMeshes.push(g);
+      g.position.set(Math.cos(a) * r, actorH(Math.cos(a) * r, Math.sin(a) * r), Math.sin(a) * r); g.rotation.y = -a; scene.add(g); campMeshes.push(g);
     });
   }
   function buildCamp(id) {
@@ -3810,8 +3840,9 @@
       let mx = rightX * ix + fwdX * iy, mz = rightZ * ix + fwdZ * iy;
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
-      player.position.x += mx * SPEED * spdMul() * mag * dt;
-      player.position.z += mz * SPEED * spdMul() * mag * dt;
+      const ts = terrSpd(player.position.x, player.position.z);
+      player.position.x += mx * SPEED * spdMul() * ts * mag * dt;
+      player.position.z += mz * SPEED * spdMul() * ts * mag * dt;
 
       // 이동 방향으로 부드럽게 회전
       let diff = Math.atan2(mx, mz) - facing;
@@ -3842,10 +3873,19 @@
       player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));
     }
 
+    // 지형 높이 적용: 주인공/주민은 바닥 높이를 그대로, 적은 (몸 높이 + 지형 변화량)만큼 올린다. 나무/바위는 처음 한 번만 맞춘다
+    if (!exActive) {
+      player.position.y = actorH(player.position.x, player.position.z);
+      for (const n of npcs) n.position.y = actorH(n.position.x, n.position.z);
+      for (const e of enemies) { const u = e.userData; if (u.sinking || u.ex) continue; const nh = actorH(e.position.x, e.position.z); e.position.y += nh - (u.gy || 0); u.gy = nh; }
+    } else player.position.y = 0;
+    for (const o of obstacles) { const ud = o.userData; if (!ud.gset && (ud.type === 'wood' || ud.type === 'stone')) { ud.gset = true; o.position.y = terrH(o.position.x, o.position.z); } }
+
     // 카메라 Lerp 추적
     const k = 1 - Math.exp(-6 * dt);
     camera.position.lerp(goalPos(camGoal), k);
-    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H, camFocus().z), k);
+    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
+    { const gy = terrH(camera.position.x, camera.position.z) + 1.3; if (camera.position.y < gy) camera.position.y = gy; }
     camera.lookAt(lookAt);
 
     // 그림자 범위가 플레이어를 따라가게
@@ -4044,6 +4084,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

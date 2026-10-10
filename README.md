@@ -77,6 +77,20 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - Chapter 5 - The Wide Road: after the finale, Ashford, Reedhaven and Stonegate open; collecting their embers ends the story with permanent perks.
 - Endless milestones every 5 days after the story is cleared (iron, XP, shards) and per-difficulty best records shown on the game-over screen.
 
+## Controls (simplified)
+- Tap an empty spot on the screen to attack (or press `F`). Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
+- Settings: left-handed layout, button size (small / normal / large), text size, vibration, volumes.
+
+## Terrain
+The village stays on flat ground; beyond the walls the land rolls into hills, and a river runs along the south-east with one wooden bridge. Wading through the river slows the hero and raiders to 60% speed; the bridge is full speed. Trees and rocks do not grow in the water.
+
+## Chapter 6 and endless Champions
+- Chapter 6 - The Eclipse opens after the Wide Road: Cinder Warrens, Drowned Archive, then the Eclipse Throne (needs both relics). Ending perks: +10% hero damage, +20 health, +10% soldier strength.
+- In endless mode every second big raid brings a named Champion (Frost Tyrant, Hollow Duelist, Ash Reaver, Lantern Warden, Night Marshal) with iron, shard and XP rewards; new achievements track Champions, kills and days.
+
+## Music
+Chord-based synthesized music (bright day arpeggios, slow minor night pads, pulsing danger and boss themes) plus extra effects: level-up, chest, heal, warning bell, howl, victory.
+
 ## Releasing to Google Play
 See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `docs/privacy-policy.md`.
 
