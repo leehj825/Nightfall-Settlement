@@ -14,7 +14,7 @@
     }
     if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
       const base = gearDef(playerGear.sword), sd = { ...base, dmg: base.dmg * pDmg() * 1.12 * (1 + 0.2 * pl.st.spear), half: Math.PI / 9, rangeMul: 1.75 * (1 + 0.08 * pl.st.spear), slash: (base.slash || 1) * 1.6 };
-      atkT = SLASH_LIFE; shake = 0.2; playerAnim.once('attackSword'); Snd.play('swing'); spawnSlash(player.position.x, player.position.z, facing, { ...sd, slash: 1.5 });
+      atkT = SLASH_LIFE; shake = 0.2; playerAnim.once('attackSpear'); Snd.play('swing'); spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
       const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
       if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       return;
@@ -31,11 +31,17 @@
   }
 
   // ---------- 무기 교체 / 화살 ----------
+  // 창 찌르기 궤적: 앞으로 쭉 뻗는 가늘고 긴 빛줄기
+  const thrustGeo = new THREE.PlaneGeometry(0.34, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5);
+  function spawnThrust(x, z, ang, len) {
+    const g = new THREE.Group(), m = new THREE.Mesh(thrustGeo, new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
+    m.scale.z = len; g.add(m); g.position.set(x, 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
+  }
   const WEAPON_NAME = { sword: 'Sword', bow: 'Bow', spear: 'Spear' };
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
-    playerRig.main = weaponMode === 'spear' ? 'sword' : weaponMode;
+    playerRig.main = weaponMode;
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }

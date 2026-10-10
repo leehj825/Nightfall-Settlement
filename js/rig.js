@@ -219,6 +219,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const aim = kf(u, [[0, 0], [0.2, 1], [0.7, 1], [1, 0]]), draw = kf(u, [[0, 0], [0.2, -1.9], [0.55, -2.3], [0.62, -0.5], [1, 0]]);
       return { shoulderL: [-1.5 * aim], elbowL: [-0.08 * aim], shoulderR: [-1.5 * aim], elbowR: [draw], spine: [0, -0.35 * aim], head: [0, 0.35 * aim], hipL: [0, 0, 0.1 * aim], hipR: [0, 0, -0.1 * aim] };
     }, false);
+    make('attackSpear', 0.55, 12, (ph, u) => {   // 창 찌르기: 뒤로 당김(발을 디딤) → 번개처럼 앞으로 찌름 → 거둠
+      const wind = kf(u, [[0, 0], [0.28, 1], [0.4, 0], [1, 0]]), thr = kf(u, [[0, 0], [0.26, 0], [0.4, 1], [0.58, 0.85], [1, 0]]);
+      return { shoulderR: [-0.7 * wind - 1.55 * thr, 0.25 * wind], elbowR: [-1.7 * wind - 0.08 * thr], shoulderL: [-0.6 * wind - 1.2 * thr], elbowL: [-0.5 * wind - 0.25 * thr],
+        spine: [0.18 * thr, -0.35 * wind + 0.3 * thr], head: [-0.05 * thr], hipL: [-0.55 * thr + 0.2 * wind], hipR: [0.35 * thr - 0.1 * wind], kneeL: [0.3 * thr], hipsY: 0.9 - 0.06 * thr, hipsZ: 0.12 * thr };
+    }, false);
     make('die', 0.9, 9, (ph, u) => {           // 뒤로 쓰러져 눕기
       const f = kf(u, [[0, 0], [0.7, 1], [1, 1]]);
       return { hips: [-1.5 * f], hipsY: 0.9 - 0.78 * f, hipsZ: -0.2 * f, shoulderL: [0.3 * f, 0, 0.5 * f], shoulderR: [0.3 * f, 0, -0.5 * f], kneeL: [0.25 * f], kneeR: [0.2 * f], head: [0.2 * f] };
@@ -284,6 +289,16 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     inner.add(grip, guard, blade); inner.rotation.x = Math.PI / 2; g.add(inner);
     return g;
   }
+  function makeSpearMesh(def) {                // 창: 긴 나무 자루 + 잎 모양 쇠 촉 + 붉은 술. 손잡이는 자루 중간쯤
+    const g = new THREE.Group(), inner = new THREE.Group(), steel = gearMat('spearhead' + def.tier, def.tier > 0 ? 0xe4e8f0 : 0xb6bac2);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 2.1, 7), gearMat('spearshaft', 0x7a5530)); shaft.position.y = 0.45;
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.42, 4), steel); head.position.y = 1.7; head.scale.z = 0.35;
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.09, 7), gearMat('spearcollar', def.tier > 0 ? 0xc9a23a : 0x6a5a48)); collar.position.y = 1.46;
+    const tassel = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 6), gearMat('speartassel', 0xb02a22)); tassel.position.y = 1.36; tassel.rotation.x = Math.PI;
+    const butt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.08, 6), gearMat('spearbutt', 0x4a4d52)); butt.position.y = -0.6;
+    inner.add(shaft, head, collar, tassel, butt); inner.rotation.x = 1.05; g.add(inner);
+    return g;
+  }
   function makeBowMesh(def) {
     const g = new THREE.Group(), pivot = new THREE.Group(), R0 = def.tier > 0 ? 0.55 : 0.45;
     const arcGeo = new THREE.TorusGeometry(R0, def.tier > 0 ? 0.04 : 0.028, 6, 14, Math.PI); arcGeo.rotateZ(Math.PI);     // 불룩한 쪽이 -Y
@@ -314,9 +329,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
     rig.root.scale.setScalar(rig.baseScale);
     rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다
-      const hand = slot === 'sword' ? rig.handR : rig.handL;
+      const hand = slot === 'sword' || slot === 'spear' ? rig.handR : rig.handL;
       if (rig.meshes[slot]) hand.remove(rig.meshes[slot]);
-      rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : makeBowMesh(def)) : null;
+      rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : makeBowMesh(def)) : null;
       if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
       rig.applyHold();
     };
@@ -324,6 +339,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const w = rig.held, m = rig.meshes;
       if (m.sword) m.sword.visible = w === 'sword';
       if (m.bow) m.bow.visible = w === 'bow';
+      if (m.spear) m.spear.visible = w === 'spear';
       if (!m.pick) { m.pick = makePickMesh(); rig.handR.add(m.pick); }
       m.pick.visible = w === 'pick';
     };
@@ -351,7 +367,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'die') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
