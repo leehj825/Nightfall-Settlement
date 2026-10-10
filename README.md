@@ -57,3 +57,12 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - **Power opens expeditions:** each expedition shows the power it needs (see `EXP_NEED` in `js/config.js`). Power = soldiers (more with better gear) + you (level and gear). Better weapons, armor, soldiers and levels unlock the next sites and story chapters.
 - You start with 40 Wood, so the first fence can be planned immediately while your soldiers gather and build.
 
+## Things to do at night
+- **Faster nights:** the clock runs 1.8x faster at night. When the night's raiders are dead, **Rest** (button or Z) fast-forwards to dawn (tap again, or any danger, wakes you).
+- **Night hunt:** on quiet nights prowlers roam outside the walls. They do not attack the village; kill them for double XP and loot (iron, food, sometimes a shard).
+- **Village at night:** the smith keeps forging by firelight (1.5x); soldiers who rest at the barracks or archery range train and become Veterans (+6% damage per rank, shown on their card); stand near the barracks at night to spar for XP.
+- **Lantern merchant:** every 3rd night (Day 5, 8, ...) a merchant sets up at the market with night-only wares (XP manual, whetstones for all soldiers, moon tonic, shards). Walk over or tap the market.
+- **Fireside tales:** stand by the campfire on a peaceful night for old Edda's stories (+25 XP, mood). Ten tales that foreshadow the story chapters.
+- **Night visitors:** five random night events on quiet nights (a knock at the gate, an owl that foretells the next raid, whispers in the woods, ...).
+- **Moonlit expeditions:** Moonlit Crypt, Whispering Marsh and Pale Mausoleum open from 20:00 to 02:00 once the night's raiders are cleared (not on raid nights). Double XP, and their guardians give a bonus level-up choice. You are called home at 04:30.
+

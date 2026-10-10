@@ -1264,7 +1264,8 @@
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
-    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * (u.prowl ? 2 : 1));
+    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * (u.prowl || (u.ex && exActive && exActive.night) ? 2 : 1));
+    if (u.guardian && exActive && exActive.night) { pl.pend++; updateLvlUi(); toast('The guardian falls - a bonus upgrade is waiting'); }
     if (u.prowl) {                                                       // 밤사냥 전리품
       if (Math.random() < 0.55) { res.iron++; floatText('Loot: Iron +1', e.position.x, 2.6, e.position.z); }
       if (Math.random() < 0.45) { res.food += 2; floatText('Loot: Food +2', e.position.x, 3.0, e.position.z); }
@@ -3162,8 +3163,9 @@
     const night = hour >= 18 || hour < 7, nd = hour < 7 ? dayNo - 1 : dayNo;
     let text, cls = '';
     if (exActive) {
-      const left = Math.max(0, Math.ceil((CFG.EXP_FORCE * 60 - (gameMin % 1440)) / (MIN_PER_SEC * CFG.EXP_TIME_MULT))), mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
-      if (left <= 30 && !exActive.warned) { exActive.warned = true; toast('Dusk is near - about 30 seconds left. Grab the last chests!'); }
+      const nowM = gameMin % 1440, target = exActive.night ? (nowM >= 720 ? 1440 + CFG.EXP_NIGHT_FORCE * 60 : CFG.EXP_NIGHT_FORCE * 60) : CFG.EXP_FORCE * 60;
+      const left = Math.max(0, Math.ceil((target - nowM) / (MIN_PER_SEC * CFG.EXP_TIME_MULT))), mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
+      if (left <= 30 && !exActive.warned) { exActive.warned = true; toast(exActive.night ? 'Dawn is near - about 30 seconds left. Grab the last chests!' : 'Dusk is near - about 30 seconds left. Grab the last chests!'); }
       const t = `Expedition: ${exActive.dest.name} - called home in ${mm}:${ss}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
@@ -3375,7 +3377,7 @@
     const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
     if (d.ch >= 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
-    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud(); giveXp(8 + 4 * d.age);
+    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
     if (o.userData.relic) foundRelic(d);
   }
 
@@ -3446,6 +3448,13 @@
     return { sold: Math.round(sold), me: Math.round(me), total: Math.round(sold + me) };
   }
   const needOf = (d) => CFG.EXP_NEED[d.id] || 0;
+  const nightExpWhy = () => {                                   // 밤 원정이 닫혀 있는 이유 (열려 있으면 '')
+    const h = (gameMin / 60) % 24;
+    if (!(h >= 20 || h < CFG.EXP_NIGHT_LATEST)) return 'Night only (20:00 - 02:00)';
+    if (isRaid(nightDayNo())) return 'A raid is coming tonight - stay and defend';
+    if (wave.day !== Math.max(1, nightDayNo()) || wave.remaining > 0 || wave.siegeLeft > 0 || wave.bossLeft > 0 || enemies.some(e => !e.userData.sinking && !e.userData.prowl && !e.userData.ex)) return 'Clear the night\'s raiders first';
+    return '';
+  };
   function startExpedition(id) {
     const d = CFG.EXPEDITIONS.find(x => x.id === id);
     if (!d || exActive || dead || exEnding) return;
@@ -3455,10 +3464,11 @@
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('You need the Echo Stone and the Mourning Bell to find the Spire');
     if (powerOf().total < needOf(d)) return toast(`Too dangerous for now: needs power ${needOf(d)} (you have ${powerOf().total}). Upgrade gear, train soldiers, level up.`);
-    if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
+    if (d.night) { const why = nightExpWhy(); if (why) return toast(why); }
+    else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
-      exActive = { dest: d, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
+      exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       buildZone(d);
       const party = escortPool().sort((a, b) => (a.role === 'melee' ? 0 : 1) - (b.role === 'melee' ? 0 : 1)).slice(0, Math.min(escortN, CFG.ESCORT_MAX));     // 동행 병사: 근접 병사 먼저
       party.forEach((n, i) => {
@@ -3488,7 +3498,7 @@
       if (cleared && !story.cleared[ex.dest.id]) { story.cleared[ex.dest.id] = true; setTimeout(() => toast(`${ex.dest.name} is cleared - build a camp from the Journal for daily supplies`), 2200); }
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
-      toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
+      toast(`${forced ? (ex.night ? 'You rushed home as dawn broke. ' : 'You rushed home as dusk fell. ') : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
       checkStoryAll();
     });
   }
@@ -3549,13 +3559,13 @@
       (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
-    const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
-    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile.`;
+    const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
+    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
     const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
     const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
       const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
@@ -3636,7 +3646,7 @@
 
     const dayNo = Math.floor(gameMin / 1440) + 1;
     nowHour = hour;
-    if (exActive && !exEnding && hour >= CFG.EXP_FORCE) endExpedition(true);       // 해 지기 전에 자동 귀환
+    if (exActive && !exEnding && (exActive.night ? (hour >= CFG.EXP_NIGHT_FORCE && hour < 12) : hour >= CFG.EXP_FORCE)) endExpedition(true);       // 해 지기 전에 자동 귀환
     updateRaidUi(hour, dayNo);
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
@@ -3917,6 +3927,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
