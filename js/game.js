@@ -1171,11 +1171,12 @@
   let spawnCd = 0;
   // kind: 'normal' | 'brute' | 'shield'. 최대 HP는 날짜에 따라 HP_SCALE_EVERY일마다 +1
   const beastMat = mat(0x8a6a40), bossMat = mat(0x0b0b0e), siegeMat = mat(0x8a3fc0), shieldMat = mat(0xb8c0cc), shieldPlateMat = mat(0x666b73), shieldPlateGeo = new THREE.BoxGeometry(0.95, 1.1, 0.14);
+  const archerMat = mat(0xc9731d), healerMat = mat(0x2fbf8f), sapperMat = mat(0xd6b02a);
   function spawnEnemy(kind = 'normal', at = null) {
-    const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast';
+    const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast', archer = kind === 'archer', healer = kind === 'healer', sapper = kind === 'sapper';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
-    const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : 1;
-    const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat;
+    const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : sapper ? 0.9 : healer ? 1.05 : 1;
+    const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
@@ -1186,7 +1187,8 @@
       }
       rig.main = 'sword'; rig.setGear('sword', { id: 'boss_club', slot: 'sword', tier: 1, color: 0x2a2a30 }); rig.meshes.sword.scale.setScalar(1.8); rig.hold('sword');
     }
-    if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
+    if (archer) { rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
+    else if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
     const m = new THREE.Group();
     rig.root.position.y = -0.8;                          // 그룹 중심(= 예전 원기둥 중심) 기준으로 발을 바닥에 맞춘다
     m.add(rig.root); m.material = rig.bodyMat;           // 보스 깜빡임/기절 색 변경은 m.material을 사용
@@ -1201,12 +1203,12 @@
     }
     const hpBonus = Math.floor((Math.max(1, wave.day) - 1) / CFG.HP_SCALE_EVERY) +
       (chapterCleared ? Math.max(0, wave.day - CFG.BOSS_DAY) * CFG.ENDLESS_HP_PER_DAY : 0);      // 무한 모드: 날마다 체력 추가 증가
-    const hp = scaleHp((beast ? CFG.BEAST_HP : (boss ? CFG.BOSS_HP : brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : siege ? CFG.SIEGE_HP : CFG.ENEMY_HP) + hpBonus));
+    const hp = scaleHp((beast ? CFG.BEAST_HP : archer ? CFG.ENEMY_HP * 0.8 : healer ? CFG.ENEMY_HP * 1.3 : sapper ? CFG.ENEMY_HP * 0.6 : (boss ? CFG.BOSS_HP : brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : siege ? CFG.SIEGE_HP : CFG.ENEMY_HP) + hpBonus));
     m.userData = {
-      kind, brute, shield, siege, boss, throwCd: rand(1.5, 3), hp, maxHp: hp,
+      kind, brute, shield, siege, boss, archer, healer, sapper, shootCd: rand(1.2, 2.4), healCd: rand(1, 2), throwCd: rand(1.5, 3), hp, maxHp: hp,
       dpsKey: boss ? 'boss' : brute ? 'brute' : 'normal', slamCd: 3, slamT: 0, baseY: 0.8 * sc, r: ENEMY_R * sc,
-      speed: ENEMY_SPEED * (beast ? 1.35 : boss ? CFG.BOSS_SPEED_MUL : brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : 1),
-      contact: beast ? 6 : boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
+      speed: ENEMY_SPEED * (beast ? 1.35 : boss ? CFG.BOSS_SPEED_MUL : brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : archer ? 0.9 : healer ? 0.85 : sapper ? 1.55 : 1),
+      contact: sapper ? 0 : archer ? 4 : beast ? 6 : boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: boss ? CFG.BOSS_KB_MUL : brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
       fireTimer: 0, aggro: false, sinking: false, castT: 0, stunT: 0, lureT: 0, critT: 0, tele: null,
       anim: new Anim(rig), ex: !!at, px: m.position.x, pz: m.position.z, atkAnimCd: rand(0, 0.6) };
@@ -1224,6 +1226,7 @@
       Object.assign(m.userData, { bang, stunTxt, stars });
     }
     if (wave.type === 'storm' && !at) m.userData.speed *= 1.12;          // 폭풍우: 적이 조금 더 빠르다
+    if (healer) addGlow(m, 0x4dffb0, 1.9, 1.0); if (sapper) addGlow(m, 0xffd23a, 1.5, 0.9);
     scene.add(m);
     enemies.push(m);
   }
@@ -1239,7 +1242,7 @@
     return sp;
   }
   function removeEnemy(e) { if (e.userData.tele) scene.remove(e.userData.tele); scene.remove(e); enemies.splice(enemies.indexOf(e), 1); }
-  const XP_KIND = { normal: 8, beast: 6, shield: 12, brute: 20, siege: 15, boss: 150 };
+  const XP_KIND = { archer: 12, healer: 16, sapper: 10, normal: 8, beast: 6, shield: 12, brute: 20, siege: 15, boss: 150 };
   const LEVEL_UPS = [
     { id: 'hp', label: 'Vigor', desc: '+20 max HP' }, { id: 'dmg', label: 'Might', desc: '+15% damage' }, { id: 'spd', label: 'Swift', desc: '+6% move speed' },
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
@@ -1287,6 +1290,49 @@
     openLevelPick();
   }, 1200);
   document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (pl.pend > 0) { toggleStats(false); openLevelPick(); } else toggleStats(false); });
+
+  // ---------- 새 적: 궁수(멀리서 화살) / 치유사(주변 적 회복) / 폭파병(목책으로 달려가 자폭) ----------
+  const enemyArrows = [], eArrowGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.8, 5), eArrowMat = new THREE.MeshBasicMaterial({ color: 0xc86a2a });
+  function fireEnemyArrow(e, tx, tz) {
+    const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
+    m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
+    enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 });
+    e.userData.anim.once('attackBow'); sfxAt('bow', sx, sz);
+  }
+  function updateEnemyArrows(dt) {
+    for (let i = enemyArrows.length - 1; i >= 0; i--) {
+      const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; a.life -= dt;
+      let hit = false;
+      if (!dead && invincibleT <= 0 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < 0.75) { damage(CFG.ENEMY_CONTACT_DMG * 0.8); hurtCd = Math.max(hurtCd, 0.3); hit = true; }
+      if (!hit) for (const n of npcs) if (!n.down && Math.hypot(n.position.x - p.x, n.position.z - p.z) < 0.7) { damageNpc(n, CFG.ENEMY_CONTACT_DMG * 0.8); hit = true; break; }
+      if (!hit) for (const o of obstacles) if (o.userData.type === 'fence' && Math.hypot(o.position.x - p.x, o.position.z - p.z) < o.userData.radius) { damageStructure(o, 4); hit = true; break; }
+      if (hit || a.life <= 0) { scene.remove(a.m); enemyArrows.splice(i, 1); }
+    }
+  }
+  function archerStep(e, u, dt) {                      // 사거리 안에 표적(플레이어 > 병사 > 모닥불)이 있으면 쏜다
+    u.shootCd -= dt; if (u.shootCd > 0 || u.stunT > 0) return;
+    let tx = null, tz = null, bd = 13;
+    const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+    if (pd < bd && !dead) { tx = player.position.x; tz = player.position.z; bd = pd; }
+    for (const n of npcs) { if (n.down) continue; const d = Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z); if (d < bd - 1.5) { bd = d; tx = n.position.x; tz = n.position.z; } }
+    if (tx === null && fireAlive && Math.hypot(e.position.x, e.position.z) < 13) { tx = 0; tz = 0; }
+    if (tx === null) return;
+    u.shootCd = rand(2.0, 2.8); fireEnemyArrow(e, tx, tz);
+  }
+  function healerStep(e, u, dt) {
+    u.healCd -= dt; if (u.healCd > 0 || u.stunT > 0) return; u.healCd = 2.2;
+    let healed = 0;
+    for (const o of enemies) { const v = o.userData; if (o === e || v.sinking || v.hp >= v.maxHp || Math.hypot(o.position.x - e.position.x, o.position.z - e.position.z) > 6.5) continue; v.hp = Math.min(v.maxHp, v.hp + v.maxHp * 0.1 + 1); healed++; burst(o.position, 3); }
+    if (healed) { floatText('+heal', e.position.x, 2.4, e.position.z); Snd.play('heal', 0.4); }
+  }
+  function sapperBoom(e, u) {
+    const x = e.position.x, z = e.position.z; u.hp = 0;
+    burst(e.position, 24); sfxAt('boom', x, z); if (Math.hypot(player.position.x - x, player.position.z - z) < 25) shake = Math.max(shake, 0.35);
+    for (const o of obstacles.slice()) if (o.userData.type === 'fence' && Math.hypot(o.position.x - x, o.position.z - z) < 3.4) damageStructure(o, CFG.ROCK_DAMAGE * 1.1);
+    if (Math.hypot(player.position.x - x, player.position.z - z) < 3 && invincibleT <= 0) damage(CFG.BRUTE_CONTACT_DMG * 0.7);
+    for (const n of npcs) if (!n.down && Math.hypot(n.position.x - x, n.position.z - z) < 3) damageNpc(n, CFG.BRUTE_CONTACT_DMG * 0.7);
+    u.kind = 'sapper'; killEnemy(e);
+  }
   // ---------- 밤 활동: 새벽까지 쉬기 ----------
   const restBtnEl = document.getElementById('restBtn');
   function canRest() {
@@ -1526,6 +1572,14 @@
     const lbl = textSprite(ch.name, '#ff9a5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
     showWarning(`Champion: the ${ch.name} has come!`);
   }
+  // 날짜가 지날수록 특수 적이 섞인다: 폭파병(4일~) / 궁수(5일~) / 치유사(6일~). 한 번에 살아 있는 수를 제한한다
+  function specialKind(day) {
+    const alive = (k) => enemies.filter(x => x.userData.kind === k && !x.userData.sinking).length, r = Math.random(), f = Math.min(1.6, 1 + (day - 4) * 0.08);
+    if (day >= 4 && alive('sapper') < 2 + Math.floor(day / 8) && r < 0.09 * f) return 'sapper';
+    if (day >= 5 && alive('archer') < 2 + Math.floor(day / 6) && r < 0.2 * f) return 'archer';
+    if (day >= 6 && alive('healer') < 1 + Math.floor(day / 10) && r < 0.28 * f) return 'healer';
+    return 'normal';
+  }
   function updateEnemies(dt, night, waveDay) {
     if (night && wave.day !== waveDay) startWave(waveDay);
     const nh = nowHour < 5 ? nowHour + 24 : nowHour;
@@ -1542,7 +1596,7 @@
         } else {
           const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
-            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
+            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : specialKind(waveDay));
           spawnEnemy(kind);
           wave.remaining--;
         }
@@ -1566,7 +1620,9 @@
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
       const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
       u.aggro = u.siege ? false : (u.boss && u.lureT > 0) ? true : (u.aggro ? pd < DEAGGRO : pd < AGGRO);      // 보스는 맞은 뒤 10초간 플레이어 고정      // 공성 투척병은 플레이어를 쫓지 않는다
-      const tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      let tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      if (u.sapper && !u.aggro) { let bd = 1e9; for (const o of obstacles) { if (o.userData.type !== 'fence') continue; const q = (o.position.x - e.position.x) ** 2 + (o.position.z - e.position.z) ** 2; if (q < bd) { bd = q; tx = o.position.x; tz = o.position.z; } } }       // 폭파병은 가장 가까운 목책으로
+      if (u.archer) archerStep(e, u, dt); if (u.healer) healerStep(e, u, dt);
       e.lookAt(tx, e.position.y, tz);
       const dx = tx - e.position.x, dz = tz - e.position.z;
       const d = Math.hypot(dx, dz);
@@ -1574,7 +1630,7 @@
       if (u.kbT > 0) {                       // 넉백 중에는 밀려남
         u.kbT -= dt;
         e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt;
-      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF)) {   // 투척병은 안전거리에서 멈춘다
+      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF) && !(u.archer && d < 9.5)) {   // 투척병은 안전거리에서 멈춘다
         e.position.x += dx / d * u.speed * dt;
         e.position.z += dz / d * u.speed * dt;
       }
@@ -1588,6 +1644,7 @@
           if (o.userData.type === 'fence') blocked = o;
         }
       }
+      if (u.sapper && (blocked || pd < 1.3)) { sapperBoom(e, u); continue; }
       if (blocked) {
         e.position.x += (Math.random() - .5) * 0.02;
         if (!(u.stunT > 0)) blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt * dm().dmg;   // 구조물 체력 감소
@@ -1654,6 +1711,7 @@
         }
       }
     }
+    updateEnemyArrows(dt);
     hurtCd -= dt;
     for (const n of npcs) n.hurtCd -= dt;
   }
@@ -4214,6 +4272,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

@@ -237,6 +237,14 @@
     const lbl = textSprite(ch.name, '#ff9a5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
     showWarning(`Champion: the ${ch.name} has come!`);
   }
+  // 날짜가 지날수록 특수 적이 섞인다: 폭파병(4일~) / 궁수(5일~) / 치유사(6일~). 한 번에 살아 있는 수를 제한한다
+  function specialKind(day) {
+    const alive = (k) => enemies.filter(x => x.userData.kind === k && !x.userData.sinking).length, r = Math.random(), f = Math.min(1.6, 1 + (day - 4) * 0.08);
+    if (day >= 4 && alive('sapper') < 2 + Math.floor(day / 8) && r < 0.09 * f) return 'sapper';
+    if (day >= 5 && alive('archer') < 2 + Math.floor(day / 6) && r < 0.2 * f) return 'archer';
+    if (day >= 6 && alive('healer') < 1 + Math.floor(day / 10) && r < 0.28 * f) return 'healer';
+    return 'normal';
+  }
   function updateEnemies(dt, night, waveDay) {
     if (night && wave.day !== waveDay) startWave(waveDay);
     const nh = nowHour < 5 ? nowHour + 24 : nowHour;
@@ -253,7 +261,7 @@
         } else {
           const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
-            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
+            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : specialKind(waveDay));
           spawnEnemy(kind);
           wave.remaining--;
         }
@@ -277,7 +285,9 @@
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
       const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
       u.aggro = u.siege ? false : (u.boss && u.lureT > 0) ? true : (u.aggro ? pd < DEAGGRO : pd < AGGRO);      // 보스는 맞은 뒤 10초간 플레이어 고정      // 공성 투척병은 플레이어를 쫓지 않는다
-      const tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      let tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      if (u.sapper && !u.aggro) { let bd = 1e9; for (const o of obstacles) { if (o.userData.type !== 'fence') continue; const q = (o.position.x - e.position.x) ** 2 + (o.position.z - e.position.z) ** 2; if (q < bd) { bd = q; tx = o.position.x; tz = o.position.z; } } }       // 폭파병은 가장 가까운 목책으로
+      if (u.archer) archerStep(e, u, dt); if (u.healer) healerStep(e, u, dt);
       e.lookAt(tx, e.position.y, tz);
       const dx = tx - e.position.x, dz = tz - e.position.z;
       const d = Math.hypot(dx, dz);
@@ -285,7 +295,7 @@
       if (u.kbT > 0) {                       // 넉백 중에는 밀려남
         u.kbT -= dt;
         e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt;
-      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF)) {   // 투척병은 안전거리에서 멈춘다
+      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF) && !(u.archer && d < 9.5)) {   // 투척병은 안전거리에서 멈춘다
         e.position.x += dx / d * u.speed * dt;
         e.position.z += dz / d * u.speed * dt;
       }
@@ -299,6 +309,7 @@
           if (o.userData.type === 'fence') blocked = o;
         }
       }
+      if (u.sapper && (blocked || pd < 1.3)) { sapperBoom(e, u); continue; }
       if (blocked) {
         e.position.x += (Math.random() - .5) * 0.02;
         if (!(u.stunT > 0)) blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt * dm().dmg;   // 구조물 체력 감소
@@ -365,6 +376,7 @@
         }
       }
     }
+    updateEnemyArrows(dt);
     hurtCd -= dt;
     for (const n of npcs) n.hurtCd -= dt;
   }
