@@ -1694,7 +1694,7 @@
       opts: lots.map(l => {
         const get = Math.max(1, Math.round(l.n * MVAL[l.g] / MVAL[l.r] * rate));
         return { label: `Give ${l.n} ${MNAME[l.g]}`, sub: `Get ${get} ${MNAME[l.r]} · you have ${Math.floor(res[l.g])}`, ok: () => res[l.g] >= l.n,
-          run: () => { if (res[l.g] < l.n) return 'Not enough to trade'; res[l.g] -= l.n; res[l.r] += get; updateHud(); report.traded = (report.traded || 0) + 1; setTimeout(() => merchantMenu(lots, rate, p), 450); return `Traded: +${get} ${MNAME[l.r]}`; } };
+          run: () => { if (res[l.g] < l.n) return 'Not enough to trade'; res[l.g] -= l.n; res[l.r] += get; updateHud(); report.traded = (report.traded || 0) + 1; unlockAch('merchant'); setTimeout(() => merchantMenu(lots, rate, p), 450); return `Traded: +${get} ${MNAME[l.r]}`; } };
       }).concat(npcs.some(n => n.sick > 0) ? [{ label: 'Buy healing herbs', sub: 'Costs 2 Iron · cures every sick citizen', ok: () => res.iron >= 2, run: () => { res.iron -= 2; npcs.forEach(n => { n.sick = 0; }); setTimeout(() => merchantMenu(lots, rate, p), 450); return 'The sick are on their feet again'; } }] : [])
         .concat([{ label: 'Farewell', alt: true, run: () => 'The merchant moves on' }]) });
   }
@@ -3271,6 +3271,8 @@
         if (n.down) { n.hp = n.maxHp; }
       }
       cleanupZone(); exActive = null;
+      if (ex.party > 0) unlockAch('escort');
+      if (cleared) unlockAch('clear');
       if (cleared && !story.cleared[ex.dest.id]) { story.cleared[ex.dest.id] = true; setTimeout(() => toast(`${ex.dest.name} is cleared - build a camp from the Journal for daily supplies`), 2200); }
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
@@ -3433,7 +3435,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3616,6 +3618,53 @@
   setInterval(tutorStep, 700);
   document.getElementById('tutorX').addEventListener('click', () => { tut.off = true; tutEl.style.display = 'none'; });
 
+  // ---------- 11단계: 업적 (브라우저에 저장되어 새 게임을 해도 남는다) ----------
+  const ACH = [
+    { id: 'night1', name: 'First Dawn', desc: 'Survive the first night', test: () => dayNow() >= 2 },
+    { id: 'week', name: 'A Whole Week', desc: 'Reach Day 7', test: () => dayNow() >= 7 },
+    { id: 'boss', name: 'Behemoth Slayer', desc: 'Defeat the Behemoth', test: () => chapterCleared },
+    { id: 'age2', name: 'Wooden Town', desc: 'Reach Age 2', test: () => age >= 2 },
+    { id: 'age3', name: 'Stone Keep', desc: 'Reach Age 3', test: () => age >= 3 },
+    { id: 'pop10', name: 'Busy Streets', desc: 'Have 10 villagers', test: () => npcs.length >= 10 },
+    { id: 'smith', name: 'Hammer and Anvil', desc: 'Build a Blacksmith', test: () => smiths().length > 0 },
+    { id: 'armed', name: 'Armed to the Teeth', desc: 'Have 3 soldiers wearing armor', test: () => npcs.filter(n => n.role !== 'citizen' && n.gear.armor !== 'armor_none').length >= 3 },
+    { id: 'master', name: 'Master Craftsman', desc: 'Train a citizen to Master level', test: () => npcs.some(n => Object.values(n.xp || {}).some(v => v >= CFG.SKILL_XP[3])) },
+    { id: 'lvl3', name: 'Grand Works', desc: 'Upgrade a workshop to level 3', test: () => CFG.LEVELED.some(k => builtBuildings(k).some(o => lvOf(o) >= 3)) },
+    { id: 'rich', name: 'Full Granary', desc: 'Store 100 Food', test: () => res.food >= 100 },
+    { id: 'prosper', name: 'Flourishing', desc: 'Reach Flourishing prosperity (80+)', test: () => prosScore >= 80 },
+    { id: 'winter', name: 'Through the Cold', desc: 'Live through a whole winter', test: () => CFG.SEASONS_ON && dayNow() >= CFG.SEASON_DAYS * 4 + 1 },
+    { id: 'merchant', name: 'Good Business', desc: 'Trade with a travelling merchant' },
+    { id: 'clear', name: 'Site Cleared', desc: 'Clear an expedition site completely' },
+    { id: 'escort', name: 'Never Alone', desc: 'Return from an expedition with an escort' },
+    { id: 'camp1', name: 'Outpost', desc: 'Build a camp', test: () => Object.keys(story.camps).length >= 1 },
+    { id: 'camp3', name: 'Supply Line', desc: 'Build 3 camps', test: () => Object.keys(story.camps).length >= 3 },
+    { id: 'storm', name: 'Stormproof', desc: 'Survive a thunderstorm night' },
+    { id: 'hunt', name: 'Pack Breaker', desc: 'Survive a wolf hunt night' },
+    { id: 'beacon', name: 'Light in the Dark', desc: 'Light the Beacon', test: () => story.beacon },
+    { id: 'dawn', name: 'Dawn Gate', desc: 'Open the Dawn Gate', test: () => story.dawn },
+    { id: 'crown', name: 'Winter Crown', desc: 'Take the Winter Crown', test: () => story.crown },
+  ];
+  let achSave = {};
+  try { achSave = JSON.parse(localStorage.getItem('nf_ach') || '{}') || {}; } catch (e) { achSave = {}; }
+  const achBanner = document.createElement('div'); achBanner.id = 'achBanner'; document.body.appendChild(achBanner); let achTimer;
+  function unlockAch(id) {
+    const a = ACH.find(x => x.id === id);
+    if (!a || achSave[id]) return;
+    achSave[id] = Date.now(); try { localStorage.setItem('nf_ach', JSON.stringify(achSave)); } catch (e) {}
+    achBanner.textContent = `🏆 ${a.name} - ${a.desc}`; achBanner.classList.add('show'); clearTimeout(achTimer); achTimer = setTimeout(() => achBanner.classList.remove('show'), 3800); Snd.play('chime');
+  }
+  function achStep() { if (!saveReady || dead) return; for (const a of ACH) if (a.test && !achSave[a.id]) { let ok = false; try { ok = !!a.test(); } catch (e) {} if (ok) unlockAch(a.id); } }
+  setInterval(achStep, 1000);
+  const achEl = document.getElementById('achPanel');
+  function openAch() {
+    const n = ACH.filter(a => achSave[a.id]).length;
+    document.getElementById('achCount').textContent = `${n} / ${ACH.length} unlocked`;
+    document.getElementById('achList').innerHTML = ACH.map(a => `<div class="ach ${achSave[a.id] ? 'got' : ''}"><span>${achSave[a.id] ? '🏆' : '🔒'}</span><div><b>${a.name}</b><small>${a.desc}</small></div></div>`).join('');
+    achEl.style.display = 'flex';
+  }
+  document.getElementById('setAch').addEventListener('click', () => { closeSettings(); uiPause = true; openAch(); });
+  document.getElementById('achClose').addEventListener('click', () => { achEl.style.display = 'none'; uiPause = false; });
+
   // 시작 화면: 저장이 있으면 이어하기 / 새 게임
   function bootGame() {
     const d = readSave();
@@ -3633,6 +3682,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
