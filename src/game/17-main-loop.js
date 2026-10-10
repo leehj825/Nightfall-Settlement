@@ -53,7 +53,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); fishingTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -143,6 +143,16 @@
 
     // 지형 높이 적용: 주인공/주민은 바닥 높이를 그대로, 적은 (몸 높이 + 지형 변화량)만큼 올린다. 나무/바위는 처음 한 번만 맞춘다
     if (!exActive) {
+      const dn = dayNow();
+      if (dn !== riverDay) {                                                // 하루가 바뀌면 강의 상태(범람/결빙)를 다시 정한다
+        riverDay = dn; const s = seasonOfDay(dn), firstSpring = s.id === 'spring' && dn > 1 && (dn - 1) % CFG.SEASON_DAYS === 0, prev = riverMode;
+        riverMode = s.id === 'winter' ? 'ice' : firstSpring ? 'flood' : 'normal';
+        if (waterMesh) waterMesh.position.y = riverMode === 'flood' ? 0.32 : 0;
+        waterMat.opacity = riverMode === 'ice' ? 1 : 0.82;
+        if (riverMode !== prev && dn > 1) toast(riverMode === 'flood' ? 'Spring flood: the river runs high and fast - crossing is slow' : riverMode === 'ice' ? 'The river has frozen - raiders can cross it anywhere' : prev === 'ice' ? 'The ice has thawed' : 'The flood has gone down');
+      }
+      if (!dead) { if (player.userData.lastX !== undefined && Math.hypot(player.position.x - player.userData.lastX, player.position.z - player.userData.lastZ) > 0.02) stepRoad(player.position.x, player.position.z, dt); player.userData.lastX = player.position.x; player.userData.lastZ = player.position.z; }
+      for (const n of npcs) if (!n.escort && !n.down) stepRoad(n.position.x, n.position.z, dt * 0.5);
       player.position.y = actorH(player.position.x, player.position.z);
       for (const n of npcs) n.position.y = actorH(n.position.x, n.position.z);
       for (const e of enemies) { const u = e.userData; if (u.sinking || u.ex) continue; const nh = actorH(e.position.x, e.position.z); e.position.y += nh - (u.gy || 0); u.gy = nh; }

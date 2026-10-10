@@ -177,6 +177,12 @@
     (story.ms || (story.ms = {}))[dayNo] = 1; giveXp(60 + dayNo * 2); res.iron += 10 + dayNo; if (story.beacon) res.shard++; updateHud();
     report.season = `Endless milestone: Day ${dayNo} survived! (+${10 + dayNo} Iron${story.beacon ? ', +1 Shard' : ''}, XP)`;
   }
+  // 낚시: 마을 사람들이 강에서 물고기를 잡아 온다 (겨울에는 얼음 낚시라 절반). 시민 3명당 식량 1 + 기본 1
+  function fishingTick(dayNo) {
+    const folks = npcs.filter(n => n.role === 'citizen' && !n.down).length; if (folks < 2) return 0;
+    const f = Math.max(1, Math.floor((1 + Math.floor(folks / 3)) * (seasonOfDay(dayNo).id === 'winter' ? 0.5 : 1))); res.food += f;
+    report.season = (report.season ? report.season + ' | ' : '') + `Fishers brought ${f} food from the river`; return f;
+  }
   function seasonTick(dayNo) {
     const s = seasonOfDay(dayNo);
     if (s.id !== lastSeasonId) { const first = lastSeasonId === null; lastSeasonId = s.id; if (CFG.SEASONS_ON && (!first || dayNo > 1)) { report.season = s.msg; setTimeout(() => toast(s.msg), 4200); } }
