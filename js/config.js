@@ -129,6 +129,7 @@
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 1.3,
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
+    NIGHT_SPEED: 1.8, REST_SPEED: 8,         // 밤에는 시계가 1.8배 빠르게 흐르고, '새벽까지 쉬기' 중에는 8배 빠르다
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
     QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
