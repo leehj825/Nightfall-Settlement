@@ -96,6 +96,22 @@ The village stays on flat ground; beyond the walls the land rolls into hills, an
 ## Music
 Chord-based synthesized music (bright day arpeggios, slow minor night pads, pulsing danger and boss themes) plus extra effects: level-up, chest, heal, warning bell, howl, victory.
 
+## Hands-off village (latest)
+- **Village Plan:** one button replaces the two planning buttons. Workers plan fences and town buildings themselves whenever the resources allow; you only pick the priority (Defense first / Balanced / Economy first).
+- **Foreman:** once the village has 5+ people the most experienced villager becomes foreman (+25% work speed, everyone else +12%). The morning report lists walls fortified and repaired.
+- **Upgrades by workers:** from Age 3 workers replace wooden fences with stone; each morning they also level up one building, tower (more damage, faster) or gate (stone pillars; soldiers near it hit 7% harder per level).
+- **Autosave** when you leave the app (skipped while raiders are attacking).
+
+## Terrain, river and roads
+- High ground: hits from higher than the target deal up to +25%; raiders slow down climbing.
+- River: spring flood on the first spring day of each year (slower wading), frozen in winter (raiders cross anywhere), and villagers fish for food.
+- Roads wear into the ground wherever people often walk outside the walls (20% faster).
+
+## Weapons and raiders
+- Third weapon: **Spear** (long narrow thrust, pierces lines, slower). New level-up picks: Spear Mastery, Fletching, Second Wind, Forager.
+- New raiders: **archers** (day 5+), **healers** (day 6+, heal nearby raiders), **sappers** (day 4+, run to a fence and explode).
+- Settings > **Balance report** shows a night-by-night log and past runs; copy it to share when tuning.
+
 ## Releasing to Google Play
 See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `docs/privacy-policy.md`.
 
