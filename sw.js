@@ -1,7 +1,7 @@
 // Nightfall Settlement service worker: caches the game so it starts offline and loads fast after the first visit.
 // Bump VERSION when you publish a new build so players pick it up (assets are served cache-first, refreshed in the background).
-const VERSION = 'nf-v1';
-const SHELL = ['./', 'index.html', 'manifest.json', 'css/style.css', 'js/config.js', 'js/audio.js', 'js/rig.js', 'js/game.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon.svg'];
+const VERSION = 'nf-v2';
+const SHELL = ['./', 'index.html', 'manifest.json', 'css/style.css', 'vendor/three.min.js', 'vendor/GLTFLoader.js', 'vendor/SkeletonUtils.js', 'js/config.js', 'js/audio.js', 'js/rig.js', 'js/game.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

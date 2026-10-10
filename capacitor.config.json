@@ -1,0 +1,8 @@
+{
+  "appId": "com.nightfall.settlement",
+  "appName": "Nightfall Settlement",
+  "webDir": "www",
+  "backgroundColor": "#0a0d1c",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" }
+}
