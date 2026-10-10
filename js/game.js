@@ -234,7 +234,7 @@
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const soldierMult = (n) => (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1);
-  const res = { wood: 0, stone: 0, food: 0, iron: 0, shard: 0 };
+  const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
@@ -753,7 +753,7 @@
 
   // ---------- 낮/밤 순환 ----------
   const DAY_START_MIN = 8 * 60;       // 08:00 시작
-  const MIN_PER_SEC = 10;             // 현실 1초 = 게임 10분
+  const MIN_PER_SEC = 4.4;            // 현실 1초 = 게임 4.4분 (하루 약 5.5분)
   const clockEl = document.getElementById('clock');
   let gameMin = DAY_START_MIN;
   const C = (h) => new THREE.Color(h);
@@ -1158,7 +1158,7 @@
   let chapterCleared = false;                // Day 7 보스 처치 후 true → 무한 모드
   const wave = { day: 0, remaining: 0, brutes: 0, siegeLeft: 0, bossLeft: 0 };
   // 밤의 종류 (조용한 밤만 변주): calm / fog(안개: 시야·사거리 감소) / plunder(약탈: 적이 더 많지만 철을 떨어뜨린다). 아침 요약과 상단 안내로 미리 알려 준다
-  const NIGHT_PATTERN = ['calm', 'calm', 'fog', 'plunder', 'storm', 'fog', 'hunt', 'calm', 'plunder', 'storm', 'hunt', 'fog'];
+  const NIGHT_PATTERN = ['calm', 'calm', 'fog', 'calm', 'plunder', 'calm', 'storm', 'calm', 'hunt', 'fog', 'calm', 'plunder'];
   const NIGHT_INFO = { calm: ['Calm night', 'Beasts and a few raiders'], fog: ['Foggy night', 'Shorter sight for you and the archers'], plunder: ['Plunder night', 'More raiders, but they drop iron'], storm: ['Thunderstorm', 'Lightning flashes and raiders move faster'], hunt: ['Wolf hunt', 'A fast pack of beasts - they drop food'], raid: ['Blood Moon raid', 'A full assault'] };
   function nightTypeOf(d) {
     if (isRaid(d)) return 'raid';
@@ -1166,9 +1166,22 @@
     for (let i = 1; i <= d; i++) if (!isRaid(i)) q++;
     return NIGHT_PATTERN[(q - 1) % NIGHT_PATTERN.length];
   }
-  const isRaid = (d) => d % CFG.RAID_EVERY === 0 || d === CFG.BOSS_DAY;       // 붉은 달 대규모 습격의 밤 (3, 6, 9 ... + 보스 밤)
+  const raidDays = [3];                                                       // 붉은 달 대규모 습격의 밤: 간격이 일정하지 않고 하루 전에 경고가 뜬다
+  const isRaid = (d) => { while (raidDays[raidDays.length - 1] < d + 1) raidDays.push(raidDays[raidDays.length - 1] + CFG.RAID_GAPS[(raidDays.length - 1) % CFG.RAID_GAPS.length]); return raidDays.includes(d) || d === CFG.BOSS_DAY; };
   const nextRaidFrom = (d) => { while (!isRaid(d)) d++; return d; };
   let nightEase = false;
+  // 습격 예보: 다가오는 큰 습격의 규모를 미리 알려 준다 (startWave와 같은 식으로 어림한 값)
+  function forecast(day) {
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);
+    const boss = day === CFG.BOSS_DAY && !chapterCleared;
+    let n = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat); if (boss) n = Math.ceil(n / 2);
+    const brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0, siege = day >= CFG.SIEGE_FROM_DAY ? 1 : 0;
+    return `about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
+  }
+  function defenseSummary() {
+    const fences = obstacles.filter(o => o.userData.type === 'fence'), wallPct = fences.length ? Math.round(100 * fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length) : 0;
+    return `Walls ${wallPct}% · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}`;
+  }
   function startWave(day) {
     wave.day = day;
     wave.quiet = !isRaid(day);
@@ -1178,6 +1191,7 @@
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
+      if (wave.type === 'calm') wave.remaining = Math.max(1, Math.floor(wave.remaining * 0.5));            // 평범한 밤은 정말 조용하다
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
       if (wave.type === 'hunt') wave.remaining = Math.ceil(wave.remaining * 1.6) + 1;
       if (wave.type === 'storm') wave.remaining = Math.ceil(wave.remaining * 1.2);
@@ -1521,6 +1535,7 @@
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
+    if (isRaid(dayNo)) rows.push(`⚠ Raid tonight: ${forecast(dayNo)}`); else if (isRaid(dayNo + 1)) rows.push(`⚠ Raid TOMORROW night: ${forecast(dayNo + 1)}`);
     if (r.season) rows.push(r.season);
     if (r.camps) rows.push(`Camps delivered: ${r.camps}`);
     if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
@@ -1535,6 +1550,7 @@
     if (dr.length) rows.push(`Stockpile: ${dr.join(' · ')}`);
     const dp = prosScore - r.pros;
     { const tn = nightTypeOf(dayNo), tm = nightTypeOf(dayNo + 1); rows.push(`Tonight: ${NIGHT_INFO[tn][0]}${tn === 'calm' ? '' : ' - ' + NIGHT_INFO[tn][1]}`); if (tm !== tn) rows.push(`Tomorrow night: ${NIGHT_INFO[tm][0]}`); }
+    if (isRaid(dayNo) || isRaid(dayNo + 1)) rows.push(`Defense: ${defenseSummary()}`);
     rows.push(`Prosperity: ${prosLabel(prosScore)} ${prosScore}${dp ? ` (${dp > 0 ? '▲' : '▼'}${Math.abs(dp)})` : ''}`);
     document.getElementById('repTitle').textContent = `Day ${dayNo} · Morning report`;
     repList.innerHTML = rows.map(t => `<li>${t}</li>`).join('');
@@ -3447,7 +3463,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3705,6 +3721,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

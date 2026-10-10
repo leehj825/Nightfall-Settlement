@@ -70,7 +70,7 @@
       3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
     },
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
-    EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.25,        // 원정 중에는 게임 시계가 4배 느리게 간다 (현실 1초 = 게임 2.5분): 8시 출발이면 현실 약 3분 50초
+    EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
    
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
@@ -127,7 +127,8 @@
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 1.3,
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
-    RAID_EVERY: 3, QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
+    RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
+    QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
     BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수
     // 공성 투척병 (Day 4~): 초장거리에서 곡사로 폭발 바위를 던져 구조물을 광역 파괴. 궁수(30)가 닿지 않는 거리에 멈춘다
