@@ -1,6 +1,6 @@
 // Nightfall Settlement - synthesized sound effects and background music (WebAudio, no asset files).
   const Snd = (() => {
-    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, vol = { sfx: 1, music: 1 }, mood = { nf: 0, danger: false }, step = 0;
+    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, vol = { sfx: 1, music: 1 }, mood = { nf: 0, danger: false, boss: false }, step = 0;
     const last = {};
     try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1) vol.music = v.music; } catch (e) {}
     function init() {
@@ -50,6 +50,13 @@
       boom: v => { tone(55, 0.7, 'sine', 0.55 * v, 25); noise(0.6, 0.35 * v, 'lowpass', 1400, 80); },
       horn: v => { tone(196, 0.9, 'sawtooth', 0.22 * v, 190); tone(147, 0.9, 'sawtooth', 0.18 * v, 140, 0.0); tone(220, 1.0, 'sawtooth', 0.2 * v, 215, 0.7); },
       click: v => tone(700, 0.05, 'square', 0.1 * v, 500),
+      levelup: v => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.4, 'triangle', 0.22 * v, null, i * 0.09)); tone(262, 0.8, 'sine', 0.2 * v, null, 0.1); },
+      chest: v => { tone(180, 0.12, 'square', 0.12 * v, 120); [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.3, 'sine', 0.16 * v, null, 0.1 + i * 0.06)); },
+      heal: v => { [440, 554, 659].forEach((f, i) => tone(f, 0.5, 'sine', 0.14 * v, f * 1.02, i * 0.1)); },
+      bell: v => { for (const [f, vv] of [[330, 0.3], [495, 0.2], [742, 0.12]]) tone(f, 1.4, 'sine', vv * v, f * 0.995); tone(330, 1.4, 'sine', 0.25 * v, 328, 0.55); },
+      howl: v => { tone(300, 1.4, 'sine', 0.22 * v, 520); tone(300.8, 1.4, 'triangle', 0.1 * v, 524, 0.02); tone(520, 0.9, 'sine', 0.18 * v, 330, 1.3); },
+      victory: v => { [392, 523, 659, 784, 1047].forEach((f, i) => { tone(f, 0.5, 'triangle', 0.2 * v, null, i * 0.12); tone(f / 2, 0.5, 'sine', 0.12 * v, null, i * 0.12); }); },
+      pickup: v => { tone(880, 0.08, 'sine', 0.16 * v, 1320); tone(1320, 0.12, 'sine', 0.12 * v, null, 0.07); },
       thunder: v => { noise(1.8, 0.55 * v, 'lowpass', 500, 50); tone(48, 1.4, 'sine', 0.5 * v, 28); noise(0.9, 0.3 * v, 'lowpass', 300, 40, 0.5); },
     };
     function play(name, v = 1) {
@@ -58,15 +65,33 @@
       if (now - (last[name] || 0) < 55) return;                  // 같은 소리가 한꺼번에 겹치지 않게
       last[name] = now; SFX[name](Math.min(1, v));
     }
-    // 배경음: 낮 = 잔잔한 펜타토닉 음, 밤 = 낮은 드론 + 드문 음, 습격 = 맥박 + 긴장 음
-    const DAY = [262, 294, 330, 392, 440, 523], NIGHT = [110, 131, 147, 165, 196];
+    // 배경음: 코드 진행을 따라가는 작은 시퀀서. 낮 = 밝은 아르페지오, 밤 = 느린 단조 패드, 습격 = 맥박 + 불안한 선율, 보스 = 더 낮고 빠른 맥박
+    const N = n => 440 * Math.pow(2, (n - 69) / 12);          // MIDI -> Hz
+    const DAY_CH = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];          // C Am F G
+    const NIGHT_CH = [[45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 58], [40, 47, 52, 55]];        // Am F G(m) Em, low and slow
+    const DANGER_ROOT = [38, 38, 41, 36];
     function musicTick() {
       if (!ctx || muted) return;
       step++;
       drone.gain.setTargetAtTime(0.35 * mood.nf * (mood.danger ? 1.5 : 1), ctx.currentTime, 1.5);
-      if (mood.danger) { tone(62, 0.18, 'sine', 0.5, 38, 0, musicBus); if (step % 2 === 0) tone(NIGHT[(step >> 1) % 5] * 2, 0.5, 'triangle', 0.12, null, 0.1, musicBus); return; }
-      if (mood.nf < 0.5) { if (step % 5 === 0) tone(DAY[Math.floor(Math.random() * DAY.length)], 1.4, 'sine', 0.16, null, 0, musicBus); }
-      else if (step % 7 === 0) tone(NIGHT[Math.floor(Math.random() * NIGHT.length)] * 2, 2.2, 'sine', 0.14, null, 0, musicBus);
+      const bar = (step >> 3) & 3, beat = step & 7;                       // 8 ticks per bar, a bar per chord
+      if (mood.danger) {
+        const r = DANGER_ROOT[bar];
+        if (beat % 2 === 0) tone(N(r), 0.22, 'sine', mood.boss ? 0.6 : 0.45, N(r) * 0.6, 0, musicBus);
+        if (mood.boss && beat % 2 === 1) tone(N(r + 12), 0.1, 'square', 0.07, null, 0, musicBus);
+        if (beat === 0 || beat === 3 || beat === 5) tone(N(r + [24, 27, 30][(step >> 1) % 3]), 0.45, 'triangle', 0.1, null, 0.05, musicBus);
+        return;
+      }
+      if (mood.nf < 0.5) {                                                // 낮
+        const ch = DAY_CH[bar];
+        if (beat % 2 === 0) tone(N(ch[(beat >> 1) % 4]), 1.1, 'sine', 0.13, null, 0, musicBus);
+        if (beat === 0) tone(N(ch[0] - 12), 2.6, 'sine', 0.1, null, 0, musicBus);
+        if (beat === 4 && bar % 2 === 1) tone(N(ch[2] + 12), 1.6, 'triangle', 0.05, null, 0, musicBus);
+      } else {                                                            // 밤
+        const ch = NIGHT_CH[bar];
+        if (beat === 0) { for (const n of ch) tone(N(n), 3.6, 'sine', 0.07, null, 0, musicBus); }
+        if (beat === 2 || beat === 6) tone(N(ch[2 + (beat >> 2)] + 12), 1.8, 'sine', 0.08, null, 0.1, musicBus);
+      }
     }
     function setMuted(m) {
       muted = m; try { localStorage.setItem('nf_mute', m ? '1' : '0'); } catch (e) {}
@@ -77,5 +102,5 @@
       vol[kind] = Math.max(0, Math.min(1, v)); try { localStorage.setItem('nf_vol', JSON.stringify(vol)); } catch (e) {}
       if (ctx) { (kind === 'sfx' ? sfxBus : musicBus).gain.setTargetAtTime((kind === 'sfx' ? 0.8 : 0.3) * vol[kind], ctx.currentTime, 0.05); }
     }
-    return { init, play, setVol, getVol: k => vol[k], setMood: (nf, danger) => { mood.nf = nf; mood.danger = danger; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
+    return { init, play, setVol, getVol: k => vol[k], setMood: (nf, danger, boss) => { mood.nf = nf; mood.danger = danger; mood.boss = !!boss; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
   })();

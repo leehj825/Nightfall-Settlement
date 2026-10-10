@@ -978,7 +978,7 @@
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt'); buzz(hp <= 0 ? 300 : 30);
     if (hp <= 0) gameOver('You were slain');
   }
-  function healPlayer(n) { hp = Math.min(pMaxHp(), hp + n); hpEl.textContent = Math.ceil(hp); }
+  function healPlayer(n) { if (n >= 20 && hp < pMaxHp()) Snd.play('heal', 0.8); hp = Math.min(pMaxHp(), hp + n); hpEl.textContent = Math.ceil(hp); }
   // 회복: 모닥불 곁에서 일정 시간 맞지 않으면 초당 회복, 모닥불은 낮에 서서히 회복
   function updateRegen(dt) {
     if (dead) return;
@@ -1159,7 +1159,7 @@
   function giveXp(n, at) {
     if (pl.lvl >= PL_MAX) return;
     pl.xp += n;
-    while (pl.lvl < PL_MAX && pl.xp >= xpNeed(pl.lvl)) { pl.xp -= xpNeed(pl.lvl); pl.lvl++; pl.pend++; toast(`Level ${pl.lvl}! Choose an upgrade`); Snd.play('chime'); buzz([40, 40, 80]); floatText(`Level ${pl.lvl}!`, player.position.x, 3.4, player.position.z); }
+    while (pl.lvl < PL_MAX && pl.xp >= xpNeed(pl.lvl)) { pl.xp -= xpNeed(pl.lvl); pl.lvl++; pl.pend++; toast(`Level ${pl.lvl}! Choose an upgrade`); Snd.play('levelup'); buzz([40, 40, 80]); floatText(`Level ${pl.lvl}!`, player.position.x, 3.4, player.position.z); }
     if (pl.lvl >= PL_MAX) pl.xp = 0;
     updateLvlUi();
   }
@@ -3226,7 +3226,7 @@
   const warnEl = document.getElementById('warn');
   let warnTimer;
   function showWarning(msg) {
-    buzz([120, 60, 120]); warnEl.textContent = msg; warnEl.classList.add('show'); Snd.play(/Behemoth|massive/.test(msg) ? 'roar' : 'horn');
+    buzz([120, 60, 120]); warnEl.textContent = msg; warnEl.classList.add('show'); Snd.play(/Behemoth|massive/.test(msg) ? 'roar' : /^Warning/.test(msg) ? 'bell' : 'horn');
     clearTimeout(warnTimer); warnTimer = setTimeout(() => warnEl.classList.remove('show'), 3000);
   }
   const countType = (t) => obstacles.filter(o => o.userData.type === t).length;
@@ -3436,7 +3436,7 @@
     const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
     if (d.ch >= 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
-    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
+    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chest'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
     if (o.userData.relic) foundRelic(d);
   }
 
@@ -3757,7 +3757,7 @@
     updateFood(dt);
     updateDash(dt);
     updateFloaters(dt); updateSmith(dt, t);
-    Snd.setMood(nf, danger && night);
+    Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
     atkCd -= dt;
