@@ -279,7 +279,7 @@
   let playerClass = null, order = 'guard', rallyT = 0;
   const perks = {};                                                  // 시대 -> 퍼크 id
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
-  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 } };
+  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 } };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
   let diff = 'normal', ngLevel = 0;
   try { const d0 = localStorage.getItem('nf_diff'); if (d0 && CFG.DIFFS[d0]) diff = d0; } catch (e) {}
@@ -288,7 +288,7 @@
   const hasPerk = (id) => Object.values(perks).includes(id);
   const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
   const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1);
-  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0);
+  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0) + (pl.st.forage >= 3 ? 1 : 0) + (pl.st.forage >= 5 ? 1 : 0);
   const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
   const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd);
@@ -301,9 +301,10 @@
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
-    playerRig.main = weaponMode;
+    const vis = weaponMode === 'spear' ? 'sword' : weaponMode;
+    playerRig.main = vis;
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); playerRig.setArmor(gearDef(playerGear.armor));
-    playerRig.hold(weaponMode);
+    playerRig.hold(vis);
   }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN'), ironEl = document.getElementById('ironN');
   const toastEl = document.getElementById('toast');
@@ -1090,6 +1091,7 @@
   function updateRegen(dt) {
     if (dead) return;
     sinceHurt += dt;
+    if (pl.st.regen > 0 && hp < pMaxHp()) hp = Math.min(pMaxHp(), hp + 0.35 * pl.st.regen * dt);
     if (fireAlive && hp < pMaxHp() && sinceHurt >= CFG.REGEN_DELAY && Math.hypot(player.position.x, player.position.z) < CFG.REGEN_RADIUS) healPlayer(CFG.REGEN_RATE * (hasPerk('scout') ? 1.5 : 1) * dt);
     if (fireAlive && fireHp < fireMax() && nowHour >= 6 && nowHour < 18) fireHp = Math.min(fireMax(), fireHp + CFG.FIRE_REGEN * dt);
   }
@@ -1242,6 +1244,8 @@
     { id: 'hp', label: 'Vigor', desc: '+20 max HP' }, { id: 'dmg', label: 'Might', desc: '+15% damage' }, { id: 'spd', label: 'Swift', desc: '+6% move speed' },
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
+    { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
   let barT = 0;
@@ -1446,14 +1450,14 @@
   // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
   function sectorHit(x, z, ang, byPlayer = false, def = gearDef(playerGear.sword)) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
-    const range = ATK_RANGE * slashScale(def);
+    const range = ATK_RANGE * slashScale(def) * (def.rangeMul || 1), half = def.half || ATK_HALF;
     let n = 0;
     for (const e of enemies.slice()) {
       if (e.userData.sinking) continue;
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
     }
     return n;
   }
@@ -2783,12 +2787,19 @@
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
     if (dead || atkCd > 0) return;
-    atkCd = ATK_CD;
+    atkCd = ATK_CD * (weaponMode === 'spear' ? 1.25 : 1);
     gathering = null;
     if (weaponMode === 'bow') {
       shake = Math.max(shake, 0.08);
       playerAnim.once('attackBow'); Snd.play('bow');
-      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg());
+      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch));
+      return;
+    }
+    if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
+      const base = gearDef(playerGear.sword), sd = { ...base, dmg: base.dmg * pDmg() * 1.12 * (1 + 0.2 * pl.st.spear), half: Math.PI / 9, rangeMul: 1.75 * (1 + 0.08 * pl.st.spear), slash: (base.slash || 1) * 1.6 };
+      atkT = SLASH_LIFE; shake = 0.2; playerAnim.once('attackSword'); Snd.play('swing'); spawnSlash(player.position.x, player.position.z, facing, { ...sd, slash: 1.5 });
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
+      if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       return;
     }
     atkT = SLASH_LIFE; shake = 0.3;
@@ -2803,12 +2814,13 @@
   }
 
   // ---------- 무기 교체 / 화살 ----------
+  const WEAPON_NAME = { sword: 'Sword', bow: 'Bow', spear: 'Spear' };
   function swapWeapon() {
     if (dead) return;
-    weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
-    playerRig.main = weaponMode;
-    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
-    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
+    weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
+    playerRig.main = weaponMode === 'spear' ? 'sword' : weaponMode;
+    document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
+    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
@@ -3211,7 +3223,7 @@
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
     Object.assign(story, { roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
-    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
+    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
@@ -3242,7 +3254,7 @@
     document.getElementById('gameover').style.display = 'none';
     clearEl.classList.remove('show'); warnEl.classList.remove('show');
     updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
-    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode] || 'Sword'}`;
     updateTownBtn();
   }
   function rewindTo(cp) {
@@ -4202,6 +4214,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

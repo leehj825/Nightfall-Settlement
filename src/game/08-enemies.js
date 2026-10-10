@@ -81,6 +81,8 @@
     { id: 'hp', label: 'Vigor', desc: '+20 max HP' }, { id: 'dmg', label: 'Might', desc: '+15% damage' }, { id: 'spd', label: 'Swift', desc: '+6% move speed' },
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
+    { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
   let barT = 0;

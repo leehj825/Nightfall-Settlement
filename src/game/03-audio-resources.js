@@ -9,7 +9,7 @@
   let playerClass = null, order = 'guard', rallyT = 0;
   const perks = {};                                                  // 시대 -> 퍼크 id
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
-  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 } };
+  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 } };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
   let diff = 'normal', ngLevel = 0;
   try { const d0 = localStorage.getItem('nf_diff'); if (d0 && CFG.DIFFS[d0]) diff = d0; } catch (e) {}
@@ -18,7 +18,7 @@
   const hasPerk = (id) => Object.values(perks).includes(id);
   const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
   const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1);
-  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0);
+  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0) + (pl.st.forage >= 3 ? 1 : 0) + (pl.st.forage >= 5 ? 1 : 0);
   const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
   const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd);
@@ -31,9 +31,10 @@
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
-    playerRig.main = weaponMode;
+    const vis = weaponMode === 'spear' ? 'sword' : weaponMode;
+    playerRig.main = vis;
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); playerRig.setArmor(gearDef(playerGear.armor));
-    playerRig.hold(weaponMode);
+    playerRig.hold(vis);
   }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN'), ironEl = document.getElementById('ironN');
   const toastEl = document.getElementById('toast');

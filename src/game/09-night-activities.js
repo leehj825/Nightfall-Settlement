@@ -161,14 +161,14 @@
   // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
   function sectorHit(x, z, ang, byPlayer = false, def = gearDef(playerGear.sword)) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
-    const range = ATK_RANGE * slashScale(def);
+    const range = ATK_RANGE * slashScale(def) * (def.rangeMul || 1), half = def.half || ATK_HALF;
     let n = 0;
     for (const e of enemies.slice()) {
       if (e.userData.sinking) continue;
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
     }
     return n;
   }

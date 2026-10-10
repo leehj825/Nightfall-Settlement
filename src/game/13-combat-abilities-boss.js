@@ -4,12 +4,19 @@
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
     if (dead || atkCd > 0) return;
-    atkCd = ATK_CD;
+    atkCd = ATK_CD * (weaponMode === 'spear' ? 1.25 : 1);
     gathering = null;
     if (weaponMode === 'bow') {
       shake = Math.max(shake, 0.08);
       playerAnim.once('attackBow'); Snd.play('bow');
-      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg());
+      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch));
+      return;
+    }
+    if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
+      const base = gearDef(playerGear.sword), sd = { ...base, dmg: base.dmg * pDmg() * 1.12 * (1 + 0.2 * pl.st.spear), half: Math.PI / 9, rangeMul: 1.75 * (1 + 0.08 * pl.st.spear), slash: (base.slash || 1) * 1.6 };
+      atkT = SLASH_LIFE; shake = 0.2; playerAnim.once('attackSword'); Snd.play('swing'); spawnSlash(player.position.x, player.position.z, facing, { ...sd, slash: 1.5 });
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
+      if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       return;
     }
     atkT = SLASH_LIFE; shake = 0.3;
@@ -24,12 +31,13 @@
   }
 
   // ---------- 무기 교체 / 화살 ----------
+  const WEAPON_NAME = { sword: 'Sword', bow: 'Bow', spear: 'Spear' };
   function swapWeapon() {
     if (dead) return;
-    weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
-    playerRig.main = weaponMode;
-    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
-    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
+    weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
+    playerRig.main = weaponMode === 'spear' ? 'sword' : weaponMode;
+    document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
+    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];

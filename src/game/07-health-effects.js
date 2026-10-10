@@ -34,6 +34,7 @@
   function updateRegen(dt) {
     if (dead) return;
     sinceHurt += dt;
+    if (pl.st.regen > 0 && hp < pMaxHp()) hp = Math.min(pMaxHp(), hp + 0.35 * pl.st.regen * dt);
     if (fireAlive && hp < pMaxHp() && sinceHurt >= CFG.REGEN_DELAY && Math.hypot(player.position.x, player.position.z) < CFG.REGEN_RADIUS) healPlayer(CFG.REGEN_RATE * (hasPerk('scout') ? 1.5 : 1) * dt);
     if (fireAlive && fireHp < fireMax() && nowHour >= 6 && nowHour < 18) fireHp = Math.min(fireMax(), fireHp + CFG.FIRE_REGEN * dt);
   }
