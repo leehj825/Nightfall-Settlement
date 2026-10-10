@@ -145,7 +145,7 @@
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; return; }
-    const ok = e.pointerType === 'mouse' ? e.button === 0 : e.clientX > innerWidth * 0.4;
+    const ok = e.pointerType === 'mouse' ? e.button === 0 : (settings.hand === 'l' ? e.clientX < innerWidth * 0.6 : e.clientX > innerWidth * 0.4);
     if (!ok || look.id !== null) return;
     look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
     canvas.setPointerCapture(e.pointerId);
@@ -2633,7 +2633,9 @@
 
   // ---------- 플레이어 공격 ----------
   let atkT = 0, atkCd = 0, shake = 0;
+  let tapTip = false; try { tapTip = !!localStorage.getItem('nf_tiptap'); } catch (e) {}
   function attack() {
+    if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
     if (dead || atkCd > 0) return;
     atkCd = ATK_CD;
     gathering = null;
@@ -3863,10 +3865,10 @@
   }
 
   // 설정 (볼륨 · 글자 크기 · 그래픽)
-  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true };
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true, hand: 'r', bsz: 'm' };
   try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
   function applySettings() {
-    document.documentElement.dataset.ts = settings.text;
+    document.documentElement.dataset.ts = settings.text; document.documentElement.dataset.hand = settings.hand; document.documentElement.dataset.bsz = settings.bsz;
     const lo = settings.gfx === 'lo';
     renderer.setPixelRatio(lo ? 1 : Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight, false);
     renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
@@ -3886,6 +3888,7 @@
     document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
     document.getElementById('setSfx').value = Math.round(Snd.getVol('sfx') * 100);
     { const sd = document.getElementById('setDiff'); if (!sd.options.length) Object.entries(CFG.DIFFS).forEach(([id, d]) => sd.add(new Option(d.label, id))); sd.value = diff; }
+    document.getElementById('setHand').value = settings.hand; document.getElementById('setBsz').value = settings.bsz;
     document.getElementById('setHaptic').value = settings.haptic === false ? 'off' : 'on';
     document.getElementById('setText').value = settings.text; document.getElementById('setGfx').value = settings.gfx;
     const d = readSave(); document.getElementById('setSaveInfo').textContent = d ? `Saved: Day ${d.day} (auto-saves every morning)` : 'No save yet - the game auto-saves every morning';
@@ -3898,6 +3901,8 @@
   document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
   document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
   document.getElementById('setDiff').addEventListener('change', e => { diff = e.target.value; try { localStorage.setItem('nf_diff', diff); } catch (x) {} toast(`Difficulty: ${CFG.DIFFS[diff].label}`); saveGame(); });
+  document.getElementById('setHand').addEventListener('change', e => { settings.hand = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setBsz').addEventListener('change', e => { settings.bsz = e.target.value; saveSettings(); applySettings(); });
   document.getElementById('setHaptic').addEventListener('change', e => { settings.haptic = e.target.value === 'on'; saveSettings(); buzz(60); });
   document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
   document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });

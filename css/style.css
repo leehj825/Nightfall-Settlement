@@ -238,3 +238,29 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-width: 640px) and (orientation: portrait) { #planBox { top: 100px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } #swapBtn { min-width: 62px; min-height: 34px; padding: 3px 8px; font-size: 10px; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #planBox { top: 88px; } }
 @media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 62px; } #leftActions { bottom: 126px; } }
+
+/* button size setting (scales the round buttons and the stick) */
+html[data-bsz="s"] .btn { transform: scale(.86); transform-origin: bottom right; }
+html[data-bsz="s"] #joy { width: 96px !important; height: 96px !important; }
+/* left-handed: stick and its shortcuts on the right, action buttons on the left */
+html[data-hand="l"] #joy { left: auto !important; right: 14px; }
+html[data-hand="l"] #actions { right: auto !important; left: 8px; align-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
+html[data-hand="l"] #leftActions { left: auto !important; right: 14px; align-items: flex-end; }
+html[data-hand="l"] #ctxActions { right: auto !important; left: 76px; }
+html[data-hand="l"] #muteBtn { left: auto !important; right: 150px; }
+html[data-hand="l"] #setBtn { left: auto !important; right: 194px; }
+html[data-hand="l"] #actions .btn, html[data-hand="l"] #swapBtn { align-self: flex-start; }
+html[data-hand="l"][data-bsz="s"] .btn { transform-origin: bottom left; }
+@media not all and (max-height: 520px) and (orientation: landscape) {
+html[data-bsz="l"] .btn { width: 62px !important; height: 62px !important; font-size: 11.5px !important; }
+html[data-bsz="l"] #swapBtn { width: auto !important; height: auto !important; }
+html[data-bsz="l"] #joy { width: 150px !important; height: 150px !important; }
+html[data-bsz="l"] #leftActions { bottom: 178px !important; }
+html[data-bsz="l"] #muteBtn { left: 176px !important; } html[data-bsz="l"] #setBtn { left: 220px !important; }
+html[data-bsz="s"] #leftActions { bottom: 112px !important; }
+html[data-hand="l"][data-bsz="l"] #muteBtn { left: auto !important; right: 176px !important; } html[data-hand="l"][data-bsz="l"] #setBtn { left: auto !important; right: 220px !important; }
+}
+html[data-hand="l"] #planBox { margin-top: 0; }
+html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
+@media (max-width: 640px) and (orientation: portrait) { html[data-hand="l"] #planBox { right: 6px; } }
+@media (max-height: 520px) and (orientation: landscape) { html[data-hand="l"] #leftActions { bottom: 124px !important; gap: 2px; } html[data-hand="l"] #planBox { right: 6px; } }
