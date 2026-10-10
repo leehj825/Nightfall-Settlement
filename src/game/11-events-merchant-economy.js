@@ -160,7 +160,14 @@
     const before = skillLv(n, k); n.xp[k] = (n.xp[k] || 0) + 1;
     if (skillLv(n, k) > before) floatText(`${CFG.JOBS[k]}: ${CFG.SKILL_NAMES[skillLv(n, k)]}!`, n.position.x, 3.2, n.position.z);
   }
-  const jobTitle = (n) => { const k = jobKind(n); return k ? `${CFG.JOBS[k]} (${CFG.SKILL_NAMES[skillLv(n, k)]})` : 'Laborer'; };
+  // 작업반장: 마을이 커지면(5명 이상) 경험이 가장 많은 사람이 반장이 된다. 반장은 일이 25% 빠르고, 반장이 살아 있으면 나머지도 12% 빨라진다
+  function assignForeman() {
+    for (const n of npcs) n.foreman = false;
+    const pool = npcs.filter(n => !n.down && !n.promote && !n.escort); if (pool.length < 5) return;
+    let best = null, bs = -1; for (const n of pool) { const s = Object.values(n.xp || {}).reduce((a, b) => a + b, 0) + (n.vxp || 0) * 0.5; if (s > bs) { bs = s; best = n; } }
+    if (best) { best.foreman = true; if (!story.foreman) { story.foreman = true; setTimeout(() => toast(`${best.name} has become the foreman: building and repairs go faster`), 2500); } }
+  }
+  const jobTitle = (n) => { if (n.foreman) return 'Foreman'; const k = jobKind(n); return k ? `${CFG.JOBS[k]} (${CFG.SKILL_NAMES[skillLv(n, k)]})` : 'Laborer'; };
   const PREF_LABEL = (p) => p === 'free' ? 'Laborer' : p ? CFG.JOBS[p] : 'Auto';
   function nextPref(n) {                           // 카드 버튼: Auto → (지어진 일터 종류들) → Laborer → Auto
     const opts = [null, ...Object.keys(CFG.JOBS).filter(k => builtBuildings(k).length), 'free'];

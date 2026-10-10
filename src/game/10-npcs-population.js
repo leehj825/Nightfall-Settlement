@@ -91,7 +91,7 @@
   }
 
   const TR = (n) => CFG.TRAITS[n.trait] || {};
-  const workMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.6 : 1) * (TR(n).work || 1) * (n.mood >= CFG.MOOD_HAPPY ? 1.1 : n.mood < CFG.MOOD_UNHAPPY ? 0.8 : 1);
+  const workMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.6 : 1) * (TR(n).work || 1) * (n.mood >= CFG.MOOD_HAPPY ? 1.1 : n.mood < CFG.MOOD_UNHAPPY ? 0.8 : 1) * (n.foreman ? 1.25 : npcs.some(f => f.foreman && !f.down) ? 1.12 : 1);
   const moveMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.75 : 1) * (TR(n).move || 1) * (n.mood < CFG.MOOD_UNHAPPY ? 0.9 : 1);
   const rationOf = (n) => Math.ceil(CFG.RATION * (TR(n).ration || 1) * season().ration);
   const moodLabel = (v) => v < CFG.MOOD_LEAVE ? 'Miserable' : v < CFG.MOOD_UNHAPPY ? 'Unhappy' : v < 60 ? 'Content' : v < CFG.MOOD_HAPPY ? 'Happy' : 'Joyful';
@@ -188,7 +188,7 @@
     if (moodEl.textContent !== mt) moodEl.textContent = mt;
   }
   // ---------- 아침 요약 카드: 어젯밤과 어제 하루 동안 마을에서 일어난 일 ----------
-  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, ill: [], healed: [], season: '', camps: '', res: { ...res }, pros: prosScore, pop: 0 });
+  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, fort: 0, rep: 0, newCit: 0, equipped: 0, forged: 0, ill: [], healed: [], season: '', camps: '', res: { ...res }, pros: prosScore, pop: 0 });
   let report = freshReport();
   const repEl = document.getElementById('report'), repList = document.getElementById('repList');
   let repTimer;
@@ -197,6 +197,8 @@
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
+    { const fm = npcs.find(n => n.foreman), woodLeft = age >= CFG.UPGRADE_FENCE_AGE ? obstacles.filter(o => o.userData.type === 'fence' && o.userData.level === 'wood').length : 0;
+      if (r.fort || r.rep || woodLeft) rows.push(`${fm ? 'Foreman ' + fm.name : 'Workers'}: ${r.fort} wall${r.fort === 1 ? '' : 's'} fortified, ${r.rep} repaired${woodLeft ? ` · ${woodLeft} wooden left${res.stone < CFG.FENCE_UPGRADE_STONE ? ' (need stone)' : ''}` : ''}`); }
     if (isRaid(dayNo)) rows.push(`⚠ Raid tonight: ${forecast(dayNo)}`); else if (isRaid(dayNo + 1)) rows.push(`⚠ Raid TOMORROW night: ${forecast(dayNo + 1)}`);
     if (r.season) rows.push(r.season);
     if (r.camps) rows.push(`Camps delivered: ${r.camps}`);

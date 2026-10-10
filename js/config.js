@@ -41,7 +41,7 @@
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
     SEASONS_ON: true, SICK_ON: true, SEASON_DAYS: 3, SICK_DAYS: 2,                                   // 계절(3일마다 바뀜) / 질병 규칙은 끌 수 있다
     // 9단계: 직업(일터)과 숙련도 / 건물 레벨
-    LEVELED: ['farm', 'lumber', 'quarry', 'smith', 'market', 'well'], BUILD_UPGRADE: { 2: { wood: 20, stone: 10 }, 3: { stone: 30, iron: 6 } }, BUILD_UPGRADES_PER_MORNING: 1,
+    LEVELED: ['farm', 'lumber', 'quarry', 'smith', 'market', 'well', 'tower'], BUILD_UPGRADE: { 2: { wood: 20, stone: 10 }, 3: { stone: 30, iron: 6 } }, BUILD_UPGRADES_PER_MORNING: 1,
     JOBS: { farm: 'Farmer', lumber: 'Woodcutter', quarry: 'Stonecutter', smith: 'Blacksmith' },
     TRAIT_JOB: { stout: 'quarry', nimble: 'lumber', cheerful: 'farm', easygoing: 'farm', diligent: 'smith', brave: 'smith' },          // 성격에 맞는 일터: 효율 +10%, 기분 +4
     SKILL_XP: [0, 4, 10, 20], SKILL_NAMES: ['Novice', 'Skilled', 'Expert', 'Master'], SKILL_BONUS: 0.12,                          // 일 한 번 끝낼 때마다 경험치 +1, 숙련 단계마다 작업 속도 +12%

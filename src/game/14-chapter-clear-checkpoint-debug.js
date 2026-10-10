@@ -105,7 +105,7 @@
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
     for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
-    for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
+    for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); }
@@ -188,8 +188,8 @@
         if (d < bd) { bd = d; foe = e; }
       }
       if (!foe) continue;
-      t.userData.shootCd = CFG.TOWER_INTERVAL;
-      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1), 4.9);
+      t.userData.shootCd = CFG.TOWER_INTERVAL * (1 - 0.12 * (lvOf(t) - 1));
+      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1) * (1 + 0.35 * (lvOf(t) - 1)), 4.9);
     }
   }
   let eatCd = 0;

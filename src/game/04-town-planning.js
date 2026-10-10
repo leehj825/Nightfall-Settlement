@@ -189,6 +189,27 @@
     }
     for (let i = lampHalos.length - 1; i >= 0; i--) if (!lampHalos[i].parent) lampHalos.splice(i, 1);
   }
+  // 출입구 강화: 매일 아침 일꾼이 한 곳씩 돌기둥과 깃발을 세운다. 레벨마다 근처(5칸) 병사의 공격력 +7%
+  const gateBonus = (n) => { for (const g of gateWaypoints) if ((g.lv || 1) > 1 && Math.hypot(n.position.x - g.x, n.position.z - g.z) < 5) return 1 + 0.07 * (g.lv - 1); return 1; };
+  const gatePillarMat = bMat(0x7d8088);
+  function setGateLevel(g, lv) {
+    g.lv = lv;
+    for (const m of g.meshes || []) { scene.remove(m); const i = doormats.indexOf(m); if (i >= 0) doormats.splice(i, 1); }
+    g.meshes = [];
+    for (const s of [-1, 1]) {
+      const h = 1.8 + lv * 0.5, p = new THREE.Mesh(new THREE.BoxGeometry(0.75, h, 0.75), gatePillarMat);
+      p.position.set(g.x - g.nz * 2.1 * s, h / 2, g.z + g.nx * 2.1 * s); p.castShadow = p.receiveShadow = true; scene.add(p); doormats.push(p); g.meshes.push(p);
+      for (let i = 0; i < lv - 1; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.24, 0.04), bannerMat); f.position.set(p.position.x + g.nx * 0.42, h - 0.35 - i * 0.32, p.position.z + g.nz * 0.42); f.rotation.y = Math.atan2(g.nx, g.nz); scene.add(f); doormats.push(f); g.meshes.push(f); }
+    }
+  }
+  function upgradeGates() {
+    for (const g of gateWaypoints) {
+      const lv = g.lv || 1, cost = CFG.BUILD_UPGRADE[lv + 1];
+      if (lv >= age || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
+      payCost(cost); setGateLevel(g, lv + 1); report.upgraded++; updateHud();
+      dust(g.x, g.z); sfxAt('build', g.x, g.z); floatText(`Gate Lv${lv + 1}!`, g.x, 3.6, g.z); return;
+    }
+  }
   function addGate(x, z, r, nx, nz) {                                // 출입구 경유지 등록 + 바닥의 얇고 납작한 회색 도어 매트
     gateWaypoints.push({ x, z, r, nx, nz });
     const doormat = new THREE.Mesh(matGeo, matMat);

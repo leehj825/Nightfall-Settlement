@@ -34,12 +34,12 @@
     u.aggro = u.aggro ? pd < 18 : pd < 11;
     let moving = false;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
-    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { { const ts = terrSpd(e.position.x, e.position.z); e.position.x += (player.position.x - e.position.x) / pd * u.speed * ts * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * ts * dt; } e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
+    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { { const ts = terrSpd(e.position.x, e.position.z) * climbMul(e.position.x, e.position.z, player.position.x, player.position.z); e.position.x += (player.position.x - e.position.x) / pd * u.speed * ts * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * ts * dt; } e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
     else if (!u.aggro) {
       u.wT = (u.wT || 0) - dt;
       if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
       const dx = u.wp.x - e.position.x, dz = u.wp.z - e.position.z, d = Math.hypot(dx, dz);
-      if (d > 0.8) { { const ts = terrSpd(e.position.x, e.position.z); e.position.x += dx / d * u.speed * 0.45 * ts * dt; e.position.z += dz / d * u.speed * 0.45 * ts * dt; } e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
+      if (d > 0.8) { { const ts = terrSpd(e.position.x, e.position.z) * climbMul(e.position.x, e.position.z, e.position.x + dx, e.position.z + dz); e.position.x += dx / d * u.speed * 0.45 * ts * dt; e.position.z += dz / d * u.speed * 0.45 * ts * dt; } e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
     }
     const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; }
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
@@ -146,6 +146,7 @@
       dmg *= CFG.STUN_DMG_MULT;
       if (u.critT <= 0) { u.critT = 0.45; floatText('CRITICAL x2!', e.position.x, e.position.y + 5.2, e.position.z); }
     }
+    if (byPlayer && !exActive) { const hi = player.position.y - (u.gy || 0); if (hi > 0.3) dmg *= 1 + Math.min(0.25, hi * 0.2); }       // 높은 곳에서 내려치면 최대 +25%
     if (byPlayer && u.boss) u.lureT = CFG.BOSS_LURE_TIME;      // 플레이어가 때리면 10초간 플레이어만 쫓는다
     u.hp -= dmg;
     sfxAt('hit', e.position.x, e.position.z);

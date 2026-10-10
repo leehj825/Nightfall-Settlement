@@ -342,11 +342,11 @@
               }
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'repair' && npc.workT >= CFG.REPAIR_TIME) {
-              o.userData.hp = o.userData.maxHp;
+              o.userData.hp = o.userData.maxHp; report.rep++;
               dust(o.position.x, o.position.z);
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'fortify' && npc.workT >= CFG.REPAIR_TIME * 1.5) {
-              if (res.stone >= CFG.FENCE_UPGRADE_STONE) { res.stone -= CFG.FENCE_UPGRADE_STONE; makeStoneFence(o); updateHud(); dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); report.built++; }
+              if (res.stone >= CFG.FENCE_UPGRADE_STONE) { res.stone -= CFG.FENCE_UPGRADE_STONE; makeStoneFence(o); updateHud(); dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); report.fort++; }
               else o.userData.skipUntil = gameMin + 120;
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'gather' && npc.workT >= CFG.GATHER_TIME) {
