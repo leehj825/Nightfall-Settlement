@@ -237,6 +237,20 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-height: 520px) and (orientation: landscape) { #leftActions { left: 10px; bottom: 128px; gap: 4px; } #ctxActions { right: 68px; bottom: 8px; gap: 4px; } }
 @media (max-width: 640px) and (orientation: portrait) { #leftActions { left: 10px; bottom: 138px; gap: 4px; } #ctxActions { right: 64px; bottom: 8px; gap: 4px; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #leftActions { bottom: 122px; } }
+
+/* spacing fixes: planning buttons stack in one box, round buttons get breathing room, labels stay inside */
+#planBox { position: fixed; top: 8px; right: 8px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+#planBox #designBtn, #planBox #townBtn { position: static; }
+#planBox #designBtn small, #planBox #townBtn small { white-space: normal; }
+#actions { gap: 12px; } #leftActions { gap: 12px; } #ctxActions { gap: 12px; }
+#swapBtn { width: auto; min-width: 72px; height: auto; min-height: 40px; padding: 5px 10px; line-height: 1.15; }
+#swapBtn small { margin-top: 1px; }
+#buildBtn { overflow: hidden; font-size: 11px; line-height: 1.1; padding: 0 3px; word-break: break-word; }
+#buildBtn span { display: block; }
+@media (max-height: 520px) and (orientation: landscape) { #planBox { top: 6px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } }
+@media (max-width: 640px) and (orientation: portrait) { #planBox { top: 100px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } #swapBtn { min-width: 62px; min-height: 34px; padding: 3px 8px; font-size: 10px; } }
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #planBox { top: 88px; } }
+@media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 62px; } #leftActions { bottom: 126px; } }
 </style>
 </head>
 <body>
@@ -244,8 +258,10 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 <h1 id="title">Nightfall Settlement</h1>
 <div id="hudBar" title="Tap for all stats (I)"><span id="barA"></span><small id="barB"></small></div>
 <div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display: none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<div id="planBox">
 <button id="designBtn"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
+</div>
 <div id="clock">Day 1 - 08:00</div>
 <div id="raidInfo"><span id="raidTxt"></span><div id="tutor"><span id="tutorTxt"></span><b id="tutorX" title="Hide tips">✕</b></div></div>
 <div id="techPanel"><div class="tcard"><h3 id="techTitle">Age Progression</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">Advance Age</button><button id="techClose">Close</button></div></div></div>
@@ -288,8 +304,8 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 </div>
 <div id="actions">
   <button class="btn" id="atkBtn" style="display: none">Attack<small>F</small></button>
-  <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Current: Sword</small></button>
-  <button class="btn" id="buildBtn"><span id="buildLbl">Stone Wall</span><small>Upgrade · U</small></button>
+  <button class="btn" id="swapBtn"><span id="swapLbl">Switch Weapon</span><small id="swapCur">Q · Sword</small></button>
+  <button class="btn" id="buildBtn"><span id="buildLbl">Stone Wall</span><small>U</small></button>
   <button class="btn" id="actBtn">Gather<small>G</small></button>
   <button class="btn" id="ultBtn">Ultimate<small id="ultCd">E</small></button>
   <button class="btn" id="dashBtn">Dash<small>Space</small></button>
@@ -7813,7 +7829,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
     playerRig.main = weaponMode;
-    document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
@@ -8248,7 +8264,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     document.getElementById('gameover').style.display = 'none';
     clearEl.classList.remove('show'); warnEl.classList.remove('show');
     updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
-    document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     updateTownBtn();
   }
   function rewindTo(cp) {
