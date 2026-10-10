@@ -41,3 +41,10 @@ The game auto-saves to the browser (localStorage) every morning and when you ret
 - **Chapter 3 - Frostmarch:** after the Dawn Gate opens, a new frozen region with a frost-tinted host and the Frost Warden. Taking the Winter Crown finishes the current story.
 - The game clock runs 4x slower while you are on an expedition; a countdown at the top shows when you will be called home.
 
+## Content and polish (stage 11)
+- **22 morning events** (bard, wolves, wandering smith, storm damage, tax collector, ...) with seasonal and state conditions; the same event will not come back within 3 rolls.
+- **New nights:** Thunderstorm (lightning, faster raiders) and Wolf Hunt (a fast pack of beasts that drop food) join calm, fog, plunder and the Blood Moon.
+- **23 achievements,** saved in the browser (Settings > Achievements).
+- **Install as an app (PWA):** when the game is served over http(s) it can be installed ("Add to Home Screen") and works offline after the first visit (`manifest.json`, `sw.js`, `icons/`). Bump `VERSION` in `sw.js` when you publish a new build. Opening `index.html` from disk (file://) works as before without the service worker.
+- **Slow devices:** on touch devices the game switches graphics to Low automatically if the frame rate stays under ~26 FPS for the first seconds (you can change it back in Settings).
+

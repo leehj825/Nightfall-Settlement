@@ -3571,6 +3571,15 @@
     renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
     scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
   }
+  // 느린 기기 자동 대응: 터치 기기에서 처음 몇 초의 프레임이 낮으면 그래픽을 '낮음'으로 바꾸고 알려 준다 (한 번만, 직접 고른 설정은 건드리지 않는다)
+  const fpsLog = [];
+  setInterval(() => {
+    if (settings.auto || settings.gfx === 'lo' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
+    fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
+    if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
+      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
+    }
+  }, 1000);
   function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
   function openSettings() {
     document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
@@ -3585,7 +3594,7 @@
   document.getElementById('setMusic').addEventListener('input', e => Snd.setVol('music', e.target.value / 100));
   document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
   document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
-  document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
   document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
   document.getElementById('setDel').addEventListener('click', e => {
     if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to confirm'; return; }
