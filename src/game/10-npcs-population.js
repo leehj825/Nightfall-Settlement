@@ -194,6 +194,7 @@
   let repTimer;
   function showReport(dayNo) {
     const r = report, rows = [], d = (k) => res[k] - r.res[k];
+    if (dayNo > 1) { (story.stats || (story.stats = [])).push({ d: dayNo - 1, raid: isRaid(dayNo - 1) ? 1 : 0, k: r.kills, wl: r.wallsLost, cl: r.lostCit, f: r.fort, b: r.built, pop: npcs.length, pr: Math.round(prosScore), lv: pl.lvl, pw: Math.round(powerOf().total), w: res.wood, s: res.stone, i: res.iron, fd: Math.floor(res.food) }); if (story.stats.length > 120) story.stats.shift(); }
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);

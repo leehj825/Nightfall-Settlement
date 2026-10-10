@@ -39,6 +39,7 @@
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
 <button id="setBtn" title="Settings">⚙️</button>
+<div id="repPanel" style="display:none"><div class="scard2"><h3>Balance report</h3><p class="jhint">Copy this and send it along when something felt too easy or too hard.</p><textarea id="repText" readonly rows="12" style="width:100%;box-sizing:border-box;font:11px/1.35 monospace;background:#17120d;color:#e8dcc4;border:1px solid #6b5a3a;border-radius:8px;padding:6px"></textarea><div class="tbtns"><button id="repCopy">Copy</button><button id="repClose">Close</button></div></div></div>
 <div id="achPanel"><div class="scard2"><h3>Achievements</h3><p id="achCount"></p><div id="achList"></div><div class="tbtns"><button id="achClose">Close</button></div></div></div>
 <div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div></div></div>
 <div id="setPanel"><div class="scard2"><h3>Settings</h3>
@@ -51,7 +52,7 @@
   <label>Vibration<select id="setHaptic"><option value="on">On</option><option value="off">Off</option></select></label>
   <label>Graphics<select id="setGfx"><option value="hi">High</option><option value="lo">Low (faster)</option></select></label>
   <p class="shint" id="setSaveInfo"></p>
-  <div class="tbtns"><button id="setAch">Achievements</button></div>
+  <div class="tbtns"><button id="setAch">Achievements</button><button id="setRep">Balance report</button></div>
   <div class="tbtns"><button id="setTips">Replay tips</button><button id="setDel">Delete save</button><button id="setClose">Close</button></div></div></div>
 <canvas id="joy" width="150" height="150"></canvas>
 <div id="leftActions">

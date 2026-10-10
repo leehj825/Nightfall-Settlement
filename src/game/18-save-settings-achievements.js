@@ -158,6 +158,10 @@
     document.getElementById('achList').innerHTML = ACH.map(a => `<div class="ach ${achSave[a.id] ? 'got' : ''}"><span>${achSave[a.id] ? '🏆' : '🔒'}</span><div><b>${a.name}</b><small>${a.desc}</small></div></div>`).join('');
     achEl.style.display = 'flex';
   }
+  { const rp = document.getElementById('repPanel'), rt = document.getElementById('repText');
+    document.getElementById('setRep').addEventListener('click', () => { closeSettings(); uiPause = true; rt.value = balanceReport(); rp.style.display = 'flex'; });
+    document.getElementById('repClose').addEventListener('click', () => { rp.style.display = 'none'; uiPause = false; });
+    document.getElementById('repCopy').addEventListener('click', () => { rt.select(); try { navigator.clipboard.writeText(rt.value); toast('Report copied'); } catch (e) { document.execCommand && document.execCommand('copy'); toast('Report selected - copy it'); } }); }
   document.getElementById('setAch').addEventListener('click', () => { closeSettings(); uiPause = true; openAch(); });
   document.getElementById('achClose').addEventListener('click', () => { achEl.style.display = 'none'; uiPause = false; });
 

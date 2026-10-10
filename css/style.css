@@ -270,3 +270,5 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #planBtn.done { background: #555; box-shadow: none; opacity: .7; }
 #planBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a3a6a; }
 @media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #planBox #planBtn { width: 132px; font-size: 11px; padding: 4px 6px; } #planBtn small { font-size: 9px; } }
+#repPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 32; padding: 12px; }
+#repPanel .scard2 { width: min(560px, 100%); max-height: 92%; overflow: auto; }
