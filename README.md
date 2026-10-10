@@ -65,4 +65,4 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - **Fireside tales:** stand by the campfire on a peaceful night for old Edda's stories (+25 XP, mood). Ten tales that foreshadow the story chapters.
 - **Night visitors:** five random night events on quiet nights (a knock at the gate, an owl that foretells the next raid, whispers in the woods, ...).
 - **Moonlit expeditions:** Moonlit Crypt, Whispering Marsh and Pale Mausoleum open from 20:00 to 02:00 once the night's raiders are cleared (not on raid nights). Double XP, and their guardians give a bonus level-up choice. You are called home at 04:30.
-
+- **Seeing in the dark:** in expedition zones chests have light beams (faint up close), enemies have glowing halos (gold for guardians, colored by faction), the moon lights the ground and your torch reaches farther. The top line shows time left, chests left with the nearest chest's direction and distance, and foes left.
