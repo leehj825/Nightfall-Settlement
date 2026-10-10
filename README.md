@@ -51,3 +51,9 @@ The game auto-saves to the browser (localStorage) every morning and when you ret
 ## Chapter 4 - The Hollow Court
 After the Winter Crown the story continues: a tolling bell and a road the Crown draws to three places. Recover the **Echo Stone** (Sunken Barrow) and the **Mourning Bell** (Mourning Chapel), then the Obsidian Spire opens: defeat **The Hollow King** and swear the Keeper's Oath. The ending makes nights 15% smaller and the villagers a little happier, and the game keeps going in endless mode. The hollow host is violet-tinted; each site can also get a camp. Story text lives in `js/config.js` (`STORY_HOLLOW`, `STORY4`, `STORY_FINALE`).
 
+## New pacing (the day is longer, threats are announced)
+- **Day length:** about 5.5 real minutes (was 2.4). Peaceful nights are really quiet; big raids are on an irregular schedule (Day 3, 7 = boss, 10, 14, 17, ...) and you get a warning on the morning before, with a forecast of how many raiders / brutes to expect and a defense summary (walls, soldiers, towers) in the morning report.
+- **You level up:** kills, surviving nights, chests, relics and camps give XP. Each level (max 12) lets you pick one of three upgrades (HP, damage, speed, dash/ultimate cooldowns, lifesteal, damage reduction, Rally boost for Commanders). Relics give a bonus pick. The Level line in the top-left blinks when a pick is waiting (it also opens by itself when no enemy is near).
+- **Power opens expeditions:** each expedition shows the power it needs (see `EXP_NEED` in `js/config.js`). Power = soldiers (more with better gear) + you (level and gear). Better weapons, armor, soldiers and levels unlock the next sites and story chapters.
+- You start with 40 Wood, so the first fence can be planned immediately while your soldiers gather and build.
+
