@@ -1,11 +1,14 @@
 # Builds an installable Android *debug* APK of Nightfall Settlement.
-# Run it from GitHub: Actions -> "Android debug APK" -> Run workflow. When it finishes, open the run and download the
+# Run it from GitHub: Actions -> "Android debug APK" -> Run workflow (the manual button only appears once this file is on the default branch; until then
+# a push to a ccr-* branch that touches game files starts it automatically). When it finishes, open the run and download the
 # "nightfall-debug-apk" artifact (a zip containing app-debug.apk). It also runs automatically for tags like v1.0.0.
 name: Android debug APK
 on:
   workflow_dispatch:
   push:
     tags: ['v*']
+    branches: ['ccr-*']          # also builds when the game files change on the work branch, so it works before the workflow is merged into main
+    paths: ['js/**', 'css/**', 'vendor/**', 'icons/**', 'index.html', 'manifest.json', 'package.json', 'package-lock.json', 'capacitor.config.json', 'android/**', '.github/workflows/android-debug.yml']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,7 +22,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses (the runner already has the SDK)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - name: Install web dependencies
         run: npm ci
       - name: Copy the game into the Android project

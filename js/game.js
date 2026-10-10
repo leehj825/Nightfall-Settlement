@@ -241,7 +241,7 @@
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1);
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
@@ -934,9 +934,9 @@
     if (nh.length) { let o = nh[0].object; while (o && !npcs.includes(o)) o = o.parent; if (o) { openNpcCard(o); return; } }
     const gp = new THREE.Vector3();
     const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);      // 건물 주변을 눌러도 열리도록 지면 좌표로도 판정
-    if (ray.intersectObject(campfire, true).length || (onGround && Math.hypot(gp.x, gp.z) < FIRE_R + 1.2)) openTech();
-    else if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 1.2)))) nightMerchantMenu();
-    else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 1.2)))) openSmith();
+    if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) nightMerchantMenu();
+    else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) openSmith();
+    else if (!dead && !uiPause && !eventOpen) attack();                    // 빈 곳을 탭하면 기본 공격
   });
 
   function animateFire(t) {
@@ -950,21 +950,32 @@
   // ---------- 체력 / 게임오버 ----------
   let hp = CFG.PLAYER_MAX_HP, dead = false, hurtCd = 0, sinceHurt = 99, nowHour = 8;
   const hpEl = document.getElementById('hpN');
+  let totalKills = 0;
+  const BEST_KEY = 'nf_best';
+  function recordBest() {                                              // 난이도별 최고 생존 일수
+    const day = Math.floor(gameMin / 1440) + 1; let b = {};
+    try { b = JSON.parse(localStorage.getItem(BEST_KEY) || '{}') || {}; } catch (e) { b = {}; }
+    const key = diff + (ngLevel ? '+' + ngLevel : ''), prev = b[key] || 0;
+    if (day > prev) { b[key] = day; try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+    return { day, best: Math.max(prev, day), newBest: day > prev, key };
+  }
   function gameOver(sub) {
     if (dead) return;
     dead = true;
-    document.getElementById('goDays').textContent = `Days survived: ${Math.floor(gameMin / 1440) + 1}`;
+    const rb = recordBest();
+    document.getElementById('goDays').textContent = `Days survived: ${rb.day} · Level ${pl.lvl} · Foes defeated: ${totalKills} · Best on ${CFG.DIFFS[diff].label}${ngLevel ? ' NG+' + ngLevel : ''}: ${rb.best}${rb.newBest ? ' (new record!)' : ''}`;
     document.getElementById('goCause').textContent = sub;
     document.getElementById('gameover').style.display = 'flex';
     renderRewindButtons();
   }
   document.getElementById('restartBtn').addEventListener('click', () => { clearSave(); location.reload(); });
+  const buzz = (p) => { if (settings.haptic !== false && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} } };         // 진동 (설정에서 끌 수 있다)
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     n = Math.max(1, Math.round(n * dm().dmg * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 난이도 + 방어구 + 성장 피해 감소
     hp = Math.max(0, hp - n);
     sinceHurt = 0;
-    hpEl.textContent = Math.ceil(hp); Snd.play('hurt');
+    hpEl.textContent = Math.ceil(hp); Snd.play('hurt'); buzz(hp <= 0 ? 300 : 30);
     if (hp <= 0) gameOver('You were slain');
   }
   function healPlayer(n) { hp = Math.min(pMaxHp(), hp + n); hpEl.textContent = Math.ceil(hp); }
@@ -1125,6 +1136,20 @@
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
   ];
+  const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
+  let barT = 0;
+  function updateBar(dt) {
+    if ((barT -= dt) > 0) return; barT = 0.25;
+    const a = `❤ ${Math.ceil(hp)}/${pMaxHp()} · ⭐ Lv ${pl.lvl}${pl.pend > 0 ? ' ▲' : ''} 📊`, b = `🌲${res.wood} 🪨${res.stone} 🔩${res.iron} 🍞${Math.floor(res.food)}`;
+    const ea = document.getElementById('barA'), eb = document.getElementById('barB');
+    if (ea.textContent !== a) ea.textContent = a; if (eb.textContent !== b) eb.textContent = b;
+    hudBarEl.classList.toggle('pick', pl.pend > 0);
+  }
+  const toggleStats = (on) => { const open = on ?? !hudEl.classList.contains('open'); hudEl.classList.toggle('open', open); if (open) updateHud(); };
+  canvas.addEventListener('pointerdown', () => { if (hudEl.classList.contains('open')) toggleStats(false); });
+  hudBarEl.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleStats(); });
+  hudEl.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleStats(false); });
+  addEventListener('keydown', e => { if (e.code === 'KeyI' && !e.repeat) toggleStats(); if (e.code === 'Escape') toggleStats(false); });
   function updateLvlUi() {
     const row = document.getElementById('lvlRow'); if (!row) return;
     document.getElementById('lvlN').textContent = pl.lvl >= PL_MAX ? `${pl.lvl} (max)` : pl.lvl;
@@ -1134,7 +1159,7 @@
   function giveXp(n, at) {
     if (pl.lvl >= PL_MAX) return;
     pl.xp += n;
-    while (pl.lvl < PL_MAX && pl.xp >= xpNeed(pl.lvl)) { pl.xp -= xpNeed(pl.lvl); pl.lvl++; pl.pend++; toast(`Level ${pl.lvl}! Choose an upgrade`); Snd.play('chime'); floatText(`Level ${pl.lvl}!`, player.position.x, 3.4, player.position.z); }
+    while (pl.lvl < PL_MAX && pl.xp >= xpNeed(pl.lvl)) { pl.xp -= xpNeed(pl.lvl); pl.lvl++; pl.pend++; toast(`Level ${pl.lvl}! Choose an upgrade`); Snd.play('chime'); buzz([40, 40, 80]); floatText(`Level ${pl.lvl}!`, player.position.x, 3.4, player.position.z); }
     if (pl.lvl >= PL_MAX) pl.xp = 0;
     updateLvlUi();
   }
@@ -1150,7 +1175,7 @@
     if (enemies.some(e => !e.userData.sinking && Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z) < 28)) return;
     openLevelPick();
   }, 1200);
-  document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); openLevelPick(); });
+  document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (pl.pend > 0) { toggleStats(false); openLevelPick(); } else toggleStats(false); });
   // ---------- 밤 활동: 새벽까지 쉬기 ----------
   const restBtnEl = document.getElementById('restBtn');
   function canRest() {
@@ -1202,7 +1227,7 @@
     }
   }
   // ---------- 밤 활동 2: 모닥불 이야기 / 등불 상인 / 밤 손님 ----------
-  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale };
+  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide };
   const nightDayNo = () => { const h = (gameMin / 60) % 24; return h < 5 ? dayNow() - 1 : dayNow(); };
   let taleT = 0, nmActive = null, nmLantern = null, lastNightEvDay = 0;
   function nextTale() { return CFG.TALES.find(t => !story.tales[t.id] && TALE_REQ[t.req]()); }
@@ -1271,7 +1296,7 @@
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
-    sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++;
+    sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
     giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * (u.prowl || (u.ex && exActive && exActive.night) ? 2 : 1));
     if (u.guardian && exActive && exActive.night) { pl.pend++; updateLvlUi(); toast('The guardian falls - a bonus upgrade is waiting'); }
     if (u.prowl) {                                                       // 밤사냥 전리품
@@ -1614,7 +1639,7 @@
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 + 2 * (bLevel('well') - 1) : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + (story.finale ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + (story.finale ? 4 : 0) + (story.wide ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
     if (n.role === 'citizen') target += (builtBuildings('house').length ? 4 : -8) + (jobKind(n) && likesJob(n, jobKind(n)) ? 4 : 0);
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -1948,6 +1973,12 @@
 
   // 질병: 겨울·굶주림·불만·집 부족이면 아침마다 시민이 앓을 수 있다. 우물이 확률을 낮추고(레벨이 높을수록 더), 며칠 지나면 낫는다. 상인에게서 약초를 살 수도 있다
   let lastSeasonId = null;
+  // 엔딩(보스 처치) 이후 무한 모드: 5일마다 이정표 보상
+  function endlessMilestone(dayNo) {
+    if (!chapterCleared || dayNo <= CFG.BOSS_DAY || dayNo % 5 !== 0 || (story.ms && story.ms[dayNo])) return;
+    (story.ms || (story.ms = {}))[dayNo] = 1; giveXp(60 + dayNo * 2); res.iron += 10 + dayNo; if (story.beacon) res.shard++; updateHud();
+    report.season = `Endless milestone: Day ${dayNo} survived! (+${10 + dayNo} Iron${story.beacon ? ', +1 Shard' : ''}, XP)`;
+  }
   function seasonTick(dayNo) {
     const s = seasonOfDay(dayNo);
     if (s.id !== lastSeasonId) { const first = lastSeasonId === null; lastSeasonId = s.id; if (CFG.SEASONS_ON && (!first || dayNo > 1)) { report.season = s.msg; setTimeout(() => toast(s.msg), 4200); } }
@@ -1979,7 +2010,7 @@
     }
     if (n) updateHud();
   }
-  const maxPop = () => CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + (hasPerk('steward') ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
+  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + (hasPerk('steward') ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
@@ -2628,7 +2659,7 @@
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
     playerRig.main = weaponMode;
-    document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
@@ -2970,7 +3001,7 @@
       barFill.position.set(player.position.x - rx * 0.65, 0.25, player.position.z - rz * 0.65);
       barFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
     }
-    dashBtnEl.classList.toggle('cool', show); updateRestUi();
+    dashBtnEl.classList.toggle('cool', show); updateRestUi(); updateBar(dt);
     ultCd = Math.max(0, ultCd - dt);
     ultBtnEl.classList.toggle('cool', ultCd > 0);
     ultCdEl.textContent = ultCd > 0 ? `${Math.ceil(ultCd)}s` : 'E';
@@ -2987,7 +3018,7 @@
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
       gameMin, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
-      wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } },
+      wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
       buildings: obstacles.filter(o => o.userData.type === 'building').map(o => {
@@ -3031,8 +3062,8 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {}, tales: {}, taleDay: 0 }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
-    Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
+    totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
@@ -3063,7 +3094,7 @@
     document.getElementById('gameover').style.display = 'none';
     clearEl.classList.remove('show'); warnEl.classList.remove('show');
     updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
-    document.getElementById('swapCur').textContent = `Q · Current: ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
     updateTownBtn();
   }
   function rewindTo(cp) {
@@ -3193,7 +3224,7 @@
   const warnEl = document.getElementById('warn');
   let warnTimer;
   function showWarning(msg) {
-    warnEl.textContent = msg; warnEl.classList.add('show'); Snd.play(/Behemoth|massive/.test(msg) ? 'roar' : 'horn');
+    buzz([120, 60, 120]); warnEl.textContent = msg; warnEl.classList.add('show'); Snd.play(/Behemoth|massive/.test(msg) ? 'roar' : 'horn');
     clearTimeout(warnTimer); warnTimer = setTimeout(() => warnEl.classList.remove('show'), 3000);
   }
   const countType = (t) => obstacles.filter(o => o.userData.type === t).length;
@@ -3273,8 +3304,8 @@
     if (!m) { m = new THREE.SpriteMaterial({ map: smokeTex, color, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }); glowCache.set(color, m); }
     const s = new THREE.Sprite(m); s.scale.setScalar(scale); s.position.y = y; parent.add(s); return s;
   }
-  const exBeams = [], FOE_GLOW = { frost: 0x8fd0ff, hollow: 0xb08cff, wisp: 0x7affd0 };
-  const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff), night: new THREE.Color(0x6f7cff), wisp: new THREE.Color(0x7affd0) };
+  const exBeams = [], FOE_GLOW = { frost: 0x8fd0ff, hollow: 0xb08cff, wisp: 0x7affd0, ash: 0xffa060 };
+  const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff), night: new THREE.Color(0x6f7cff), wisp: new THREE.Color(0x7affd0), ash: new THREE.Color(0xff9a5a) };
   function frostTint(e, faction = 'frost') {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
     const map = new Map();
     e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.color.lerp(FACTION_COLOR[faction] || FACTION_COLOR.frost, 0.55); map.set(o.material, c); } o.material = c; } });
@@ -3408,8 +3439,8 @@
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {}, tales: {}, taleDay: 0 };
-  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []);
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} };
+  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []).concat(story.road ? CFG.STORY5 : []);
   let beaconMesh = null;
   function setBeacon(on) {
     if (on && !beaconMesh) {
@@ -3450,6 +3481,14 @@
       if (beaconMesh) { beaconMesh.children[0].material.opacity = 0.55; }
       try { localStorage.setItem('nf_carry', JSON.stringify({ ng: ngLevel + 1, lvl: pl.lvl, st: { ...pl.st } })); } catch (e) {} setTimeout(() => toast('New Game+ unlocked: start a new game to carry your level into a tougher world'), 3000);
     }
+    if (story.finale && !story.road) {
+      story.road = true; story.log.push(`${CFG.STORY_ROAD.title}: ${CFG.STORY_ROAD.text}`);
+      setTimeout(() => storyDialog(CFG.STORY_ROAD.title, CFG.STORY_ROAD.text), 2500);
+    }
+    if (story.road && !story.wide && CFG.STORY5.every(s => storyDone(s.id))) {
+      story.wide = true; story.log.push(`${CFG.STORY_WIDE.title}: ${CFG.STORY_WIDE.text}`);
+      storyDialog(CFG.STORY_WIDE.title, CFG.STORY_WIDE.text); shake = Math.max(shake, 0.5); Snd.play('horn');
+    }
     if (story.dawn && !story.crown && CFG.STORY3.every(s => storyDone(s.id))) {
       story.crown = true; story.log.push(`${CFG.STORY_CROWN.title}: ${CFG.STORY_CROWN.text}`);
       storyDialog(CFG.STORY_CROWN.title, CFG.STORY_CROWN.text); shake = Math.max(shake, 0.5); Snd.play('horn');
@@ -3457,7 +3496,7 @@
   }
   function checkStoryAll() { checkStory(); checkStory(); }                    // 한 번에 여러 이야기가 이어질 때(왕관 → 4장 시작 → ...)를 위해 두 번 돈다
   function foundRelic(d) {
-    story.relics[d.id] = true; pl.pend++; giveXp(40); toast(`Relic found: ${d.relic}! (a bonus upgrade is waiting)`); floatText(`Relic: ${d.relic}`, player.position.x, 3.2, player.position.z);
+    story.relics[d.id] = true; pl.pend++; giveXp(40); if (d.id === 'ashford') setTimeout(() => { const k = spawnCitizens(Math.max(0, Math.min(2, maxPop() - npcs.length))); if (k) toast(`${k} villagers from Ashford followed you home`); }, 1500); toast(`Relic found: ${d.relic}! (a bonus upgrade is waiting)`); floatText(`Relic: ${d.relic}`, player.position.x, 3.2, player.position.z);
     burst({ x: player.position.x, z: player.position.z, y: 1.5 }, 40); shake = Math.max(shake, 0.35); Snd.play('horn');
   }
   function storyIntro() {
@@ -3489,7 +3528,8 @@
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
-    if (d.needs && !d.needs.every(r => story.relics[r])) return toast('You need the Echo Stone and the Mourning Bell to find the Spire');
+    if (d.ch === 5 && !story.road) return toast('Swear the Keeper\'s Oath first');
+    if (d.needs && !d.needs.every(r => story.relics[r])) return toast('Recover the earlier relics first: this place stays hidden until you carry them');
     if (powerOf().total < needOf(d)) return toast(`Too dangerous for now: needs power ${needOf(d)} (you have ${powerOf().total}). Upgrade gear, train soldiers, level up.`);
     if (d.night) { const why = nightExpWhy(); if (why) return toast(why); }
     else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
@@ -3583,7 +3623,7 @@
   function renderJournal() {
     const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
-      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') +
+      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') + (story.road ? '<div class="q done"><span>★</span><span>The Wide Road: carry the light to Ashford, Reedhaven and Stonegate</span></div>' : '') + (story.wide ? '<div class="q done"><span>★</span><span>The road is lit from end to end</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
@@ -3591,8 +3631,8 @@
     const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
     const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
-      const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
+      const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
@@ -3691,7 +3731,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3823,7 +3863,7 @@
   }
 
   // 설정 (볼륨 · 글자 크기 · 그래픽)
-  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi' };
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true };
   try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
   function applySettings() {
     document.documentElement.dataset.ts = settings.text;
@@ -3846,6 +3886,7 @@
     document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
     document.getElementById('setSfx').value = Math.round(Snd.getVol('sfx') * 100);
     { const sd = document.getElementById('setDiff'); if (!sd.options.length) Object.entries(CFG.DIFFS).forEach(([id, d]) => sd.add(new Option(d.label, id))); sd.value = diff; }
+    document.getElementById('setHaptic').value = settings.haptic === false ? 'off' : 'on';
     document.getElementById('setText').value = settings.text; document.getElementById('setGfx').value = settings.gfx;
     const d = readSave(); document.getElementById('setSaveInfo').textContent = d ? `Saved: Day ${d.day} (auto-saves every morning)` : 'No save yet - the game auto-saves every morning';
     uiPause = true; setEl.style.display = 'flex';
@@ -3857,6 +3898,7 @@
   document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
   document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
   document.getElementById('setDiff').addEventListener('change', e => { diff = e.target.value; try { localStorage.setItem('nf_diff', diff); } catch (x) {} toast(`Difficulty: ${CFG.DIFFS[diff].label}`); saveGame(); });
+  document.getElementById('setHaptic').addEventListener('change', e => { settings.haptic = e.target.value === 'on'; saveSettings(); buzz(60); });
   document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
   document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
   document.getElementById('setDel').addEventListener('click', e => {
@@ -3916,6 +3958,9 @@
     { id: 'tales', name: 'Storyteller', desc: 'Hear 5 fireside tales', test: () => Object.keys(story.tales || {}).length >= 5 },
     { id: 'ng1', name: 'Again, Stronger', desc: 'Begin a New Game+', test: () => ngLevel >= 1 },
     { id: 'hardwin', name: 'Hard Road', desc: 'Finish the story on Hard or Nightmare', test: () => story.finale && (diff === 'hard' || diff === 'nightmare') },
+    { id: 'wide', name: 'Keeper of the Road', desc: 'Light the Wide Road (Chapter 5)', test: () => story.wide },
+    { id: 'day15', name: 'Fifteen Days', desc: 'Survive to Day 15', test: () => dayNow() >= 15 },
+    { id: 'day30', name: 'A Month of Nights', desc: 'Survive to Day 30', test: () => dayNow() >= 30 },
     { id: 'lvl5', name: 'Veteran', desc: 'Reach player level 5', test: () => pl.lvl >= 5 },
     { id: 'lvl10', name: 'Legend', desc: 'Reach player level 10', test: () => pl.lvl >= 10 },
     { id: 'beacon', name: 'Light in the Dark', desc: 'Light the Beacon', test: () => story.beacon },
@@ -3967,6 +4012,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
