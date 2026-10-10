@@ -1175,7 +1175,7 @@
     wave.type = nightTypeOf(day);
     const extraRaiders = pendingRaiders; pendingRaiders = 0;
     const ease = nightEase ? 0.75 : 1; nightEase = false;                  // 정찰병의 경고에 대비했다면 오늘 밤 적이 25% 줄어든다               // 아침 이벤트 선택의 대가
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
@@ -1428,7 +1428,7 @@
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 + 2 * (bLevel('well') - 1) : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + (story.finale ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
     if (n.role === 'citizen') target += (builtBuildings('house').length ? 4 : -8) + (jobKind(n) && likesJob(n, jobKind(n)) ? 4 : 0);
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -2830,7 +2830,7 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, camps: {}, cleared: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
+    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openClassChoice, 700); }
@@ -3055,10 +3055,10 @@
     gr.userData = { type: 'chest', radius: 0.9, relic: !!relic };
     return exAdd(gr, true);
   }
-  const ICE = new THREE.Color(0x9fd6ff);
-  function frostTint(e) {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
+  const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff) };
+  function frostTint(e, faction = 'frost') {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
     const map = new Map();
-    e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.color.lerp(ICE, 0.55); map.set(o.material, c); } o.material = c; } });
+    e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.color.lerp(FACTION_COLOR[faction] || FACTION_COLOR.frost, 0.55); map.set(o.material, c); } o.material = c; } });
     if (map.has(e.material)) e.material = map.get(e.material);
   }
   function buildZone(d) {
@@ -3093,13 +3093,13 @@
       m.position.set(p.x, h / 2, p.z); m.rotation.y = rand(0, 3); m.castShadow = m.receiveShadow = true; m.userData = { type: 'ruin', radius: 0.9 }; exAdd(m, true);
     }
     for (let i = 0; i < d.chests; i++) { const p = spot(2.2); makeChest(p.x, p.z, !!d.relic && i === d.chests - 1); }
-    for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); if (d.faction === 'frost') frostTint(enemies[enemies.length - 1]); }
+    for (const kind of d.foes) { const p = spot(2.5); spawnEnemy(kind, p); if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
       const p = spot(4); spawnEnemy(d.guardian.kind, p);
       const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale;
       u.hp *= d.guardian.hpMul; u.maxHp = u.hp; u.guardian = true; u.contact *= 1.3; u.r *= s; u.baseY *= s;
       e.scale.multiplyScalar(s); e.position.y = u.baseY;
-      if (d.faction === 'frost') frostTint(e);
+      if (d.faction) frostTint(e, d.faction);
       const lbl = textSprite(d.guardian.name || 'Guardian', '#ffcf5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
     }
   }
@@ -3187,8 +3187,8 @@
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, camps: {}, cleared: {} };
-  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []);
+  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, camps: {}, cleared: {} };
+  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []);
   let beaconMesh = null;
   function setBeacon(on) {
     if (on && !beaconMesh) {
@@ -3219,11 +3219,21 @@
       storyDialog(CFG.STORY_DAWN.title, CFG.STORY_DAWN.text); shake = Math.max(shake, 0.6); Snd.play('horn');
       if (beaconMesh) beaconMesh.children[0].material.opacity = 0.4;
     }
+    if (story.crown && !story.hollow) {
+      story.hollow = true; story.log.push(`${CFG.STORY_HOLLOW.title}: ${CFG.STORY_HOLLOW.text}`);
+      storyDialog(CFG.STORY_HOLLOW.title, CFG.STORY_HOLLOW.text); shake = Math.max(shake, 0.4); Snd.play('horn');
+    }
+    if (story.hollow && !story.finale && CFG.STORY4.every(s => storyDone(s.id))) {
+      story.finale = true; story.log.push(`${CFG.STORY_FINALE.title}: ${CFG.STORY_FINALE.text}`);
+      storyDialog(CFG.STORY_FINALE.title, CFG.STORY_FINALE.text); shake = Math.max(shake, 0.6); Snd.play('horn');
+      if (beaconMesh) { beaconMesh.children[0].material.opacity = 0.55; }
+    }
     if (story.dawn && !story.crown && CFG.STORY3.every(s => storyDone(s.id))) {
       story.crown = true; story.log.push(`${CFG.STORY_CROWN.title}: ${CFG.STORY_CROWN.text}`);
       storyDialog(CFG.STORY_CROWN.title, CFG.STORY_CROWN.text); shake = Math.max(shake, 0.5); Snd.play('horn');
     }
   }
+  function checkStoryAll() { checkStory(); checkStory(); }                    // 한 번에 여러 이야기가 이어질 때(왕관 → 4장 시작 → ...)를 위해 두 번 돈다
   function foundRelic(d) {
     story.relics[d.id] = true; toast(`Relic found: ${d.relic}!`); floatText(`Relic: ${d.relic}`, player.position.x, 3.2, player.position.z);
     burst({ x: player.position.x, z: player.position.z, y: 1.5 }, 40); shake = Math.max(shake, 0.35); Snd.play('horn');
@@ -3243,6 +3253,8 @@
     if (age < d.age) return toast(`Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})`);
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
+    if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
+    if (d.needs && !d.needs.every(r => story.relics[r])) return toast('You need the Echo Stone and the Mourning Bell to find the Spire');
     if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
@@ -3277,7 +3289,7 @@
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
       toast(`${forced ? 'You rushed home as dusk fell. ' : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
-      checkStory();
+      checkStoryAll();
     });
   }
   // ---------- 10단계: 야영지 (정리한 원정지에 세우면 매일 아침 자원이 들어온다) ----------
@@ -3334,15 +3346,15 @@
   function renderJournal() {
     const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
-      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') +
+      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile.`;
     const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
     const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
-      const lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn), found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : ` · Requires Age ${d.age}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
+      const lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.needs && !d.needs.every(r => story.relics[r])), found = d.relic && story.relics[d.id];
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the Echo Stone and the Mourning Bell' : ` · Requires Age ${d.age}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || late ? 'disabled' : ''}>${lock ? 'Locked' : late ? 'Too late' : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
@@ -3435,7 +3447,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3652,6 +3664,8 @@
     { id: 'beacon', name: 'Light in the Dark', desc: 'Light the Beacon', test: () => story.beacon },
     { id: 'dawn', name: 'Dawn Gate', desc: 'Open the Dawn Gate', test: () => story.dawn },
     { id: 'crown', name: 'Winter Crown', desc: 'Take the Winter Crown', test: () => story.crown },
+    { id: 'echo', name: 'Voices of the Keepers', desc: 'Recover the Echo Stone', test: () => !!story.relics.barrow },
+    { id: 'finale', name: 'The Last Keeper', desc: 'Defeat the Hollow King and swear the Keeper\'s Oath', test: () => story.finale },
   ];
   let achSave = {};
   try { achSave = JSON.parse(localStorage.getItem('nf_ach') || '{}') || {}; } catch (e) { achSave = {}; }
@@ -3691,6 +3705,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

@@ -48,3 +48,6 @@ The game auto-saves to the browser (localStorage) every morning and when you ret
 - **Install as an app (PWA):** when the game is served over http(s) it can be installed ("Add to Home Screen") and works offline after the first visit (`manifest.json`, `sw.js`, `icons/`). Bump `VERSION` in `sw.js` when you publish a new build. Opening `index.html` from disk (file://) works as before without the service worker.
 - **Slow devices:** on touch devices the game switches graphics to Low automatically if the frame rate stays under ~26 FPS for the first seconds (you can change it back in Settings).
 
+## Chapter 4 - The Hollow Court
+After the Winter Crown the story continues: a tolling bell and a road the Crown draws to three places. Recover the **Echo Stone** (Sunken Barrow) and the **Mourning Bell** (Mourning Chapel), then the Obsidian Spire opens: defeat **The Hollow King** and swear the Keeper's Oath. The ending makes nights 15% smaller and the villagers a little happier, and the game keeps going in endless mode. The hollow host is violet-tinted; each site can also get a camp. Story text lives in `js/config.js` (`STORY_HOLLOW`, `STORY4`, `STORY_FINALE`).
+
