@@ -5581,16 +5581,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this._spear(dt); this._tool();
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
-    _tool() {                                   // 곡괭이: 자루가 오른팔(어깨→손) 방향을 따라 머리 위에서 내려찍는다 / 도끼: 야구 배트처럼 손 앞에서 수평으로 휘두른다
+    _tool() {                                   // 곡괭이·도끼: 자루는 어깨→손 방향을 따르고, 머리(날)의 방향은 휘두르는 면에 맞춘다
       const m = this.rig.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null); if (!t || !t.userData.inner) return;
       const inn = t.userData.inner, wm = inn.children[0];
-      if (this.baseName !== 'gather') { t.quaternion.identity(); inn.rotation.set(Math.PI / 2, 0, 0); wm.rotation.y = 0; return; }
-      if (t === m.axe) { t.quaternion.identity(); inn.rotation.set(0, 0, AXE_ROLL); wm.rotation.y = Math.PI; return; }       // 도끼날이 휘두르는 방향 앞쪽을 향하게 (자루 축으로 180도)
-      wm.rotation.y = Math.PI / 2;                                                                                        // 곡괭이: 휘어진 머리가 내려치는 면(앞뒤)에 놓이게 (끝이 앞-아래를 향한다)
+      wm.rotation.set(0, 0, 0);
+      if (this.baseName !== 'gather') { t.quaternion.identity(); inn.rotation.set(Math.PI / 2, 0, 0); return; }
+      inn.rotation.set(0, 0, 0);
       const R = this.rig; R.root.updateMatrixWorld(true);
-      const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3())), d = b.sub(a); if (d.lengthSq() < 0.01) return;
-      d.normalize().applyQuaternion(R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert());
-      inn.rotation.set(0, 0, 0); t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+      const V = this._tv || (this._tv = { a: new THREE.Vector3(), b: new THREE.Vector3(), d: new THREE.Vector3(), z: new THREE.Vector3(), x: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), M: new THREE.Matrix4(), q: new THREE.Quaternion(), h: new THREE.Quaternion() });
+      R.shoulderR.getWorldPosition(V.a); R.handR.getWorldPosition(V.b); V.d.copy(V.b).sub(V.a); if (V.d.lengthSq() < 0.01) return; V.d.normalize();
+      if (t === m.axe) V.z.crossVectors(V.d, V.up);                                    // 도끼날: 수평으로 휘두르는 방향(+x쪽에서 -x쪽으로 도는 몸통)의 앞쪽
+      else { V.x.set(1, 0, 0).applyQuaternion(R.root.getWorldQuaternion(V.q)); V.z.crossVectors(V.x, V.d); }       // 곡괭이: 머리 축은 자루와 몸의 좌우 축에 모두 수직 = 앞뒤 휘두르는 면 안
+      if (V.z.lengthSq() < 1e-4) return; V.z.normalize();
+      V.z.addScaledVector(V.d, -V.z.dot(V.d)).normalize(); V.x.crossVectors(V.d, V.z);
+      V.M.makeBasis(V.x, V.d, V.z); V.q.setFromRotationMatrix(V.M);                  // 모델: 자루 = +Y, 머리/날 = +Z
+      R.handR.getWorldQuaternion(V.h).invert(); t.quaternion.copy(V.h).multiply(V.q);
     }
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
