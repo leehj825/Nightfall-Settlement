@@ -49,6 +49,17 @@ def seg_dist(p, a, b):
 def skin(pos):
     D = np.stack([seg_dist(pos, *SEG[b][:2]) / SEG[b][2] for b in BONES], axis=1)       # distance in "bone radii"
     W = np.exp(-(D ** 2) * 5.0)
+    x, y = pos[:, 0], pos[:, 1]; ax = np.abs(x)
+    # 옷이 팔을 따라 늘어나지 않도록: 몸통 안쪽(|x| < 0.25)은 팔 뼈의 영향을 받지 않고, 바깥(> 0.30)만 팔을 따른다. 반대쪽 팔 뼈도 끊는다
+    inner = np.clip((0.30 - ax) / 0.05, 0, 1)
+    for j, b in enumerate(BONES):
+        if b.startswith(('shoulder', 'elbow')):
+            left = b.endswith('L'); W[:, j] *= (1 - inner) * (((x < 0) == left) | (ax < 0.02))
+    # 치마·앞치마·긴 옷자락이 다리를 따라 찢어지지 않도록: 허리 아래 중앙부는 골반 뼈가 대부분을 맡는다
+    skirt = ((y > 0.42) & (y < 0.98)) * np.clip(1 - ax / 0.16, 0, 1)
+    for j, b in enumerate(BONES):
+        if b.startswith(('hip', 'knee')) and b not in ('hips',): W[:, j] *= (1 - 0.85 * skirt)
+        if b == 'hips': W[:, j] += 1.2 * skirt
     # 발과 발 앞쪽은 무릎(정강이) 뼈에 붙인다
     foot = pos[:, 1] < 0.12
     for j, b in enumerate(BONES):
