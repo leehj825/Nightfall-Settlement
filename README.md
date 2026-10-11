@@ -112,6 +112,17 @@ Chord-based synthesized music (bright day arpeggios, slow minor night pads, puls
 - New raiders: **archers** (day 5+), **healers** (day 6+, heal nearby raiders), **sappers** (day 4+, run to a fence and explode).
 - Settings > **Balance report** shows a night-by-night log and past runs; copy it to share when tuning.
 
+## Latest round
+- **Models:** hooded archers with quivers, healers with glowing staffs, sappers with powder kegs, and a round shield for the hero.
+- **Soldier classes:** tap a soldier and change class: Swordsman (wide sweep), Spearman (long thrust, holds the line) or Medic (heals allies nearby, weak attack).
+- **Walls:** raiders are drawn to badly damaged wall sections, workers repair the most damaged section first, and the morning report counts weak walls.
+- **Caravans:** from day 5, every fourth day a trade caravan crosses the bridge to your gate. Roads raise the payout; bandits sometimes ambush it - defend it or it is lost.
+- **Hero skills:** level-ups open a skill tree (Vanguard / Ranger / Tactician) instead of random picks; deeper nodes need points in the same branch. Tap the stats bar level row to view it any time.
+- **Weather:** rain (and snow in winter) cuts vision and archer range; storm nights always rain.
+- **World dressing:** bushes on the hills, a fishing pier, and farm plots that appear beside well-worn roads.
+- **Guided first day:** short highlighted tips on a new game (Settings > Replay tips to see them again).
+- **Graphics:** a new Lowest setting for old phones (also switched on automatically if Low is still too slow).
+
 ## Releasing to Google Play
 See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `docs/privacy-policy.md`.
 
