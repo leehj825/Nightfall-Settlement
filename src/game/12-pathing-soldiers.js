@@ -237,7 +237,10 @@
   function soldierShoot(foe) {
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
     npc.face = ang; npc.rotation.y = ang;
-    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; npc.anim.once('attackBow'); sfxAt('bow', npc.position.x, npc.position.z); fireArrow(npc.position.x, npc.position.z, ang, false, gearDef(npc.gear.bow).dmg * soldierMult(npc)); }
+    if (npc.atkCd <= 0) {                                                  // 화살을 뽑아 걸고 시위를 놓는 순간에 발사한다
+      const n = npc; n.atkCd = CFG.ARCHER_FIRE_INTERVAL; n.anim.once('attackBow');
+      later(n.anim.hitIn ?? 0.3, () => { if (!npcs.includes(n) || n.down) return; const a2 = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : ang; sfxAt('bow', n.position.x, n.position.z); fireArrow(n.position.x, n.position.z, a2, false, gearDef(n.gear.bow).dmg * soldierMult(n)); });
+    }
   }
   // 지휘 명령 'Follow': 병사들이 플레이어 곁에 모여 따라다니며, 플레이어 주변의 적을 함께 상대한다 (낮에도 일을 멈추고 따른다)
   function followStep(dt) {

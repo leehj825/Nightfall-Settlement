@@ -402,13 +402,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die' || /^ss(Attack|Block)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die' || /^ss(Attack|Block)/.test(n) || n === 'bowDraw') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
-    _res(name) { if (this.rig.style === 'ss') { const k = { idle: 'ssIdle', run: 'ssRun' }[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
+    _res(name) { if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun', walk: 'bowWalk' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
     _play(name, fade, force) {
       name = this._res(name);
       const next = this.acts[name] || this.acts.idle;
@@ -427,7 +427,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
-      this.heavy = false;
+      this.heavy = false; const wasBow = name === 'attackBow';
+      if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
         this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; this.heavy = this.atkI === 4;
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.15 : 0.65);
@@ -436,7 +437,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name];
       this.shot = { t: 0, dur };
       this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
-      if (name === 'attackBow') this.rig.aim(true);
+      if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
     die() { this.dead = true; this.shot = null; this.rig.aim(false); this._play('die', 0.15, true); if (this.acts.die) this.acts.die.timeScale = MIXAMO_FAST_DIE; }

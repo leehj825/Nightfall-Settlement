@@ -38,7 +38,7 @@
       const keg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.34, 9), gearMat('keg', 0x7a5a2a)), band = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 5, 12), gearMat('kegband', 0x3a3a3a)), fuse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
       keg.position.set(0, 0.3, -0.3); band.rotation.x = Math.PI / 2; band.position.set(0, 0.3, -0.3); fuse.position.set(0, 0.55, -0.3); rig.spine.add(keg, band, fuse);
     }
-    if (archer) { rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
+    if (archer) { rig.style = 'bow'; rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
     else if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
     const m = new THREE.Group();
     rig.root.position.y = -0.8;                          // 그룹 중심(= 예전 원기둥 중심) 기준으로 발을 바닥에 맞춘다
@@ -169,10 +169,13 @@
   // ---------- 새 적: 궁수(멀리서 화살) / 치유사(주변 적 회복) / 폭파병(목책으로 달려가 자폭) ----------
   const enemyArrows = [], eArrowGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.8, 5), eArrowMat = new THREE.MeshBasicMaterial({ color: 0xc86a2a });
   function fireEnemyArrow(e, tx, tz) {
-    const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
-    m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
-    enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 });
-    e.userData.anim.once('attackBow'); sfxAt('bow', sx, sz);
+    e.userData.anim.once('attackBow');                                      // 화살을 뽑아 걸고 시위를 놓는 순간에 날아간다
+    later(e.userData.anim.hitIn ?? 0.3, () => {
+      if (e.userData.sinking || !enemies.includes(e)) return;
+      const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
+      m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
+      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 }); sfxAt('bow', sx, sz);
+    });
   }
   function updateEnemyArrows(dt) {
     for (let i = enemyArrows.length - 1; i >= 0; i--) {

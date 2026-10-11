@@ -337,7 +337,7 @@
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
     const vis = weaponMode;
-    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : '';
+    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'bow' ? 'bow' : '';
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
     playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
     playerRig.hold(vis);
@@ -1250,7 +1250,7 @@
       const keg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.34, 9), gearMat('keg', 0x7a5a2a)), band = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 5, 12), gearMat('kegband', 0x3a3a3a)), fuse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
       keg.position.set(0, 0.3, -0.3); band.rotation.x = Math.PI / 2; band.position.set(0, 0.3, -0.3); fuse.position.set(0, 0.55, -0.3); rig.spine.add(keg, band, fuse);
     }
-    if (archer) { rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
+    if (archer) { rig.style = 'bow'; rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
     else if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
     const m = new THREE.Group();
     rig.root.position.y = -0.8;                          // 그룹 중심(= 예전 원기둥 중심) 기준으로 발을 바닥에 맞춘다
@@ -1381,10 +1381,13 @@
   // ---------- 새 적: 궁수(멀리서 화살) / 치유사(주변 적 회복) / 폭파병(목책으로 달려가 자폭) ----------
   const enemyArrows = [], eArrowGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.8, 5), eArrowMat = new THREE.MeshBasicMaterial({ color: 0xc86a2a });
   function fireEnemyArrow(e, tx, tz) {
-    const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
-    m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
-    enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 });
-    e.userData.anim.once('attackBow'); sfxAt('bow', sx, sz);
+    e.userData.anim.once('attackBow');                                      // 화살을 뽑아 걸고 시위를 놓는 순간에 날아간다
+    later(e.userData.anim.hitIn ?? 0.3, () => {
+      if (e.userData.sinking || !enemies.includes(e)) return;
+      const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
+      m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
+      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 }); sfxAt('bow', sx, sz);
+    });
   }
   function updateEnemyArrows(dt) {
     for (let i = enemyArrows.length - 1; i >= 0; i--) {
@@ -1857,7 +1860,7 @@
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
-    n.rig.style = cls === 'sword' ? 'ss' : '';
+    n.rig.style = cls === 'sword' ? 'ss' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
     { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
@@ -2837,7 +2840,10 @@
   function soldierShoot(foe) {
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
     npc.face = ang; npc.rotation.y = ang;
-    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; npc.anim.once('attackBow'); sfxAt('bow', npc.position.x, npc.position.z); fireArrow(npc.position.x, npc.position.z, ang, false, gearDef(npc.gear.bow).dmg * soldierMult(npc)); }
+    if (npc.atkCd <= 0) {                                                  // 화살을 뽑아 걸고 시위를 놓는 순간에 발사한다
+      const n = npc; n.atkCd = CFG.ARCHER_FIRE_INTERVAL; n.anim.once('attackBow');
+      later(n.anim.hitIn ?? 0.3, () => { if (!npcs.includes(n) || n.down) return; const a2 = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : ang; sfxAt('bow', n.position.x, n.position.z); fireArrow(n.position.x, n.position.z, a2, false, gearDef(n.gear.bow).dmg * soldierMult(n)); });
+    }
   }
   // 지휘 명령 'Follow': 병사들이 플레이어 곁에 모여 따라다니며, 플레이어 주변의 적을 함께 상대한다 (낮에도 일을 멈추고 따른다)
   function followStep(dt) {
@@ -3036,7 +3042,7 @@
     if (dead || atkCd > 0 || dashT > 0) return;
     gathering = null;
     if (weaponMode === 'bow') {
-      atkCd = ATK_CD; playerAnim.once('attackBow');
+      playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
       later(playerAnim.hitIn, () => { if (dead) return; shake = Math.max(shake, 0.08); Snd.play('bow'); fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch)); });
       return;
     }
@@ -3077,7 +3083,7 @@
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
-    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : '';
+    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }

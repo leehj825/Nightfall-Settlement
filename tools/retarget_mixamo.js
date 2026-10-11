@@ -17,7 +17,8 @@ const WANT = {
   idle: ['idle', true], walk: ['walking', true], run: ['running', true],
   ssIdle: ['sword and shield idle', true], ssRun: ['sword and shield run', true],
   ssAttack1: ['sword and shield attack (4)', false], ssAttack2: ['sword and shield attack (2)', false], ssAttack3: ['sword and shield attack (3)', false], ssAttack4: ['sword and shield attack', false],
-  ssBlock: ['sword and shield block', false], die: ['sword and shield death', false],
+  ssBlock: ['sword and shield block', false],
+  bowDraw: ['Standing_Draw_Arrow', false], bowRun: ['Standing_Run_Forward', true], bowWalk: ['Crouch_Walk_Forward', true], die: ['sword and shield death', false],
 };
 const MAXF = 48;
 const V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
@@ -63,6 +64,7 @@ for (const [name, [file, loop]] of Object.entries(WANT)) {
   let best = 0, bi = 0; for (let i = 1; i < Math.floor(hv.length * 0.92); i++) { const sp = hv[i].distanceTo(hv[i - 1]); if (sp > best) { best = sp; bi = i; } }
   { const ys = tr.hipsY, mx = Math.max(...ys), mn = Math.min(...ys);               // 점프 공격: 타격 순간 = 공중에서 내려와 착지하는 때
     if (name.startsWith('ssAttack') && mx - mn > 0.6) { const p = ys.indexOf(mx); for (let i = p; i <= n; i++) if (ys[i] < mn + 0.25 * (mx - mn)) { bi = i; break; } } }
+  if (name === 'bowDraw') bi = Math.round(n * 0.5);               // 화살을 뽑아 시위에 건 손이 앞에 닿는 순간 = 발사
   const drift = Math.abs(tr.hipsZ[n]); out[name] = { d: +clip.duration.toFixed(3), n, loop, hit: +(bi / n).toFixed(3), t: tr };
   console.log(name.padEnd(10), file.padEnd(30), clip.duration.toFixed(2) + 's', n + 'f', 'hit@' + (bi / n).toFixed(2), 'hips Z drift (ignored)', drift.toFixed(2));
 }
