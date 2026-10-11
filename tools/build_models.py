@@ -46,12 +46,29 @@ def seg_dist(p, a, b):
     a, b = np.array(a, float), np.array(b, float); ab = b - a; t = np.clip(((p - a) @ ab) / (ab @ ab), 0, 1)
     return np.linalg.norm(p - (a + t[:, None] * ab), axis=1)
 
-def skin(pos):
-    D = np.stack([seg_dist(pos, *SEG[b][:2]) / SEG[b][2] for b in BONES], axis=1)       # distance in "bone radii"
+def hand_mask(pos, tri):
+    """허리 아래로 내려온 손·손가락: 바깥쪽 확실한 팔 정점에서 메시 연결을 따라 번지게 해서 찾는다 (손끝이 허벅지·치마 옆에 닿아 있어도 다리 뼈에 끌려가지 않게)."""
+    key = {}; vid = np.array([key.setdefault(tuple(q), len(key)) for q in np.round(pos, 4)]); n = len(key)
+    e = np.concatenate([vid[tri][:, [0, 1]], vid[tri][:, [1, 2]], vid[tri][:, [2, 0]]]); P = np.zeros((n, 3)); P[vid] = pos
+    adj = [[] for _ in range(n)]
+    for a, b in e: adj[a].append(b); adj[b].append(a)
+    ok = (P[:, 1] < 1.0) & (P[:, 1] > 0.45) & (np.abs(P[:, 0]) > 0.15)
+    seen = (np.abs(P[:, 0]) > 0.33) & ok; stack = list(np.where(seen)[0])
+    while stack:
+        a = stack.pop()
+        for b in adj[a]:
+            if ok[b] and not seen[b]: seen[b] = True; stack.append(b)
+    return seen[vid]
+
+def skin(pos, tri=None):
+    flat = pos * [1, 1, 0]                                                         # 팔은 앞뒤(z)로 치우친 모델이 많아서, 팔 뼈까지의 거리는 z를 무시하고 잰다
+    D = np.stack([seg_dist(flat if b.startswith(('shoulder', 'elbow')) else pos, *SEG[b][:2]) / SEG[b][2] for b in BONES], axis=1)       # distance in "bone radii"
     W = np.exp(-(D ** 2) * 5.0)
     x, y = pos[:, 0], pos[:, 1]; ax = np.abs(x)
     # 옷이 팔을 따라 늘어나지 않도록: 몸통 안쪽(|x| < 0.25)은 팔 뼈의 영향을 받지 않고, 바깥(> 0.30)만 팔을 따른다. 반대쪽 팔 뼈도 끊는다
-    inner = np.clip((0.30 - ax) / 0.05, 0, 1)
+    T = 0.30 - 0.06 * np.clip((1.36 - y) / 0.16, 0, 1)             # 어깨 아래에서는 몸통이 더 좁다: 소매·팔꿈치 안쪽이 몸통에 붙어 굳지 않게 경계를 안쪽으로 당긴다
+    T = np.where(y < 0.9, np.minimum(T, 0.20), T)                  # 손 높이(허리 아래): 몸통과 거의 붙어 있어도 손은 팔을 따른다
+    inner = np.clip((T - ax) / 0.05, 0, 1)
     for j, b in enumerate(BONES):
         if b.startswith(('shoulder', 'elbow')):
             left = b.endswith('L'); W[:, j] *= (1 - inner) * (((x < 0) == left) | (ax < 0.02))
@@ -60,6 +77,13 @@ def skin(pos):
     for j, b in enumerate(BONES):
         if b.startswith(('hip', 'knee')) and b not in ('hips',): W[:, j] *= (1 - 0.85 * skirt)
         if b == 'hips': W[:, j] += 1.2 * skirt
+    # 손·손가락(허리 높이, 몸통 바깥)은 다리 뼈에 끌려가지 않게: 다리 뼈는 바깥쪽에서 끊고, 손은 팔꿈치(아래팔) 뼈에 붙인다
+    hand = hand_mask(pos, tri) if tri is not None else (y < 0.9) & (y > 0.5) & (ax > 0.27)
+    for j, b in enumerate(BONES):
+        if b.startswith(('hip', 'knee')) and b != 'hips': W[:, j] *= np.where((y > 0.3), np.clip((0.33 - ax) / 0.04, 0, 1), 1)
+    for j, b in enumerate(BONES):
+        if b.startswith('elbow'):
+            sel = hand & ((x < 0) == b.endswith('L')); W[sel, :] = 0; W[sel, j] = 1.0
     # 발과 발 앞쪽은 무릎(정강이) 뼈에 붙인다
     foot = pos[:, 1] < 0.12
     for j, b in enumerate(BONES):
@@ -137,7 +161,7 @@ def main():
         pos, uv, nor, idx = parse_obj(obj)
         s = HEIGHT / (pos[:, 1].max() - pos[:, 1].min()); pos = (pos - [0, pos[:, 1].min(), 0]) * s
         pos[:, 0] -= (pos[:, 0].max() + pos[:, 0].min()) / 2; pos[:, 2] -= (pos[:, 2].max() + pos[:, 2].min()) / 2
-        si, sw = skin(pos)
+        si, sw = skin(pos, idx.reshape(-1, 3).astype(int))
         im = Image.open(tex).convert('RGB').resize((512, 512), Image.LANCZOS); buf = io.BytesIO(); im.save(buf, 'JPEG', quality=80)
         out[key] = {'n': len(pos), 'pos': b64(np.round(pos * 10000).astype(np.int16)), 'uv': b64(np.round(uv * 65535).astype(np.uint16)),
                     'nor': b64(np.round(nor / np.linalg.norm(nor, axis=1, keepdims=True) * 127).astype(np.int8)), 'idx': b64(idx), 'idx32': idx.dtype == np.uint32,
