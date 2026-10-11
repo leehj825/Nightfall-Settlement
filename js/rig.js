@@ -174,7 +174,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const mk = (typeof CHAR_MODELS !== 'undefined' && opts.model !== false) ? modelKeyFor(kind, seed, enemy) : null;
     if (mk) {                                                                                 // 모델 캐릭터: 부품 대신 같은 뼈에 스킨 메시를 입힌다 (애니메이션은 그대로)
       root.updateMatrixWorld(true);
-      const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
+      const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
       out.setModel = (key) => {
         if (out.skin) { root.remove(out.skin); out.skin = null; }
@@ -338,18 +338,20 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const gearMatCache = {};
   const gearMat = (id, color) => gearMatCache[id] || (gearMatCache[id] = new THREE.MeshStandardMaterial({ color, flatShading: true, metalness: 0.5, roughness: 0.4 }));
   // ----- 무기 모델 (js/models.js 의 w_sword / w_spear / w_bow): 있으면 직접 만든 무기 대신 쓴다 -----
-  const wGeos = {}; let wTex = null; const wMats = {};
+  const wGeos = {}; let wTex = null, tTex = null; const wMats = {};
   function weaponModel(kind, tier = 0) {
-    if (typeof CHAR_MODELS === 'undefined' || !CHAR_MODELS['w_' + kind]) return null;
+    const pre = (kind === 'pick' || kind === 'axe') ? 't_' : 'w_';
+    if (typeof CHAR_MODELS === 'undefined' || !CHAR_MODELS[pre + kind]) return null;
     let geo = wGeos[kind];
     if (!geo) {
-      const d = CHAR_MODELS['w_' + kind], n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array);
+      const d = CHAR_MODELS[pre + kind], n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array);
       geo = wGeos[kind] = new THREE.BufferGeometry(); const P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2);
       for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
       geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setIndex(new THREE.BufferAttribute(unb64(d.idx, Uint16Array), 1));
     }
-    if (!wTex) { wTex = new THREE.TextureLoader().load(CHAR_MODELS.w_tex); wTex.flipY = true; }
-    const mk = kind + (tier > 0 ? 1 : 0), m = wMats[mk] || (wMats[mk] = new THREE.MeshStandardMaterial({ map: wTex, roughness: 0.6, metalness: 0.15, color: tier > 0 ? 0xfff0c8 : 0xffffff }));
+    const isTool = kind === 'pick' || kind === 'axe';
+    if (isTool) { if (!tTex) { tTex = new THREE.TextureLoader().load(CHAR_MODELS.t_tex); tTex.flipY = true; } } else if (!wTex) { wTex = new THREE.TextureLoader().load(CHAR_MODELS.w_tex); wTex.flipY = true; }
+    const mk = kind + (tier > 0 ? 1 : 0), m = wMats[mk] || (wMats[mk] = new THREE.MeshStandardMaterial({ map: isTool ? tTex : wTex, roughness: 0.6, metalness: 0.15, color: tier > 0 ? 0xfff0c8 : 0xffffff }));
     const mesh = new THREE.Mesh(geo, m); mesh.castShadow = true; return mesh;
   }
   function makeSwordMesh(def) {
@@ -389,7 +391,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const g = new THREE.Group(), inner = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.5, 6), gearMat('healstaff', 0x6a4a2a)), orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshBasicMaterial({ color: 0x7affc8 }));
     pole.position.y = 0.45; orb.position.y = 1.25; inner.add(pole, orb); inner.rotation.x = 1.05; g.add(inner); return g;
   }
-  function makeShieldMesh(def) {               // 둥근 방패: 나무판 + 쇠 테두리 + 중앙 징. 왼팔에 붙는다
+  function makeShieldMesh(def) {
+    { const wm = weaponModel('shield', def.tier); if (wm) { const g = new THREE.Group(); g.add(wm); return g; } }               // 둥근 방패: 나무판 + 쇠 테두리 + 중앙 징. 왼팔에 붙는다
     const g = new THREE.Group(), t = def.tier || 0, wood = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 14), gearMat('shieldwood', 0x8a5a34));
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 6, 16), gearMat('shieldrim' + t, t > 0 ? 0xc9a23a : 0x6a6d75)), boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), gearMat('shieldboss' + t, t > 0 ? 0xe8d28a : 0xa8abb2));
     wood.rotation.x = rim.rotation.x = Math.PI / 2; rim.position.z = 0; boss.position.z = 0.04; g.add(wood, rim, boss);
@@ -400,7 +403,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     cap.position.y = 0.4; g.add(body, cap);
     return g;
   }
-  function makePickMesh() {
+  function makePickMesh(kind = 'pick') {
+    { const wm = weaponModel(kind, 0); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; } }
     const g = new THREE.Group(), inner = new THREE.Group();
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), gearMat('woodpick', 0x7a5530)), head = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.55), gearMat('ironpick', 0x9a9da4));
     handle.position.y = 0.3; head.position.y = 0.78;
@@ -434,8 +438,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (m.spear) m.spear.visible = w === 'spear';
       if (m.staff) m.staff.visible = w === 'staff';
       if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick';
-      if (!m.pick) { m.pick = makePickMesh(); rig.handR.add(m.pick); }
-      m.pick.visible = w === 'pick';
+      if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
+      if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
+      m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';
     };
     rig.hold = (what) => { rig.held = what; rig.applyHold(); };
     rig.setArmor = (def) => {                  // 흉갑 + 투구 (몸통/머리 뼈에 부착). 상위 등급은 금색 허리띠

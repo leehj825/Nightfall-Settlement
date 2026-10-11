@@ -147,6 +147,7 @@
       facing += diff * Math.min(1, dt * 14);
       player.rotation.y = facing;
     }
+    playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
     playerAnim.base(gathering ? 'gather' : dashT > 0 ? 'run' : mag > 0.08 ? (mag > 0.6 ? 'run' : 'walk') : 'idle', SPEED * mag);   // Idle / Walk / Run / Gather CrossFade
     playerAnim.update(dt);
 

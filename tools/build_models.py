@@ -48,7 +48,7 @@ def seg_dist(p, a, b):
 
 def skin(pos):
     D = np.stack([seg_dist(pos, *SEG[b][:2]) / SEG[b][2] for b in BONES], axis=1)       # distance in "bone radii"
-    W = np.exp(-(D ** 2) * 1.6)
+    W = np.exp(-(D ** 2) * 5.0)
     # 발과 발 앞쪽은 무릎(정강이) 뼈에 붙인다
     foot = pos[:, 1] < 0.12
     for j, b in enumerate(BONES):
@@ -67,18 +67,20 @@ def weapons(root, out):
     for a, b, c in vid[tri]: parent[f(b)] = f(a); parent[f(c)] = f(a)
     comp = {}
     for ti, tr in enumerate(vid[tri]): comp.setdefault(f(tr[0]), []).append(ti)
-    parts = {'sword': [], 'spear': [], 'bow': []}
+    parts = {'sword': [], 'spear': [], 'bow': [], 'shield': []}
     for tis in comp.values():
         p = pos[np.unique(tri[tis].ravel())]; cx, cy = (p[:, 0].min() + p[:, 0].max()) / 2, (p[:, 1].min() + p[:, 1].max()) / 2
         if cx > 0.31: parts['bow'] += tis
         elif cx > 0.2 and p[:, 1].max() > 0.9: parts['spear'] += tis
-        elif cy > 0.55: parts['sword'] += tis                      # (칼집은 쓰지 않는다)
+        elif cy > 0.7: parts['sword'] += tis                       # 칼 (y 0.6~0.69 의 가늘고 긴 칼집은 쓰지 않는다)
+        elif cy < 0.5 and len(tis) > 1500: parts['shield'] += tis  # 둥근 방패
     def rot(v, kind):                                              # 모델 좌표 -> 장비 좌표 (회전만, 반전 없음)
         x, y, z = v[:, 0], v[:, 1], v[:, 2]
-        if kind == 'sword': return np.stack([-(y - 0.745), x + 0.38, z], axis=1)           # 칼날 +x -> +y, 손잡이 중간이 원점
+        if kind == 'sword': return np.stack([-(y - 0.795), x + 0.38, z], axis=1)           # 칼날 +x -> +y, 손잡이 중간이 원점
         if kind == 'spear': return np.stack([x - 0.255, y - 0.23, z], axis=1)
+        if kind == 'shield': return np.stack([x + 0.21, y - 0.225, z], axis=1)                # 원판은 xy 평면, 가운데 징은 +z
         return np.stack([z, x - 0.40, y - 0.45], axis=1)                                    # 활: 긴 축 y -> z, 시위 쪽(+x) -> +y
-    scale = {'sword': 1.7, 'spear': 2.58, 'bow': 1.15}
+    scale = {'sword': 1.7, 'spear': 2.58, 'bow': 1.15, 'shield': 1.5}
     for kind, tis in parts.items():
         vs, inv = np.unique(tri[tis].ravel(), return_inverse=True)
         P = rot(pos[vs], kind) * scale[kind]; N = rot(nor[vs], kind); I = inv.astype(np.uint16)
@@ -87,6 +89,33 @@ def weapons(root, out):
         print('weapon', kind.ljust(6), len(vs), 'verts', len(tis), 'tris', 'extent', (P.max(axis=0) - P.min(axis=0)).round(2))
     im = Image.open(tex).convert('RGB').resize((512, 512), Image.LANCZOS); buf = io.BytesIO(); im.save(buf, 'JPEG', quality=82)
     out['w_tex'] = 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
+
+def tools(root, out):
+    """Pickaxe_and_axe pack: pickaxe (tilted in the model) and axe -> upright, head along z (the swing plane), grip near the bottom."""
+    folder = os.path.join(root, 'Tools'); obj = glob.glob(os.path.join(folder, '*.obj'))[0]; tex = glob.glob(os.path.join(folder, '*basecolor.jpg'))[0]
+    pos, uv, nor, idx = parse_obj(obj); tri = idx.reshape(-1, 3).astype(int)
+    key = {}; vid = np.array([key.setdefault(tuple(p), len(key)) for p in np.round(pos, 5)]); parent = list(range(len(key)))
+    def f(a):
+        while parent[a] != a: parent[a] = parent[parent[a]]; a = parent[a]
+        return a
+    for a, b, c in vid[tri]: parent[f(b)] = f(a); parent[f(c)] = f(a)
+    comp = {}
+    for ti, tr in enumerate(vid[tri]): comp.setdefault(f(tr[0]), []).append(ti)
+    small, big = sorted(comp.values(), key=len)                # 곡괭이(작은 쪽) / 도끼
+    for kind, tis in (('pick', small), ('axe', big)):
+        vs, inv = np.unique(tri[tis].ravel(), return_inverse=True); P = pos[vs].copy(); N = nor[vs].copy()
+        if kind == 'pick':                                      # 비스듬한 자루를 세운다 (자루 끝 = 가장 낮은 점, 머리 = 가장 먼 점 방향)
+            low = P[np.argmin(P[:, 1])]; far = P[np.argmax(np.linalg.norm(P - low, axis=1))]; v = far - low; ang = np.arctan2(v[1], v[0]); rot = np.pi / 2 - ang
+            c, s = np.cos(rot), np.sin(rot); R = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]]); P = P @ R.T; N = N @ R.T
+        low_pts = P[P[:, 1] < P[:, 1].min() + 0.06]; bottom = low_pts.mean(axis=0); H = P[:, 1].max() - P[:, 1].min()
+        P = P - [bottom[0], P[:, 1].min() + 0.27 * H, 0]                                        # 손잡이 위치(아래에서 27%)가 원점
+        P = np.stack([P[:, 2], P[:, 1], -P[:, 0]], axis=1); N = np.stack([N[:, 2], N[:, 1], -N[:, 0]], axis=1)    # 머리 방향(x) -> z
+        P = P * 1.15
+        out['t_' + kind] = {'n': len(vs), 'pos': b64(np.round(P * 10000).astype(np.int16)), 'uv': b64(np.round(uv[vs] * 65535).astype(np.uint16)),
+                            'nor': b64(np.round(N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9) * 127).astype(np.int8)), 'idx': b64(inv.astype(np.uint16)), 'idx32': False}
+        print('tool', kind.ljust(5), len(vs), 'verts', 'extent', (P.max(axis=0) - P.min(axis=0)).round(2))
+    im = Image.open(tex).convert('RGB').resize((512, 512), Image.LANCZOS); buf = io.BytesIO(); im.save(buf, 'JPEG', quality=82)
+    out['t_tex'] = 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
 
 def b64(a): return base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
 
@@ -103,7 +132,7 @@ def main():
                     'nor': b64(np.round(nor / np.linalg.norm(nor, axis=1, keepdims=True) * 127).astype(np.int8)), 'idx': b64(idx), 'idx32': idx.dtype == np.uint32,
                     'si': b64(si), 'sw': b64(sw), 'tex': 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()}
         print(key.ljust(14), len(pos), 'verts', len(idx) // 3, 'tris', 'scale %.2f' % s, 'tex %d KB' % (len(buf.getvalue()) // 1024))
-    weapons(root, out)
+    weapons(root, out); tools(root, out)
     js = '// Generated by tools/build_models.py - skinned character meshes (AI-generated models by the project owner). Do not edit by hand.\nconst CHAR_MODELS = ' + json.dumps(out, separators=(',', ':')) + ';\n'
     open(os.path.join(os.path.dirname(__file__), '..', 'js', 'models.js'), 'w').write(js)
     print('wrote js/models.js', len(js) // 1024, 'KB')
