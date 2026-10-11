@@ -1339,19 +1339,43 @@
     if (pl.lvl >= PL_MAX) pl.xp = 0;
     updateLvlUi();
   }
-  function openLevelPick() {
-    if (pl.pend <= 0 || dead || eventOpen) return;
-    const pool = LEVEL_UPS.filter(u => (!u.cls || u.cls === playerClass) && pl.st[u.id] < 5).sort(() => Math.random() - 0.5).slice(0, 3);
-    if (!pool.length) { pl.pend = 0; updateLvlUi(); return; }
-    openEvent({ tag: `Level ${pl.lvl}`, title: 'Choose an upgrade', text: 'You have grown stronger. Pick one permanent bonus.',
-      opts: pool.map(u => ({ label: u.label, sub: `${u.desc}${pl.st[u.id] ? ` · you have ${pl.st[u.id]}` : ''}`, run: () => { pl.st[u.id]++; pl.pend--; if (u.id === 'hp') healPlayer(20); updateLvlUi(); if (pl.pend > 0) setTimeout(openLevelPick, 450); return `${u.label}: ${u.desc}`; } })) });
+  // ---------- 영웅 기술 트리: 세 갈래(전사 / 사냥꾼 / 전략가). 레벨업마다 한 칸에 포인트를 넣는다. 깊은 칸은 같은 갈래에 포인트가 쌓여야 열린다 ----------
+  const TREE = [
+    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech'] },
+    { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'dash', 'forage'] },
+    { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'ult', 'regen', 'rally'] },
+  ];
+  const branchPts = (b) => b.nodes.reduce((a, id) => a + (pl.st[id] || 0), 0);
+  const nodeInfo = (id) => LEVEL_UPS.find(u => u.id === id);
+  const treeEl = document.getElementById('treePanel'); let treeSnooze = 0;
+  function renderTree() {
+    const cols = TREE.map(b => {
+      const pts = branchPts(b), nodes = b.nodes.map((id, k) => {
+        const u = nodeInfo(id), rank = pl.st[id] || 0, need = k * 2, open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
+        return `<button class="tnode${can ? ' can' : ''}${!open ? ' lock' : ''}${hidden ? ' off' : ''}" data-id="${id}" ${can ? '' : 'disabled'}><b>${u.label}</b><small>${hidden ? 'Commander only' : u.desc}</small><span class="dots">${'●'.repeat(rank)}${'○'.repeat(5 - rank)}</span>${!open ? `<em>needs ${need} points in ${b.name}</em>` : ''}</button>`;
+      }).join('<div class="tlink"></div>');
+      return `<div class="tcol" style="--bc:${b.color}"><h4>${b.name} <small>${pts} pts</small></h4>${nodes}</div>`;
+    }).join('');
+    treeEl.querySelector('#treeCols').innerHTML = cols;
+    treeEl.querySelector('#treeHead').textContent = pl.pend > 0 ? `Level ${pl.lvl} - spend ${pl.pend} point${pl.pend > 1 ? 's' : ''}` : `Level ${pl.lvl} - no points to spend`;
+    treeEl.querySelectorAll('.tnode.can').forEach(b => b.addEventListener('click', () => {
+      const u = nodeInfo(b.dataset.id); pl.st[u.id]++; pl.pend--; if (u.id === 'hp') healPlayer(20); updateLvlUi(); Snd.play('chime'); toast(`${u.label}: ${u.desc}`);
+      if (pl.pend <= 0) closeTree(); else renderTree();
+    }));
+  }
+  function closeTree(snooze) { treeEl.style.display = 'none'; uiPause = false; if (snooze) treeSnooze = performance.now() + 60000; }
+  document.getElementById('treeClose').addEventListener('click', () => closeTree(true));
+  function openLevelPick(force) {
+    if (dead || eventOpen || (pl.pend <= 0 && !force)) return;
+    if (pl.pend > 0 && !TREE.some(b => b.nodes.some(id => (pl.st[id] || 0) < 5 && !(nodeInfo(id).cls && nodeInfo(id).cls !== playerClass)))) { pl.pend = 0; updateLvlUi(); return; }
+    renderTree(); treeEl.style.display = 'flex'; uiPause = true; toggleStats(false);
   }
   setInterval(() => {                                   // 안전할 때(주변에 적이 없을 때) 선택창을 자동으로 띄운다
-    if (pl.pend <= 0 || eventOpen || dead || !saveReady || uiPause) return;
+    if (pl.pend <= 0 || eventOpen || dead || !saveReady || uiPause || performance.now() < treeSnooze) return;
     if (enemies.some(e => !e.userData.sinking && Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z) < 28)) return;
     openLevelPick();
   }, 1200);
-  document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (pl.pend > 0) { toggleStats(false); openLevelPick(); } else toggleStats(false); });
+  document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleStats(false); openLevelPick(true); });
 
   // ---------- 새 적: 궁수(멀리서 화살) / 치유사(주변 적 회복) / 폭파병(목책으로 달려가 자폭) ----------
   const enemyArrows = [], eArrowGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.8, 5), eArrowMat = new THREE.MeshBasicMaterial({ color: 0xc86a2a });

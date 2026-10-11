@@ -273,3 +273,18 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #repPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 32; padding: 12px; }
 #repPanel .scard2 { width: min(560px, 100%); max-height: 92%; overflow: auto; }
 #ncClass { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
+
+#treePanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 31; padding: 10px; }
+#treePanel .tree { width: min(720px, 100%); max-height: 94%; overflow: auto; }
+#treeCols { display: flex; gap: 8px; margin: 6px 0 10px; align-items: flex-start; }
+.tcol { flex: 1; min-width: 0; border-top: 3px solid var(--bc); background: rgba(255,255,255,.04); border-radius: 8px; padding: 6px; }
+.tcol h4 { margin: 0 0 6px; font-size: 14px; color: var(--bc); } .tcol h4 small { color: #b9a98a; font-weight: 400; }
+.tlink { width: 3px; height: 8px; margin: 0 auto; background: var(--bc); opacity: .5; }
+.tnode { display: block; width: 100%; text-align: left; font: inherit; color: #f2e6cc; background: #2a2118; border: 1px solid #5a4a30; border-radius: 8px; padding: 6px 8px; }
+.tnode b { display: block; font-size: 13px; } .tnode small { display: block; font-size: 11px; opacity: .8; margin: 2px 0; } .tnode .dots { font-size: 11px; letter-spacing: 2px; color: var(--bc); } .tnode em { display: block; font-size: 10px; color: #c78a6a; font-style: normal; margin-top: 2px; }
+.tnode.can { border-color: var(--bc); box-shadow: 0 0 0 1px var(--bc) inset; cursor: pointer; background: #3a2d1e; } .tnode.lock, .tnode.off { opacity: .45; }
+@media (max-width: 640px) { #treeCols { flex-direction: column; } .tcol { width: 100%; } }
+#treePanel .tnode { background: #2a2118 !important; color: #f2e6cc !important; border: 1px solid #5a4a30 !important; box-shadow: none !important; text-shadow: none; border-radius: 8px; text-align: left; font-weight: 400; }
+#treePanel .tnode.can { background: #3d3020 !important; border-color: var(--bc) !important; box-shadow: 0 0 0 1px var(--bc) inset !important; }
+#treePanel .tnode b { font-weight: 800; }
+#treePanel .tree { padding-bottom: 8px; } #treePanel .tbtns { position: sticky; bottom: 0; padding-top: 6px; }
