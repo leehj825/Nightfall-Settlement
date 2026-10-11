@@ -5475,9 +5475,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     _tool() {                                   // 곡괭이: 자루가 오른팔(어깨→손) 방향을 따라 머리 위에서 내려찍는다 / 도끼: 야구 배트처럼 손 앞에서 수평으로 휘두른다
       const m = this.rig.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null); if (!t || !t.userData.inner) return;
-      const inn = t.userData.inner;
-      if (this.baseName !== 'gather') { t.quaternion.identity(); inn.rotation.set(Math.PI / 2, 0, 0); return; }
-      if (t === m.axe) { t.quaternion.identity(); inn.rotation.set(0, 0, AXE_ROLL); return; }
+      const inn = t.userData.inner, wm = inn.children[0];
+      if (this.baseName !== 'gather') { t.quaternion.identity(); inn.rotation.set(Math.PI / 2, 0, 0); wm.rotation.y = 0; return; }
+      if (t === m.axe) { t.quaternion.identity(); inn.rotation.set(0, 0, AXE_ROLL); wm.rotation.y = Math.PI; return; }       // 도끼날이 휘두르는 방향 앞쪽을 향하게 (자루 축으로 180도)
+      wm.rotation.y = Math.PI / 2;                                                                                        // 곡괭이: 휘어진 머리가 내려치는 면(앞뒤)에 놓이게 (끝이 앞-아래를 향한다)
       const R = this.rig; R.root.updateMatrixWorld(true);
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3())), d = b.sub(a); if (d.lengthSq() < 0.01) return;
       d.normalize().applyQuaternion(R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert());
