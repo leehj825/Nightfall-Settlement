@@ -5445,8 +5445,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const R = this.rig; R.root.updateMatrixWorld(true);
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
+      const fw = (this._fw || (this._fw = new THREE.Vector3())).set(0, 0.06, 1).applyQuaternion(R.root.getWorldQuaternion(this._qr || (this._qr = new THREE.Quaternion())));       // 창끝은 팔 방향보다 적을 향해(캐릭터 정면, 수평) 길게 뻗는다
+      d.normalize().multiplyScalar(0.3).addScaledVector(fw.normalize(), 0.7).normalize();
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
-      d.normalize().applyQuaternion(inv);
+      d.applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
       sp.position.copy(d).multiplyScalar(0.38 * k);
     }
