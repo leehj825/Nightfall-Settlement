@@ -29,6 +29,19 @@
     }
     setTimeout(() => toast('Night hunt: prowlers roam beyond the walls - double XP and loot, but it is dark out there'), 1500);
   }
+  function ambushStep(e, u, dt) {                                          // 도적: 마차가 있으면 마차를, 플레이어가 가까우면 플레이어를 쫓는다
+    const c = typeof caravan !== 'undefined' ? caravan : null, pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+    let tx, tz, td;
+    if (c && (pd > 9 || dead)) { tx = c.g.position.x; tz = c.g.position.z; } else { tx = player.position.x; tz = player.position.z; }
+    td = Math.hypot(tx - e.position.x, tz - e.position.z);
+    e.lookAt(tx, e.position.y, tz);
+    if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
+    else if (td > 1.1 && !(u.stunT > 0)) { const ts = terrSpd(e.position.x, e.position.z); e.position.x += (tx - e.position.x) / td * u.speed * 1.1 * ts * dt; e.position.z += (tz - e.position.z) / td * u.speed * 1.1 * ts * dt; }
+    u.anim.base(td > 1.2 ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
+    if (c && Math.hypot(c.g.position.x - e.position.x, c.g.position.z - e.position.z) < 1.6) { c.hp -= 7 * dt; if (u.atkAnimCd <= 0) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); } }
+    if (pd < PLAYER_R + u.r + 0.15 && hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+    if (!c) u.keepDay = false;                                              // 마차가 사라지면 도적도 흩어진다
+  }
   function prowlStep(e, u, dt) {
     const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
     u.aggro = u.aggro ? pd < 18 : pd < 11;
@@ -278,7 +291,7 @@
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
-      if (!night && !u.sinking && !u.boss && !u.ex) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
+      if (!night && !u.sinking && !u.boss && !u.ex && !(u.keepDay && caravan)) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
       if (u.sinking) {
         if (u.dying > 0) { u.dying -= dt; continue; }
         e.position.y -= dt * 0.8;
@@ -287,6 +300,7 @@
       }
       if (dead) continue;
       if (u.ex) { exEnemyStep(e, u, dt); continue; }                    // 원정 지역의 적은 별도 AI
+      if (u.amb) { ambushStep(e, u, dt); continue; }                  // 마차를 노리는 도적
       if (u.prowl) { prowlStep(e, u, dt); continue; }                   // 밤사냥 방랑자: 떠돌다가 플레이어를 보면 쫓는다
 
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)

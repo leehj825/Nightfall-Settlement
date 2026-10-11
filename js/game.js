@@ -1426,6 +1426,19 @@
     }
     setTimeout(() => toast('Night hunt: prowlers roam beyond the walls - double XP and loot, but it is dark out there'), 1500);
   }
+  function ambushStep(e, u, dt) {                                          // 도적: 마차가 있으면 마차를, 플레이어가 가까우면 플레이어를 쫓는다
+    const c = typeof caravan !== 'undefined' ? caravan : null, pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+    let tx, tz, td;
+    if (c && (pd > 9 || dead)) { tx = c.g.position.x; tz = c.g.position.z; } else { tx = player.position.x; tz = player.position.z; }
+    td = Math.hypot(tx - e.position.x, tz - e.position.z);
+    e.lookAt(tx, e.position.y, tz);
+    if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
+    else if (td > 1.1 && !(u.stunT > 0)) { const ts = terrSpd(e.position.x, e.position.z); e.position.x += (tx - e.position.x) / td * u.speed * 1.1 * ts * dt; e.position.z += (tz - e.position.z) / td * u.speed * 1.1 * ts * dt; }
+    u.anim.base(td > 1.2 ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
+    if (c && Math.hypot(c.g.position.x - e.position.x, c.g.position.z - e.position.z) < 1.6) { c.hp -= 7 * dt; if (u.atkAnimCd <= 0) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); } }
+    if (pd < PLAYER_R + u.r + 0.15 && hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+    if (!c) u.keepDay = false;                                              // 마차가 사라지면 도적도 흩어진다
+  }
   function prowlStep(e, u, dt) {
     const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
     u.aggro = u.aggro ? pd < 18 : pd < 11;
@@ -1675,7 +1688,7 @@
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
-      if (!night && !u.sinking && !u.boss && !u.ex) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
+      if (!night && !u.sinking && !u.boss && !u.ex && !(u.keepDay && caravan)) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
       if (u.sinking) {
         if (u.dying > 0) { u.dying -= dt; continue; }
         e.position.y -= dt * 0.8;
@@ -1684,6 +1697,7 @@
       }
       if (dead) continue;
       if (u.ex) { exEnemyStep(e, u, dt); continue; }                    // 원정 지역의 적은 별도 AI
+      if (u.amb) { ambushStep(e, u, dt); continue; }                  // 마차를 노리는 도적
       if (u.prowl) { prowlStep(e, u, dt); continue; }                   // 밤사냥 방랑자: 떠돌다가 플레이어를 보면 쫓는다
 
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
@@ -2177,6 +2191,52 @@
           run: () => { if (res[l.g] < l.n) return 'Not enough to trade'; res[l.g] -= l.n; res[l.r] += get; updateHud(); report.traded = (report.traded || 0) + 1; unlockAch('merchant'); setTimeout(() => merchantMenu(lots, rate, p), 450); return `Traded: +${get} ${MNAME[l.r]}`; } };
       }).concat(npcs.some(n => n.sick > 0) ? [{ label: 'Buy healing herbs', sub: 'Costs 2 Iron · cures every sick citizen', ok: () => res.iron >= 2, run: () => { res.iron -= 2; npcs.forEach(n => { n.sick = 0; }); setTimeout(() => merchantMenu(lots, rate, p), 450); return 'The sick are on their feet again'; } }] : [])
         .concat([{ label: 'Farewell', alt: true, run: () => 'The merchant moves on' }]) });
+  }
+  // ---------- 교역 마차: 닷새째부터 나흘마다 강 건너편에서 다리를 건너 마을 문으로 온다. 길이 많을수록 교역이 커지고, 가끔 도적이 매복한다 ----------
+  let caravan = null, caravanDay = 0, caravanDone = 0;
+  const cartMat = mat(0x8a5a30), cartCover = mat(0xe8dcc4), wheelMat = mat(0x3a2a1a);
+  function caravanMorning(dayNo) {
+    if (dayNo >= 5 && (dayNo - 5) % 4 === 0 && caravanDone !== dayNo && builtBuildings('market').length) { caravanDay = dayNo; setTimeout(() => toast('A trade caravan is on the road - it crosses the bridge this morning'), 4200); }
+  }
+  function spawnCaravan() {
+    const g = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.0), cartMat), cover = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8, 1, false, 0, Math.PI), cartCover);
+    body.position.y = 0.6; cover.rotation.z = Math.PI / 2; cover.position.y = 1.0; g.add(body, cover);
+    for (const sx of [-0.55, 0.55]) for (const sz of [-0.55, 0.55]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 10), wheelMat); w.rotation.x = Math.PI / 2; w.position.set(sx, 0.3, sz); g.add(w); }
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.04), bannerMat); flag.position.set(0, 1.9, 0); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 5), wheelMat); pole.position.set(-0.25, 1.5, 0); g.add(pole, flag);
+    g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+    const gate = gateWaypoints.slice().sort((a, b) => Math.hypot(a.x - BR.x, a.z - BR.z) - Math.hypot(b.x - BR.x, b.z - BR.z))[0];
+    const goal = gate ? { x: gate.x + gate.nx * 4, z: gate.z + gate.nz * 4 } : { x: BR.x * 0.2, z: BR.z * 0.2 };
+    const far = { x: BR.ux * (TERR.riverR + 12), z: BR.uz * (TERR.riverR + 12) }, pts = [far, { x: BR.x + BR.ux * 8, z: BR.z + BR.uz * 8 }, { x: BR.x - BR.ux * 8, z: BR.z - BR.uz * 8 }, goal];
+    g.position.set(far.x, actorH(far.x, far.z), far.z); scene.add(g);
+    caravan = { g, pts, i: 1, hp: 70, maxHp: 70, wait: 0, back: false, amb: Math.random() < 0.4, ambDone: false, road: Math.min(1.5, 1 + (story.roads || []).length / 80) };
+    caravanDone = caravanDay; toast('Caravan sighted by the river');
+  }
+  function endCaravan(ok) { if (!caravan) return; scene.remove(caravan.g); caravan = null; if (!ok) toast('The caravan was lost'); }
+  function caravanTick(dt) {
+    const h = (gameMin / 60) % 24;
+    if (!caravan && caravanDay && caravanDay === dayNow() && h >= 8 && h < 16 && !exActive && !dead && caravanDone !== caravanDay) spawnCaravan();
+    if (!caravan) return;
+    const c = caravan; if (exActive || dead) return;
+    if (h >= 18 || h < 6) { endCaravan(true); return; }
+    if (c.hp <= 0) { burst(c.g.position, 20); endCaravan(false); return; }
+    if (c.amb && !c.ambDone && c.i >= 2) {                               // 매복: 다리를 건넌 뒤 도적 3~4명이 길목에서 튀어나온다
+      c.ambDone = true; const n = 3 + Math.floor(dayNow() / 10), p = c.g.position;
+      for (let k = 0; k < n; k++) { spawnEnemy('normal', { x: p.x + BR.ux * 9 + rand(-3, 3), z: p.z + BR.uz * 9 + rand(-3, 3) }); const b = enemies[enemies.length - 1]; b.userData.ex = false; b.userData.amb = true; b.userData.keepDay = true; b.userData.aggro = true; frostTint(b, 'ash'); }
+      showWarning('Bandits ambush the caravan!');
+    }
+    if (c.wait > 0) { c.wait -= dt; if (c.wait <= 0) { c.back = true; c.i = c.pts.length - 2; } return; }
+    const tgt = c.pts[c.i], p = c.g.position, dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
+    const stopped = enemies.some(e => e.userData.amb && !e.userData.sinking && Math.hypot(e.position.x - p.x, e.position.z - p.z) < 3.2);       // 도적이 붙으면 멈춘다
+    if (d > 0.5 && !stopped) { const sp = 2.6 * terrSpd(p.x, p.z) * dt; p.x += dx / d * sp; p.z += dz / d * sp; c.g.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; p.y = actorH(p.x, p.z); }
+    if (d <= 0.5) {
+      if (!c.back && c.i === c.pts.length - 1) {                           // 도착: 교역
+        const day = dayNow(), k = c.road, iron = Math.round((6 + day * 0.6) * k), food = Math.round((10 + day) * k), gold = story.beacon ? 1 + (k > 1.25 ? 1 : 0) : 0;
+        res.iron += iron; res.food += food; res.shard += gold; updateHud(); giveXp(15 + day);
+        floatText(`Caravan: +${iron} Iron, +${food} Food${gold ? ', +' + gold + ' Shard' : ''}`, p.x, 3.2, p.z); toast(`The caravan traded: +${iron} Iron, +${food} Food${gold ? `, +${gold} Shard` : ''}${k > 1.2 ? ' (busy roads pay well)' : ''}`); Snd.play('chime');
+        report.season = (report.season ? report.season + ' | ' : '') + 'Caravan trade completed'; c.wait = 4;
+      } else if (c.back && c.i === 0) { endCaravan(true); return; }
+      else c.i += c.back ? -1 : 1;
+    }
   }
   function merchantVisit(dayNo) {
     if (!builtBuildings('market').length || dayNo < 4 || (dayNo - 4) % 3 !== 0 || lastMerchantDay === dayNo) return;
@@ -4087,7 +4147,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); upgradeGates(); assignForeman(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); fishingTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); upgradeGates(); caravanMorning(dayNo); assignForeman(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); fishingTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -4110,7 +4170,7 @@
     updateTowers(dt);
     updateFood(dt);
     updateDash(dt);
-    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt);
+    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt);
     Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
@@ -4405,6 +4465,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

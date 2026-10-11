@@ -110,6 +110,52 @@
       }).concat(npcs.some(n => n.sick > 0) ? [{ label: 'Buy healing herbs', sub: 'Costs 2 Iron · cures every sick citizen', ok: () => res.iron >= 2, run: () => { res.iron -= 2; npcs.forEach(n => { n.sick = 0; }); setTimeout(() => merchantMenu(lots, rate, p), 450); return 'The sick are on their feet again'; } }] : [])
         .concat([{ label: 'Farewell', alt: true, run: () => 'The merchant moves on' }]) });
   }
+  // ---------- 교역 마차: 닷새째부터 나흘마다 강 건너편에서 다리를 건너 마을 문으로 온다. 길이 많을수록 교역이 커지고, 가끔 도적이 매복한다 ----------
+  let caravan = null, caravanDay = 0, caravanDone = 0;
+  const cartMat = mat(0x8a5a30), cartCover = mat(0xe8dcc4), wheelMat = mat(0x3a2a1a);
+  function caravanMorning(dayNo) {
+    if (dayNo >= 5 && (dayNo - 5) % 4 === 0 && caravanDone !== dayNo && builtBuildings('market').length) { caravanDay = dayNo; setTimeout(() => toast('A trade caravan is on the road - it crosses the bridge this morning'), 4200); }
+  }
+  function spawnCaravan() {
+    const g = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.0), cartMat), cover = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8, 1, false, 0, Math.PI), cartCover);
+    body.position.y = 0.6; cover.rotation.z = Math.PI / 2; cover.position.y = 1.0; g.add(body, cover);
+    for (const sx of [-0.55, 0.55]) for (const sz of [-0.55, 0.55]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 10), wheelMat); w.rotation.x = Math.PI / 2; w.position.set(sx, 0.3, sz); g.add(w); }
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.04), bannerMat); flag.position.set(0, 1.9, 0); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 5), wheelMat); pole.position.set(-0.25, 1.5, 0); g.add(pole, flag);
+    g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+    const gate = gateWaypoints.slice().sort((a, b) => Math.hypot(a.x - BR.x, a.z - BR.z) - Math.hypot(b.x - BR.x, b.z - BR.z))[0];
+    const goal = gate ? { x: gate.x + gate.nx * 4, z: gate.z + gate.nz * 4 } : { x: BR.x * 0.2, z: BR.z * 0.2 };
+    const far = { x: BR.ux * (TERR.riverR + 12), z: BR.uz * (TERR.riverR + 12) }, pts = [far, { x: BR.x + BR.ux * 8, z: BR.z + BR.uz * 8 }, { x: BR.x - BR.ux * 8, z: BR.z - BR.uz * 8 }, goal];
+    g.position.set(far.x, actorH(far.x, far.z), far.z); scene.add(g);
+    caravan = { g, pts, i: 1, hp: 70, maxHp: 70, wait: 0, back: false, amb: Math.random() < 0.4, ambDone: false, road: Math.min(1.5, 1 + (story.roads || []).length / 80) };
+    caravanDone = caravanDay; toast('Caravan sighted by the river');
+  }
+  function endCaravan(ok) { if (!caravan) return; scene.remove(caravan.g); caravan = null; if (!ok) toast('The caravan was lost'); }
+  function caravanTick(dt) {
+    const h = (gameMin / 60) % 24;
+    if (!caravan && caravanDay && caravanDay === dayNow() && h >= 8 && h < 16 && !exActive && !dead && caravanDone !== caravanDay) spawnCaravan();
+    if (!caravan) return;
+    const c = caravan; if (exActive || dead) return;
+    if (h >= 18 || h < 6) { endCaravan(true); return; }
+    if (c.hp <= 0) { burst(c.g.position, 20); endCaravan(false); return; }
+    if (c.amb && !c.ambDone && c.i >= 2) {                               // 매복: 다리를 건넌 뒤 도적 3~4명이 길목에서 튀어나온다
+      c.ambDone = true; const n = 3 + Math.floor(dayNow() / 10), p = c.g.position;
+      for (let k = 0; k < n; k++) { spawnEnemy('normal', { x: p.x + BR.ux * 9 + rand(-3, 3), z: p.z + BR.uz * 9 + rand(-3, 3) }); const b = enemies[enemies.length - 1]; b.userData.ex = false; b.userData.amb = true; b.userData.keepDay = true; b.userData.aggro = true; frostTint(b, 'ash'); }
+      showWarning('Bandits ambush the caravan!');
+    }
+    if (c.wait > 0) { c.wait -= dt; if (c.wait <= 0) { c.back = true; c.i = c.pts.length - 2; } return; }
+    const tgt = c.pts[c.i], p = c.g.position, dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
+    const stopped = enemies.some(e => e.userData.amb && !e.userData.sinking && Math.hypot(e.position.x - p.x, e.position.z - p.z) < 3.2);       // 도적이 붙으면 멈춘다
+    if (d > 0.5 && !stopped) { const sp = 2.6 * terrSpd(p.x, p.z) * dt; p.x += dx / d * sp; p.z += dz / d * sp; c.g.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; p.y = actorH(p.x, p.z); }
+    if (d <= 0.5) {
+      if (!c.back && c.i === c.pts.length - 1) {                           // 도착: 교역
+        const day = dayNow(), k = c.road, iron = Math.round((6 + day * 0.6) * k), food = Math.round((10 + day) * k), gold = story.beacon ? 1 + (k > 1.25 ? 1 : 0) : 0;
+        res.iron += iron; res.food += food; res.shard += gold; updateHud(); giveXp(15 + day);
+        floatText(`Caravan: +${iron} Iron, +${food} Food${gold ? ', +' + gold + ' Shard' : ''}`, p.x, 3.2, p.z); toast(`The caravan traded: +${iron} Iron, +${food} Food${gold ? `, +${gold} Shard` : ''}${k > 1.2 ? ' (busy roads pay well)' : ''}`); Snd.play('chime');
+        report.season = (report.season ? report.season + ' | ' : '') + 'Caravan trade completed'; c.wait = 4;
+      } else if (c.back && c.i === 0) { endCaravan(true); return; }
+      else c.i += c.back ? -1 : 1;
+    }
+  }
   function merchantVisit(dayNo) {
     if (!builtBuildings('market').length || dayNo < 4 || (dayNo - 4) % 3 !== 0 || lastMerchantDay === dayNo) return;
     lastMerchantDay = dayNo;
