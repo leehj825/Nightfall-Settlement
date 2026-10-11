@@ -145,7 +145,7 @@ The well, blacksmith, archery range, tent (age-1 houses), campfire ring, wooden 
 
 ### Polygon characters (concept-art look)
 
-With the skinned models off, `buildStickman` in `js/rig.js` draws everyone from low-poly parts: a faceted head (carved from a sphere: flat face, squared jaw, brow ridge, nose, cheekbones, eyes), beards and hair styles, leather vests with crossed straps and double belts, chain-mail sleeves and tunics (with a mesh texture), steel pauldrons and greaves, tall cuffed boots, hands with fingers. Roles: hero (mail + leather vest + one steel pauldron + beard), soldiers (nasal helm with cheek guards), archers (leather cuirass, hood or short hair), citizens (blacksmith apron, farmer hat, elder robe, woman with kerchief and dress) and five raider types (helmed fighter, hooded masked rogue, fur-collared brute, cloaked woman, scarfed youth).
+With the skinned models off, `buildStickman` in `js/rig.js` draws everyone from low-poly parts: a faceted head (carved from a sphere: flat face, squared jaw, brow ridge, nose, cheekbones, eyes), beards and hair styles, leather vests with crossed straps and double belts, chain-mail sleeves and tunics (with a mesh texture), steel pauldrons and greaves, tall cuffed boots, simple hands and feet (no fingers or toes). Roles: hero (mail + leather vest + one steel pauldron + beard), soldiers (nasal helm with cheek guards), archers (leather cuirass, hood or short hair), citizens (blacksmith apron, farmer hat, elder robe, woman with kerchief and dress) and five raider types (helmed fighter, hooded masked rogue, fur-collared brute, cloaked woman, scarfed youth).
 
 ### Aiming and strafing
 
