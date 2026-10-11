@@ -25,14 +25,14 @@
       rig.main = 'sword'; rig.setGear('sword', { id: 'boss_club', slot: 'sword', tier: 1, color: 0x2a2a30 }); rig.meshes.sword.scale.setScalar(1.8); rig.hold('sword');
     }
     if (archer) {                                                                // 궁수: 두건 + 등에 맨 화살통
-      const hood = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.34, 7), gearMat('archerhood', 0x4a3a1e)); hood.position.set(0, 0.34, -0.02); rig.head.add(hood);
+      if (!rig.skin) { const hood = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.34, 7), gearMat('archerhood', 0x4a3a1e)); hood.position.set(0, 0.34, -0.02); rig.head.add(hood); }
       const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 7), gearMat('quiver', 0x5a3a1e)); quiver.position.set(0.12, 0.3, -0.26); quiver.rotation.z = 0.25; rig.spine.add(quiver);
       for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 4), gearMat('fletch', 0xe8e0c8)); f.position.set(0.12 + (i - 1) * 0.04, 0.6, -0.26); rig.spine.add(f); }
     }
     if (healer) {                                                                // 치유사: 빛나는 구슬이 달린 지팡이 + 흰 망토
       const staff = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.5, 6), gearMat('healstaff', 0x6a4a2a)), orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshBasicMaterial({ color: 0x7affc8 }));
       pole.position.y = 0.45; orb.position.y = 1.25; staff.add(pole, orb); staff.rotation.x = Math.PI / 2 + 0.35; rig.handR.add(staff);
-      const cape = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.7, 0.05), gearMat('healcape', 0xe8f4ec)); cape.position.set(0, 0.35, -0.26); rig.spine.add(cape);
+      if (!rig.skin) { const cape = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.7, 0.05), gearMat('healcape', 0xe8f4ec)); cape.position.set(0, 0.35, -0.26); rig.spine.add(cape); }
     }
     if (sapper) {                                                                // 폭파병: 등에 화약통 + 타오르는 도화선
       const keg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.34, 9), gearMat('keg', 0x7a5a2a)), band = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 5, 12), gearMat('kegband', 0x3a3a3a)), fuse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
@@ -40,6 +40,7 @@
     }
     if (archer) { rig.style = 'bow'; rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
     else if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
+    if (rig.skin) rig.bodyMat.color.set(archer ? 0xffc890 : healer ? 0xb8ffd8 : sapper ? 0xffe08a : boss ? 0x6a6a74 : brute ? 0xd49a8a : shield ? 0xb8c4d8 : 0xffffff);       // 모델 질감에 종류별 색을 곱한다
     const m = new THREE.Group();
     rig.root.position.y = -0.8;                          // 그룹 중심(= 예전 원기둥 중심) 기준으로 발을 바닥에 맞춘다
     m.add(rig.root); m.material = rig.bodyMat;           // 보스 깜빡임/기절 색 변경은 m.material을 사용

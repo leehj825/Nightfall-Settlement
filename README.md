@@ -127,6 +127,9 @@ Chord-based synthesized music (bright day arpeggios, slow minor night pads, puls
 The Mixamo Locomotion Pack and Lite Sword and Shield Pack are retargeted onto the game's stick-man skeleton (`tools/retarget_mixamo.js` writes `js/anims.js`). Everyone uses the captured idle / walk / run / death; swordsmen and the hero in sword mode use the sword-and-shield guard idle, run and three rotating slashes plus a jumping slam every fourth attack. Bow users (hero in bow mode, archers) use the captured draw-arrow, run and crouch-walk; the arrow leaves when the hand reaches forward. Spear users alternate the captured bayonet stab (narrow, very long reach) and slash (wide sweep). Gathering and medic poses stay procedural.
 To regenerate: `node tools/retarget_mixamo.js <three@0.128 folder> <locomotion fbx folder> <sword-shield fbx folder>`.
 
+## Character and weapon models
+Characters are skinned meshes (`js/models.js`, built by `tools/build_models.py <models folder>`): the hero is the Leader, swordsmen use Soldier_sword, archers Soldier_bow, citizens the male/female models (picked per person), raiders Bandit1/Bandit2 (tinted per raider type). The meshes are weighted to the same 11-bone skeleton, so all animations (captured and procedural) drive them; weapons come from the weapons pack (sword, spear, bow); the shield, staff and armor tiers are still procedural/hidden (armor pieces are not drawn on the models). Textures are downsized to 512 px. If a model file is missing the game falls back to the old stick-man figures.
+
 ## Releasing to Google Play
 See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `docs/privacy-policy.md`.
 

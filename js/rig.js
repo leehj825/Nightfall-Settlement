@@ -171,9 +171,50 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (kind === 'melee') part(RG.greave, steelMat, kn, 0, -0.18, 0.012);
     }
     if (enemy) for (const dx of [-0.13, 0, 0.13]) part(RG.rag, ragMat, hips, dx, -0.2, 0.15, 0.12, 0, dx * 0.6);
-    for (const g of groups.values()) { const mesh = new THREE.Mesh(mergeGeos(g.items), g.m); mesh.castShadow = !enemy || g.b.name === 'spine'; mesh.receiveShadow = false; g.b.add(mesh); }
+    const mk = (typeof CHAR_MODELS !== 'undefined' && opts.model !== false) ? modelKeyFor(kind, seed, enemy) : null;
+    if (mk) {                                                                                 // 모델 캐릭터: 부품 대신 같은 뼈에 스킨 메시를 입힌다 (애니메이션은 그대로)
+      root.updateMatrixWorld(true);
+      const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
+      out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
+      out.setModel = (key) => {
+        if (out.skin) { root.remove(out.skin); out.skin = null; }
+        const m = modelMesh(key, skel, mat0); root.add(m); out.skin = m; out.model = key;
+      };
+      out.setModel(mk);
+    } else for (const g of groups.values()) { const mesh = new THREE.Mesh(mergeGeos(g.items), g.m); mesh.castShadow = !enemy || g.b.name === 'spine'; mesh.receiveShadow = false; g.b.add(mesh); }
     out.clips = STICK_CLIPS;
     return out;
+  }
+  // ----- 스킨 모델 (js/models.js, tools/build_models.py): 종류별로 모델을 고른다 -----
+  const modelGeos = {}, modelTexs = {};
+  function modelKeyFor(kind, seed, enemy) {
+    if (enemy || kind === 'enemy') return (seed & 1) ? 'bandit1' : 'bandit2';
+    if (kind === 'player') return 'leader';
+    if (kind === 'melee') return 'soldierSword';
+    if (kind === 'archer') return 'soldierBow';
+    return (seed & 1) ? 'citizenFemale' : 'citizenMale';
+  }
+  const unb64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  function modelMesh(key, skeleton, material) {
+    const d = CHAR_MODELS[key];
+    let geo = modelGeos[key];
+    if (!geo) {
+      geo = modelGeos[key] = new THREE.BufferGeometry(); const n = d.n;
+      const p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), sw = unb64(d.sw, Uint8Array), si = unb64(d.si, Uint8Array);
+      const P = new Float32Array(n * 3), U = new Float32Array(n * 2), N = new Float32Array(n * 3), W = new Float32Array(n * 4), I = new Uint16Array(n * 4);
+      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; }
+      for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
+      for (let i = 0; i < n * 4; i++) { W[i] = sw[i] / 255; I[i] = si[i]; }
+      geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+      geo.setAttribute('skinWeight', new THREE.BufferAttribute(W, 4)); geo.setAttribute('skinIndex', new THREE.BufferAttribute(I, 4));
+      geo.setIndex(new THREE.BufferAttribute(d.idx32 ? unb64(d.idx, Uint32Array) : unb64(d.idx, Uint16Array), 1));
+    }
+    let tex = modelTexs[key];
+    if (!tex) { tex = modelTexs[key] = new THREE.TextureLoader().load(d.tex); tex.flipY = true; tex.anisotropy = 2; }
+    material.map = tex; material.needsUpdate = true;
+    const mesh = new THREE.SkinnedMesh(geo, material); mesh.frustumCulled = false; mesh.castShadow = true; mesh.receiveShadow = false;
+    mesh.bind(skeleton, new THREE.Matrix4());
+    return mesh;
   }
 
   // ----- 코드로 만든 애니메이션 클립 (모든 뼈에 키를 둬서 CrossFade 때 자세가 남지 않게 한다) -----
@@ -296,7 +337,24 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // ----- 장비 메쉬 (손 뼈에 붙는다): 칼날이 팔 방향(+Z)으로 향하도록 inner.rotation.x = π/2 -----
   const gearMatCache = {};
   const gearMat = (id, color) => gearMatCache[id] || (gearMatCache[id] = new THREE.MeshStandardMaterial({ color, flatShading: true, metalness: 0.5, roughness: 0.4 }));
+  // ----- 무기 모델 (js/models.js 의 w_sword / w_spear / w_bow): 있으면 직접 만든 무기 대신 쓴다 -----
+  const wGeos = {}; let wTex = null; const wMats = {};
+  function weaponModel(kind, tier = 0) {
+    if (typeof CHAR_MODELS === 'undefined' || !CHAR_MODELS['w_' + kind]) return null;
+    let geo = wGeos[kind];
+    if (!geo) {
+      const d = CHAR_MODELS['w_' + kind], n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array);
+      geo = wGeos[kind] = new THREE.BufferGeometry(); const P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2);
+      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
+      geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setIndex(new THREE.BufferAttribute(unb64(d.idx, Uint16Array), 1));
+    }
+    if (!wTex) { wTex = new THREE.TextureLoader().load(CHAR_MODELS.w_tex); wTex.flipY = true; }
+    const mk = kind + (tier > 0 ? 1 : 0), m = wMats[mk] || (wMats[mk] = new THREE.MeshStandardMaterial({ map: wTex, roughness: 0.6, metalness: 0.15, color: tier > 0 ? 0xfff0c8 : 0xffffff }));
+    const mesh = new THREE.Mesh(geo, m); mesh.castShadow = true; return mesh;
+  }
   function makeSwordMesh(def) {
+    const wm = weaponModel('sword', def.tier);
+    if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); wm.scale.setScalar(def.tier > 0 ? 1.25 : 1); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
     const g = new THREE.Group(), inner = new THREE.Group(), len = def.tier > 0 ? 1.05 : 0.8;
     const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 6), darkMat);
     const guard = new THREE.Mesh(new THREE.BoxGeometry(def.tier > 0 ? 0.34 : 0.26, 0.05, 0.07), gearMat('guard' + def.tier, def.tier > 0 ? 0xc9a23a : 0x6a5a48));
@@ -306,6 +364,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return g;
   }
   function makeSpearMesh(def) {                // 창: 긴 나무 자루 + 잎 모양 쇠 촉 + 붉은 술. 손잡이는 자루 중간쯤
+    { const wm = weaponModel('spear', def.tier); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); inner.rotation.x = 1.05; g.add(inner); return g; } }
     const g = new THREE.Group(), inner = new THREE.Group(), steel = gearMat('spearhead' + def.tier, def.tier > 0 ? 0xe4e8f0 : 0xb6bac2);
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 2.1, 7), gearMat('spearshaft', 0x7a5530)); shaft.position.y = 0.45;
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.42, 4), steel); head.position.y = 1.7; head.scale.z = 0.35;
@@ -316,6 +375,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return g;
   }
   function makeBowMesh(def) {
+    { const wm = weaponModel('bow', def.tier); if (wm) { const g = new THREE.Group(), pivot = new THREE.Group(); wm.scale.setScalar(def.tier > 0 ? 1.15 : 1); pivot.add(wm); g.add(pivot); g.userData.pivot = pivot; pivot.rotation.x = -Math.PI / 2; return g; } }
     const g = new THREE.Group(), pivot = new THREE.Group(), R0 = def.tier > 0 ? 0.55 : 0.45;
     const arcGeo = new THREE.TorusGeometry(R0, def.tier > 0 ? 0.04 : 0.028, 6, 14, Math.PI); arcGeo.rotateZ(Math.PI);     // 불룩한 쪽이 -Y
     const arc = new THREE.Mesh(arcGeo, gearMat(def.id, def.color)); arc.rotation.y = Math.PI / 2;                          // 활의 긴 축이 Z
@@ -381,7 +441,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.setArmor = (def) => {                  // 흉갑 + 투구 (몸통/머리 뼈에 부착). 상위 등급은 금색 허리띠
       if (rig.armorMeshes) for (const o of rig.armorMeshes) o.parent && o.parent.remove(o);
       rig.armorMeshes = [];
-      if (!def || !def.tier || !rig.spine) return;
+      if (!def || !def.tier || !rig.spine || rig.skin) return;
       const armorMats = rig.constructor === Object ? ARMOR_MATS : ARMOR_MATS, am = (id, c) => armorMats[id] || (armorMats[id] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.25 })), m = am(def.id, def.color), gold = am('gold', 0xd9a92a), add = (geo, parent, x, y, z, mm = m) => { const o = new THREE.Mesh(geo, mm); o.position.set(x, y, z); o.castShadow = true; parent.add(o); rig.armorMeshes.push(o); return o; };
       add(new THREE.CylinderGeometry(0.3, 0.225, 0.48, 14), rig.spine, 0, 0.42, 0).scale.z = 0.68;                         // 흉갑
       add(new THREE.CylinderGeometry(0.225, 0.2, 0.14, 14), rig.spine, 0, 0.14, 0).scale.z = 0.72;                           // 복갑

@@ -26,6 +26,7 @@
     return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false });
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
+    if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
     n.rig.style = cls === 'sword' ? 'ss' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
@@ -154,7 +155,7 @@
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
-    if (n.role !== 'citizen' || age < 2) return;
+    if (n.role !== 'citizen' || age < 2 || n.rig.skin) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
     if (age === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
@@ -162,7 +163,7 @@
     n.body.add(g); n.decor = g;
   }
   function refreshCitizens() {
-    for (const n of npcs) if (n.role === 'citizen') { n.baseColor = citizenColor(); if (!n.down) n.mat.color.set(n.baseColor); applyCitizenLook(n); }
+    for (const n of npcs) if (n.role === 'citizen') { n.baseColor = n.rig.skin ? 0xffffff : citizenColor(); if (!n.down) n.mat.color.set(n.baseColor); applyCitizenLook(n); }
   }
 
   // ---------- 인구 / 직업 (문명 시스템) ----------
