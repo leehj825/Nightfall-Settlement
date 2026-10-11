@@ -53,7 +53,8 @@ def main():
         elif cx < 0 and cy < 0.2: name, width = 'tent', 3.6               # 텐트
         elif cx > 0 and cy > 0.4: name, width = 'fence', 2.4              # 나무 목책
         elif cx > 0 and cy < 0.2: name, width = 'wall', 3.0               # 벽돌 성벽
-        else: continue                                                      # 나무: 게임에 이미 있다
+        elif cx < 0 and cy > 0.4: name, width = 'tree', 1.5               # 소나무
+        else: continue
         part = pack(pos, uv, nor, tri[tis].ravel().reshape(-1, 3), tex)
         part['tex'] = tex
         out[name] = emit(part, width / (hi[0] - lo[0])); print(name.ljust(8), out[name]['n'], 'verts size', out[name]['size'])

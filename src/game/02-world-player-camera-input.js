@@ -4,7 +4,16 @@
   const trunkMat = mat(0x6b4226), leafMat = mat(0x3f8a3c), rockMat = mat(0x8b8b92);
   const rand = (a, b) => a + Math.random() * (b - a);
 
+  let treeMat = null;                                                    // 모델 나무 재질: 계절 색(leafMat)을 흰색 쪽으로 약하게 섞어 곱한다 (tintTrees)
+  const tintTrees = () => { if (treeMat) treeMat.color.copy(leafMat.color).lerp(new THREE.Color(0xffffff), 0.8); };
   function makeTree() {
+    const tm = structMesh('tree');
+    if (tm) {
+      if (!treeMat) { treeMat = tm.material.clone(); tintTrees(); }
+      tm.material = treeMat; tm.scale.setScalar(rand(0.8, 1.25)); tm.rotation.y = rand(0, 6.28);
+      const g = new THREE.Group(); g.add(tm); g.userData = { type: 'wood', radius: 0.9 };
+      return g;
+    }
     const g = new THREE.Group();
     const h = rand(1.2, 1.8);
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.32, h, 6), trunkMat);

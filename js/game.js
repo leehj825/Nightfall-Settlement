@@ -129,7 +129,16 @@
   const trunkMat = mat(0x6b4226), leafMat = mat(0x3f8a3c), rockMat = mat(0x8b8b92);
   const rand = (a, b) => a + Math.random() * (b - a);
 
+  let treeMat = null;                                                    // 모델 나무 재질: 계절 색(leafMat)을 흰색 쪽으로 약하게 섞어 곱한다 (tintTrees)
+  const tintTrees = () => { if (treeMat) treeMat.color.copy(leafMat.color).lerp(new THREE.Color(0xffffff), 0.8); };
   function makeTree() {
+    const tm = structMesh('tree');
+    if (tm) {
+      if (!treeMat) { treeMat = tm.material.clone(); tintTrees(); }
+      tm.material = treeMat; tm.scale.setScalar(rand(0.8, 1.25)); tm.rotation.y = rand(0, 6.28);
+      const g = new THREE.Group(); g.add(tm); g.userData = { type: 'wood', radius: 0.9 };
+      return g;
+    }
     const g = new THREE.Group();
     const h = rand(1.2, 1.8);
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.32, h, 6), trunkMat);
@@ -954,7 +963,7 @@
   const season = () => seasonOfDay(Math.floor(gameMin / 1440) + 1);
   function seasonVisual(k) {
     const s = season();
-    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k); decorMats.bush.color.lerp(s.lc, k); decorMats.tuft.color.lerp(s.lc, k); plotCrop.color.lerp(s.id === 'winter' ? new THREE.Color(0xd8e4e8) : s.id === 'autumn' ? new THREE.Color(0xd2a23a) : new THREE.Color(0x78b04a), k); waterMat.color.lerp(s.id === 'winter' ? iceC : waterC, k);
+    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k); tintTrees(); decorMats.bush.color.lerp(s.lc, k); decorMats.tuft.color.lerp(s.lc, k); plotCrop.color.lerp(s.id === 'winter' ? new THREE.Color(0xd8e4e8) : s.id === 'autumn' ? new THREE.Color(0xd2a23a) : new THREE.Color(0x78b04a), k); waterMat.color.lerp(s.id === 'winter' ? iceC : waterC, k);
   }
   function applyLighting(n, b = 0) {           // n: 밤 정도, b: 붉은 달 정도 (습격의 밤에만)
     sun.color.copy(L.sunDay).lerp(L.sunNight, n).lerp(L.sunBlood, b * 0.85);
