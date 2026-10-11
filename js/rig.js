@@ -150,7 +150,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       part(RG.shoulder, sleeve, sh, 0, 0, 0); part(RG.upper, sleeve, sh, 0, -0.15, 0);
       if (kind === 'melee') part(RG.pauldron, steelMat, sh, 0, 0.03, 0);
       if (enemy) { part(RG.spike, rustMat, sh, sx * 0.06, 0.14, 0, 0, 0, -sx * 0.35); part(RG.pauldron, rustMat, sh, 0, 0.03, 0, 0, 0, 0, 0.9, 0.9, 0.9); }
-      const el = bone('elbow' + n, sh, 0, -0.3, 0);
+      const el = bone('elbow' + n, sh, 0, -0.3, 0); out['elbow' + n] = el; out['shoulder' + n] = sh;
       part(RG.elbow, sleeve, el, 0, 0, 0);
       const bare = kind === 'citizen' || isPlayer || kind === 'archer';
       part(RG.lower, kind === 'melee' ? steelMat : (bare ? skin : bodyMat), el, 0, -0.15, 0);
@@ -420,16 +420,16 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
     rig.root.scale.setScalar(rig.baseScale);
     rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다
-      const hand = slot === 'sword' || slot === 'spear' || slot === 'staff' || (slot === 'bow' && rig.skin) ? rig.handR : rig.handL;      // 모델 캐릭터는 모션캡처가 활을 뻗는 팔이 R 쪽이다
+      const hand = slot === 'sword' || slot === 'spear' || slot === 'staff' ? rig.handR : rig.handL;
       if (rig.meshes[slot]) hand.remove(rig.meshes[slot]);
       rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : slot === 'staff' ? makeStaffMesh() : makeBowMesh(def)) : null;
       if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
       rig.applyHold();
     };
     rig.setShield = (def) => {                 // def가 있으면 왼손에 방패를 든다 (활을 들 때는 숨김)
-      if (rig.meshes.shield) rig.handL.remove(rig.meshes.shield);
+      if (rig.meshes.shield && rig.meshes.shield.parent) rig.meshes.shield.parent.remove(rig.meshes.shield);
       rig.meshes.shield = def ? makeShieldMesh(def) : null;
-      if (rig.meshes.shield) { rig.meshes.shield.position.set(0.12, 0.1, 0.06); rig.meshes.shield.rotation.y = Math.PI / 2; rig.handL.add(rig.meshes.shield); }
+      if (rig.meshes.shield) { const sh = rig.meshes.shield; sh.rotation.y = Math.PI / 2; if (rig.skin && rig.elbowL) { sh.position.set(-0.13, -0.12, 0.02); rig.elbowL.add(sh); } else { sh.position.set(0.12, 0.1, 0.06); rig.handL.add(sh); } }       // 모델: 방패는 팔뚝 바깥쪽에 붙인다
       rig.applyHold();
     };
     rig.applyHold = () => {
@@ -463,7 +463,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
   // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
   const MIXAMO_FAST_DIE = typeof MIXAMO_CLIPS !== 'undefined' ? 1.8 : 1;
-  const SPEAR_FRONT = 1;
   class Anim {
     constructor(rig) {
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
@@ -520,16 +519,16 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.mixer.update(dt);
       this._spear(dt);
     }
-    // 창: 찌르기/휘두르기 동안에는 두 손이 자루를 잡고 있으므로, 자루를 뒷손에서 앞손 방향으로 맞춘다 (모션캡처의 손목 각도가 총 모양이라 창과 안 맞는다)
+    // 창: 한 손(R)으로 찌른다 - 공격 동안 자루를 어깨에서 손으로 뻗은 방향에 맞춘다 (모션캡처의 손목 각도는 두 손 총 자세라 창과 안 맞는다). 다른 손은 방패를 든다
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
       const on = this.shot && (this.variant === 'stab' || this.variant === 'slash'), k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (on ? dt / 0.1 : -dt / 0.12)));
       if (k <= 0) { sp.quaternion.identity(); return; }
       const R = this.rig; R.root.updateMatrixWorld(true);
-      const a = R.handR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handL.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
+      const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
-      d.normalize().multiplyScalar(SPEAR_FRONT).applyQuaternion(inv);
+      d.normalize().applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
     }
   }
