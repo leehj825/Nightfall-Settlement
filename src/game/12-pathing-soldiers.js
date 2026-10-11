@@ -219,10 +219,10 @@
     if (!foe) return false;
     npc.face = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z); npc.rotation.y = npc.face;
     if (npc.atkCd <= 0) {
-      npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
+      npc.anim.once('attackSword');
       const n = npc, dur = n.anim.shot ? n.anim.shot.dur : 0.5, hitIn = n.anim.hitIn ?? 0.25, kick = n.anim.variant === 'kick', base = gearDef('sword_basic');
       n.atkCd = dur * 0.95; n.atkLock = dur * 0.9;
-      later(hitIn, () => { if (!npcs.includes(n) || n.down) return; const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y; sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * (kick ? 0.32 : 0.22), half: Math.PI / 3, rangeMul: 0.7 }); });
+      later(hitIn, () => { if (!npcs.includes(n) || n.down) return; const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y; impactFx(n.position.x, n.position.z, ang, kick ? 'kick' : 'punch'); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * (kick ? 0.32 : 0.22), half: Math.PI / 3, rangeMul: 0.7 }); });
     }
     return true;
   }
