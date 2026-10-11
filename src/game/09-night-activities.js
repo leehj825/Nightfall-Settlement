@@ -199,7 +199,8 @@
   }
   function defenseSummary() {
     const fences = obstacles.filter(o => o.userData.type === 'fence'), wallPct = fences.length ? Math.round(100 * fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length) : 0;
-    return `Walls ${wallPct}% · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}`;
+    const weak = fences.filter(f => f.userData.hp / f.userData.maxHp < 0.5).length;
+    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}`;
   }
   function startWave(day) {
     wave.day = day;
@@ -245,6 +246,12 @@
     if (day >= 6 && alive('healer') < 1 + Math.floor(day / 10) && r < 0.28 * f) return 'healer';
     return 'normal';
   }
+  // 성벽의 약한 곳: 체력 비율이 낮고(목책은 돌보다 약하게 친다) 가까운 구간. 멀쩡한 성벽(80%↑)은 표적이 되지 않는다
+  function weakestWall(e) {
+    let best = null, bs = 0.8;
+    for (const o of obstacles) { if (o.userData.type !== 'fence') continue; const d = Math.hypot(o.position.x - e.position.x, o.position.z - e.position.z); if (d > 28) continue; const sc = (o.userData.hp / o.userData.maxHp) * (o.userData.level === 'wood' ? 0.9 : 1) + d / 140; if (sc < bs) { bs = sc; best = o; } }
+    return best;
+  }
   function updateEnemies(dt, night, waveDay) {
     if (night && wave.day !== waveDay) startWave(waveDay);
     const nh = nowHour < 5 ? nowHour + 24 : nowHour;
@@ -287,6 +294,10 @@
       u.aggro = u.siege ? false : (u.boss && u.lureT > 0) ? true : (u.aggro ? pd < DEAGGRO : pd < AGGRO);      // 보스는 맞은 뒤 10초간 플레이어 고정      // 공성 투척병은 플레이어를 쫓지 않는다
       let tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
       if (u.sapper && !u.aggro) { let bd = 1e9; for (const o of obstacles) { if (o.userData.type !== 'fence') continue; const q = (o.position.x - e.position.x) ** 2 + (o.position.z - e.position.z) ** 2; if (q < bd) { bd = q; tx = o.position.x; tz = o.position.z; } } }       // 폭파병은 가장 가까운 목책으로
+      else if (!u.aggro && !u.siege && !u.boss && !u.archer && !u.healer) {                      // 약한 곳 노리기: 근처에 크게 다친 성벽이 있으면 그쪽으로 몰려간다
+        if ((u.wallT = (u.wallT || 0) - dt) <= 0) { u.wallT = 1.5; u.wallGoal = weakestWall(e); }
+        if (u.wallGoal && obstacles.includes(u.wallGoal)) { tx = u.wallGoal.position.x; tz = u.wallGoal.position.z; }
+      }
       if (u.archer) archerStep(e, u, dt); if (u.healer) healerStep(e, u, dt);
       e.lookAt(tx, e.position.y, tz);
       const dx = tx - e.position.x, dz = tz - e.position.z;
