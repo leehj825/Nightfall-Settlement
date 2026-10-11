@@ -30,7 +30,7 @@ def emit(part, scale, rot_y=0.0, center=True):
         c, s = np.cos(rot_y), np.sin(rot_y); R = np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]]); P = P @ R.T; N = N @ R.T
     lo, hi = P.min(axis=0), P.max(axis=0)
     P = (P - [(lo[0] + hi[0]) / 2 if center else 0, lo[1], (lo[2] + hi[2]) / 2 if center else 0]) * scale
-    return {'n': part['n'], 'pos': b64(np.round(P * 10000).astype(np.int16)), 'uv': b64(np.round(part['uv'] * 65535).astype(np.uint16)),
+    return {'n': part['n'], 'pos': b64(np.round(P * 1000).astype(np.int16)), 'uv': b64(np.round(part['uv'] * 65535).astype(np.uint16)),
             'nor': b64(np.round(N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9) * 127).astype(np.int8)), 'idx': b64(part['idx']),
             'tex': part['tex'], 'size': [round(float(x), 2) for x in (P.max(axis=0) - P.min(axis=0))]}
 

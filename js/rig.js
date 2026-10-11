@@ -349,7 +349,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     let geo = sGeos[key];
     if (!geo) {
       const n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2);
-      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
+      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 1000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
       geo = sGeos[key] = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setIndex(new THREE.BufferAttribute(unb64(d.idx, Uint16Array), 1));
     }
     if (!sMats[d.t]) { const t = sTexs[d.t] = new THREE.TextureLoader().load(STRUCT_MODELS.tex[d.t]); t.flipY = true; sMats[d.t] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0, side: THREE.DoubleSide }); }

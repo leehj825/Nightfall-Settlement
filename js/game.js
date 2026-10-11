@@ -134,7 +134,7 @@
   function makeTree() {
     const tm = structMesh('tree');
     if (tm) {
-      if (!treeMat) { treeMat = tm.material.clone(); tintTrees(); }
+      if (!treeMat) { treeMat = tm.material.clone(); treeMat.emissive = new THREE.Color(0x4a4a4a); treeMat.emissiveMap = treeMat.map; treeMat.roughness = 1; tintTrees(); }       // 밝고 선명한 연두색 소나무: 텍스처를 스스로 조금 빛나게 한다
       tm.material = treeMat; tm.scale.setScalar(rand(0.8, 1.25)); tm.rotation.y = rand(0, 6.28);
       const g = new THREE.Group(); g.add(tm); g.userData = { type: 'wood', radius: 0.9 };
       return g;
