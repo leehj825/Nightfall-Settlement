@@ -85,8 +85,8 @@
   const matGeo = new THREE.BoxGeometry(3.2, 0.04, 3.2);
   const bpGeo = new THREE.BoxGeometry(2.4, 1.1, 0.35);
   function createFence(x, z, rot) {
-    const fence = new THREE.Mesh(bpGeo, fenceMat);
-    fence.position.set(x, 0.55, z);
+    const fm = structMesh('fence'), fence = fm ? new THREE.Mesh(fm.geometry, fm.material) : new THREE.Mesh(bpGeo, fenceMat);       // 나무 목책 모델
+    fence.position.set(x, fm ? 0 : 0.55, z);
     fence.rotation.y = rot;
     fence.castShadow = fence.receiveShadow = true;
     fence.userData = { type: 'fence', level: 'wood', radius: 1.2, hp: fenceHp(), maxHp: fenceHp() };
@@ -96,8 +96,8 @@
   }
   const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
   function createWall(x, z, rot) {              // 돌 성벽 (짙은 회색, HP 100)
-    const w = new THREE.Mesh(wallGeo, wallMat);
-    w.position.set(x, 0.7, z);
+    const wm = structMesh('wall'), w = wm ? new THREE.Mesh(wm.geometry, wm.material) : new THREE.Mesh(wallGeo, wallMat);       // 벽돌 성벽 모델
+    w.position.set(x, wm ? 0 : 0.7, z);
     w.rotation.y = rot;
     w.castShadow = w.receiveShadow = true;
     w.userData = { type: 'fence', level: 'stone', radius: 1.5, hp: wallHp(), maxHp: wallHp() };

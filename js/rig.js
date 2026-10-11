@@ -341,6 +341,20 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // ----- 장비 메쉬 (손 뼈에 붙는다): 칼날이 팔 방향(+Z)으로 향하도록 inner.rotation.x = π/2 -----
   const gearMatCache = {};
   const gearMat = (id, color) => gearMatCache[id] || (gearMatCache[id] = new THREE.MeshStandardMaterial({ color, flatShading: true, metalness: 0.5, roughness: 0.4 }));
+  // ----- 건물 모델 (js/structures.js, tools/build_structures.py): 우물·대장간·사격장·텐트·모닥불·목책·성벽. 바닥 중앙이 원점, 앞쪽이 +z -----
+  const sGeos = {}, sTexs = {}, sMats = {};
+  function structMesh(key) {
+    if (typeof STRUCT_MODELS === 'undefined' || !STRUCT_MODELS.parts[key]) return null;
+    const d = STRUCT_MODELS.parts[key];
+    let geo = sGeos[key];
+    if (!geo) {
+      const n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2);
+      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
+      geo = sGeos[key] = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setIndex(new THREE.BufferAttribute(unb64(d.idx, Uint16Array), 1));
+    }
+    if (!sMats[d.t]) { const t = sTexs[d.t] = new THREE.TextureLoader().load(STRUCT_MODELS.tex[d.t]); t.flipY = true; sMats[d.t] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0, side: THREE.DoubleSide }); }
+    const m = new THREE.Mesh(geo, sMats[d.t]); m.castShadow = m.receiveShadow = true; return m;
+  }
   // ----- 무기 모델 (js/models.js 의 w_sword / w_spear / w_bow): 있으면 직접 만든 무기 대신 쓴다 -----
   const wGeos = {}; let wTex = null, tTex = null; const wMats = {};
   function weaponModel(kind, tier = 0) {

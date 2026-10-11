@@ -53,6 +53,9 @@
   const campfire = new THREE.Group();
   const campDecor = new THREE.Group();     // 1시대 모닥불의 장작/돌 (회관으로 바뀌면 숨김)
   campfire.add(campDecor);
+  const campM = structMesh('campfire');
+  if (campM) campDecor.add(campM);          // 모델: 돌 테두리 + 장작
+  else {
   const logMat = mat(0x5a3a1e);
   for (let i = 0; i < 4; i++) {
     const log = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.22, 0.22), logMat);
@@ -67,6 +70,7 @@
     const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), rockMat);
     st.position.set(Math.cos(a) * 0.85, 0.12, Math.sin(a) * 0.85);
     campDecor.add(st);
+  }
   }
   const flame = new THREE.Group();
   const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.1, 6), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));

@@ -26,7 +26,9 @@
     const lvl = g.userData.level || 1;
     while (g.children.length) g.remove(g.children[0]);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
-    if (lvl <= 1) {
+    const tentM = lvl <= 1 && structMesh('tent');
+    if (tentM) { g.add(tentM); }                                         // 1시대: 모델 텐트
+    else if (lvl <= 1) {
       add(new THREE.ConeGeometry(1.9, 2.6, 8), tentMat, 0, 1.3, 0);
       add(new THREE.BoxGeometry(0.7, 1.1, 0.12), windowGlow, 0, 0.55, 1.6).rotation.x = -0.35;
     } else if (lvl === 2) {
@@ -46,6 +48,8 @@
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
     g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null };
     if (CFG.LEVELED.includes(kind)) g.userData.level = 1;
+    const sm = (kind === 'well' || kind === 'smith' || kind === 'range') && structMesh(kind);        // 모델이 있으면 모델 건물
+    if (sm) g.add(sm);
     if (kind === 'house') {
       g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
@@ -53,6 +57,16 @@
       add(new THREE.BoxGeometry(6.4, 1.6, 4.4), barrackMat, 0, 0.8, 0);
       add(new THREE.BoxGeometry(6.6, 0.25, 4.6), barrackTop, 0, 1.72, 0);
       for (const wx of [-2, 0, 2]) add(new THREE.BoxGeometry(0.6, 0.4, 0.06), windowGlow, wx, 1.0, 2.23);
+    } else if (kind === 'range' && sm) {
+    } else if (kind === 'well' && sm) {
+    } else if (kind === 'smith' && sm) {
+      const rack = new THREE.Group(); rack.position.set(3.1, 0, 0.3);                       // 완성된 장비가 걸리는 선반
+      for (const dz of [-1.1, 1.1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.5, 0.14), woodMat2); post.position.set(0, 0.75, dz); post.castShadow = true; rack.add(post); }
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 2.4), woodMat2); bar.position.set(0, 1.4, 0); rack.add(bar);
+      const items = new THREE.Group(); rack.add(items); g.add(rack);
+      g.userData.rackItems = items;
+      g.userData.stock = {};
+      for (const id in CFG.GEAR) if (CFG.GEAR[id].cost) g.userData.stock[id] = 0;
     } else if (kind === 'range') {                                       // 사격장: 나무 단상 + 앞의 원형 과녁
       add(new THREE.BoxGeometry(4.4, 0.4, 3.0), woodMat2, 0, 0.2, 0);
       add(new THREE.BoxGeometry(0.2, 1.6, 0.2), woodMat2, 0, 0.8, -3.2);
@@ -382,8 +396,9 @@
     toast('Upgraded to a stone wall!');
   }
   function makeStoneFence(f) {
-    f.material = wallMat;                         // 짙은 회색 돌 성벽
-    f.scale.y = 1.25; f.position.y = 0.55 * 1.25;
+    const wm = structMesh('wall');
+    if (wm) { f.geometry = wm.geometry; f.material = wm.material; f.position.y = 0; }       // 벽돌 성벽 모델
+    else { f.material = wallMat; f.scale.y = 1.25; f.position.y = 0.55 * 1.25; }                 // 짙은 회색 돌 성벽
     Object.assign(f.userData, { level: 'stone', hp: wallHp(), maxHp: wallHp() });
   }
   // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설

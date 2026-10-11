@@ -136,3 +136,7 @@ See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `
 ## Android (debug APK)
 See [ANDROID.md](ANDROID.md): a Capacitor wrapper plus a GitHub Actions workflow that builds `app-debug.apk` (Actions -> "Android debug APK" -> Run workflow). three.js is now bundled in `vendor/`, so the game (and the app) work fully offline.
 
+
+### Structure models
+
+The well, blacksmith, archery range, tent (age-1 houses), campfire ring, wooden fence and brick wall are static meshes from `js/structures.js`, built by `tools/build_structures.py <folder>` (a folder with `Well/`, `Blacksmith/`, `archery_target/`, `camping_scene_3d_model/`). `structMesh(key)` in `js/rig.js` returns a mesh with the base centre at the origin and the front toward +z; if `structures.js` is missing the game falls back to the old box-built versions. Collision radii, blueprints and wall HP are unchanged.
