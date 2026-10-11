@@ -3038,7 +3038,7 @@
   let tapTip = false; try { tapTip = !!localStorage.getItem('nf_tiptap'); } catch (e) {}
   // 지연 실행: 공격 애니메이션에서 칼이 휘둘러지는 순간(hitIn초 뒤)에 피해를 준다
   const delayed = [];
-  const later = (t, fn) => delayed.push({ t, fn });
+  const later = (t, fn) => delayed.push({ t: Number.isFinite(t) ? t : 0.25, fn });             // 시간 값이 없어도 (옛 캐시 파일 등) 반드시 실행되게 한다
   function tickDelayed(dt) { for (let i = delayed.length - 1; i >= 0; i--) { const d = delayed[i]; if ((d.t -= dt) <= 0) { delayed.splice(i, 1); try { d.fn(); } catch (e) { console.error(e); } } } }
   let atkLock = 0;                                                       // 근접 공격 동안 제자리에 서 있는다
   function attack() {
