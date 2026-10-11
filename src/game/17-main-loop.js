@@ -103,7 +103,7 @@
     updateTowers(dt);
     updateFood(dt);
     updateDash(dt);
-    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt);
+    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt); tickDelayed(dt);
     Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
@@ -121,6 +121,8 @@
     const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
     if (dead) { ix = iy = 0; }
     else if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
+    atkLock -= dt; const locked = atkLock > 0 && dashT <= 0;
+    if (locked) { ix = iy = 0; }                                       // 공격 모션 중에는 움직이지 않는다
     const mag = Math.min(1, Math.hypot(ix, iy));
 
     if (dashT > 0) {                       // 대시 중: 입력 이동 대신 바라보는 방향으로 질주

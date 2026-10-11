@@ -427,11 +427,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
-      if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 가지 동작을 돌려 가며, 0.6초 안에 끝나도록 빠르게
-        this.atkI = ((this.atkI || 0) % 3) + 1; name = 'ssAttack' + this.atkI; ts = this.acts[name].getClip().duration / 0.6;
+      this.heavy = false;
+      if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
+        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; this.heavy = this.atkI === 4;
+        ts = this.acts[name].getClip().duration / (this.heavy ? 1.15 : 0.65);
       }
       const act = this.acts[name]; act.timeScale = ts;
-      this.shot = { t: 0, dur: act.getClip().duration / ts };
+      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name];
+      this.shot = { t: 0, dur };
+      this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
       if (name === 'attackBow') this.rig.aim(true);
       this._play(name, 0.08, true);
     }

@@ -124,7 +124,7 @@ Chord-based synthesized music (bright day arpeggios, slow minor night pads, puls
 - **Graphics:** a new Lowest setting for old phones (also switched on automatically if Low is still too slow).
 
 ## Motion-capture animations
-The Mixamo Locomotion Pack and Lite Sword and Shield Pack are retargeted onto the game's stick-man skeleton (`tools/retarget_mixamo.js` writes `js/anims.js`). Everyone uses the captured idle / walk / run / death; swordsmen and the hero in sword mode use the sword-and-shield guard idle, run and three rotating attacks. Bow, spear, gathering and medic poses stay procedural.
+The Mixamo Locomotion Pack and Lite Sword and Shield Pack are retargeted onto the game's stick-man skeleton (`tools/retarget_mixamo.js` writes `js/anims.js`). Everyone uses the captured idle / walk / run / death; swordsmen and the hero in sword mode use the sword-and-shield guard idle, run and three rotating slashes plus a jumping slam every fourth attack. Bow, spear, gathering and medic poses stay procedural.
 To regenerate: `node tools/retarget_mixamo.js <three@0.128 folder> <locomotion fbx folder> <sword-shield fbx folder>`.
 
 ## Releasing to Google Play

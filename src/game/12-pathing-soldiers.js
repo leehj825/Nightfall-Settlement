@@ -213,16 +213,19 @@
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
   const strikeRange = () => npc.cls === 'spear' ? 3.3 : 1.7;               // 창병은 멀리서 찌른다
-  function soldierStrike(foe) {
-    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z), base = gearDef(npc.gear.sword);
-    if (npc.cls === 'spear') {
-      npc.atkCd = 1.15; npc.anim.once('attackSpear'); sfxAt('swing', npc.position.x, npc.position.z);
-      sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return;
-    }
-    npc.atkCd = npc.cls === 'medic' ? 1.1 : 0.8;
-    npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
-    spawnSlash(npc.position.x, npc.position.z, ang, base);
-    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * (npc.cls === 'medic' ? 0.5 : 1) });
+  function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
+    const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic';
+    n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
+    const dur = n.anim.shot ? n.anim.shot.dur : 0.6, heavy = !spear && n.anim.heavy, hitIn = n.anim.hitIn ?? 0.25;
+    n.atkCd = Math.max(spear ? 1.0 : medic ? 0.9 : 0.6, dur * 0.95); n.atkLock = dur * 0.9;
+    later(hitIn, () => {
+      if (!npcs.includes(n) || n.down) return;
+      const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y;
+      if (spear) { sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return; }
+      if (heavy) { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.8, half: Math.PI, rangeMul: 1.25, slash: 1.3, tier: 1 }); return; }
+      spawnSlash(n.position.x, n.position.z, ang, base);
+      sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * (medic ? 0.5 : 1) });
+    });
   }
   function medicTick(dt) {                                                  // 치료사: 3초마다 7칸 안의 다친 아군(병사·주민·주인공)을 최대 체력의 12%씩 치료
     npc.healT = (npc.healT || 0) - dt; if (npc.healT > 0 || npc.down) return; npc.healT = 3;
@@ -251,7 +254,7 @@
       if (npc.archer) {
         if (Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) <= CFG.ARCHER_AGGRO) { soldierShoot(foe); return 'Fighting'; }
       } else {
-        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        const d = npc.atkLock > 0 ? Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) : npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < strikeRange() && npc.atkCd <= 0) soldierStrike(foe);
         return 'Fighting';
       }
@@ -304,7 +307,7 @@
     if (npc.down) {
       if (isDay) reviveNpc(); else { setLabel('Down'); return; }
     }
-    npc.atkCd -= dt;
+    npc.atkCd -= dt; npc.atkLock = (npc.atkLock || 0) - dt;
     npc.graceT -= dt;
     if (npc.cls === 'medic' && npc.role === 'melee') medicTick(dt);
     let state = 'Idle';
@@ -392,7 +395,7 @@
         if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = trainTick(dt) ? 'Training' : 'Resting'; if (rs) faceTo(rs.fx, rs.fz); else faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
-        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        const d = npc.atkLock > 0 ? Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) : npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < strikeRange() && npc.atkCd <= 0) {
           soldierStrike(foe);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀

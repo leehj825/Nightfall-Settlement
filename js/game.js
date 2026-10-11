@@ -2813,16 +2813,19 @@
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
   const strikeRange = () => npc.cls === 'spear' ? 3.3 : 1.7;               // 창병은 멀리서 찌른다
-  function soldierStrike(foe) {
-    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z), base = gearDef(npc.gear.sword);
-    if (npc.cls === 'spear') {
-      npc.atkCd = 1.15; npc.anim.once('attackSpear'); sfxAt('swing', npc.position.x, npc.position.z);
-      sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return;
-    }
-    npc.atkCd = npc.cls === 'medic' ? 1.1 : 0.8;
-    npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
-    spawnSlash(npc.position.x, npc.position.z, ang, base);
-    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * (npc.cls === 'medic' ? 0.5 : 1) });
+  function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
+    const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic';
+    n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
+    const dur = n.anim.shot ? n.anim.shot.dur : 0.6, heavy = !spear && n.anim.heavy, hitIn = n.anim.hitIn ?? 0.25;
+    n.atkCd = Math.max(spear ? 1.0 : medic ? 0.9 : 0.6, dur * 0.95); n.atkLock = dur * 0.9;
+    later(hitIn, () => {
+      if (!npcs.includes(n) || n.down) return;
+      const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y;
+      if (spear) { sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return; }
+      if (heavy) { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.8, half: Math.PI, rangeMul: 1.25, slash: 1.3, tier: 1 }); return; }
+      spawnSlash(n.position.x, n.position.z, ang, base);
+      sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * (medic ? 0.5 : 1) });
+    });
   }
   function medicTick(dt) {                                                  // 치료사: 3초마다 7칸 안의 다친 아군(병사·주민·주인공)을 최대 체력의 12%씩 치료
     npc.healT = (npc.healT || 0) - dt; if (npc.healT > 0 || npc.down) return; npc.healT = 3;
@@ -2851,7 +2854,7 @@
       if (npc.archer) {
         if (Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) <= CFG.ARCHER_AGGRO) { soldierShoot(foe); return 'Fighting'; }
       } else {
-        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        const d = npc.atkLock > 0 ? Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) : npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < strikeRange() && npc.atkCd <= 0) soldierStrike(foe);
         return 'Fighting';
       }
@@ -2904,7 +2907,7 @@
     if (npc.down) {
       if (isDay) reviveNpc(); else { setLabel('Down'); return; }
     }
-    npc.atkCd -= dt;
+    npc.atkCd -= dt; npc.atkLock = (npc.atkLock || 0) - dt;
     npc.graceT -= dt;
     if (npc.cls === 'medic' && npc.role === 'melee') medicTick(dt);
     let state = 'Idle';
@@ -2992,7 +2995,7 @@
         if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = trainTick(dt) ? 'Training' : 'Resting'; if (rs) faceTo(rs.fx, rs.fz); else faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
-        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        const d = npc.atkLock > 0 ? Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) : npcMove(foe.position.x, foe.position.z, 5.5, dt);
         if (d < strikeRange() && npc.atkCd <= 0) {
           soldierStrike(foe);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
@@ -3023,36 +3026,47 @@
   // ---------- 플레이어 공격 ----------
   let atkT = 0, atkCd = 0, shake = 0;
   let tapTip = false; try { tapTip = !!localStorage.getItem('nf_tiptap'); } catch (e) {}
+  // 지연 실행: 공격 애니메이션에서 칼이 휘둘러지는 순간(hitIn초 뒤)에 피해를 준다
+  const delayed = [];
+  const later = (t, fn) => delayed.push({ t, fn });
+  function tickDelayed(dt) { for (let i = delayed.length - 1; i >= 0; i--) { const d = delayed[i]; if ((d.t -= dt) <= 0) { delayed.splice(i, 1); try { d.fn(); } catch (e) { console.error(e); } } } }
+  let atkLock = 0;                                                       // 근접 공격 동안 제자리에 서 있는다
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
-    if (dead || atkCd > 0) return;
-    atkCd = ATK_CD * (weaponMode === 'spear' ? 1.25 : 1);
+    if (dead || atkCd > 0 || dashT > 0) return;
     gathering = null;
     if (weaponMode === 'bow') {
-      shake = Math.max(shake, 0.08);
-      playerAnim.once('attackBow'); Snd.play('bow');
-      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch));
+      atkCd = ATK_CD; playerAnim.once('attackBow');
+      later(playerAnim.hitIn, () => { if (dead) return; shake = Math.max(shake, 0.08); Snd.play('bow'); fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch)); });
       return;
     }
     if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
-      const base = gearDef(playerGear.sword), sd = { ...base, dmg: base.dmg * pDmg() * 1.12 * (1 + 0.2 * pl.st.spear), half: Math.PI / 9, rangeMul: 1.75 * (1 + 0.08 * pl.st.spear), slash: (base.slash || 1) * 1.6 };
-      atkT = SLASH_LIFE; shake = 0.2; playerAnim.once('attackSpear'); Snd.play('swing'); spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
-      const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
-      if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+      playerAnim.once('attackSpear'); const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD * 1.25, dur); atkLock = dur * 0.9; Snd.play('swing');
+      later(playerAnim.hitIn, () => {
+        if (dead) return; const base = gearDef(playerGear.sword), sd = { ...base, dmg: base.dmg * pDmg() * 1.12 * (1 + 0.2 * pl.st.spear), half: Math.PI / 9, rangeMul: 1.75 * (1 + 0.08 * pl.st.spear), slash: (base.slash || 1) * 1.6 };
+        atkT = SLASH_LIFE; shake = 0.2; spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
+        if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+      });
       return;
     }
-    atkT = SLASH_LIFE; shake = 0.3;
-    playerAnim.once('attackSword'); Snd.play('swing');
-    spawnSlash(player.position.x, player.position.z, facing);
-    // 광역(Cleave): 부채꼴 안의 모든 적이 동시에 피해와 넉백을 받는다
-    const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...gearDef(playerGear.sword), dmg: gearDef(playerGear.sword).dmg * pDmg() });
-    if (hits >= 2) {
-      shake = Math.min(0.7, 0.3 + hits * 0.06);
-      floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
-    }
+    playerAnim.once('attackSword'); const dur = playerAnim.shot.dur, heavy = playerAnim.heavy;
+    atkCd = Math.max(ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
+    later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
+      if (dead) return;
+      const base = gearDef(playerGear.sword), mulDps = playerAnim.rig.style === 'ss' ? 1.4 : 1;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
+      if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
+        spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: 1.5 }); Snd.play('boom', 0.6);
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * 2.3, half: Math.PI, rangeMul: 1.35, slash: 1.4, tier: 1 });
+        floatText(hits ? `SLAM x${hits}!` : 'SLAM!', player.position.x, 2.8, player.position.z); return;
+      }
+      spawnSlash(player.position.x, player.position.z, facing);
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * mulDps });
+      if (hits >= 2) { shake = Math.min(0.7, 0.3 + hits * 0.06); floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2); }
+    });
   }
 
-  // ---------- 무기 교체 / 화살 ----------
   // 창 찌르기 궤적: 앞으로 쭉 뻗는 가늘고 긴 빛줄기
   const thrustGeo = new THREE.PlaneGeometry(0.34, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5);
   function spawnThrust(x, z, ang, len) {
@@ -3215,7 +3229,7 @@
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
     dashDX = Math.sin(facing); dashDZ = Math.cos(facing);
-    dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
+    atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
   const barBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthTest: false, fog: false }));
@@ -4196,7 +4210,7 @@
     updateTowers(dt);
     updateFood(dt);
     updateDash(dt);
-    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt);
+    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt); tickDelayed(dt);
     Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
@@ -4214,6 +4228,8 @@
     const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
     if (dead) { ix = iy = 0; }
     else if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
+    atkLock -= dt; const locked = atkLock > 0 && dashT <= 0;
+    if (locked) { ix = iy = 0; }                                       // 공격 모션 중에는 움직이지 않는다
     const mag = Math.min(1, Math.hypot(ix, iy));
 
     if (dashT > 0) {                       // 대시 중: 입력 이동 대신 바라보는 방향으로 질주
