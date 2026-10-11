@@ -36,13 +36,13 @@ for (const [name, [file, loop]] of Object.entries(WANT)) {
   if (!fp) { console.warn('missing', file); continue; }
   const obj = load(fp), B = byName(obj), clip = obj.animations[0];
   obj.updateMatrixWorld(true);
-  const rest = {}; for (const k of ['Hips', 'Spine1', 'Head']) rest[k] = wq(B[k]);
+  const rest = {}; for (const k of ['Hips', 'Spine1', 'Head', 'LeftHand', 'RightHand']) rest[k] = wq(B[k]);
   const swordHand = B.RightHand, hv = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
   const hipsRest = wp(B.Hips), scale = 0.9 / hipsRest.y;
   // 캐릭터의 왼쪽(+x) = 이 게임의 'R' 뼈, 오른쪽(-x) = 'L' 뼈 (게임 리그는 +z를 보고 sx<0 가 'L')
   const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
   const mixer = new THREE.AnimationMixer(obj); mixer.clipAction(clip).play();
-  const n = Math.min(MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], hipsY: [], hipsZ: [] };
+  const n = Math.min(MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
   let z0 = null;
   for (let i = 0; i <= n; i++) {
     mixer.setTime(clip.duration * i / n); obj.updateMatrixWorld(true);
@@ -53,6 +53,9 @@ for (const [name, [file, loop]] of Object.entries(WANT)) {
       const m = side[s], A = wp(B[m + 'Arm']), F = wp(B[m + 'ForeArm']), H = wp(B[m + 'Hand']);
       const qsh = solveLimb(Wsp, F.clone().sub(A)); tr['shoulder' + s].push(eul(qsh)); const Wsh = Wsp.clone().multiply(qsh);
       const qel = solveLimb(Wsh, H.clone().sub(F)); tr['elbow' + s].push(eul(qel));
+      // 손목: 손뼈의 월드 회전 변화(Wd)를 '팔이 내려온 기준 자세'로 옮긴다. T자세(팔이 옆) -> 게임 기준(팔이 아래)은 z축 ∓90도(C)
+      { const Wd = wq(B[m + 'Hand']).multiply(rest[m + 'Hand'].clone().invert()), C = new Q().setFromAxisAngle(new V(0, 0, 1), s === 'R' ? -Math.PI / 2 : Math.PI / 2);
+        const Wg = Wd.multiply(C.clone().invert()), Wel = Wsh.clone().multiply(qel); tr['hand' + s].push(eul(Wel.invert().multiply(Wg))); }
       const U = wp(B[m + 'UpLeg']), K = wp(B[m + 'Leg']), Fo = wp(B[m + 'Foot']);
       const qh = solveLimb(Wh, K.clone().sub(U)); tr['hip' + s].push(eul(qh)); const Whp = Wh.clone().multiply(qh);
       tr['knee' + s].push(eul(solveLimb(Whp, Fo.clone().sub(K))));

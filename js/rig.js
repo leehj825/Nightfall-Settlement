@@ -219,6 +219,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
   // ----- 코드로 만든 애니메이션 클립 (모든 뼈에 키를 둬서 CrossFade 때 자세가 남지 않게 한다) -----
   const BONES = ['hips', 'spine', 'head', 'shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'hipL', 'hipR', 'kneeL', 'kneeR'];
+  const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }
     return pts[pts.length - 1][1];
@@ -228,14 +229,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // fn(ph, u) -> { 뼈이름: [x, y, z], hipsY, hipsZ }. 루프 클립은 ph=0..2π, 1회 클립은 u=0..1
     const make = (name, T, n, fn, loop = true) => {
       const times = [], rot = {}, pos = [];
-      for (const b of BONES) rot[b] = [];
+      for (const b of TBONES) rot[b] = [];
       for (let i = 0; i <= n; i++) {
         const u = i / n, f = fn(u * Math.PI * 2, u);
         times.push(u * T);
-        for (const b of BONES) { const v = f[b] || [0, 0, 0]; eul.set(v[0] || 0, v[1] || 0, v[2] || 0); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
+        for (const b of TBONES) { const v = f[b] || [0, 0, 0]; eul.set(v[0] || 0, v[1] || 0, v[2] || 0); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
         pos.push(0, f.hipsY ?? 0.9, f.hipsZ ?? 0);
       }
-      const tracks = BONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
+      const tracks = TBONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
       tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
       clips[name] = new THREE.AnimationClip(name, T, tracks);
     };
@@ -278,13 +279,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const eul = new THREE.Euler(), q = new THREE.Quaternion();
     for (const [name, c] of Object.entries(MIXAMO_CLIPS)) {
       const times = [], rot = {}, pos = [];
-      for (const b of BONES) rot[b] = [];
+      for (const b of TBONES) rot[b] = [];
       for (let i = 0; i <= c.n; i++) {
         times.push(c.d * i / c.n);
-        for (const b of BONES) { const v = c.t[b][i]; eul.set(v[0], v[1], v[2]); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
+        for (const b of TBONES) { const v = c.t[b] ? c.t[b][i] : [0, 0, 0]; eul.set(v[0], v[1], v[2]); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
         pos.push(0, c.t.hipsY[i], c.t.hipsZ[i]);
       }
-      const tracks = BONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
+      const tracks = TBONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
       tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
       STICK_CLIPS[name] = new THREE.AnimationClip(name, c.d, tracks);
     }
@@ -366,7 +367,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return g;
   }
   function makeSpearMesh(def) {                // 창: 긴 나무 자루 + 잎 모양 쇠 촉 + 붉은 술. 손잡이는 자루 중간쯤
-    { const wm = weaponModel('spear', def.tier); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); inner.rotation.x = 1.05; g.add(inner); return g; } }
+    { const wm = weaponModel('spear', def.tier); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); g.userData.spear = true; g.add(inner); return g; } }
     const g = new THREE.Group(), inner = new THREE.Group(), steel = gearMat('spearhead' + def.tier, def.tier > 0 ? 0xe4e8f0 : 0xb6bac2);
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 2.1, 7), gearMat('spearshaft', 0x7a5530)); shaft.position.y = 0.45;
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.42, 4), steel); head.position.y = 1.7; head.scale.z = 0.35;
@@ -377,7 +378,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return g;
   }
   function makeBowMesh(def) {
-    { const wm = weaponModel('bow', def.tier); if (wm) { const g = new THREE.Group(), pivot = new THREE.Group(); wm.scale.setScalar(def.tier > 0 ? 1.15 : 1); pivot.add(wm); g.add(pivot); g.userData.pivot = pivot; pivot.rotation.x = -Math.PI / 2; return g; } }
+    { const wm = weaponModel('bow', def.tier); if (wm) { const g = new THREE.Group(), pivot = new THREE.Group(); wm.scale.setScalar(def.tier > 0 ? 1.15 : 1); pivot.add(wm); g.add(pivot); g.userData.pivot = pivot; g.userData.model = true; return g; } }
     const g = new THREE.Group(), pivot = new THREE.Group(), R0 = def.tier > 0 ? 0.55 : 0.45;
     const arcGeo = new THREE.TorusGeometry(R0, def.tier > 0 ? 0.04 : 0.028, 6, 14, Math.PI); arcGeo.rotateZ(Math.PI);     // 불룩한 쪽이 -Y
     const arc = new THREE.Mesh(arcGeo, gearMat(def.id, def.color)); arc.rotation.y = Math.PI / 2;                          // 활의 긴 축이 Z
@@ -419,7 +420,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
     rig.root.scale.setScalar(rig.baseScale);
     rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다
-      const hand = slot === 'sword' || slot === 'spear' || slot === 'staff' ? rig.handR : rig.handL;
+      const hand = slot === 'sword' || slot === 'spear' || slot === 'staff' || (slot === 'bow' && rig.skin) ? rig.handR : rig.handL;      // 모델 캐릭터는 모션캡처가 활을 뻗는 팔이 R 쪽이다
       if (rig.meshes[slot]) hand.remove(rig.meshes[slot]);
       rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : slot === 'staff' ? makeStaffMesh() : makeBowMesh(def)) : null;
       if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
@@ -456,12 +457,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (def.tier > 1) { add(new THREE.CylinderGeometry(0.31, 0.31, 0.05, 18), rig.spine, 0, 0.12, 0, gold).scale.z = 0.74; add(new THREE.BoxGeometry(0.04, 0.2, 0.3), rig.head, 0, 0.45, 0, gold); }
       if (def.tier > 2) for (const sx of [-1, 1]) add(new THREE.ConeGeometry(0.04, 0.2, 6), rig.spine, sx * 0.36, 0.78, 0, gold).rotation.z = -sx * 0.4;
     };
-    rig.aim = (on) => { const b = rig.meshes.bow; if (b) b.userData.pivot.rotation.x = on ? 0 : -Math.PI / 2; };
+    rig.aim = (on) => { const b = rig.meshes.bow; if (b && !b.userData.model) b.userData.pivot.rotation.x = on ? 0 : -Math.PI / 2; };
     return rig;
   }
 
   // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
   const MIXAMO_FAST_DIE = typeof MIXAMO_CLIPS !== 'undefined' ? 1.8 : 1;
+  const SPEAR_FRONT = 1;
   class Anim {
     constructor(rig) {
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
@@ -516,6 +518,19 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt);
+      this._spear(dt);
+    }
+    // 창: 찌르기/휘두르기 동안에는 두 손이 자루를 잡고 있으므로, 자루를 뒷손에서 앞손 방향으로 맞춘다 (모션캡처의 손목 각도가 총 모양이라 창과 안 맞는다)
+    _spear(dt) {
+      const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
+      const on = this.shot && (this.variant === 'stab' || this.variant === 'slash'), k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (on ? dt / 0.1 : -dt / 0.12)));
+      if (k <= 0) { sp.quaternion.identity(); return; }
+      const R = this.rig; R.root.updateMatrixWorld(true);
+      const a = R.handR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handL.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
+      const d = b.sub(a); if (d.lengthSq() < 0.01) return;
+      const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
+      d.normalize().multiplyScalar(SPEAR_FRONT).applyQuaternion(inv);
+      sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
     }
   }
 
