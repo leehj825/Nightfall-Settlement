@@ -35,6 +35,8 @@ const WANT = {
   gsAttack1: ['great sword attack', false], gsAttack2: ['great sword slash', false], gsAttack3: ['great sword slash (5)', false], gsAttack4: ['great sword high spin attack', false], gsBlock: ['great sword blocking', false],
   dieGs: ['two handed sword death', false],
   // 농사 (Farming Pack): 농부가 밭에서 일할 때 돌아가며 쓴다 (긴 동작이라 프레임을 더 쓴다)
+  // 맨손 격투 (Punching / Kicking 클립): 주먹과 발차기를 끊김 없이 이어 쓴다. 타격 순간은 주먹·발 중 가장 빠르게 움직이는 순간
+  brawlPunch: ['Punching', false], brawlPunch2: ['Punching_1', false], brawlHook: ['Hook_Punch', false], brawlKick: ['Kicking', false], brawlKick2: ['Kicking_1', false], brawlRound: ['Roundhouse_Kick', false],
   farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
 // LIB=1: retarget EVERY clip of every folder into one library (names '<folder>_<file>'), written to js/anims_lib.js as MIXAMO_LIB.
@@ -62,7 +64,7 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
   let obj, B, clip; try { obj = load(fp); B = byName(obj); clip = obj.animations[0]; if (!clip || !B.Hips) throw new Error('no clip'); } catch (e) { console.warn('skipped (unreadable)', file, e.message); continue; }
   obj.updateMatrixWorld(true);
   const rest = {}; for (const k of ['Hips', 'Spine1', 'Head', 'LeftHand', 'RightHand']) rest[k] = wq(B[k]);
-  const swordHand = B.RightHand, hv = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
+  const swordHand = B.RightHand, hv = [], brawl = /brawl/.test(name), effs = brawl ? [B.RightHand, B.LeftHand, B.RightFoot, B.LeftFoot] : [swordHand], lastE = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
   const hipsRest = wp(B.Hips), scale = 0.9 / hipsRest.y;
   // 캐릭터의 왼쪽(+x) = 이 게임의 'R' 뼈, 오른쪽(-x) = 'L' 뼈 (게임 리그는 +z를 보고 sx<0 가 'L')
   const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
@@ -85,12 +87,12 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
       const qh = solveLimb(Wh, K.clone().sub(U)); tr['hip' + s].push(eul(qh)); const Whp = Wh.clone().multiply(qh);
       tr['knee' + s].push(eul(solveLimb(Whp, Fo.clone().sub(K))));
     }
-    const hp = wp(B.Hips); if (z0 === null) z0 = hp.z; hv.push(wp(swordHand).sub(hp));                    // 루트 이동을 뺀 손의 위치
+    const hp = wp(B.Hips); if (z0 === null) z0 = hp.z; hv.push(brawl ? effs.map(e => wp(e).sub(hp)) : wp(swordHand).sub(hp));                    // 루트 이동을 뺀 손의 위치
     tr.hipsY.push(+(hp.y * scale).toFixed(3)); tr.hipsZ.push(0);                                   // 애니메이션 안의 위치 이동(루트 모션)은 무시한다: 이동은 게임이 맡는다
   }
   // 반복 클립은 끝과 처음이 이어지도록 마지막 키를 첫 키로 맞춘다 (이음매의 튐 방지)
   if (loop) for (const k of Object.keys(tr)) tr[k][n] = tr[k][0];
-  let best = 0, bi = 0; for (let i = 1; i < Math.floor(hv.length * 0.92); i++) { const sp = hv[i].distanceTo(hv[i - 1]); if (sp > best) { best = sp; bi = i; } }
+  let best = 0, bi = 0; for (let i = 1; i < Math.floor(hv.length * 0.92); i++) { const sp = brawl ? Math.max(...hv[i].map((v, j) => v.distanceTo(hv[i - 1][j]))) : hv[i].distanceTo(hv[i - 1]); if (sp > best) { best = sp; bi = i; } }
   { const ys = tr.hipsY, mx = Math.max(...ys), mn = Math.min(...ys);               // 점프 공격: 타격 순간 = 공중에서 내려와 착지하는 때
     if (name.startsWith('ssAttack') && mx - mn > 0.6) { const p = ys.indexOf(mx); for (let i = p; i <= n; i++) if (ys[i] < mn + 0.25 * (mx - mn)) { bi = i; break; } } }
   if (name === 'bowDraw') bi = Math.round(n * 0.5);               // 화살을 뽑아 시위에 건 손이 앞에 닿는 순간 = 발사

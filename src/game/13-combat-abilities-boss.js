@@ -38,12 +38,12 @@
     atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
     later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
       if (dead) return;
-      const base = gearDef(playerGear.sword), mulDps = (great ? 1.7 * (1 + 0.18 * pl.st.cleave) : playerAnim.rig.style === 'ss' ? 1.4 : weaponMode === 'none' ? 0.45 : 1), gr = 1 + 0.06 * pl.st.cleave;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      const base = gearDef(playerGear.sword), mulDps = (great ? 1.7 * (1 + 0.18 * pl.st.cleave) : playerAnim.rig.style === 'ss' ? 1.4 : weaponMode === 'none' ? (playerAnim.variant === 'kick' ? 0.6 : 0.45) : 1), gr = 1 + 0.06 * pl.st.cleave;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
       atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
       if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
         spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
-        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 * (1 + 0.25 * pl.st.whirl) : weaponMode === 'none' ? 0.9 : 2.3), half: Math.PI, rangeMul: great ? 1.55 * gr * (1 + 0.08 * pl.st.whirl) : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
-        floatText(hits ? `${great ? 'SPIN' : 'SLAM'} x${hits}!` : great ? 'SPIN!' : 'SLAM!', player.position.x, 2.8, player.position.z); return;
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 * (1 + 0.25 * pl.st.whirl) : weaponMode === 'none' ? 1.2 : 2.3), half: Math.PI, rangeMul: great ? 1.55 * gr * (1 + 0.08 * pl.st.whirl) : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
+        const nm = weaponMode === 'none' ? 'KICK' : great ? 'SPIN' : 'SLAM'; floatText(hits ? `${nm} x${hits}!` : `${nm}!`, player.position.x, 2.8, player.position.z); return;
       }
       spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
       const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45 * gr, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
@@ -61,7 +61,7 @@
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : weaponMode === 'spear' ? 'none' : 'sword';
-    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
+    playerRig.brawl = weaponMode === 'none'; playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
     toast(weaponMode === 'none' ? 'Unarmed (normal movement, weak punches)' : weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }

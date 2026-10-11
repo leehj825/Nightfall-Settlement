@@ -357,7 +357,7 @@
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
     const vis = weaponMode;
-    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
+    playerRig.brawl = vis === 'none'; playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
     playerRig.setGear('great', { ...gearDef(playerGear.sword), great: true });
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
     playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
@@ -1928,6 +1928,7 @@
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.brawl = n.role === 'citizen';
     n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
@@ -2885,6 +2886,19 @@
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
   const strikeRange = () => npc.cls === 'spear' ? 3.3 : npc.cls === 'greatsword' ? 2.6 : 1.7;               // 창병은 멀리서 찌른다
+  function citizenFight(dt) {                                               // 시민도 가까이 온 적은 맨손(주먹·발차기 연타)으로 막는다
+    let foe = null, bd = 2.2;
+    for (const e of enemies) { const u = e.userData; if (u.ex || u.sinking || u.dying > 0) continue; const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z); if (d < bd) { bd = d; foe = e; } }
+    if (!foe) return false;
+    npc.face = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z); npc.rotation.y = npc.face;
+    if (npc.atkCd <= 0) {
+      npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
+      const n = npc, dur = n.anim.shot ? n.anim.shot.dur : 0.5, hitIn = n.anim.hitIn ?? 0.25, kick = n.anim.variant === 'kick', base = gearDef('sword_basic');
+      n.atkCd = dur * 0.95; n.atkLock = dur * 0.9;
+      later(hitIn, () => { if (!npcs.includes(n) || n.down) return; const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y; sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * (kick ? 0.32 : 0.22), half: Math.PI / 3, rangeMul: 0.7 }); });
+    }
+    return true;
+  }
   function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
     const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic', great = n.cls === 'greatsword';
     n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
@@ -2998,6 +3012,7 @@
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
     let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
     if (order === 'follow' && !exActive && npc.role !== 'citizen') { state = followStep(dt); busy = true; }       // 지휘 명령: 플레이어를 따른다
+    if (!busy && npc.role === 'citizen' && !npc.hidden && citizenFight(dt)) { busy = true; state = 'Fighting back'; }
     if (!busy && isDay && gearFetchStep(dt)) { busy = true; state = 'Fetching gear'; }       // 병사: 대장간에서 새 장비 수령
     if (!busy && isDay && npc.role === 'citizen') { const rs = routineStep(dt, hour); if (rs) { busy = true; state = rs; } }
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
@@ -3149,12 +3164,12 @@
     atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
     later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
       if (dead) return;
-      const base = gearDef(playerGear.sword), mulDps = (great ? 1.7 * (1 + 0.18 * pl.st.cleave) : playerAnim.rig.style === 'ss' ? 1.4 : weaponMode === 'none' ? 0.45 : 1), gr = 1 + 0.06 * pl.st.cleave;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      const base = gearDef(playerGear.sword), mulDps = (great ? 1.7 * (1 + 0.18 * pl.st.cleave) : playerAnim.rig.style === 'ss' ? 1.4 : weaponMode === 'none' ? (playerAnim.variant === 'kick' ? 0.6 : 0.45) : 1), gr = 1 + 0.06 * pl.st.cleave;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
       atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
       if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
         spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
-        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 * (1 + 0.25 * pl.st.whirl) : weaponMode === 'none' ? 0.9 : 2.3), half: Math.PI, rangeMul: great ? 1.55 * gr * (1 + 0.08 * pl.st.whirl) : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
-        floatText(hits ? `${great ? 'SPIN' : 'SLAM'} x${hits}!` : great ? 'SPIN!' : 'SLAM!', player.position.x, 2.8, player.position.z); return;
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 * (1 + 0.25 * pl.st.whirl) : weaponMode === 'none' ? 1.2 : 2.3), half: Math.PI, rangeMul: great ? 1.55 * gr * (1 + 0.08 * pl.st.whirl) : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
+        const nm = weaponMode === 'none' ? 'KICK' : great ? 'SPIN' : 'SLAM'; floatText(hits ? `${nm} x${hits}!` : `${nm}!`, player.position.x, 2.8, player.position.z); return;
       }
       spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
       const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45 * gr, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
@@ -3172,7 +3187,7 @@
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : weaponMode === 'spear' ? 'none' : 'sword';
-    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
+    playerRig.brawl = weaponMode === 'none'; playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
     toast(weaponMode === 'none' ? 'Unarmed (normal movement, weak punches)' : weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }

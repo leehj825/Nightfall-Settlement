@@ -609,7 +609,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
   // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
   const MIXAMO_FAST_DIE = typeof MIXAMO_CLIPS !== 'undefined' ? 1.8 : 1;
-  const AXE_ROLL = Math.PI / 2, FARM_CLIPS = ['farmPlant', 'farmWater', 'farmPull', 'farmPick'];
+  const BRAWL_SEQ = ['brawlPunch', 'brawlPunch2', 'brawlHook', 'brawlKick', 'brawlPunch2', 'brawlKick2', 'brawlHook', 'brawlRound'], AXE_ROLL = Math.PI / 2, FARM_CLIPS = ['farmPlant', 'farmWater', 'farmPull', 'farmPick'];
   class Anim {
     constructor(rig) {
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
@@ -662,6 +662,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
+      if (name === 'attackSword' && this.rig.brawl && this.acts.brawlPunch) {                                                 // 맨손(주인공 무기 해제·일반 시민): 주먹과 발차기를 끊김 없이 이어 붙인다 (앞뒤의 느린 부분은 잘라 낸다)
+        const now = performance.now(); if (now - (this._bt || 0) > 1400) this.brI = 0; this._bt = now;
+        const nm = BRAWL_SEQ[this.brI = ((this.brI || 0) % BRAWL_SEQ.length)]; this.brI++;
+        const act = this.acts[nm], cd = act.getClip().duration, meta = MIXAMO_CLIPS[nm], hit = meta ? meta.hit : 0.45, a0 = Math.max(0, hit - 0.28), a1 = Math.min(0.97, hit + 0.2);
+        const target = nm === 'brawlRound' ? 0.78 : /Punch/.test(nm) ? 0.46 : 0.62, sc = (a1 - a0) * cd / target;
+        this.heavy = nm === 'brawlRound'; this.variant = /Kick|Round/.test(nm) ? 'kick' : 'punch'; act.timeScale = sc;
+        this.shot = { t: 0, dur: target }; this.hitIn = (hit - a0) * cd / sc; this._play(nm, 0.07, true); act.time = a0 * cd; return;
+      }
       if (name === 'attackSpear' && this.acts.ssAttack1 && this.acts.spearStab) {                                                 // 창: 검처럼 쥐고 검 동작으로 찌르기(좁고 긴)와 휘두르기(넓은)를 번갈아
         this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'spearStab' : 'ssAttack1'; this.variant = stab ? 'stab' : 'slash';
         ts = this.acts[name].getClip().duration / (stab ? 1.1 : 0.7);

@@ -28,6 +28,7 @@
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.brawl = n.role === 'citizen';
     n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
