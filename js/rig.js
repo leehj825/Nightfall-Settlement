@@ -427,8 +427,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
-      if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 네 가지 동작을 돌려 가며, 0.6초 안에 끝나도록 빠르게
-        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; ts = this.acts[name].getClip().duration / 0.6;
+      if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 가지 동작을 돌려 가며, 0.6초 안에 끝나도록 빠르게
+        this.atkI = ((this.atkI || 0) % 3) + 1; name = 'ssAttack' + this.atkI; ts = this.acts[name].getClip().duration / 0.6;
       }
       const act = this.acts[name]; act.timeScale = ts;
       this.shot = { t: 0, dur: act.getClip().duration / ts };
