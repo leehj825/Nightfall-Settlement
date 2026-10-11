@@ -5383,7 +5383,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.setShield = (def) => {                 // def가 있으면 왼손에 방패를 든다 (활을 들 때는 숨김)
       if (rig.meshes.shield && rig.meshes.shield.parent) rig.meshes.shield.parent.remove(rig.meshes.shield);
       rig.meshes.shield = def ? makeShieldMesh(def) : null;
-      if (rig.meshes.shield) { const sh = rig.meshes.shield; sh.rotation.y = Math.PI / 2; if (rig.skin && rig.elbowL) { sh.position.set(-0.13, -0.12, 0.02); rig.elbowL.add(sh); } else { sh.position.set(0.12, 0.1, 0.06); rig.handL.add(sh); } }       // 모델: 방패는 팔뚝 바깥쪽에 붙인다
+      if (rig.meshes.shield) { const sh = rig.meshes.shield; sh.rotation.y = Math.PI / 2; if (rig.elbowL) { sh.position.set(-0.14, rig.skin ? -0.12 : -0.2, 0.02); rig.elbowL.add(sh); } else { sh.position.set(0.12, 0.1, 0.06); rig.handL.add(sh); } }       // 모델: 방패는 팔뚝 바깥쪽에 붙인다
       rig.applyHold();
     };
     rig.applyHold = () => {
