@@ -1806,8 +1806,11 @@
     return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false });
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
-    n.rig.main = n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
+    const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
+    { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
+    n.rig.setGear('staff', cls === 'medic' ? {} : null);
     n.rig.setGear('bow', n.role === 'archer' ? gearDef(n.gear.bow) : null);
     n.rig.setArmor(n.role === 'citizen' ? null : gearDef(n.gear.armor));
     n.rig.hold(n.rig.main);
@@ -2015,11 +2018,13 @@
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
   const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
+  const CLS_ORDER = ['sword', 'spear', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
+  const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
   function renderCard() {
     const n = cardNpc;
     if (!n || !npcs.includes(n)) { cardNpc = null; ncEl.style.display = 'none'; return; }
     const tr = TR(n), m = Math.round(n.mood), col = m < CFG.MOOD_LEAVE ? '#d9534f' : m < CFG.MOOD_UNHAPPY ? '#e8923a' : m < CFG.MOOD_HAPPY ? '#d9c84a' : '#5cc86a';
-    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${ROLE_TITLE[n.role]} · HP ${n.hp}/${n.maxHp}`;
+    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${clsTitle(n)} · HP ${n.hp}/${n.maxHp}`;
     document.getElementById('ncTrait').innerHTML = `<b>${tr.label}</b> - ${tr.desc}`;
     const bar = document.getElementById('ncMoodBar'); bar.style.width = `${m}%`; bar.style.background = col;
     document.getElementById('ncMoodTxt').textContent = `Mood: ${moodLabel(m)} (${m}/100)` + (m < CFG.MOOD_UNHAPPY ? ' - works slower' : m >= CFG.MOOD_HAPPY ? ' - works a bit faster' : '');
@@ -2034,10 +2039,12 @@
       const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
+    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${CLS_INFO[n.cls || 'sword']} (tap to change)`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % 3]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -2707,12 +2714,24 @@
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
+  const strikeRange = () => npc.cls === 'spear' ? 3.3 : 1.7;               // 창병은 멀리서 찌른다
   function soldierStrike(foe) {
-    npc.atkCd = 0.8;
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z), base = gearDef(npc.gear.sword);
+    if (npc.cls === 'spear') {
+      npc.atkCd = 1.15; npc.anim.once('attackSpear'); sfxAt('swing', npc.position.x, npc.position.z);
+      sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return;
+    }
+    npc.atkCd = npc.cls === 'medic' ? 1.1 : 0.8;
     npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
     spawnSlash(npc.position.x, npc.position.z, ang, base);
-    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) });
+    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * (npc.cls === 'medic' ? 0.5 : 1) });
+  }
+  function medicTick(dt) {                                                  // 치료사: 3초마다 7칸 안의 다친 아군(병사·주민·주인공)을 최대 체력의 12%씩 치료
+    npc.healT = (npc.healT || 0) - dt; if (npc.healT > 0 || npc.down) return; npc.healT = 3;
+    let healed = 0;
+    for (const o of npcs) if (o !== npc && !o.down && o.hp < o.maxHp && Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) < 7) { o.hp = Math.min(o.maxHp, o.hp + Math.ceil(o.maxHp * 0.12)); healed++; burst(o.position, 3); }
+    if (hp < pMaxHp() && !dead && Math.hypot(player.position.x - npc.position.x, player.position.z - npc.position.z) < 7) { healPlayer(Math.ceil(pMaxHp() * 0.06)); healed++; }
+    if (healed) { floatText('+heal', npc.position.x, 2.6, npc.position.z); Snd.play('heal', 0.4); }
   }
   function soldierShoot(foe) {
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
@@ -2735,7 +2754,7 @@
         if (Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) <= CFG.ARCHER_AGGRO) { soldierShoot(foe); return 'Fighting'; }
       } else {
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
-        if (d < 1.7 && npc.atkCd <= 0) soldierStrike(foe);
+        if (d < strikeRange() && npc.atkCd <= 0) soldierStrike(foe);
         return 'Fighting';
       }
     }
@@ -2789,6 +2808,7 @@
     }
     npc.atkCd -= dt;
     npc.graceT -= dt;
+    if (npc.cls === 'medic' && npc.role === 'melee') medicTick(dt);
     let state = 'Idle';
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
@@ -2875,7 +2895,7 @@
       } else {
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
-        if (d < 1.7 && npc.atkCd <= 0) {
+        if (d < strikeRange() && npc.atkCd <= 0) {
           soldierStrike(foe);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }
@@ -3315,7 +3335,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -3369,7 +3389,8 @@
     for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
-      if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); }
+      n.cls = d.cls || 'sword';
+      if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); } else if (n.role === 'melee') applyGear(n);
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
     }

@@ -211,12 +211,24 @@
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
+  const strikeRange = () => npc.cls === 'spear' ? 3.3 : 1.7;               // 창병은 멀리서 찌른다
   function soldierStrike(foe) {
-    npc.atkCd = 0.8;
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z), base = gearDef(npc.gear.sword);
+    if (npc.cls === 'spear') {
+      npc.atkCd = 1.15; npc.anim.once('attackSpear'); sfxAt('swing', npc.position.x, npc.position.z);
+      sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return;
+    }
+    npc.atkCd = npc.cls === 'medic' ? 1.1 : 0.8;
     npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
     spawnSlash(npc.position.x, npc.position.z, ang, base);
-    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) });
+    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) * (npc.cls === 'medic' ? 0.5 : 1) });
+  }
+  function medicTick(dt) {                                                  // 치료사: 3초마다 7칸 안의 다친 아군(병사·주민·주인공)을 최대 체력의 12%씩 치료
+    npc.healT = (npc.healT || 0) - dt; if (npc.healT > 0 || npc.down) return; npc.healT = 3;
+    let healed = 0;
+    for (const o of npcs) if (o !== npc && !o.down && o.hp < o.maxHp && Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) < 7) { o.hp = Math.min(o.maxHp, o.hp + Math.ceil(o.maxHp * 0.12)); healed++; burst(o.position, 3); }
+    if (hp < pMaxHp() && !dead && Math.hypot(player.position.x - npc.position.x, player.position.z - npc.position.z) < 7) { healPlayer(Math.ceil(pMaxHp() * 0.06)); healed++; }
+    if (healed) { floatText('+heal', npc.position.x, 2.6, npc.position.z); Snd.play('heal', 0.4); }
   }
   function soldierShoot(foe) {
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
@@ -239,7 +251,7 @@
         if (Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) <= CFG.ARCHER_AGGRO) { soldierShoot(foe); return 'Fighting'; }
       } else {
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
-        if (d < 1.7 && npc.atkCd <= 0) soldierStrike(foe);
+        if (d < strikeRange() && npc.atkCd <= 0) soldierStrike(foe);
         return 'Fighting';
       }
     }
@@ -293,6 +305,7 @@
     }
     npc.atkCd -= dt;
     npc.graceT -= dt;
+    if (npc.cls === 'medic' && npc.role === 'melee') medicTick(dt);
     let state = 'Idle';
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
@@ -379,7 +392,7 @@
       } else {
         state = 'Fighting';
         const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
-        if (d < 1.7 && npc.atkCd <= 0) {
+        if (d < strikeRange() && npc.atkCd <= 0) {
           soldierStrike(foe);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }

@@ -309,6 +309,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     g.add(pivot); g.userData.pivot = pivot; pivot.rotation.x = -Math.PI / 2;           // 평소엔 세워서 든다
     return g;
   }
+  function makeStaffMesh() {                   // 치료사의 지팡이: 나무 자루 + 빛나는 구슬
+    const g = new THREE.Group(), inner = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.5, 6), gearMat('healstaff', 0x6a4a2a)), orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshBasicMaterial({ color: 0x7affc8 }));
+    pole.position.y = 0.45; orb.position.y = 1.25; inner.add(pole, orb); inner.rotation.x = 1.05; g.add(inner); return g;
+  }
   function makeShieldMesh(def) {               // 둥근 방패: 나무판 + 쇠 테두리 + 중앙 징. 왼팔에 붙는다
     const g = new THREE.Group(), t = def.tier || 0, wood = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 14), gearMat('shieldwood', 0x8a5a34));
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 6, 16), gearMat('shieldrim' + t, t > 0 ? 0xc9a23a : 0x6a6d75)), boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), gearMat('shieldboss' + t, t > 0 ? 0xe8d28a : 0xa8abb2));
@@ -335,9 +339,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
     rig.root.scale.setScalar(rig.baseScale);
     rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다
-      const hand = slot === 'sword' || slot === 'spear' ? rig.handR : rig.handL;
+      const hand = slot === 'sword' || slot === 'spear' || slot === 'staff' ? rig.handR : rig.handL;
       if (rig.meshes[slot]) hand.remove(rig.meshes[slot]);
-      rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : makeBowMesh(def)) : null;
+      rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : slot === 'staff' ? makeStaffMesh() : makeBowMesh(def)) : null;
       if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
       rig.applyHold();
     };
@@ -352,6 +356,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (m.sword) m.sword.visible = w === 'sword';
       if (m.bow) m.bow.visible = w === 'bow';
       if (m.spear) m.spear.visible = w === 'spear';
+      if (m.staff) m.staff.visible = w === 'staff';
       if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick';
       if (!m.pick) { m.pick = makePickMesh(); rig.handR.add(m.pick); }
       m.pick.visible = w === 'pick';

@@ -26,8 +26,11 @@
     return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false });
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
-    n.rig.main = n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
+    const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
+    { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
+    n.rig.setGear('staff', cls === 'medic' ? {} : null);
     n.rig.setGear('bow', n.role === 'archer' ? gearDef(n.gear.bow) : null);
     n.rig.setArmor(n.role === 'citizen' ? null : gearDef(n.gear.armor));
     n.rig.hold(n.rig.main);
@@ -235,11 +238,13 @@
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
   const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
+  const CLS_ORDER = ['sword', 'spear', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
+  const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
   function renderCard() {
     const n = cardNpc;
     if (!n || !npcs.includes(n)) { cardNpc = null; ncEl.style.display = 'none'; return; }
     const tr = TR(n), m = Math.round(n.mood), col = m < CFG.MOOD_LEAVE ? '#d9534f' : m < CFG.MOOD_UNHAPPY ? '#e8923a' : m < CFG.MOOD_HAPPY ? '#d9c84a' : '#5cc86a';
-    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${ROLE_TITLE[n.role]} · HP ${n.hp}/${n.maxHp}`;
+    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${clsTitle(n)} · HP ${n.hp}/${n.maxHp}`;
     document.getElementById('ncTrait').innerHTML = `<b>${tr.label}</b> - ${tr.desc}`;
     const bar = document.getElementById('ncMoodBar'); bar.style.width = `${m}%`; bar.style.background = col;
     document.getElementById('ncMoodTxt').textContent = `Mood: ${moodLabel(m)} (${m}/100)` + (m < CFG.MOOD_UNHAPPY ? ' - works slower' : m >= CFG.MOOD_HAPPY ? ' - works a bit faster' : '');
@@ -254,10 +259,12 @@
       const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
+    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${CLS_INFO[n.cls || 'sword']} (tap to change)`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % 3]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
