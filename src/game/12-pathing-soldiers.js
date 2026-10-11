@@ -221,7 +221,11 @@
     later(hitIn, () => {
       if (!npcs.includes(n) || n.down) return;
       const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y;
-      if (spear) { sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return; }
+      if (spear) {
+        if (n.anim.variant === 'slash') { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.1, half: Math.PI / 2.8, rangeMul: 1.3, slash: 1.3 }); }
+        else sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.2, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 });
+        return;
+      }
       if (heavy) { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.8, half: Math.PI, rangeMul: 1.25, slash: 1.3, tier: 1 }); return; }
       spawnSlash(n.position.x, n.position.z, ang, base);
       sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * (medic ? 0.5 : 1) });

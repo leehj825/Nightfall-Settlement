@@ -18,6 +18,7 @@ const WANT = {
   ssIdle: ['sword and shield idle', true], ssRun: ['sword and shield run', true],
   ssAttack1: ['sword and shield attack (4)', false], ssAttack2: ['sword and shield attack (2)', false], ssAttack3: ['sword and shield attack (3)', false], ssAttack4: ['sword and shield attack', false],
   ssBlock: ['sword and shield block', false],
+  spearStab: ['Bayonet_Stab', false], spearSlash: ['Slash_Advance', false],
   bowDraw: ['Standing_Draw_Arrow', false], bowRun: ['Standing_Run_Forward', true], bowWalk: ['Crouch_Walk_Forward', true], die: ['sword and shield death', false],
 };
 const MAXF = 48;

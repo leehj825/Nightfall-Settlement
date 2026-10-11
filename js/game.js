@@ -2824,7 +2824,11 @@
     later(hitIn, () => {
       if (!npcs.includes(n) || n.down) return;
       const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y;
-      if (spear) { sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.15, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 }); return; }
+      if (spear) {
+        if (n.anim.variant === 'slash') { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.1, half: Math.PI / 2.8, rangeMul: 1.3, slash: 1.3 }); }
+        else sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.2, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 });
+        return;
+      }
       if (heavy) { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.8, half: Math.PI, rangeMul: 1.25, slash: 1.3, tier: 1 }); return; }
       spawnSlash(n.position.x, n.position.z, ang, base);
       sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * (medic ? 0.5 : 1) });
@@ -3047,10 +3051,18 @@
       return;
     }
     if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
-      playerAnim.once('attackSpear'); const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD * 1.25, dur); atkLock = dur * 0.9; Snd.play('swing');
+      playerAnim.once('attackSpear'); const dur = playerAnim.shot.dur, slash = playerAnim.variant === 'slash'; atkCd = Math.max(ATK_CD * 1.25, dur * 0.9); atkLock = dur * 0.9; Snd.play('swing');
       later(playerAnim.hitIn, () => {
-        if (dead) return; const base = gearDef(playerGear.sword), sd = { ...base, dmg: base.dmg * pDmg() * 1.12 * (1 + 0.2 * pl.st.spear), half: Math.PI / 9, rangeMul: 1.75 * (1 + 0.08 * pl.st.spear), slash: (base.slash || 1) * 1.6 };
-        atkT = SLASH_LIFE; shake = 0.2; spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
+        if (dead) return; const base = gearDef(playerGear.sword), reach = 1 + 0.08 * pl.st.spear, dm = base.dmg * pDmg() * (1 + 0.2 * pl.st.spear);
+        atkT = SLASH_LIFE;
+        if (slash) {                                                                                          // 휘둘러 베기: 앞쪽 넓은 부채꼴
+          shake = 0.3; spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: 1.5 });
+          const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: dm * 1.15, half: Math.PI / 2.6, rangeMul: 1.45 * reach, slash: 1.5 });
+          if (hits >= 2) floatText(`SWEEP x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+          return;
+        }
+        const sd = { ...base, dmg: dm * 1.25, half: Math.PI / 10, rangeMul: 1.9 * reach, slash: (base.slash || 1) * 1.6 };          // 찌르기: 좁고 아주 긴 사거리
+        shake = 0.2; spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
         const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
         if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       });

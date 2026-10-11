@@ -402,7 +402,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die' || /^ss(Attack|Block)/.test(n) || n === 'bowDraw') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die' || /^ss(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
@@ -427,7 +427,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
-      this.heavy = false; const wasBow = name === 'attackBow';
+      this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
+      if (name === 'attackSpear' && this.acts.spearStab) {                                                 // 창: 찌르기와 휘두르기를 번갈아
+        this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'spearStab' : 'spearSlash'; this.variant = stab ? 'stab' : 'slash';
+        ts = this.acts[name].getClip().duration / (stab ? 1.1 : 1.05);
+      }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
         this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; this.heavy = this.atkI === 4;
