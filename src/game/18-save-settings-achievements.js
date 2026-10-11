@@ -30,15 +30,20 @@
   try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
   function applySettings() {
     document.documentElement.dataset.ts = settings.text; document.documentElement.dataset.hand = settings.hand; document.documentElement.dataset.bsz = settings.bsz;
-    const lo = settings.gfx === 'lo';
-    renderer.setPixelRatio(lo ? 1 : Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight, false);
+    const min = settings.gfx === 'min', lo = settings.gfx === 'lo' || min;
+    renderer.setPixelRatio(min ? 0.7 : lo ? 1 : Math.min(devicePixelRatio, 2));
+    camera.far = min ? 95 : 200; camera.updateProjectionMatrix(); for (const d of decorMeshes) d.visible = !min; wxLines.material.visible = !min; renderer.setSize(innerWidth, innerHeight, false);
     renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
     scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
   }
   // 느린 기기 자동 대응: 터치 기기에서 처음 몇 초의 프레임이 낮으면 그래픽을 '낮음'으로 바꾸고 알려 준다 (한 번만, 직접 고른 설정은 건드리지 않는다)
-  const fpsLog = [];
+  const fpsLog = [], fpsLo = [];
   setInterval(() => {
-    if (settings.auto || settings.gfx === 'lo' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
+    if (settings.gfx === 'lo' && !settings.auto2 && saveReady && !uiPause && !eventOpen && !document.hidden && window.__nfFps) {          // 낮음에서도 느리면 한 단계 더: 가장 낮음
+      fpsLo.push(window.__nfFps); if (fpsLo.length > 10) fpsLo.shift();
+      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics set to Lowest for old phones (change it in Settings)'); }
+    }
+    if (settings.auto || settings.gfx === 'lo' || settings.gfx === 'min' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
     fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
     if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
       settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
