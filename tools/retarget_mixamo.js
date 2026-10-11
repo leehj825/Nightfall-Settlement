@@ -34,14 +34,14 @@ const out = {};
 for (const [name, [file, loop]] of Object.entries(WANT)) {
   let fp = null; for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
   if (!fp) { console.warn('missing', file); continue; }
-  const bow = /^bow/.test(name); MIRROR = !bow;           // 활 동작은 뒤집지 않고 Mixamo 오른팔(활을 뻗는 팔)이 게임의 L(활을 드는 왼손 쪽)을 움직이게 한다
+  const bow = /^bow/.test(name); MIRROR = true;           // 활 동작은 뒤집지 않고 Mixamo 오른팔(활을 뻗는 팔)이 게임의 L(활을 드는 왼손 쪽)을 움직이게 한다
   const obj = load(fp), B = byName(obj), clip = obj.animations[0];
   obj.updateMatrixWorld(true);
   const rest = {}; for (const k of ['Hips', 'Spine1', 'Head', 'LeftHand', 'RightHand']) rest[k] = wq(B[k]);
   const swordHand = B.RightHand, hv = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
   const hipsRest = wp(B.Hips), scale = 0.9 / hipsRest.y;
   // 캐릭터의 왼쪽(+x) = 이 게임의 'R' 뼈, 오른쪽(-x) = 'L' 뼈 (게임 리그는 +z를 보고 sx<0 가 'L')
-  const side = bow ? { L: 'Right', R: 'Left' } : { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
+  const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
   const mixer = new THREE.AnimationMixer(obj); mixer.clipAction(clip).play();
   const n = Math.min(MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
   let z0 = null;

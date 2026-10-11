@@ -175,6 +175,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (mk) {                                                                                 // 모델 캐릭터: 부품 대신 같은 뼈에 스킨 메시를 입힌다 (애니메이션은 그대로)
       root.updateMatrixWorld(true);
       const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
+      for (const h of [out.handL, out.handR]) h.position.set(0, -0.45, 0.03);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
       out.setModel = (key) => {
         if (out.skin) { root.remove(out.skin); out.skin = null; }
