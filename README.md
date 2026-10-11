@@ -189,3 +189,6 @@ The soldier card now has a class picker (Sword / Spear / Great Sword / Medic) as
 
 ### Hero great sword
 The Q weapon switch now cycles Sword, Great Sword, Bow, Spear. The great sword is two-handed (no shield), uses the Great Sword pack for moving and attacking, has longer reach (wide arc, 1.7x damage, slower cooldown) and every fourth attack is a spinning slash around the hero (2.4x damage, 360 degrees). It uses the equipped sword's tier and upgrades.
+
+### Great sword grip
+During an attack the great sword is held with both hands: a two-bone arm solver reaches the left hand to the hilt (and pulls the right hand in to meet it when the hilt is out of reach), keeping the sword's direction from the captured right wrist. While walking, running or standing the left arm hangs naturally and the sword is held in one hand.

@@ -688,9 +688,48 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt);
-      this._spear(dt); this._tool();
+      this._spear(dt); this._tool(); this._gsArm(dt);
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
+    // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세
+    _ik2(sh, el, T, pole, base1, base2, w, tmp) {
+      const L1 = 0.3, L2 = 0.3, reach = L1 + L2 - 0.02, S = tmp.S, d = tmp.d, p = tmp.p, E = tmp.E;
+      sh.getWorldPosition(S); d.copy(T).sub(S); const dist = d.length(), dd = Math.min(Math.max(dist, 0.12), reach); d.normalize();
+      p.copy(pole).addScaledVector(d, -pole.dot(d)); if (p.lengthSq() < 1e-6) p.set(0, -1, 0); p.normalize();
+      const a = (L1 * L1 - L2 * L2 + dd * dd) / (2 * dd), h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+      E.copy(S).addScaledVector(d, a).addScaledVector(p, h);
+      const par = sh.parent.getWorldQuaternion(tmp.qa).invert(), dl = tmp.v.copy(E).sub(S).normalize().applyQuaternion(par);
+      tmp.qi.setFromUnitVectors(tmp.dn, dl); sh.quaternion.copy(base1).slerp(tmp.qi, w); sh.updateMatrixWorld(true);
+      const par2 = sh.getWorldQuaternion(tmp.qa).invert(), dl2 = tmp.v.copy(T).sub(E).normalize().applyQuaternion(par2);
+      tmp.qe.setFromUnitVectors(tmp.dn, dl2); el.quaternion.copy(base2).slerp(tmp.qe, w); el.updateMatrixWorld(true);
+    }
+    // 대검: 공격할 때는 두 손이 칼자루를 함께 쥔다 (왼손이 닿는 곳까지 오른손도 끌려 가 가운데서 만난다). 평소 이동·대기에서는 왼팔을 내리고 한 손으로 든다
+    _gsArm(dt) {
+      const R = this.rig, gm = R.meshes && R.meshes.great;
+      if (R.style !== 'gs' || !gm || !gm.visible || this.dead || !R.shoulderL) return;
+      const atk = !!this.shot, k = this._gk = Math.max(0, Math.min(1, (this._gk || 0) + (atk ? dt / 0.1 : -dt / 0.15)));
+      const V = this._gv || (this._gv = { S: new THREE.Vector3(), T: new THREE.Vector3(), E: new THREE.Vector3(), d: new THREE.Vector3(), p: new THREE.Vector3(), v: new THREE.Vector3(), Hr: new THREE.Vector3(), D: new THREE.Vector3(), poleL: new THREE.Vector3(), poleR: new THREE.Vector3(),
+        qa: new THREE.Quaternion(), qi: new THREE.Quaternion(), qe: new THREE.Quaternion(), qr: new THREE.Quaternion(), qh: new THREE.Quaternion(), qw: new THREE.Quaternion(), qHang: new THREE.Quaternion(), qHangE: new THREE.Quaternion(), dn: new THREE.Vector3(0, -1, 0), eu: new THREE.Euler() });
+      R.root.updateMatrixWorld(true);
+      V.eu.set(0.12, 0, -0.1); V.qHang.setFromEuler(V.eu); V.eu.set(-0.3, 0, 0); V.qHangE.setFromEuler(V.eu);          // 걸어 다닐 때의 왼팔: 몸 옆으로 자연스럽게
+      const sh = R.shoulderL, el = R.elbowL;
+      if (k <= 0.001) { sh.quaternion.copy(V.qHang); el.quaternion.copy(V.qHangE); return; }
+      const rq = R.root.getWorldQuaternion(V.qr);
+      V.poleL.set(-0.55, -0.8, -0.25).applyQuaternion(rq); const poleR = V.poleR.set(0.55, -0.8, -0.25).applyQuaternion(rq);
+      const wm = gm.children[0].children[0], hit = () => { V.T.set(0, -0.1, 0); wm.localToWorld(V.T); return V.T; };
+      gm.updateMatrixWorld(true); hit();
+      // 왼손이 닿을 수 있는 가장 가까운 점 P: 목표 T 가 너무 멀면 오른손도 그만큼 끌어 와서 가운데서 만난다
+      V.S.copy(V.T); sh.getWorldPosition(V.d); V.v.copy(V.S).sub(V.d); const dist = V.v.length(), reach = 0.58;
+      if (dist > reach) {
+        V.D.copy(V.v).normalize().multiplyScalar(-(dist - reach) * k);                 // T → P 이동량
+        R.handR.getWorldPosition(V.Hr); V.Hr.add(V.D);
+        const hq = R.handR.getWorldQuaternion(V.qh).clone();                        // 칼 방향(오른 손목)은 그대로 유지한다
+        this._ik2(R.shoulderR, R.elbowR, V.Hr, poleR, R.shoulderR.quaternion.clone(), R.elbowR.quaternion.clone(), k, V);
+        R.handR.quaternion.copy(R.elbowR.getWorldQuaternion(V.qw).invert()).multiply(hq);
+        R.root.updateMatrixWorld(true); gm.updateMatrixWorld(true); hit();
+      }
+      this._ik2(sh, el, V.T, V.poleL, V.qHang, V.qHangE, k, V);
+    }
     _tool() {                                   // 곡괭이·도끼: 자루는 어깨→손 방향을 따르고, 머리(날)의 방향은 휘두르는 면에 맞춘다
       const m = this.rig.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null); if (!t || !t.userData.inner) return;
       const inn = t.userData.inner, wm = inn.children[0];
