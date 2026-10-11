@@ -47,6 +47,39 @@
     if (inRiver(x, z)) return riverMode === 'ice' ? 1.0 : riverMode === 'flood' ? 0.4 : 0.6;
     return roadAt(x, z) ? 1.2 : 1;
   };
+  // ---------- 장식: 언덕의 덤불과 풀, 강가 낚시 부두 (충돌 없음, 계절 색을 따른다) ----------
+  const decorMats = { bush: new THREE.MeshStandardMaterial({ color: 0x3f8a3c, flatShading: true, roughness: 1 }), tuft: new THREE.MeshStandardMaterial({ color: 0x6aa04a, flatShading: true, roughness: 1 }) };
+  { const spots = [], rnd = (() => { let s = 12345; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; })();
+    for (let i = 0; i < 2600 && spots.length < 260; i++) {
+      const x = (rnd() * 2 - 1) * (MAP + 12), z = (rnd() * 2 - 1) * (MAP + 12), h = terrH(x, z);
+      if (Math.max(Math.abs(x), Math.abs(z)) < 34 || h < 0.35 || riverDist(x, z) < TERR.riverW + 2.2 || onBridge(x, z) || Math.hypot(x - BR.x, z - BR.z) < 12) continue;
+      spots.push([x, h, z, rnd()]);
+    }
+    const nb = spots.length, bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.7, 0), decorMats.bush, nb), tufts = new THREE.InstancedMesh(new THREE.ConeGeometry(0.22, 0.7, 5), decorMats.tuft, nb * 3), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
+    spots.forEach((s, i) => { const k = 0.7 + s[3] * 0.9; q.setFromEuler(new THREE.Euler(0, s[3] * 6, 0)); m4.compose(ps.set(s[0], s[1] + 0.3 * k, s[2]), q, sc.set(k * 1.2, k * 0.8, k * 1.2)); bushes.setMatrixAt(i, m4);
+      for (let j = 0; j < 3; j++) { const a = s[3] * 20 + j * 2.1, kk = 0.8 + ((s[3] * 7 + j) % 1) * 0.8; m4.compose(ps.set(s[0] + Math.cos(a) * 1.3, terrH(s[0] + Math.cos(a) * 1.3, s[2] + Math.sin(a) * 1.3) + 0.3, s[2] + Math.sin(a) * 1.3), q, sc.set(kk, kk, kk)); tufts.setMatrixAt(i * 3 + j, m4); } });
+    bushes.castShadow = true; scene.add(bushes, tufts);
+    // 낚시 부두: 다리 위쪽 강둑에서 물 쪽으로 뻗은 나무 부두 + 통
+    const pi = 14, [px, pz] = RIVER[pi], [qx, qz] = RIVER[pi + 1], tx = qx - px, tz = qz - pz, tl = Math.hypot(tx, tz), nx = tz / tl, nz = -tx / tl;      // 강 안쪽(마을 쪽)을 향하는 법선
+    const side = Math.hypot(px + nx * 3, pz + nz * 3) < Math.hypot(px - nx * 3, pz - nz * 3) ? 1 : -1, wood = new THREE.MeshStandardMaterial({ color: 0xa87a48, flatShading: true, roughness: 1 });
+    const pier = new THREE.Group(); const deck = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 5.4), wood); deck.position.set(0, 0.28, 0); deck.castShadow = deck.receiveShadow = true; pier.add(deck);
+    for (const sx of [-0.65, 0.65]) for (const sz of [-2.4, 0, 2.4]) { const po = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.1, 6), wood); po.position.set(sx, 0, sz); pier.add(po); }
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x7a5a2a, flatShading: true })); barrel.position.set(0.45, 0.6, -2.1); pier.add(barrel);
+    pier.position.set(px + side * nx * 2.3, 0, pz + side * nz * 2.3); pier.rotation.y = Math.atan2(-side * nx, -side * nz) + Math.PI; scene.add(pier);
+    // 걸어서 만든 길 옆 밭 (결정적 위치: 길 칸의 해시로 정한다)
+    var plotMesh = new THREE.Group(); scene.add(plotMesh);
+  }
+  const plotSoil = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, flatShading: true, roughness: 1 }), plotCrop = new THREE.MeshStandardMaterial({ color: 0x78b04a, flatShading: true, roughness: 1 });
+  function clearPlots() { while (plotMesh.children.length) { const c = plotMesh.children.pop(); } plotMesh.clear(); }
+  function maybePlot(k, x, z) {
+    let hsh = 0; for (let i = 0; i < k.length; i++) hsh = (hsh * 31 + k.charCodeAt(i)) >>> 0;
+    if (hsh % 17 !== 0 || plotMesh.children.length >= 12 || Math.hypot(x, z) < 36) return;
+    const a = (hsh % 628) / 100, px = x + Math.cos(a) * 3.2, pz = z + Math.sin(a) * 3.2;
+    if (inRiver(px, pz) || riverDist(px, pz) < TERR.riverW + 2 || plotMesh.children.some(c => Math.hypot(c.position.x - px, c.position.z - pz) < 7)) return;
+    const g = new THREE.Group(), soil = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 2.2), plotSoil); g.add(soil);
+    for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 4), plotCrop); c.position.set(-1.1 + (i % 3) * 1.1, 0.3, i < 3 ? -0.5 : 0.5); g.add(c); }
+    g.position.set(px, terrH(px, pz) + 0.08, pz); g.rotation.y = a; plotMesh.add(g);
+  }
   // 오르막을 오르는 적은 느려진다 (가는 방향으로 0.8칸 앞의 높이차에 비례, 최대 -40%)
   function climbMul(x, z, tx, tz) { const d = Math.hypot(tx - x, tz - z); if (d < 0.5) return 1; const dh = actorH(x + (tx - x) / d * 0.8, z + (tz - z) / d * 0.8) - actorH(x, z); return dh > 0.02 ? Math.max(0.6, 1 - dh * 0.9) : 1; }
   // ---------- 길: 성벽 밖을 자주 걷는 곳은 다져져서 길이 되고, 길 위에서는 20% 빨리 걷는다 (story.roads에 저장) ----------
@@ -60,13 +93,14 @@
     const [i, j] = k.split(',').map(Number), x = i * ROAD.cell, z = j * ROAD.cell, m = new THREE.Matrix4().makeTranslation(x, actorH(x, z) + 0.05, z);
     roadMesh.setMatrixAt(ROAD.n++, m); roadMesh.count = ROAD.n; roadMesh.instanceMatrix.needsUpdate = true; ROAD.set.add(k);
     if (save) (story.roads || (story.roads = [])).push(k);
+    maybePlot(k, x, z);
   }
   function stepRoad(x, z, w) {
     if (Math.max(Math.abs(x), Math.abs(z)) < 28 || Math.abs(x) > MAP || Math.abs(z) > MAP || inRiver(x, z) || riverDist(x, z) < TERR.riverW + 1) return;
     const k = rkey(x, z); if (ROAD.set.has(k)) return;
     const c = (ROAD.cnt.get(k) || 0) + w; ROAD.cnt.set(k, c); if (c >= ROAD.need) addRoad(k);
   }
-  function rebuildRoads() { ROAD.set.clear(); ROAD.cnt.clear(); ROAD.n = 0; roadMesh.count = 0; for (const k of (story.roads || [])) addRoad(k, false); roadMesh.instanceMatrix.needsUpdate = true; }
+  function rebuildRoads() { clearPlots(); ROAD.set.clear(); ROAD.cnt.clear(); ROAD.n = 0; roadMesh.count = 0; for (const k of (story.roads || [])) addRoad(k, false); roadMesh.instanceMatrix.needsUpdate = true; }
   const groundGeo = new THREE.PlaneGeometry((MAP + 20) * 2, (MAP + 20) * 2, 164, 164); groundGeo.rotateX(-Math.PI / 2);
   { const p = groundGeo.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, terrH(p.getX(i), p.getZ(i))); groundGeo.computeVertexNormals(); }
   const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x9a6b44, flatShading: true, roughness: 1 }));

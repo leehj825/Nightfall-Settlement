@@ -30,7 +30,7 @@
   const season = () => seasonOfDay(Math.floor(gameMin / 1440) + 1);
   function seasonVisual(k) {
     const s = season();
-    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k); waterMat.color.lerp(s.id === 'winter' ? iceC : waterC, k);
+    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k); decorMats.bush.color.lerp(s.lc, k); decorMats.tuft.color.lerp(s.lc, k); plotCrop.color.lerp(s.id === 'winter' ? new THREE.Color(0xd8e4e8) : s.id === 'autumn' ? new THREE.Color(0xd2a23a) : new THREE.Color(0x78b04a), k); waterMat.color.lerp(s.id === 'winter' ? iceC : waterC, k);
   }
   function applyLighting(n, b = 0) {           // n: 밤 정도, b: 붉은 달 정도 (습격의 밤에만)
     sun.color.copy(L.sunDay).lerp(L.sunNight, n).lerp(L.sunBlood, b * 0.85);
