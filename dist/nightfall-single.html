@@ -5390,9 +5390,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
-      if (name === 'attackSpear' && this.acts.ssAttack1) {                                                 // 창: 검처럼 쥐고 검 동작으로 찌르기(좁고 긴)와 휘두르기(넓은)를 번갈아
-        this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'ssAttack2' : 'ssAttack1'; this.variant = stab ? 'stab' : 'slash';
-        ts = this.acts[name].getClip().duration / 0.7;
+      if (name === 'attackSpear' && this.acts.ssAttack1 && this.acts.spearStab) {                                                 // 창: 검처럼 쥐고 검 동작으로 찌르기(좁고 긴)와 휘두르기(넓은)를 번갈아
+        this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'spearStab' : 'ssAttack1'; this.variant = stab ? 'stab' : 'slash';
+        ts = this.acts[name].getClip().duration / (stab ? 1.1 : 0.7);
       }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
@@ -5418,8 +5418,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
-      const idle = !this.shot && (this.baseName === 'idle' || !this.baseName), tgt = idle ? 0 : Math.PI / 2, inn = sp.userData.inner, cur = inn.rotation.x;
-      inn.rotation.x = cur + (tgt - cur) * Math.min(1, dt / 0.08);
+      const stab = !!this.shot && this.variant === 'stab', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
+      const tgt = idle || stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
+      const k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (stab ? dt / 0.1 : -dt / 0.12)));
+      if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
+      // 찌르기: 모션캡처 손목은 총을 쥔 각도라서, 자루를 어깨에서 손으로 뻗은 방향에 맞추고 손이 자루 뒤쪽을 쥐게 한다
+      const R = this.rig; R.root.updateMatrixWorld(true);
+      const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
+      const d = b.sub(a); if (d.lengthSq() < 0.01) return;
+      const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
+      d.normalize().applyQuaternion(inv);
+      sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
+      sp.position.copy(d).multiplyScalar(0.38 * k);
     }
   }
 
