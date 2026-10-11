@@ -140,3 +140,5 @@ See [ANDROID.md](ANDROID.md): a Capacitor wrapper plus a GitHub Actions workflow
 ### Structure models
 
 The well, blacksmith, archery range, tent (age-1 houses), campfire ring, wooden fence, brick wall and pine tree are static meshes from `js/structures.js`, built by `tools/build_structures.py <folder>` (a folder with `Well/`, `Blacksmith/`, `archery_target/`, `camping_scene_3d_model/`). `structMesh(key)` in `js/rig.js` returns a mesh with the base centre at the origin and the front toward +z; if `structures.js` is missing the game falls back to the old box-built versions. Collision radii, blueprints and wall HP are unchanged.
+
+> Temporary: the skinned character models are switched off (everyone uses the polygon stick-man rig so the movement can be judged). Add `?models=1` to the URL, or set `USE_CHAR_MODELS` in `js/rig.js`, to turn them back on.
