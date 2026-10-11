@@ -205,7 +205,7 @@
     // 1장 클리어 후 무한 모드: Day 8부터 하루마다 적 수 / 체력 추가 증가
     ENDLESS_EXTRA_PER_DAY: 3, ENDLESS_HP_PER_DAY: 1,
     DASH_DIST: 10, DASH_TIME: 0.2, DASH_INVULN: 0.5, DASH_CD: 2,
-    ARROW_RANGE: 30, ARROW_SPEED: 45,           // 화살 사거리 / 속도
+    ARROW_RANGE: 62, ARROW_SPEED: 48,           // 화살 사거리 / 속도
     ARCHER_COUNT: 1, ARCHER_AGGRO: 30, ARCHER_FIRE_INTERVAL: 1.5,   // 궁수 동료 수 / 인식 거리 / 발사 간격(초)
     CORRIDOR_WIDTH: 3.2,                       // 성벽 양옆으로 자원을 치우는 폭 (NPC 통행로)
     GATE_REACH: 2.0, GATE_BAND: 2.5, GATE_GRACE: 3,   // 출입구 도달 반경 / 성벽 위 목표 판정 폭 / 통과 후 재경유 금지 시간(초)

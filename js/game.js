@@ -3101,13 +3101,14 @@
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
-  const arrowGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6);
+  const arrowGeo = new THREE.CylinderGeometry(0.045, 0.045, 1.6, 6), arrowTipGeo = new THREE.ConeGeometry(0.1, 0.28, 5), arrowTipMat = new THREE.MeshBasicMaterial({ color: 0xd8dde6 });
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x8a5a2b });
   function fireArrow(x, z, ang, byPlayer = false, dmg = null, y = 1.0) {
     const g = new THREE.Group();
     const m = new THREE.Mesh(arrowGeo, arrowMat);
     m.rotation.x = Math.PI / 2;                     // 원기둥 축을 진행(+Z) 방향으로 눕힘
-    g.add(m);
+    const tip = new THREE.Mesh(arrowTipGeo, arrowTipMat); tip.rotation.x = Math.PI / 2; tip.position.z = 0.9;     // 쇠 화살촉
+    g.add(m, tip);
     const sx = Math.sin(ang), sz = Math.cos(ang);
     g.position.set(x + sx * 0.7, y, z + sz * 0.7);
     g.rotation.y = ang;
