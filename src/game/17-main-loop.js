@@ -1,5 +1,31 @@
   // ---------- 메인 루프 ----------
   const SPEED = 6;
+  // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
+  const WX_N = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
+  for (let i = 0; i < WX_N; i++) { const x = rand(-16, 16), y = rand(0, 14), z = rand(-16, 16); wxPos.set([x, y, z, x, y + 0.7, z], i * 6); wxVel[i] = rand(0.8, 1.2); }
+  wxLines.geometry.setAttribute('position', new THREE.BufferAttribute(wxPos, 3)); wxLines.frustumCulled = false; scene.add(wxLines);
+  let wx = { kind: 'none', day: -1, lvl: 0, target: 0, snd: 0 };
+  const dayWeather = (d) => { const s = seasonOfDay(d).id, h = ((d * 2654435761) >>> 0) % 100; return s === 'winter' ? (h < 38 ? 'snow' : 'none') : s === 'summer' ? (h < 10 ? 'rain' : 'none') : (h < 30 ? 'rain' : 'none'); };
+  const rainNow = () => wx.lvl * (wx.kind === 'rain' ? 1 : 0);
+  function weatherStep(dt, night, hour) {
+    const dn = dayNow();
+    if (dn !== wx.day) { wx.day = dn; wx.kind = dayWeather(dn); if (dn > 1 && wx.kind !== 'none') setTimeout(() => toast(wx.kind === 'rain' ? 'Rain today: the view is shorter and archers shoot less far' : 'It is snowing today'), 3500); }
+    const storm = night && wave.type === 'storm' && !exActive, kind = storm ? 'rain' : wx.kind;
+    const want = exActive ? 0 : storm ? 1 : (kind !== 'none' && hour >= 7 && hour < 20) ? 0.7 : (kind !== 'none' ? 0.5 : 0);
+    wx.lvl += (want - wx.lvl) * Math.min(1, dt * 0.5);
+    const show = wx.lvl > 0.03, snow = !storm && wx.kind === 'snow';
+    wxLines.visible = show; if (!show) return;
+    const mat = wxLines.material; mat.color.setHex(snow ? 0xffffff : 0xaec6ff); mat.opacity = Math.min(0.55, wx.lvl * 0.6);
+    wxLines.position.set(player.position.x, player.position.y, player.position.z);
+    const a = wxLines.geometry.attributes.position.array, fall = snow ? 2.2 : 16, len = snow ? 0.12 : 0.75;
+    for (let i = 0; i < WX_N; i++) {
+      const o = i * 6; let y = a[o + 1] - fall * wxVel[i] * dt; if (y < 0) y += 14;
+      a[o + 1] = y; a[o + 4] = y + len; a[o] = a[o + 3] += (snow ? Math.sin(y * 2 + i) * 0.4 : -2.0) * dt; if (a[o] < -16) a[o] = a[o + 3] += 32; a[o + 2] = a[o + 5];
+    }
+    wxLines.geometry.attributes.position.needsUpdate = true;
+    ambient.intensity *= 1 - 0.14 * wx.lvl; sun.intensity *= 1 - 0.3 * wx.lvl; scene.fog.near *= 1 - 0.3 * wx.lvl; scene.fog.far *= 1 - 0.3 * wx.lvl;
+    if (!snow && (wx.snd -= dt) <= 0) { wx.snd = 0.5; Snd.play('rain', wx.lvl); }
+  }
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
   let facing = 0;
   const clock = new THREE.Clock();
@@ -29,6 +55,7 @@
       for (const b of exBeams) { const d = Math.hypot(b.parent.position.x - player.position.x, b.parent.position.z - player.position.z); b.material.opacity = (0.1 + 0.2 * nf) * Math.min(1, d / 9); }       // 가까이 가면 기둥이 옅어진다
     }
     if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
+    weatherStep(dt, night, hour);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다

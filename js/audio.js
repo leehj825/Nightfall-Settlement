@@ -57,6 +57,7 @@
       howl: v => { tone(300, 1.4, 'sine', 0.22 * v, 520); tone(300.8, 1.4, 'triangle', 0.1 * v, 524, 0.02); tone(520, 0.9, 'sine', 0.18 * v, 330, 1.3); },
       victory: v => { [392, 523, 659, 784, 1047].forEach((f, i) => { tone(f, 0.5, 'triangle', 0.2 * v, null, i * 0.12); tone(f / 2, 0.5, 'sine', 0.12 * v, null, i * 0.12); }); },
       pickup: v => { tone(880, 0.08, 'sine', 0.16 * v, 1320); tone(1320, 0.12, 'sine', 0.12 * v, null, 0.07); },
+      rain: v => noise(0.55, 0.045 * v, 'highpass', 2400, 7000),
       thunder: v => { noise(1.8, 0.55 * v, 'lowpass', 500, 50); tone(48, 1.4, 'sine', 0.5 * v, 28); noise(0.9, 0.3 * v, 'lowpass', 300, 40, 0.5); },
     };
     function play(name, v = 1) {
