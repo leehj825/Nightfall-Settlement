@@ -232,6 +232,22 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return clips;
   })();
 
+  // ----- 모션캡처 클립(Mixamo, tools/retarget_mixamo.js 로 이 리그에 맞춰 변환): 있으면 idle/walk/run/die를 바꾸고 방패 자세 클립을 더한다 -----
+  if (typeof MIXAMO_CLIPS !== 'undefined') {
+    const eul = new THREE.Euler(), q = new THREE.Quaternion();
+    for (const [name, c] of Object.entries(MIXAMO_CLIPS)) {
+      const times = [], rot = {}, pos = [];
+      for (const b of BONES) rot[b] = [];
+      for (let i = 0; i <= c.n; i++) {
+        times.push(c.d * i / c.n);
+        for (const b of BONES) { const v = c.t[b][i]; eul.set(v[0], v[1], v[2]); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
+        pos.push(0, c.t.hipsY[i], c.t.hipsZ[i]);
+      }
+      const tracks = BONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
+      tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
+      STICK_CLIPS[name] = new THREE.AnimationClip(name, c.d, tracks);
+    }
+  }
   // ----- 짐승: 네발 리그 (몸통/머리/꼬리/다리 4개 Bone) -----
   const BEAST_CLIPS = (() => {
     const clips = {}, eul = new THREE.Euler(), q = new THREE.Quaternion(), B = ['body', 'headB', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'];
@@ -380,18 +396,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
 
   // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
+  const MIXAMO_FAST_DIE = typeof MIXAMO_CLIPS !== 'undefined' ? 1.8 : 1;
   class Anim {
     constructor(rig) {
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die' || /^ss(Attack|Block)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
+    _res(name) { if (this.rig.style === 'ss') { const k = { idle: 'ssIdle', run: 'ssRun' }[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
     _play(name, fade, force) {
+      name = this._res(name);
       const next = this.acts[name] || this.acts.idle;
       if (!next || (next === this.cur && !force)) return;
       next.reset(); next.enabled = true; next.setEffectiveWeight(1);
@@ -400,17 +419,23 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     base(name, speed = 0) {
       if (this.dead) return;
-      if (name !== this.baseName) { this.baseName = name; if (!this.shot) this._play(name, 0.2); }
-      const a = this.acts[name];
+      const rs = this._res(name);
+      if (name !== this.baseName || rs !== this.resName) { this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
+      const a = this.acts[rs];
       if (a && !this.shot) a.timeScale = name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1;
     }
     once(name) {
       if (this.dead || !this.acts[name]) return;
-      this.shot = { t: 0, dur: this.acts[name].getClip().duration };
+      let ts = 1;
+      if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 네 가지 동작을 돌려 가며, 0.6초 안에 끝나도록 빠르게
+        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; ts = this.acts[name].getClip().duration / 0.6;
+      }
+      const act = this.acts[name]; act.timeScale = ts;
+      this.shot = { t: 0, dur: act.getClip().duration / ts };
       if (name === 'attackBow') this.rig.aim(true);
       this._play(name, 0.08, true);
     }
-    die() { this.dead = true; this.shot = null; this.rig.aim(false); this._play('die', 0.15, true); }
+    die() { this.dead = true; this.shot = null; this.rig.aim(false); this._play('die', 0.15, true); if (this.acts.die) this.acts.die.timeScale = MIXAMO_FAST_DIE; }
     revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }

@@ -337,7 +337,7 @@
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
     const vis = weaponMode;
-    playerRig.main = vis;
+    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : '';
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
     playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
     playerRig.hold(vis);
@@ -1857,6 +1857,7 @@
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.style = cls === 'sword' ? 'ss' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
     { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
@@ -3062,7 +3063,7 @@
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
-    playerRig.main = weaponMode;
+    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }

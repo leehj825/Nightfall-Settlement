@@ -41,7 +41,7 @@
   function swapWeapon() {
     if (dead) return;
     weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
-    playerRig.main = weaponMode;
+    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
     toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
