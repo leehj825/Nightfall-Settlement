@@ -309,6 +309,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     g.add(pivot); g.userData.pivot = pivot; pivot.rotation.x = -Math.PI / 2;           // 평소엔 세워서 든다
     return g;
   }
+  function makeShieldMesh(def) {               // 둥근 방패: 나무판 + 쇠 테두리 + 중앙 징. 왼팔에 붙는다
+    const g = new THREE.Group(), t = def.tier || 0, wood = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 14), gearMat('shieldwood', 0x8a5a34));
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 6, 16), gearMat('shieldrim' + t, t > 0 ? 0xc9a23a : 0x6a6d75)), boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), gearMat('shieldboss' + t, t > 0 ? 0xe8d28a : 0xa8abb2));
+    wood.rotation.x = rim.rotation.x = Math.PI / 2; rim.position.z = 0; boss.position.z = 0.04; g.add(wood, rim, boss);
+    return g;
+  }
   function makeArmorIcon(def) {
     const g = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.2), gearMat(def.id, def.color)), cap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.55), gearMat(def.id, def.color));
     cap.position.y = 0.4; g.add(body, cap);
@@ -335,11 +341,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
       rig.applyHold();
     };
+    rig.setShield = (def) => {                 // def가 있으면 왼손에 방패를 든다 (활을 들 때는 숨김)
+      if (rig.meshes.shield) rig.handL.remove(rig.meshes.shield);
+      rig.meshes.shield = def ? makeShieldMesh(def) : null;
+      if (rig.meshes.shield) { rig.meshes.shield.position.set(0.12, 0.1, 0.06); rig.meshes.shield.rotation.y = Math.PI / 2; rig.handL.add(rig.meshes.shield); }
+      rig.applyHold();
+    };
     rig.applyHold = () => {
       const w = rig.held, m = rig.meshes;
       if (m.sword) m.sword.visible = w === 'sword';
       if (m.bow) m.bow.visible = w === 'bow';
       if (m.spear) m.spear.visible = w === 'spear';
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick';
       if (!m.pick) { m.pick = makePickMesh(); rig.handR.add(m.pick); }
       m.pick.visible = w === 'pick';
     };

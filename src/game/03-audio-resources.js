@@ -34,6 +34,7 @@
     const vis = weaponMode;
     playerRig.main = vis;
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
+    playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
     playerRig.hold(vis);
   }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN'), ironEl = document.getElementById('ironN');
