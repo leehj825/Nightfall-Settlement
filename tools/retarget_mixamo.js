@@ -34,6 +34,8 @@ const WANT = {
   gsStrafeNW: ['great sword strafe', true], gsStrafePW: ['great sword strafe (2)', true], gsStrafeN: ['great sword strafe (3)', true], gsStrafeP: ['great sword strafe (4)', true],
   gsAttack1: ['great sword attack', false], gsAttack2: ['great sword slash', false], gsAttack3: ['great sword slash (5)', false], gsAttack4: ['great sword high spin attack', false], gsBlock: ['great sword blocking', false],
   dieGs: ['two handed sword death', false],
+  // 농사 (Farming Pack): 농부가 밭에서 일할 때 돌아가며 쓴다 (긴 동작이라 프레임을 더 쓴다)
+  farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
 if (process.env.WANT_FILE) { for (const k of Object.keys(WANT)) delete WANT[k]; Object.assign(WANT, JSON.parse(fs.readFileSync(process.env.WANT_FILE, 'utf8'))); }       // 미리보기용: 필요한 클립만 따로 변환
 const MAXF = 48;
@@ -46,7 +48,7 @@ const UP = new V(0, -1, 0);
 function solveLimb(parentW, dWorld) { const dl = dWorld.clone().applyQuaternion(parentW.clone().invert()); return new Q().setFromUnitVectors(UP, dl.normalize()); }
 const eul = (q) => { const e = new E().setFromQuaternion(q, 'XYZ'); return [+e.x.toFixed(3), +e.y.toFixed(3), +e.z.toFixed(3)]; };
 const out = {};
-for (const [name, [file, loop]] of Object.entries(WANT)) {
+for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
   let fp = null; for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
   if (!fp) { console.warn('missing', file); continue; }
   const bow = /^bow/.test(name); MIRROR = true;           // 활 동작은 뒤집지 않고 Mixamo 오른팔(활을 뻗는 팔)이 게임의 L(활을 드는 왼손 쪽)을 움직이게 한다
@@ -58,7 +60,7 @@ for (const [name, [file, loop]] of Object.entries(WANT)) {
   // 캐릭터의 왼쪽(+x) = 이 게임의 'R' 뼈, 오른쪽(-x) = 'L' 뼈 (게임 리그는 +z를 보고 sx<0 가 'L')
   const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
   const mixer = new THREE.AnimationMixer(obj); mixer.clipAction(clip).play();
-  const n = Math.min(MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
+  const n = Math.min(maxf || MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
   let z0 = null; const xStart = (mixer.setTime(0), obj.updateMatrixWorld(true), wp(B.Hips).x);
   for (let i = 0; i <= n; i++) {
     mixer.setTime(clip.duration * i / n); obj.updateMatrixWorld(true);

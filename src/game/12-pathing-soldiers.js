@@ -419,7 +419,7 @@
     npc.px = npc.position.x; npc.pz = npc.position.z;
     const working = state === 'Gathering' || state === 'Building' || state === 'Repairing' || state === 'Chopping' || state === 'Quarrying' || state === 'Farming';
     let anim = mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle';
-    if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = 'gather';
+    if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = state === 'Farming' ? 'farm' : 'gather';
     npc.rig.tool = state === 'Chopping' || (npc.task && npc.task.kind === 'gather' && npc.task.target.userData.type === 'wood') ? 'axe' : 'pick';
     npc.rig.combat = !!exActive || enemyWithin(npc.position.x, npc.position.z, 24);       // 적이 가까우면 전투 자세 이동(칼·방패 / 활), 아니면 평상시 이동
     npc.rig.sheathe(npc.role !== 'citizen' && npc.cls !== 'medic' && !npc.rig.combat && !npc.anim.shot);       // 평상시 마을 안에서는 무기를 치우고 일반 이동으로 걷는다

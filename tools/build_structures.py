@@ -42,7 +42,7 @@ def load(folder):
 
 def main():
     root = sys.argv[1]; out = {}
-    for key, folder, width in (('well', 'Well', 2.5), ('smith', 'Blacksmith', 4.6), ('range', 'archery_target', 5.4)):
+    for key, folder, width in (('well', 'Well', 2.5), ('smith', 'Blacksmith', 4.6), ('range', 'archery_target', 4.2)):
         pos, uv, nor, tri, tex = load(os.path.join(root, folder))
         part = pack(pos, uv, nor, tri, tex); w = pos[:, 0].max() - pos[:, 0].min()
         out[key] = emit(part, width / w); print(key.ljust(8), out[key]['n'], 'verts size', out[key]['size'])

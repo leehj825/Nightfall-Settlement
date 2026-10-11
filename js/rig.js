@@ -609,7 +609,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
   // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
   const MIXAMO_FAST_DIE = typeof MIXAMO_CLIPS !== 'undefined' ? 1.8 : 1;
-  const AXE_ROLL = Math.PI / 2;
+  const AXE_ROLL = Math.PI / 2, FARM_CLIPS = ['farmPlant', 'farmWater', 'farmPull', 'farmPick'];
   class Anim {
     constructor(rig) {
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
@@ -627,6 +627,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     _res(name) {
       const rig = this.rig, md = this.moveDir || 'f';
       if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
+      if (name === 'farm') { const k = FARM_CLIPS[(this.farmI || 0) % FARM_CLIPS.length]; if (this.acts[k]) return k; return this.acts.gatherPick ? 'gatherPick' : 'gather'; }
       const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
       if (name === 'idle') { const k = set === 'ss' ? (war ? 'ssIdle' : 'ssIdleCalm') : set === 'gs' ? (war ? 'gsIdle' : 'gsIdleCalm') : set === 'bow' ? (war ? 'bowIdle' : 'bowIdleCalm') : 'idle'; return this.acts[k] ? k : 'idle'; }
@@ -653,7 +654,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     base(name, speed = 0) {
       if (this.dead) return;
       const rs = this._res(name);
-      if (name !== this.baseName || rs !== this.resName) { this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
+      if (name !== this.baseName || rs !== this.resName) { if (name === 'farm' && this.baseName !== 'farm') this._ft = 0; this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
       const a = this.acts[rs];
       if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
     }
@@ -684,6 +685,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     die() { this.dead = true; this.shot = null; this.rig.aim(false); const dk = this.rig.style === 'bow' && this.acts.dieBow ? 'dieBow' : this.rig.style === 'gs' && this.acts.dieGs ? 'dieGs' : 'die'; this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE; }
     revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
+      if (this.baseName === 'farm' && !this.shot && this.cur) {                 // 농사: 심기 → 물주기 → 뽑기 → 따기 동작을 한 번씩 돌아가며 한다
+        this._ft = (this._ft || 0) + dt;
+        if (this._ft > this.cur.getClip().duration) { this._ft = 0; this.farmI = ((this.farmI || 0) + 1) % FARM_CLIPS.length; this._play('farm', 0.4, true); }
+      }
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
