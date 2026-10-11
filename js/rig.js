@@ -583,7 +583,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (m.bow) m.bow.visible = w === 'bow' && !sh;
       if (m.spear) m.spear.visible = w === 'spear' && !sh;
       if (m.staff) m.staff.visible = w === 'staff';
-      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && !sh;
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && w !== 'none' && !sh;
       if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
       if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
       m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';

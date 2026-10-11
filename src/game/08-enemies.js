@@ -102,6 +102,7 @@
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
     { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'cleave', label: 'Great Sword Mastery', desc: 'Great sword: +18% damage and +6% reach' }, { id: 'whirl', label: 'Whirlwind', desc: 'Great sword spin slash: +25% damage and +8% radius' },
     { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
@@ -133,7 +134,7 @@
   }
   // ---------- 영웅 기술 트리: 세 갈래(전사 / 사냥꾼 / 전략가). 레벨업마다 한 칸에 포인트를 넣는다. 깊은 칸은 같은 갈래에 포인트가 쌓여야 열린다 ----------
   const TREE = [
-    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech'] },
+    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech', 'cleave', 'whirl'] },
     { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'dash', 'forage'] },
     { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'ult', 'regen', 'rally'] },
   ];
@@ -143,7 +144,7 @@
   function renderTree() {
     const cols = TREE.map(b => {
       const pts = branchPts(b), nodes = b.nodes.map((id, k) => {
-        const u = nodeInfo(id), rank = pl.st[id] || 0, need = k * 2, open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
+        const u = nodeInfo(id), rank = pl.st[id] || 0, need = [0, 2, 4, 6, 6, 8][k], open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
         return `<button class="tnode${can ? ' can' : ''}${!open ? ' lock' : ''}${hidden ? ' off' : ''}" data-id="${id}" ${can ? '' : 'disabled'}><b>${u.label}</b><small>${hidden ? 'Commander only' : u.desc}</small><span class="dots">${'●'.repeat(rank)}${'○'.repeat(5 - rank)}</span>${!open ? `<em>needs ${need} points in ${b.name}</em>` : ''}</button>`;
       }).join('<div class="tlink"></div>');
       return `<div class="tcol" style="--bc:${b.color}"><h4>${b.name} <small>${pts} pts</small></h4>${nodes}</div>`;

@@ -5487,7 +5487,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (m.bow) m.bow.visible = w === 'bow' && !sh;
       if (m.spear) m.spear.visible = w === 'spear' && !sh;
       if (m.staff) m.staff.visible = w === 'staff';
-      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && !sh;
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && w !== 'none' && !sh;
       if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
       if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
       m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';
@@ -6013,7 +6013,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   let playerClass = null, order = 'guard', rallyT = 0;
   const perks = {};                                                  // 시대 -> 퍼크 id
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
-  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 } };
+  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 } };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
   let diff = 'normal', ngLevel = 0;
   try { const d0 = localStorage.getItem('nf_diff'); if (d0 && CFG.DIFFS[d0]) diff = d0; } catch (e) {}
@@ -7039,6 +7039,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
     { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'cleave', label: 'Great Sword Mastery', desc: 'Great sword: +18% damage and +6% reach' }, { id: 'whirl', label: 'Whirlwind', desc: 'Great sword spin slash: +25% damage and +8% radius' },
     { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
@@ -7070,7 +7071,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   // ---------- 영웅 기술 트리: 세 갈래(전사 / 사냥꾼 / 전략가). 레벨업마다 한 칸에 포인트를 넣는다. 깊은 칸은 같은 갈래에 포인트가 쌓여야 열린다 ----------
   const TREE = [
-    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech'] },
+    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech', 'cleave', 'whirl'] },
     { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'dash', 'forage'] },
     { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'ult', 'regen', 'rally'] },
   ];
@@ -7080,7 +7081,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function renderTree() {
     const cols = TREE.map(b => {
       const pts = branchPts(b), nodes = b.nodes.map((id, k) => {
-        const u = nodeInfo(id), rank = pl.st[id] || 0, need = k * 2, open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
+        const u = nodeInfo(id), rank = pl.st[id] || 0, need = [0, 2, 4, 6, 6, 8][k], open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
         return `<button class="tnode${can ? ' can' : ''}${!open ? ' lock' : ''}${hidden ? ' off' : ''}" data-id="${id}" ${can ? '' : 'disabled'}><b>${u.label}</b><small>${hidden ? 'Commander only' : u.desc}</small><span class="dots">${'●'.repeat(rank)}${'○'.repeat(5 - rank)}</span>${!open ? `<em>needs ${need} points in ${b.name}</em>` : ''}</button>`;
       }).join('<div class="tlink"></div>');
       return `<div class="tcol" style="--bc:${b.color}"><h4>${b.name} <small>${pts} pts</small></h4>${nodes}</div>`;
@@ -8827,15 +8828,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
     later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
       if (dead) return;
-      const base = gearDef(playerGear.sword), mulDps = great ? 1.7 : playerAnim.rig.style === 'ss' ? 1.4 : 1;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      const base = gearDef(playerGear.sword), mulDps = (great ? 1.7 * (1 + 0.18 * pl.st.cleave) : playerAnim.rig.style === 'ss' ? 1.4 : weaponMode === 'none' ? 0.45 : 1), gr = 1 + 0.06 * pl.st.cleave;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
       atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
       if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
         spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
-        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 : 2.3), half: Math.PI, rangeMul: great ? 1.55 : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 * (1 + 0.25 * pl.st.whirl) : weaponMode === 'none' ? 0.9 : 2.3), half: Math.PI, rangeMul: great ? 1.55 * gr * (1 + 0.08 * pl.st.whirl) : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
         floatText(hits ? `${great ? 'SPIN' : 'SLAM'} x${hits}!` : great ? 'SPIN!' : 'SLAM!', player.position.x, 2.8, player.position.z); return;
       }
       spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
-      const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45 * gr, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
       if (hits >= 2) { shake = Math.min(0.7, 0.3 + hits * 0.06); floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2); }
     });
   }
@@ -8846,13 +8847,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const g = new THREE.Group(), m = new THREE.Mesh(thrustGeo, new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
     m.scale.z = len; g.add(m); g.position.set(x, 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
   }
-  const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear' };
+  const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear', none: 'Unarmed' };
   function swapWeapon() {
     if (dead) return;
-    weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
+    weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : weaponMode === 'spear' ? 'none' : 'sword';
     playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
-    toast(weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
+    toast(weaponMode === 'none' ? 'Unarmed (normal movement, weak punches)' : weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
@@ -9256,7 +9257,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
     Object.assign(story, { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
-    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
+    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
@@ -10323,7 +10324,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
       document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
       document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
-      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, carry.st || {}); updateLvlUi(); begin(); });
+      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 }, carry.st || {}); updateLvlUi(); begin(); });
       return;
     }
     saveReady = true;
