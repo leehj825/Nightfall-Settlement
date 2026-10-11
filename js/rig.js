@@ -251,10 +251,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     };
     make('walk', 0.9, 12, gait(0.9, 0.55, 0.75, 0.4, 0.35, 0.05, 0.02));
     make('run', 0.55, 12, gait(0.55, 0.95, 1.5, 1.0, 1.2, 0.22, 0.05));
-    make('gather', 0.9, 14, (ph, u) => {       // 곡괭이질: 들어 올림 → 내려찍기 → 반동
-      const v = u < 0.7 ? Math.sin(u / 0.7 * Math.PI / 2) : u < 0.8 ? 1 - (u - 0.7) / 0.1 : 0;
-      const a = -0.5 - 2.1 * v, e = -0.3 - 0.6 * v;
-      return { shoulderR: [a], shoulderL: [a * 0.9], elbowR: [e], elbowL: [e], spine: [0.35 - 0.45 * v], head: [0.1], kneeL: [0.25], kneeR: [0.25], hipL: [-0.1], hipR: [-0.1], hipsY: 0.86 };
+    make('gather', 1.0, 20, (ph, u) => {       // 곡괭이·도끼질: 두 손으로 쥐고 뒤로 젖혀 들어 올림 → 온몸으로 내려찍기 → 충격 반동 → 천천히 자세 회복
+      const r = kf(u, [[0, 0.2], [0.4, 1], [0.5, 0.35], [0.56, 0], [0.62, -0.06], [0.7, 0.05], [1, 0.2]]);     // 1 = 머리 위로 젖힘, 0 = 내려찍는 순간
+      const lean = 0.55 - 0.85 * r, bend = 0.3 + 0.3 * (1 - Math.max(0, r));
+      return { shoulderR: [-1.05 - 1.55 * r, 0.1 - 0.25 * r, -0.38 - 0.25 * r], shoulderL: [-1.0 - 1.5 * r, -0.1 + 0.25 * r, 0.4 + 0.3 * r], elbowR: [-0.45 - 0.8 * r], elbowL: [-0.55 - 0.7 * r],
+        spine: [lean, 0.2 * r - 0.05, 0], hips: [0.05 * (1 - r)], head: [0.2 - 0.25 * r], kneeL: [bend], kneeR: [bend + 0.05], hipL: [-bend * 0.55], hipR: [-bend * 0.55 - 0.05], hipsY: 0.86 - 0.07 * (1 - Math.max(0, r)) };
     });
     make('attackSword', 0.5, 10, (ph, u) => {  // 검 휘두르기: 뒤로 젖힘 → 내려베기 → 복귀
       const w = kf(u, [[0, 0], [0.3, 1], [0.45, -0.25], [1, 0]]);
@@ -422,7 +423,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return g;
   }
   function makePickMesh(kind = 'pick') {
-    { const wm = weaponModel(kind, 0); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; } }
+    { const wm = weaponModel(kind, 0); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); inner.rotation.x = Math.PI / 2; g.userData.inner = inner; g.add(inner); return g; } }
     const g = new THREE.Group(), inner = new THREE.Group();
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), gearMat('woodpick', 0x7a5530)), head = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.55), gearMat('ironpick', 0x9a9da4));
     handle.position.y = 0.3; head.position.y = 0.78;
@@ -534,9 +535,17 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt);
-      this._spear(dt);
+      this._spear(dt); this._tool();
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
+    _tool() {                                   // 곡괭이·도끼질: 자루가 오른팔(어깨→손) 방향을 따르게 해서 머리 위로 들었다가 내려찍는 호가 자연스럽게 이어진다
+      const m = this.rig.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null); if (!t || !t.userData.inner) return;
+      if (this.baseName !== 'gather') { t.quaternion.identity(); t.userData.inner.rotation.x = Math.PI / 2; return; }
+      const R = this.rig; R.root.updateMatrixWorld(true);
+      const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3())), d = b.sub(a); if (d.lengthSq() < 0.01) return;
+      d.normalize().applyQuaternion(R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert());
+      t.userData.inner.rotation.x = 0; t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+    }
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
       const stab = !!this.shot && this.variant === 'stab', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
