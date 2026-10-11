@@ -23,14 +23,104 @@
   scene.add(sun, sun.target);
 
   // ---------- 바닥 ----------
-  const MAP = 50;   // 맵 반경
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(MAP * 2 + 40, MAP * 2 + 40),
-    new THREE.MeshStandardMaterial({ color: 0x9a6b44, flatShading: true, roughness: 1 })
-  );
-  ground.rotation.x = -Math.PI / 2;
+  const MAP = 62;   // 맵 반경 (마을은 평지, 바깥은 언덕과 강)
+  // ---------- 지형: 마을 주변은 평지, 바깥은 완만한 언덕. 동남쪽에는 강이 흐르고 다리가 하나 있다 (강은 걸어서 건널 수 있지만 느려진다) ----------
+  const TERR = { flat: 32, blend: 12, hill: 1.7, riverR: 50, riverW: 3.1, bridgeA: -0.42 };
+  const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const RIVER = []; for (let i = 0; i <= 40; i++) { const a = -1.25 + i * (1.75 / 40); RIVER.push([Math.cos(a) * (TERR.riverR + Math.sin(a * 6) * 2.2), Math.sin(a) * (TERR.riverR + Math.sin(a * 6) * 2.2)]); }
+  const riverDist = (x, z) => { let m = 1e9; for (let i = 0; i < RIVER.length - 1; i++) { const [ax, az] = RIVER[i], [bx, bz] = RIVER[i + 1], dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz))); m = Math.min(m, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return m; };
+  const BR = { x: Math.cos(TERR.bridgeA) * TERR.riverR, z: Math.sin(TERR.bridgeA) * TERR.riverR, ux: Math.cos(TERR.bridgeA), uz: Math.sin(TERR.bridgeA), len: 7, wid: 1.9, y: 0.32 };
+  const onBridge = (x, z) => { const dx = x - BR.x, dz = z - BR.z, a = dx * BR.ux + dz * BR.uz, l = -dx * BR.uz + dz * BR.ux; return Math.abs(a) < BR.len && Math.abs(l) < BR.wid; };
+  function terrH(x, z) {
+    if (Math.abs(x) > MAP + 24 || Math.abs(z) > MAP + 24) return 0;
+    const edge = sstep(TERR.flat, TERR.flat + TERR.blend, Math.max(Math.abs(x), Math.abs(z)));
+    const n = 0.9 * Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09) + 0.6 * Math.sin((x + z) * 0.07 + 2) + 0.35 * Math.sin(x * 0.23) * Math.sin(z * 0.21 + 1);       // 대략 -1.85 ~ 1.85
+    let h = (n * 0.27 + 0.5) * TERR.hill * edge;
+    const bd = Math.hypot(x - BR.x, z - BR.z); h += (BR.y - h) * (1 - sstep(5, 10, bd));                  // 다리 근처는 둑을 평평하게
+    const rd = riverDist(x, z); return h + (-0.55 - h) * (1 - sstep(TERR.riverW - 0.6, TERR.riverW + 1.6, rd));
+  }
+  const actorH = (x, z) => onBridge(x, z) ? BR.y : terrH(x, z);
+  let riverMode = 'normal', riverDay = -1, waterMesh = null;           // normal / flood (봄 첫날 범람: 더 넓고 느림) / ice (겨울: 얼어서 어디서나 건널 수 있다)
+  const inRiver = (x, z) => !onBridge(x, z) && riverDist(x, z) < TERR.riverW + 0.2 + (riverMode === 'flood' ? 1.4 : 0);
+  const terrSpd = (x, z) => {
+    if (Math.abs(x) > MAP + 2 || Math.abs(z) > MAP + 2) return 1;
+    if (inRiver(x, z)) return riverMode === 'ice' ? 1.0 : riverMode === 'flood' ? 0.4 : 0.6;
+    return roadAt(x, z) ? 1.2 : 1;
+  };
+  // ---------- 장식: 언덕의 덤불과 풀, 강가 낚시 부두 (충돌 없음, 계절 색을 따른다) ----------
+  const decorMeshes = [];
+  const decorMats = { bush: new THREE.MeshStandardMaterial({ color: 0x3f8a3c, flatShading: true, roughness: 1 }), tuft: new THREE.MeshStandardMaterial({ color: 0x6aa04a, flatShading: true, roughness: 1 }) };
+  { const spots = [], rnd = (() => { let s = 12345; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; })();
+    for (let i = 0; i < 2600 && spots.length < 260; i++) {
+      const x = (rnd() * 2 - 1) * (MAP + 12), z = (rnd() * 2 - 1) * (MAP + 12), h = terrH(x, z);
+      if (Math.max(Math.abs(x), Math.abs(z)) < 34 || h < 0.35 || riverDist(x, z) < TERR.riverW + 2.2 || onBridge(x, z) || Math.hypot(x - BR.x, z - BR.z) < 12) continue;
+      spots.push([x, h, z, rnd()]);
+    }
+    const nb = spots.length, bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.7, 0), decorMats.bush, nb), tufts = new THREE.InstancedMesh(new THREE.ConeGeometry(0.22, 0.7, 5), decorMats.tuft, nb * 3), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
+    spots.forEach((s, i) => { const k = 0.7 + s[3] * 0.9; q.setFromEuler(new THREE.Euler(0, s[3] * 6, 0)); m4.compose(ps.set(s[0], s[1] + 0.3 * k, s[2]), q, sc.set(k * 1.2, k * 0.8, k * 1.2)); bushes.setMatrixAt(i, m4);
+      for (let j = 0; j < 3; j++) { const a = s[3] * 20 + j * 2.1, kk = 0.8 + ((s[3] * 7 + j) % 1) * 0.8; m4.compose(ps.set(s[0] + Math.cos(a) * 1.3, terrH(s[0] + Math.cos(a) * 1.3, s[2] + Math.sin(a) * 1.3) + 0.3, s[2] + Math.sin(a) * 1.3), q, sc.set(kk, kk, kk)); tufts.setMatrixAt(i * 3 + j, m4); } });
+    bushes.castShadow = true; scene.add(bushes, tufts); decorMeshes.push(bushes, tufts);
+    // 낚시 부두: 다리 위쪽 강둑에서 물 쪽으로 뻗은 나무 부두 + 통
+    const pi = 14, [px, pz] = RIVER[pi], [qx, qz] = RIVER[pi + 1], tx = qx - px, tz = qz - pz, tl = Math.hypot(tx, tz), nx = tz / tl, nz = -tx / tl;      // 강 안쪽(마을 쪽)을 향하는 법선
+    const side = Math.hypot(px + nx * 3, pz + nz * 3) < Math.hypot(px - nx * 3, pz - nz * 3) ? 1 : -1, wood = new THREE.MeshStandardMaterial({ color: 0xa87a48, flatShading: true, roughness: 1 });
+    const pier = new THREE.Group(); const deck = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 5.4), wood); deck.position.set(0, 0.28, 0); deck.castShadow = deck.receiveShadow = true; pier.add(deck);
+    for (const sx of [-0.65, 0.65]) for (const sz of [-2.4, 0, 2.4]) { const po = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.1, 6), wood); po.position.set(sx, 0, sz); pier.add(po); }
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x7a5a2a, flatShading: true })); barrel.position.set(0.45, 0.6, -2.1); pier.add(barrel);
+    pier.position.set(px + side * nx * 2.3, 0, pz + side * nz * 2.3); pier.rotation.y = Math.atan2(-side * nx, -side * nz) + Math.PI; scene.add(pier);
+    // 걸어서 만든 길 옆 밭 (결정적 위치: 길 칸의 해시로 정한다)
+    var plotMesh = new THREE.Group(); scene.add(plotMesh);
+  }
+  const plotSoil = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, flatShading: true, roughness: 1 }), plotCrop = new THREE.MeshStandardMaterial({ color: 0x78b04a, flatShading: true, roughness: 1 });
+  function clearPlots() { while (plotMesh.children.length) { const c = plotMesh.children.pop(); } plotMesh.clear(); }
+  function maybePlot(k, x, z) {
+    let hsh = 0; for (let i = 0; i < k.length; i++) hsh = (hsh * 31 + k.charCodeAt(i)) >>> 0;
+    if (hsh % 17 !== 0 || plotMesh.children.length >= 12 || Math.hypot(x, z) < 36) return;
+    const a = (hsh % 628) / 100, px = x + Math.cos(a) * 3.2, pz = z + Math.sin(a) * 3.2;
+    if (inRiver(px, pz) || riverDist(px, pz) < TERR.riverW + 2 || plotMesh.children.some(c => Math.hypot(c.position.x - px, c.position.z - pz) < 7)) return;
+    const g = new THREE.Group(), soil = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 2.2), plotSoil); g.add(soil);
+    for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 4), plotCrop); c.position.set(-1.1 + (i % 3) * 1.1, 0.3, i < 3 ? -0.5 : 0.5); g.add(c); }
+    g.position.set(px, terrH(px, pz) + 0.08, pz); g.rotation.y = a; plotMesh.add(g);
+  }
+  // 오르막을 오르는 적은 느려진다 (가는 방향으로 0.8칸 앞의 높이차에 비례, 최대 -40%)
+  function climbMul(x, z, tx, tz) { const d = Math.hypot(tx - x, tz - z); if (d < 0.5) return 1; const dh = actorH(x + (tx - x) / d * 0.8, z + (tz - z) / d * 0.8) - actorH(x, z); return dh > 0.02 ? Math.max(0.6, 1 - dh * 0.9) : 1; }
+  // ---------- 길: 성벽 밖을 자주 걷는 곳은 다져져서 길이 되고, 길 위에서는 20% 빨리 걷는다 (story.roads에 저장) ----------
+  const ROAD = { cell: 2, need: 3, max: 520, cnt: new Map(), set: new Set(), n: 0 };
+  const roadMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.1, 2.1).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), ROAD.max);
+  roadMesh.count = 0; roadMesh.receiveShadow = true; roadMesh.frustumCulled = false; scene.add(roadMesh);
+  const rkey = (x, z) => Math.round(x / ROAD.cell) + ',' + Math.round(z / ROAD.cell);
+  function roadAt(x, z) { return ROAD.set.size > 0 && ROAD.set.has(rkey(x, z)); }
+  function addRoad(k, save = true) {
+    if (ROAD.set.has(k) || ROAD.n >= ROAD.max) return;
+    const [i, j] = k.split(',').map(Number), x = i * ROAD.cell, z = j * ROAD.cell, m = new THREE.Matrix4().makeTranslation(x, actorH(x, z) + 0.05, z);
+    roadMesh.setMatrixAt(ROAD.n++, m); roadMesh.count = ROAD.n; roadMesh.instanceMatrix.needsUpdate = true; ROAD.set.add(k);
+    if (save) (story.roads || (story.roads = [])).push(k);
+    maybePlot(k, x, z);
+  }
+  function stepRoad(x, z, w) {
+    if (Math.max(Math.abs(x), Math.abs(z)) < 28 || Math.abs(x) > MAP || Math.abs(z) > MAP || inRiver(x, z) || riverDist(x, z) < TERR.riverW + 1) return;
+    const k = rkey(x, z); if (ROAD.set.has(k)) return;
+    const c = (ROAD.cnt.get(k) || 0) + w; ROAD.cnt.set(k, c); if (c >= ROAD.need) addRoad(k);
+  }
+  function rebuildRoads() { clearPlots(); ROAD.set.clear(); ROAD.cnt.clear(); ROAD.n = 0; roadMesh.count = 0; for (const k of (story.roads || [])) addRoad(k, false); roadMesh.instanceMatrix.needsUpdate = true; }
+  const groundGeo = new THREE.PlaneGeometry((MAP + 20) * 2, (MAP + 20) * 2, 164, 164); groundGeo.rotateX(-Math.PI / 2);
+  { const p = groundGeo.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, terrH(p.getX(i), p.getZ(i))); groundGeo.computeVertexNormals(); }
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x9a6b44, flatShading: true, roughness: 1 }));
   ground.receiveShadow = true;
   scene.add(ground);
+  const iceC = new THREE.Color(0xcfe6f5), waterC = new THREE.Color(0x3a78a8);
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x3a78a8, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.82, side: THREE.DoubleSide });
+  { const pos = [], idx = [];
+    for (let i = 0; i < RIVER.length; i++) {
+      const a = RIVER[Math.max(0, i - 1)], b = RIVER[Math.min(RIVER.length - 1, i + 1)], tx = b[0] - a[0], tz = b[1] - a[1], tl = Math.hypot(tx, tz), nx = -tz / tl, nz = tx / tl, w = TERR.riverW + 0.7;
+      pos.push(RIVER[i][0] + nx * w, -0.12, RIVER[i][1] + nz * w, RIVER[i][0] - nx * w, -0.12, RIVER[i][1] - nz * w);
+      if (i > 0) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+    }
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wg.setIndex(idx); wg.computeVertexNormals();
+    const water = new THREE.Mesh(wg, waterMat); water.receiveShadow = true; scene.add(water); waterMesh = water;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(BR.len * 2, 0.22, BR.wid * 2), new THREE.MeshStandardMaterial({ color: 0xb88a56, flatShading: true, roughness: 1 }));
+    deck.position.set(BR.x, BR.y - 0.12, BR.z); deck.rotation.y = -TERR.bridgeA; deck.castShadow = deck.receiveShadow = true; scene.add(deck);
+    for (const s of [-1, 1]) for (const e of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.0, 6), new THREE.MeshStandardMaterial({ color: 0x5a3b22, flatShading: true })); post.position.set(BR.x + BR.ux * e * (BR.len - 0.3) - BR.uz * s * BR.wid, BR.y + 0.4, BR.z + BR.uz * e * (BR.len - 0.3) + BR.ux * s * BR.wid); post.castShadow = true; scene.add(post); }
+  }
 
 
   // ---------- 절차적 맵: 나무 / 바위 ----------
@@ -39,7 +129,16 @@
   const trunkMat = mat(0x6b4226), leafMat = mat(0x3f8a3c), rockMat = mat(0x8b8b92);
   const rand = (a, b) => a + Math.random() * (b - a);
 
+  let treeMat = null;                                                    // 모델 나무 재질: 계절 색(leafMat)을 흰색 쪽으로 약하게 섞어 곱한다 (tintTrees)
+  const tintTrees = () => { if (treeMat) treeMat.color.copy(leafMat.color).lerp(new THREE.Color(0xffffff), 0.8); };
   function makeTree() {
+    const tm = structMesh('tree');
+    if (tm) {
+      if (!treeMat) { treeMat = tm.material.clone(); treeMat.emissive = new THREE.Color(0x4a4a4a); treeMat.emissiveMap = treeMat.map; treeMat.roughness = 1; tintTrees(); }       // 밝고 선명한 연두색 소나무: 텍스처를 스스로 조금 빛나게 한다
+      tm.material = treeMat; tm.scale.setScalar(rand(0.8, 1.25)); tm.rotation.y = rand(0, 6.28);
+      const g = new THREE.Group(); g.add(tm); g.userData = { type: 'wood', radius: 0.9 };
+      return g;
+    }
     const g = new THREE.Group();
     const h = rand(1.2, 1.8);
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.32, h, 6), trunkMat);
@@ -85,7 +184,7 @@
       const o = factory();
       for (let tries = 0; tries < 60; tries++) {
         const [x, z] = samplePoint();
-        if (Math.hypot(x, z) < 6 || !ok(x, z)) continue;   // 모닥불 주변 비우기
+        if (Math.hypot(x, z) < 6 || inRiver(x, z) || !ok(x, z)) continue;   // 모닥불 주변 비우기
         if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
         o.position.set(x, 0, z);
         o.rotation.y = rand(0, Math.PI * 2);
@@ -113,15 +212,17 @@
   let yaw = 0, pitch = 0.45;
   let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
-  let bird = false, savedView = null;                                // 버드아이 뷰: 마을 전체를 한눈에
-  const camFocus = () => bird ? (exActive ? EXC : { x: 0, z: 0 }) : player.position;
-  const setDist = d => { DIST = bird ? Math.min(95, Math.max(24, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
+  let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
+  const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
+  const setDist = d => { DIST = bird ? Math.min(95, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
+  const viewYaw = () => yaw + (camFront && !bird ? Math.PI : 0);          // 카메라가 실제로 놓이는 각도 (앞모습 보기에서는 영웅 정면에 놓인다)
   function goalPos(out) {
+    const va = viewYaw();
     return out.set(
-      camFocus().x + Math.sin(yaw) * Math.cos(pitch) * DIST,
-      LOOK_H + Math.sin(pitch) * DIST,
-      camFocus().z + Math.cos(yaw) * Math.cos(pitch) * DIST);
+      camFocus().x + Math.sin(va) * Math.cos(pitch) * DIST,
+      LOOK_H + (bird ? 0 : player.position.y) + Math.sin(pitch) * DIST,
+      camFocus().z + Math.cos(va) * Math.cos(pitch) * DIST);
   }
   camera.position.copy(goalPos(camGoal));
   lookAt.set(0, LOOK_H, 0);
@@ -142,27 +243,36 @@
   let pinchD = 0;
   const pinchDist = () => { const [p, q] = [...ptrs.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  let panMid = null, panId = null;
+  const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
+    const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    birdX = Math.max(-90, Math.min(90, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-90, Math.min(90, birdZ + (-rz * dx + fz * dy) * sc));
+  };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; return; }
-    const ok = e.pointerType === 'mouse' ? e.button === 0 : e.clientX > innerWidth * 0.4;
+    if (bird && e.pointerType === 'mouse' && e.button === 2) { panId = e.pointerId; panMid = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); return; }
+    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; panMid = null; return; }
+    const ok = e.pointerType === 'mouse' ? e.button === 0 : (settings.hand === 'l' ? e.clientX < innerWidth * 0.6 : e.clientX > innerWidth * 0.4);
     if (!ok || look.id !== null) return;
     look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
     const p = ptrs.get(e.pointerId); if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (e.pointerId === panId && panMid) { panView(e.clientX - panMid.x, e.clientY - panMid.y); panMid.x = e.clientX; panMid.y = e.clientY; return; }
     if (ptrs.size === 2 && e.pointerType === 'touch') {
       const d = pinchDist();
       if (pinchD > 0 && d > 0) setDist(DIST * pinchD / d);
-      pinchD = d; return;
+      pinchD = d;
+      if (bird) { const [a, b] = [...ptrs.values()], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; if (panMid) panView(mx - panMid.x, my - panMid.y); panMid = { x: mx, y: my }; }
+      return;
     }
     if (e.pointerId !== look.id) return;
     yaw -= (e.clientX - look.x) * 0.006;
-    pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - look.y) * 0.005));
+    pitch = Math.min(bird ? 1.5 : 1.2, Math.max(bird ? 0.12 : 0.1, pitch + (e.clientY - look.y) * 0.005));
     look.x = e.clientX; look.y = e.clientY;
   });
-  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === look.id) look.id = null; };
+  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === panId) panId = null; panMid = null; if (e.pointerId === look.id) look.id = null; };
   canvas.addEventListener('pointerup', lookEnd);
   canvas.addEventListener('pointercancel', lookEnd);
   canvas.addEventListener('wheel', e => { e.preventDefault(); setDist(DIST * Math.exp(e.deltaY * 0.001)); }, { passive: false });
@@ -205,7 +315,6 @@
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) dash(); }
     if (e.code === 'KeyG' && !e.repeat) gather();
     if (e.code === 'KeyE' && !e.repeat) ultimate();
-    if (e.code === 'KeyU' && !e.repeat) upgradeFence();
     if (e.code === 'KeyF' && !e.repeat) attack();
     if (e.code === 'KeyQ' && !e.repeat) swapWeapon();
     if (e.code === 'KeyC' && !e.repeat) { if (smithEl.style.display === 'flex') closeSmith(); else openSmith(); }
@@ -225,31 +334,34 @@
   let playerClass = null, order = 'guard', rallyT = 0;
   const perks = {};                                                  // 시대 -> 퍼크 id
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
-  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 } };
+  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 } };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
   let diff = 'normal', ngLevel = 0;
   try { const d0 = localStorage.getItem('nf_diff'); if (d0 && CFG.DIFFS[d0]) diff = d0; } catch (e) {}
   const dm = () => { const d = CFG.DIFFS[diff]; return { hp: d.hp * (1 + 0.4 * ngLevel), n: d.n * (1 + 0.25 * ngLevel), dmg: d.dmg * (1 + 0.2 * ngLevel) }; };
   const scaleHp = (h) => Math.round((h * dm().hp + (dm().hp - 1) * 1.2) * 10) / 10;
   const hasPerk = (id) => Object.values(perks).includes(id);
-  const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp;
-  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg);
-  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0);
+  const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
+  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1);
+  const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0) + (pl.st.forage >= 3 ? 1 : 0) + (pl.st.forage >= 5 ? 1 : 0);
   const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
   const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd);
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1);
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword';
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
-    playerRig.main = weaponMode;
-    playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); playerRig.setArmor(gearDef(playerGear.armor));
-    playerRig.hold(weaponMode);
+    const vis = weaponMode;
+    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
+    playerRig.setGear('great', { ...gearDef(playerGear.sword), great: true });
+    playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
+    playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
+    playerRig.hold(vis);
   }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN'), ironEl = document.getElementById('ironN');
   const toastEl = document.getElementById('toast');
@@ -299,8 +411,8 @@
   const matGeo = new THREE.BoxGeometry(3.2, 0.04, 3.2);
   const bpGeo = new THREE.BoxGeometry(2.4, 1.1, 0.35);
   function createFence(x, z, rot) {
-    const fence = new THREE.Mesh(bpGeo, fenceMat);
-    fence.position.set(x, 0.55, z);
+    const fm = structMesh('fence'), fence = fm ? new THREE.Mesh(fm.geometry, fm.material) : new THREE.Mesh(bpGeo, fenceMat);       // 나무 목책 모델
+    fence.position.set(x, fm ? 0 : 0.55, z);
     fence.rotation.y = rot;
     fence.castShadow = fence.receiveShadow = true;
     fence.userData = { type: 'fence', level: 'wood', radius: 1.2, hp: fenceHp(), maxHp: fenceHp() };
@@ -310,8 +422,8 @@
   }
   const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
   function createWall(x, z, rot) {              // 돌 성벽 (짙은 회색, HP 100)
-    const w = new THREE.Mesh(wallGeo, wallMat);
-    w.position.set(x, 0.7, z);
+    const wm = structMesh('wall'), w = wm ? new THREE.Mesh(wm.geometry, wm.material) : new THREE.Mesh(wallGeo, wallMat);       // 벽돌 성벽 모델
+    w.position.set(x, wm ? 0 : 0.7, z);
     w.rotation.y = rot;
     w.castShadow = w.receiveShadow = true;
     w.userData = { type: 'fence', level: 'stone', radius: 1.5, hp: wallHp(), maxHp: wallHp() };
@@ -348,7 +460,9 @@
     const lvl = g.userData.level || 1;
     while (g.children.length) g.remove(g.children[0]);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
-    if (lvl <= 1) {
+    const tentM = lvl <= 1 && structMesh('tent');
+    if (tentM) { g.add(tentM); }                                         // 1시대: 모델 텐트
+    else if (lvl <= 1) {
       add(new THREE.ConeGeometry(1.9, 2.6, 8), tentMat, 0, 1.3, 0);
       add(new THREE.BoxGeometry(0.7, 1.1, 0.12), windowGlow, 0, 0.55, 1.6).rotation.x = -0.35;
     } else if (lvl === 2) {
@@ -368,6 +482,8 @@
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
     g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null };
     if (CFG.LEVELED.includes(kind)) g.userData.level = 1;
+    const sm = (kind === 'well' || kind === 'smith' || kind === 'range') && structMesh(kind);        // 모델이 있으면 모델 건물
+    if (sm) g.add(sm);
     if (kind === 'house') {
       g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
@@ -375,6 +491,16 @@
       add(new THREE.BoxGeometry(6.4, 1.6, 4.4), barrackMat, 0, 0.8, 0);
       add(new THREE.BoxGeometry(6.6, 0.25, 4.6), barrackTop, 0, 1.72, 0);
       for (const wx of [-2, 0, 2]) add(new THREE.BoxGeometry(0.6, 0.4, 0.06), windowGlow, wx, 1.0, 2.23);
+    } else if (kind === 'range' && sm) {
+    } else if (kind === 'well' && sm) {
+    } else if (kind === 'smith' && sm) {
+      const rack = new THREE.Group(); rack.position.set(3.1, 0, 0.3);                       // 완성된 장비가 걸리는 선반
+      for (const dz of [-1.1, 1.1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.5, 0.14), woodMat2); post.position.set(0, 0.75, dz); post.castShadow = true; rack.add(post); }
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 2.4), woodMat2); bar.position.set(0, 1.4, 0); rack.add(bar);
+      const items = new THREE.Group(); rack.add(items); g.add(rack);
+      g.userData.rackItems = items;
+      g.userData.stock = {};
+      for (const id in CFG.GEAR) if (CFG.GEAR[id].cost) g.userData.stock[id] = 0;
     } else if (kind === 'range') {                                       // 사격장: 나무 단상 + 앞의 원형 과녁
       add(new THREE.BoxGeometry(4.4, 0.4, 3.0), woodMat2, 0, 0.2, 0);
       add(new THREE.BoxGeometry(0.2, 1.6, 0.2), woodMat2, 0, 0.8, -3.2);
@@ -511,6 +637,27 @@
     }
     for (let i = lampHalos.length - 1; i >= 0; i--) if (!lampHalos[i].parent) lampHalos.splice(i, 1);
   }
+  // 출입구 강화: 매일 아침 일꾼이 한 곳씩 돌기둥과 깃발을 세운다. 레벨마다 근처(5칸) 병사의 공격력 +7%
+  const gateBonus = (n) => { for (const g of gateWaypoints) if ((g.lv || 1) > 1 && Math.hypot(n.position.x - g.x, n.position.z - g.z) < 5) return 1 + 0.07 * (g.lv - 1); return 1; };
+  const gatePillarMat = bMat(0x7d8088);
+  function setGateLevel(g, lv) {
+    g.lv = lv;
+    for (const m of g.meshes || []) { scene.remove(m); const i = doormats.indexOf(m); if (i >= 0) doormats.splice(i, 1); }
+    g.meshes = [];
+    for (const s of [-1, 1]) {
+      const h = 1.8 + lv * 0.5, p = new THREE.Mesh(new THREE.BoxGeometry(0.75, h, 0.75), gatePillarMat);
+      p.position.set(g.x - g.nz * 2.1 * s, h / 2, g.z + g.nx * 2.1 * s); p.castShadow = p.receiveShadow = true; scene.add(p); doormats.push(p); g.meshes.push(p);
+      for (let i = 0; i < lv - 1; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.24, 0.04), bannerMat); f.position.set(p.position.x + g.nx * 0.42, h - 0.35 - i * 0.32, p.position.z + g.nz * 0.42); f.rotation.y = Math.atan2(g.nx, g.nz); scene.add(f); doormats.push(f); g.meshes.push(f); }
+    }
+  }
+  function upgradeGates() {
+    for (const g of gateWaypoints) {
+      const lv = g.lv || 1, cost = CFG.BUILD_UPGRADE[lv + 1];
+      if (lv >= age || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
+      payCost(cost); setGateLevel(g, lv + 1); report.upgraded++; updateHud();
+      dust(g.x, g.z); sfxAt('build', g.x, g.z); floatText(`Gate Lv${lv + 1}!`, g.x, 3.6, g.z); return;
+    }
+  }
   function addGate(x, z, r, nx, nz) {                                // 출입구 경유지 등록 + 바닥의 얇고 납작한 회색 도어 매트
     gateWaypoints.push({ x, z, r, nx, nz });
     const doormat = new THREE.Mesh(matGeo, matMat);
@@ -637,6 +784,34 @@
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
   const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower' };
+  // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
+  const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
+  const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
+  function planCandidates() {
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown };
+    const m = settings.plan || 'balanced';
+    const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
+    return order.filter(Boolean);
+  }
+  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
+  function updatePlanBtn() {
+    const b = document.getElementById('planBtn'); if (!b) return;
+    const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
+    if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? `Waiting for Age ${planCandidates()[0].age}` : 'Everything is planned';
+    if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
+    b.classList.toggle('done', !planCandidates().length);
+  }
+  function cyclePlan() { const i = PLAN_MODES.findIndex(m => m === planModeNow()); settings.plan = PLAN_MODES[(i + 1) % PLAN_MODES.length][0]; saveSettings(); updatePlanBtn(); toast(`Village plan: ${planModeNow()[1]}`); }
+  let planCd = 0;
+  function autoPlanTick(dt) {
+    planCd -= dt; if (planCd > 0) return; planCd = 2.5;
+    updatePlanBtn();
+    if (dead || exActive || eventOpen || uiPause || !saveReady) return;
+    const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
+    if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
+    const n = nextPlan(); if (n && canPay(n.cost)) n.run();
+  }
   function updateTownBtn() {
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
@@ -650,11 +825,15 @@
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);
     res.stone -= CFG.FENCE_UPGRADE_STONE;
-    f.material = wallMat;                         // 짙은 회색 돌 성벽
-    f.scale.y = 1.25; f.position.y = 0.55 * 1.25;
-    Object.assign(f.userData, { level: 'stone', hp: wallHp(), maxHp: wallHp() });
+    makeStoneFence(f);
     updateHud();
     toast('Upgraded to a stone wall!');
+  }
+  function makeStoneFence(f) {
+    const wm = structMesh('wall');
+    if (wm) { f.geometry = wm.geometry; f.material = wm.material; f.position.y = 0; }       // 벽돌 성벽 모델
+    else { f.material = wallMat; f.scale.y = 1.25; f.position.y = 0.55 * 1.25; }                 // 짙은 회색 돌 성벽
+    Object.assign(f.userData, { level: 'stone', hp: wallHp(), maxHp: wallHp() });
   }
   // 버튼: 가까이에 나무 목책이 있으면 업그레이드, 아니면 건설
 
@@ -716,10 +895,15 @@
     updateHud();
   }
   function toggleBird() {
-    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; }
+    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; birdX = exActive ? EXC.x : 0; birdZ = exActive ? EXC.z : 0; }
     else { bird = false; if (savedView) { DIST = savedView.d; pitch = savedView.p; } }
     document.getElementById('birdBtn').classList.toggle('on', bird);
-    toast(bird ? "Bird's-eye view - press again to return" : 'Back to the hero view');
+    toast(bird ? "Map view - drag to turn, two fingers (or right-drag) to move, pinch to zoom in close. Press again to return" : 'Back to the hero view');
+  }
+  function toggleFront() {                                          // 영웅의 앞모습 ↔ 뒷모습 카메라
+    if (bird) return toast('Leave the map view first');
+    camFront = !camFront;
+    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = camFront ? 'Back View' : 'Front View';
   }
   function toggleOrder() {
     if (dead || playerClass !== 'commander') return;
@@ -748,15 +932,17 @@
     openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
-  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); });
+  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); });
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
+  bindBtn('planBtn', cyclePlan);
   bindBtn('designBtn', designDefense);
   bindBtn('townBtn', designTown);
   bindBtn('smithBtn', openSmith);
   bindBtn('ordBtn', toggleOrder);
   bindBtn('birdBtn', toggleBird);
+  bindBtn('viewBtn', toggleFront);
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
@@ -795,7 +981,7 @@
   const season = () => seasonOfDay(Math.floor(gameMin / 1440) + 1);
   function seasonVisual(k) {
     const s = season();
-    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k);
+    ground.material.color.lerp(s.gc, k); leafMat.color.lerp(s.lc, k); tintTrees(); decorMats.bush.color.lerp(s.lc, k); decorMats.tuft.color.lerp(s.lc, k); plotCrop.color.lerp(s.id === 'winter' ? new THREE.Color(0xd8e4e8) : s.id === 'autumn' ? new THREE.Color(0xd2a23a) : new THREE.Color(0x78b04a), k); waterMat.color.lerp(s.id === 'winter' ? iceC : waterC, k);
   }
   function applyLighting(n, b = 0) {           // n: 밤 정도, b: 붉은 달 정도 (습격의 밤에만)
     sun.color.copy(L.sunDay).lerp(L.sunNight, n).lerp(L.sunBlood, b * 0.85);
@@ -818,6 +1004,9 @@
   const campfire = new THREE.Group();
   const campDecor = new THREE.Group();     // 1시대 모닥불의 장작/돌 (회관으로 바뀌면 숨김)
   campfire.add(campDecor);
+  const campM = structMesh('campfire');
+  if (campM) campDecor.add(campM);          // 모델: 돌 테두리 + 장작
+  else {
   const logMat = mat(0x5a3a1e);
   for (let i = 0; i < 4; i++) {
     const log = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.22, 0.22), logMat);
@@ -832,6 +1021,7 @@
     const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), rockMat);
     st.position.set(Math.cos(a) * 0.85, 0.12, Math.sin(a) * 0.85);
     campDecor.add(st);
+  }
   }
   const flame = new THREE.Group();
   const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.1, 6), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
@@ -959,10 +1149,23 @@
     if (day > prev) { b[key] = day; try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
     return { day, best: Math.max(prev, day), newBest: day > prev, key };
   }
+  // ---------- 밸런스 기록: 밤마다 한 줄씩 쌓고, 게임 오버 때 한 판 요약을 저장한다. 설정 > Balance report 에서 복사해 공유할 수 있다 ----------
+  function saveRunSummary(cause, rb) {
+    let runs = []; try { runs = JSON.parse(localStorage.getItem('nf_runs') || '[]') || []; } catch (e) { runs = []; }
+    runs.push({ ts: Date.now(), diff, ng: ngLevel, day: rb.day, lv: pl.lvl, k: totalKills, cls: playerClass, cause, age, pop: npcs.length });
+    try { localStorage.setItem('nf_runs', JSON.stringify(runs.slice(-15))); } catch (e) {}
+  }
+  function balanceReport() {
+    const L = [`Nightfall Settlement balance report`, `Now: ${diff}${ngLevel ? ' NG+' + ngLevel : ''} · Day ${dayNow()} · Lv ${pl.lvl} · class ${playerClass || '-'} · age ${age} · pop ${npcs.length} · kills ${totalKills} · power ${Math.round(powerOf().total)}`, '', 'Night log (day, raid?, kills, walls lost, citizens lost, walls fortified, built, pop, prosperity, level, power, wood/stone/iron/food):'];
+    for (const s of story.stats || []) L.push(`D${s.d}${s.raid ? ' RAID' : ''}: kills ${s.k}, walls lost ${s.wl}, citizens lost ${s.cl}, fortified ${s.f || 0}, built ${s.b}, pop ${s.pop}, pros ${s.pr}, Lv${s.lv}, power ${s.pw}, ${s.w}/${s.s}/${s.i}/${s.fd}`);
+    let runs = []; try { runs = JSON.parse(localStorage.getItem('nf_runs') || '[]') || []; } catch (e) { runs = []; }
+    if (runs.length) { L.push('', 'Past runs:'); for (const r of runs.slice().reverse()) L.push(`${new Date(r.ts).toISOString().slice(0, 10)} ${r.diff}${r.ng ? '+' + r.ng : ''}: day ${r.day}, Lv ${r.lv}, kills ${r.k}, ${r.cls || '-'}, age ${r.age}, pop ${r.pop} - ${r.cause}`); }
+    return L.join('\n');
+  }
   function gameOver(sub) {
     if (dead) return;
     dead = true;
-    const rb = recordBest();
+    const rb = recordBest(); saveRunSummary(sub, rb);
     document.getElementById('goDays').textContent = `Days survived: ${rb.day} · Level ${pl.lvl} · Foes defeated: ${totalKills} · Best on ${CFG.DIFFS[diff].label}${ngLevel ? ' NG+' + ngLevel : ''}: ${rb.best}${rb.newBest ? ' (new record!)' : ''}`;
     document.getElementById('goCause').textContent = sub;
     document.getElementById('gameover').style.display = 'flex';
@@ -978,11 +1181,12 @@
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt'); buzz(hp <= 0 ? 300 : 30);
     if (hp <= 0) gameOver('You were slain');
   }
-  function healPlayer(n) { hp = Math.min(pMaxHp(), hp + n); hpEl.textContent = Math.ceil(hp); }
+  function healPlayer(n) { if (n >= 20 && hp < pMaxHp()) Snd.play('heal', 0.8); hp = Math.min(pMaxHp(), hp + n); hpEl.textContent = Math.ceil(hp); }
   // 회복: 모닥불 곁에서 일정 시간 맞지 않으면 초당 회복, 모닥불은 낮에 서서히 회복
   function updateRegen(dt) {
     if (dead) return;
     sinceHurt += dt;
+    if (pl.st.regen > 0 && hp < pMaxHp()) hp = Math.min(pMaxHp(), hp + 0.35 * pl.st.regen * dt);
     if (fireAlive && hp < pMaxHp() && sinceHurt >= CFG.REGEN_DELAY && Math.hypot(player.position.x, player.position.z) < CFG.REGEN_RADIUS) healPlayer(CFG.REGEN_RATE * (hasPerk('scout') ? 1.5 : 1) * dt);
     if (fireAlive && fireHp < fireMax() && nowHour >= 6 && nowHour < 18) fireHp = Math.min(fireMax(), fireHp + CFG.FIRE_REGEN * dt);
   }
@@ -1054,6 +1258,7 @@
 
   // ---------- 적 (약탈자) ----------
   const enemies = [];
+  const enemyWithin = (x, z, r) => { for (const e of enemies) if (!e.userData.sinking && Math.hypot(e.position.x - x, e.position.z - z) < r) return true; return false; };       // 가까운 적이 있나 (전투 자세 이동용)
   const RAIDER_BLADE = { id: 'raider_blade', slot: 'sword', tier: 0, color: 0x6b6b70 };
   const BRUTE_CLUB = { id: 'brute_club', slot: 'sword', tier: 0, color: 0x5a3a1e };
   const enemyMat = mat(0xc4231a), bruteMat = mat(0x5a0d0a);
@@ -1062,12 +1267,14 @@
   let spawnCd = 0;
   // kind: 'normal' | 'brute' | 'shield'. 최대 HP는 날짜에 따라 HP_SCALE_EVERY일마다 +1
   const beastMat = mat(0x8a6a40), bossMat = mat(0x0b0b0e), siegeMat = mat(0x8a3fc0), shieldMat = mat(0xb8c0cc), shieldPlateMat = mat(0x666b73), shieldPlateGeo = new THREE.BoxGeometry(0.95, 1.1, 0.14);
+  const archerMat = mat(0xc9731d), healerMat = mat(0x2fbf8f), sapperMat = mat(0xd6b02a);
   function spawnEnemy(kind = 'normal', at = null) {
-    const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast';
+    const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast', archer = kind === 'archer', healer = kind === 'healer', sapper = kind === 'sapper';
     const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
-    const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : 1;
-    const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : enemyMat;
+    const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : sapper ? 0.9 : healer ? 1.05 : 1;
+    const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
+    rig.combat = true;                                                  // 적은 항상 전투 자세 이동
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
@@ -1077,7 +1284,23 @@
       }
       rig.main = 'sword'; rig.setGear('sword', { id: 'boss_club', slot: 'sword', tier: 1, color: 0x2a2a30 }); rig.meshes.sword.scale.setScalar(1.8); rig.hold('sword');
     }
-    if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
+    if (archer) {                                                                // 궁수: 두건 + 등에 맨 화살통
+      if (!rig.skin) { const hood = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.34, 7), gearMat('archerhood', 0x4a3a1e)); hood.position.set(0, 0.34, -0.02); rig.head.add(hood); }
+      const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 7), gearMat('quiver', 0x5a3a1e)); quiver.position.set(0.12, 0.3, -0.26); quiver.rotation.z = 0.25; rig.spine.add(quiver);
+      for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 4), gearMat('fletch', 0xe8e0c8)); f.position.set(0.12 + (i - 1) * 0.04, 0.6, -0.26); rig.spine.add(f); }
+    }
+    if (healer) {                                                                // 치유사: 빛나는 구슬이 달린 지팡이 + 흰 망토
+      const staff = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.5, 6), gearMat('healstaff', 0x6a4a2a)), orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshBasicMaterial({ color: 0x7affc8 }));
+      pole.position.y = 0.45; orb.position.y = 1.25; staff.add(pole, orb); staff.rotation.x = Math.PI / 2 + 0.35; rig.handR.add(staff);
+      if (!rig.skin) { const cape = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.7, 0.05), gearMat('healcape', 0xe8f4ec)); cape.position.set(0, 0.35, -0.26); rig.spine.add(cape); }
+    }
+    if (sapper) {                                                                // 폭파병: 등에 화약통 + 타오르는 도화선
+      const keg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.34, 9), gearMat('keg', 0x7a5a2a)), band = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 5, 12), gearMat('kegband', 0x3a3a3a)), fuse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
+      keg.position.set(0, 0.3, -0.3); band.rotation.x = Math.PI / 2; band.position.set(0, 0.3, -0.3); fuse.position.set(0, 0.55, -0.3); rig.spine.add(keg, band, fuse);
+    }
+    if (archer) { rig.style = 'bow'; rig.main = 'bow'; rig.setGear('bow', { id: 'raider_bow', slot: 'bow', tier: 0, color: 0x6b4a2a }); rig.hold('bow'); }
+    else if (!beast && !siege && !boss) { rig.main = 'sword'; rig.setGear('sword', brute ? BRUTE_CLUB : RAIDER_BLADE); rig.hold('sword'); }
+    if (rig.skin) rig.bodyMat.color.set(archer ? 0xffc890 : healer ? 0xb8ffd8 : sapper ? 0xffe08a : boss ? 0x6a6a74 : brute ? 0xd49a8a : shield ? 0xb8c4d8 : 0xffffff);       // 모델 질감에 종류별 색을 곱한다
     const m = new THREE.Group();
     rig.root.position.y = -0.8;                          // 그룹 중심(= 예전 원기둥 중심) 기준으로 발을 바닥에 맞춘다
     m.add(rig.root); m.material = rig.bodyMat;           // 보스 깜빡임/기절 색 변경은 m.material을 사용
@@ -1092,12 +1315,12 @@
     }
     const hpBonus = Math.floor((Math.max(1, wave.day) - 1) / CFG.HP_SCALE_EVERY) +
       (chapterCleared ? Math.max(0, wave.day - CFG.BOSS_DAY) * CFG.ENDLESS_HP_PER_DAY : 0);      // 무한 모드: 날마다 체력 추가 증가
-    const hp = scaleHp((beast ? CFG.BEAST_HP : (boss ? CFG.BOSS_HP : brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : siege ? CFG.SIEGE_HP : CFG.ENEMY_HP) + hpBonus));
+    const hp = scaleHp((beast ? CFG.BEAST_HP : archer ? CFG.ENEMY_HP * 0.8 : healer ? CFG.ENEMY_HP * 1.3 : sapper ? CFG.ENEMY_HP * 0.6 : (boss ? CFG.BOSS_HP : brute ? CFG.BRUTE_HP : shield ? CFG.SHIELD_HP : siege ? CFG.SIEGE_HP : CFG.ENEMY_HP) + hpBonus));
     m.userData = {
-      kind, brute, shield, siege, boss, throwCd: rand(1.5, 3), hp, maxHp: hp,
+      kind, brute, shield, siege, boss, archer, healer, sapper, shootCd: rand(1.2, 2.4), healCd: rand(1, 2), throwCd: rand(1.5, 3), hp, maxHp: hp,
       dpsKey: boss ? 'boss' : brute ? 'brute' : 'normal', slamCd: 3, slamT: 0, baseY: 0.8 * sc, r: ENEMY_R * sc,
-      speed: ENEMY_SPEED * (beast ? 1.35 : boss ? CFG.BOSS_SPEED_MUL : brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : 1),
-      contact: beast ? 6 : boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
+      speed: ENEMY_SPEED * (beast ? 1.35 : boss ? CFG.BOSS_SPEED_MUL : brute ? CFG.BRUTE_SPEED_MUL : shield ? CFG.SHIELD_SPEED_MUL : archer ? 0.9 : healer ? 0.85 : sapper ? 1.55 : 1),
+      contact: sapper ? 0 : archer ? 4 : beast ? 6 : boss ? CFG.BOSS_CONTACT_DMG : brute ? CFG.BRUTE_CONTACT_DMG : CFG.ENEMY_CONTACT_DMG,
       kbMul: boss ? CFG.BOSS_KB_MUL : brute ? CFG.BRUTE_KNOCKBACK_MUL : 1, kbT: 0, kbVx: 0, kbVz: 0,
       fireTimer: 0, aggro: false, sinking: false, castT: 0, stunT: 0, lureT: 0, critT: 0, tele: null,
       anim: new Anim(rig), ex: !!at, px: m.position.x, pz: m.position.z, atkAnimCd: rand(0, 0.6) };
@@ -1115,6 +1338,7 @@
       Object.assign(m.userData, { bang, stunTxt, stars });
     }
     if (wave.type === 'storm' && !at) m.userData.speed *= 1.12;          // 폭풍우: 적이 조금 더 빠르다
+    if (healer) addGlow(m, 0x4dffb0, 1.9, 1.0); if (sapper) addGlow(m, 0xffd23a, 1.5, 0.9);
     scene.add(m);
     enemies.push(m);
   }
@@ -1130,11 +1354,13 @@
     return sp;
   }
   function removeEnemy(e) { if (e.userData.tele) scene.remove(e.userData.tele); scene.remove(e); enemies.splice(enemies.indexOf(e), 1); }
-  const XP_KIND = { normal: 8, beast: 6, shield: 12, brute: 20, siege: 15, boss: 150 };
+  const XP_KIND = { archer: 12, healer: 16, sapper: 10, normal: 8, beast: 6, shield: 12, brute: 20, siege: 15, boss: 150 };
   const LEVEL_UPS = [
     { id: 'hp', label: 'Vigor', desc: '+20 max HP' }, { id: 'dmg', label: 'Might', desc: '+15% damage' }, { id: 'spd', label: 'Swift', desc: '+6% move speed' },
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
+    { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
   let barT = 0;
@@ -1159,23 +1385,93 @@
   function giveXp(n, at) {
     if (pl.lvl >= PL_MAX) return;
     pl.xp += n;
-    while (pl.lvl < PL_MAX && pl.xp >= xpNeed(pl.lvl)) { pl.xp -= xpNeed(pl.lvl); pl.lvl++; pl.pend++; toast(`Level ${pl.lvl}! Choose an upgrade`); Snd.play('chime'); buzz([40, 40, 80]); floatText(`Level ${pl.lvl}!`, player.position.x, 3.4, player.position.z); }
+    while (pl.lvl < PL_MAX && pl.xp >= xpNeed(pl.lvl)) { pl.xp -= xpNeed(pl.lvl); pl.lvl++; pl.pend++; toast(`Level ${pl.lvl}! Choose an upgrade`); Snd.play('levelup'); buzz([40, 40, 80]); floatText(`Level ${pl.lvl}!`, player.position.x, 3.4, player.position.z); }
     if (pl.lvl >= PL_MAX) pl.xp = 0;
     updateLvlUi();
   }
-  function openLevelPick() {
-    if (pl.pend <= 0 || dead || eventOpen) return;
-    const pool = LEVEL_UPS.filter(u => (!u.cls || u.cls === playerClass) && pl.st[u.id] < 5).sort(() => Math.random() - 0.5).slice(0, 3);
-    if (!pool.length) { pl.pend = 0; updateLvlUi(); return; }
-    openEvent({ tag: `Level ${pl.lvl}`, title: 'Choose an upgrade', text: 'You have grown stronger. Pick one permanent bonus.',
-      opts: pool.map(u => ({ label: u.label, sub: `${u.desc}${pl.st[u.id] ? ` · you have ${pl.st[u.id]}` : ''}`, run: () => { pl.st[u.id]++; pl.pend--; if (u.id === 'hp') healPlayer(20); updateLvlUi(); if (pl.pend > 0) setTimeout(openLevelPick, 450); return `${u.label}: ${u.desc}`; } })) });
+  // ---------- 영웅 기술 트리: 세 갈래(전사 / 사냥꾼 / 전략가). 레벨업마다 한 칸에 포인트를 넣는다. 깊은 칸은 같은 갈래에 포인트가 쌓여야 열린다 ----------
+  const TREE = [
+    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech'] },
+    { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'dash', 'forage'] },
+    { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'ult', 'regen', 'rally'] },
+  ];
+  const branchPts = (b) => b.nodes.reduce((a, id) => a + (pl.st[id] || 0), 0);
+  const nodeInfo = (id) => LEVEL_UPS.find(u => u.id === id);
+  const treeEl = document.getElementById('treePanel'); let treeSnooze = 0;
+  function renderTree() {
+    const cols = TREE.map(b => {
+      const pts = branchPts(b), nodes = b.nodes.map((id, k) => {
+        const u = nodeInfo(id), rank = pl.st[id] || 0, need = k * 2, open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
+        return `<button class="tnode${can ? ' can' : ''}${!open ? ' lock' : ''}${hidden ? ' off' : ''}" data-id="${id}" ${can ? '' : 'disabled'}><b>${u.label}</b><small>${hidden ? 'Commander only' : u.desc}</small><span class="dots">${'●'.repeat(rank)}${'○'.repeat(5 - rank)}</span>${!open ? `<em>needs ${need} points in ${b.name}</em>` : ''}</button>`;
+      }).join('<div class="tlink"></div>');
+      return `<div class="tcol" style="--bc:${b.color}"><h4>${b.name} <small>${pts} pts</small></h4>${nodes}</div>`;
+    }).join('');
+    treeEl.querySelector('#treeCols').innerHTML = cols;
+    treeEl.querySelector('#treeHead').textContent = pl.pend > 0 ? `Level ${pl.lvl} - spend ${pl.pend} point${pl.pend > 1 ? 's' : ''}` : `Level ${pl.lvl} - no points to spend`;
+    treeEl.querySelectorAll('.tnode.can').forEach(b => b.addEventListener('click', () => {
+      const u = nodeInfo(b.dataset.id); pl.st[u.id]++; pl.pend--; if (u.id === 'hp') healPlayer(20); updateLvlUi(); Snd.play('chime'); toast(`${u.label}: ${u.desc}`);
+      if (pl.pend <= 0) closeTree(); else renderTree();
+    }));
+  }
+  function closeTree(snooze) { treeEl.style.display = 'none'; uiPause = false; if (snooze) treeSnooze = performance.now() + 60000; }
+  document.getElementById('treeClose').addEventListener('click', () => closeTree(true));
+  function openLevelPick(force) {
+    if (dead || eventOpen || (pl.pend <= 0 && !force)) return;
+    if (pl.pend > 0 && !TREE.some(b => b.nodes.some(id => (pl.st[id] || 0) < 5 && !(nodeInfo(id).cls && nodeInfo(id).cls !== playerClass)))) { pl.pend = 0; updateLvlUi(); return; }
+    renderTree(); treeEl.style.display = 'flex'; uiPause = true; toggleStats(false);
   }
   setInterval(() => {                                   // 안전할 때(주변에 적이 없을 때) 선택창을 자동으로 띄운다
-    if (pl.pend <= 0 || eventOpen || dead || !saveReady || uiPause) return;
+    if (pl.pend <= 0 || eventOpen || dead || !saveReady || uiPause || performance.now() < treeSnooze) return;
     if (enemies.some(e => !e.userData.sinking && Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z) < 28)) return;
     openLevelPick();
   }, 1200);
-  document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (pl.pend > 0) { toggleStats(false); openLevelPick(); } else toggleStats(false); });
+  document.getElementById('lvlRow').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleStats(false); openLevelPick(true); });
+
+  // ---------- 새 적: 궁수(멀리서 화살) / 치유사(주변 적 회복) / 폭파병(목책으로 달려가 자폭) ----------
+  const enemyArrows = [], eArrowGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.8, 5), eArrowMat = new THREE.MeshBasicMaterial({ color: 0xc86a2a });
+  function fireEnemyArrow(e, tx, tz) {
+    e.userData.anim.once('attackBow');                                      // 화살을 뽑아 걸고 시위를 놓는 순간에 날아간다
+    later(e.userData.anim.hitIn ?? 0.3, () => {
+      if (e.userData.sinking || !enemies.includes(e)) return;
+      const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
+      m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
+      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 }); sfxAt('bow', sx, sz);
+    });
+  }
+  function updateEnemyArrows(dt) {
+    for (let i = enemyArrows.length - 1; i >= 0; i--) {
+      const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; a.life -= dt;
+      let hit = false;
+      if (!dead && invincibleT <= 0 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < 0.75) { damage(CFG.ENEMY_CONTACT_DMG * 0.8); hurtCd = Math.max(hurtCd, 0.3); hit = true; }
+      if (!hit) for (const n of npcs) if (!n.down && Math.hypot(n.position.x - p.x, n.position.z - p.z) < 0.7) { damageNpc(n, CFG.ENEMY_CONTACT_DMG * 0.8); hit = true; break; }
+      if (!hit) for (const o of obstacles) if (o.userData.type === 'fence' && Math.hypot(o.position.x - p.x, o.position.z - p.z) < o.userData.radius) { damageStructure(o, 4); hit = true; break; }
+      if (hit || a.life <= 0) { scene.remove(a.m); enemyArrows.splice(i, 1); }
+    }
+  }
+  function archerStep(e, u, dt) {                      // 사거리 안에 표적(플레이어 > 병사 > 모닥불)이 있으면 쏜다
+    u.shootCd -= dt; if (u.shootCd > 0 || u.stunT > 0) return;
+    let tx = null, tz = null, bd = 13;
+    const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+    if (pd < bd && !dead) { tx = player.position.x; tz = player.position.z; bd = pd; }
+    for (const n of npcs) { if (n.down) continue; const d = Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z); if (d < bd - 1.5) { bd = d; tx = n.position.x; tz = n.position.z; } }
+    if (tx === null && fireAlive && Math.hypot(e.position.x, e.position.z) < 13) { tx = 0; tz = 0; }
+    if (tx === null) return;
+    u.shootCd = rand(2.0, 2.8); fireEnemyArrow(e, tx, tz);
+  }
+  function healerStep(e, u, dt) {
+    u.healCd -= dt; if (u.healCd > 0 || u.stunT > 0) return; u.healCd = 2.2;
+    let healed = 0;
+    for (const o of enemies) { const v = o.userData; if (o === e || v.sinking || v.hp >= v.maxHp || Math.hypot(o.position.x - e.position.x, o.position.z - e.position.z) > 6.5) continue; v.hp = Math.min(v.maxHp, v.hp + v.maxHp * 0.1 + 1); healed++; burst(o.position, 3); }
+    if (healed) { floatText('+heal', e.position.x, 2.4, e.position.z); Snd.play('heal', 0.4); }
+  }
+  function sapperBoom(e, u) {
+    const x = e.position.x, z = e.position.z; u.hp = 0;
+    burst(e.position, 24); sfxAt('boom', x, z); if (Math.hypot(player.position.x - x, player.position.z - z) < 25) shake = Math.max(shake, 0.35);
+    for (const o of obstacles.slice()) if (o.userData.type === 'fence' && Math.hypot(o.position.x - x, o.position.z - z) < 3.4) damageStructure(o, CFG.ROCK_DAMAGE * 1.1);
+    if (Math.hypot(player.position.x - x, player.position.z - z) < 3 && invincibleT <= 0) damage(CFG.BRUTE_CONTACT_DMG * 0.7);
+    for (const n of npcs) if (!n.down && Math.hypot(n.position.x - x, n.position.z - z) < 3) damageNpc(n, CFG.BRUTE_CONTACT_DMG * 0.7);
+    u.kind = 'sapper'; killEnemy(e);
+  }
   // ---------- 밤 활동: 새벽까지 쉬기 ----------
   const restBtnEl = document.getElementById('restBtn');
   function canRest() {
@@ -1207,19 +1503,48 @@
     }
     setTimeout(() => toast('Night hunt: prowlers roam beyond the walls - double XP and loot, but it is dark out there'), 1500);
   }
+  function ambushStep(e, u, dt) {                                          // 도적: 마차가 있으면 마차를, 플레이어가 가까우면 플레이어를 쫓는다
+    const c = typeof caravan !== 'undefined' ? caravan : null, pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+    let tx, tz, td;
+    if (c && (pd > 9 || dead)) { tx = c.g.position.x; tz = c.g.position.z; } else { tx = player.position.x; tz = player.position.z; }
+    td = Math.hypot(tx - e.position.x, tz - e.position.z);
+    e.lookAt(tx, e.position.y, tz);
+    if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
+    else if (td > 1.1 && !(u.stunT > 0)) { const ts = terrSpd(e.position.x, e.position.z); e.position.x += (tx - e.position.x) / td * u.speed * 1.1 * ts * dt; e.position.z += (tz - e.position.z) / td * u.speed * 1.1 * ts * dt; }
+    u.anim.base(td > 1.2 ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
+    if (c && Math.hypot(c.g.position.x - e.position.x, c.g.position.z - e.position.z) < 1.6) { c.hp -= 7 * dt; if (u.atkAnimCd <= 0) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); } }
+    if (pd < PLAYER_R + u.r + 0.15 && hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
+    if (!c) u.keepDay = false;                                              // 마차가 사라지면 도적도 흩어진다
+  }
+  // ---------- 떠돌이: 낮에도 밤에도 마을 밖 지도 곳곳을 어슬렁거리는 적. 마을 안으로는 들어오지 않고, 가까이 가면 쫓아온다 ----------
+  let roamT = 3;
+  function roamerTick(dt) {
+    if (dead || exActive || uiPause || eventOpen) return;
+    roamT -= dt; if (roamT > 0) return;
+    const day = Math.max(1, dayNow()), want = Math.min(6, 2 + Math.floor(day / 3));
+    let n = 0; for (const e of enemies) if (e.userData.roam && !e.userData.sinking) n++;
+    roamT = n < want / 2 ? 2 : 7; if (n >= want) return;
+    for (let k = 0; k < 10; k++) {
+      const a = rand(0, Math.PI * 2), r = rand(38, MAP - 8), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.hypot(x - player.position.x, z - player.position.z) < 24) continue;
+      const kind = Math.random() < 0.45 ? 'beast' : day >= 3 && Math.random() < 0.25 ? 'brute' : 'normal';
+      spawnEnemy(kind, { x, z }); const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; e.userData.roam = true; break;
+    }
+  }
   function prowlStep(e, u, dt) {
     const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
     u.aggro = u.aggro ? pd < 18 : pd < 11;
+    if (u.roam && Math.hypot(player.position.x, player.position.z) < 32) u.aggro = false;       // 떠돌이는 마을 안까지 쫓아오지 않는다
     let moving = false;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
-    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { e.position.x += (player.position.x - e.position.x) / pd * u.speed * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * dt; e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
+    else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { { const ts = terrSpd(e.position.x, e.position.z) * climbMul(e.position.x, e.position.z, player.position.x, player.position.z); e.position.x += (player.position.x - e.position.x) / pd * u.speed * ts * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * ts * dt; } e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
     else if (!u.aggro) {
       u.wT = (u.wT || 0) - dt;
-      if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
+      if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = u.roam ? rand(38, MAP - 8) : rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
       const dx = u.wp.x - e.position.x, dz = u.wp.z - e.position.z, d = Math.hypot(dx, dz);
-      if (d > 0.8) { e.position.x += dx / d * u.speed * 0.45 * dt; e.position.z += dz / d * u.speed * 0.45 * dt; e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
+      if (d > 0.8) { { const ts = terrSpd(e.position.x, e.position.z) * climbMul(e.position.x, e.position.z, e.position.x + dx, e.position.z + dz); e.position.x += dx / d * u.speed * 0.45 * ts * dt; e.position.z += dz / d * u.speed * 0.45 * ts * dt; } e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
     }
-    const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; }
+    const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; } else if (u.roam && rr < 34) { e.position.x *= 34 / Math.max(rr, 1e-3); e.position.z *= 34 / Math.max(rr, 1e-3); }       // 떠돌이는 성벽 근처까지만
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
     if (pd < PLAYER_R + u.r + 0.15) {
       if (hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
@@ -1227,7 +1552,7 @@
     }
   }
   // ---------- 밤 활동 2: 모닥불 이야기 / 등불 상인 / 밤 손님 ----------
-  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide };
+  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide, eclipse: () => story.eclipse };
   const nightDayNo = () => { const h = (gameMin / 60) % 24; return h < 5 ? dayNow() - 1 : dayNow(); };
   let taleT = 0, nmActive = null, nmLantern = null, lastNightEvDay = 0;
   function nextTale() { return CFG.TALES.find(t => !story.tales[t.id] && TALE_REQ[t.req]()); }
@@ -1297,20 +1622,22 @@
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
-    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * (u.prowl || (u.ex && exActive && exActive.night) ? 2 : 1));
+    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * ((u.prowl && !u.roam) || (u.ex && exActive && exActive.night) ? 2 : u.roam ? 1.3 : 1));
     if (u.guardian && exActive && exActive.night) { pl.pend++; updateLvlUi(); toast('The guardian falls - a bonus upgrade is waiting'); }
-    if (u.prowl) {                                                       // 밤사냥 전리품
+    if (u.roam) { if (Math.random() < 0.35) { res.iron++; floatText('Loot: Iron +1', e.position.x, 2.6, e.position.z); updateHud(); } }
+    else if (u.prowl) {                                                       // 밤사냥 전리품
       if (Math.random() < 0.55) { res.iron++; floatText('Loot: Iron +1', e.position.x, 2.6, e.position.z); }
       if (Math.random() < 0.45) { res.food += 2; floatText('Loot: Food +2', e.position.x, 3.0, e.position.z); }
       if (story.beacon && Math.random() < 0.1) { res.shard++; floatText('Loot: Shard +1', e.position.x, 3.4, e.position.z); }
       updateHud();
     }
+    if (u.champ) { story.champs = (story.champs || 0) + 1; const k = 8 + dayNow(); res.iron += k; res.shard++; giveXp(80); floatText(`Champion down! +${k} Iron, +1 Shard`, e.position.x, 3.2, e.position.z); Snd.play('victory'); updateHud(); }
     if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'plunder' && Math.random() < 0.4) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     hideTelegraph(e);
-    u.sinking = true; u.dying = 1.0; e.position.y = u.baseY; u.anim.die();
+    u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die();
     if (u.bang) u.bang.visible = u.stunTxt.visible = u.stars.visible = false;
     if (u.boss) onBossDefeated();
   }
@@ -1323,6 +1650,7 @@
       dmg *= CFG.STUN_DMG_MULT;
       if (u.critT <= 0) { u.critT = 0.45; floatText('CRITICAL x2!', e.position.x, e.position.y + 5.2, e.position.z); }
     }
+    if (byPlayer && !exActive) { const hi = player.position.y - (u.gy || 0); if (hi > 0.3) dmg *= 1 + Math.min(0.25, hi * 0.2); }       // 높은 곳에서 내려치면 최대 +25%
     if (byPlayer && u.boss) u.lureT = CFG.BOSS_LURE_TIME;      // 플레이어가 때리면 10초간 플레이어만 쫓는다
     u.hp -= dmg;
     sfxAt('hit', e.position.x, e.position.z);
@@ -1337,14 +1665,14 @@
   // 부채꼴 판정(근접): (x,z)에서 ang 방향, 검 데미지만큼 피해 (플레이어·근접 동료 공통). 방패병도 정상 피해를 받는다.
   function sectorHit(x, z, ang, byPlayer = false, def = gearDef(playerGear.sword)) {
     const fx = Math.sin(ang), fz = Math.cos(ang);
-    const range = ATK_RANGE * slashScale(def);
+    const range = ATK_RANGE * slashScale(def) * (def.rangeMul || 1), half = def.half || ATK_HALF;
     let n = 0;
     for (const e of enemies.slice()) {
       if (e.userData.sinking) continue;
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(ATK_HALF)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
     }
     return n;
   }
@@ -1375,7 +1703,8 @@
   }
   function defenseSummary() {
     const fences = obstacles.filter(o => o.userData.type === 'fence'), wallPct = fences.length ? Math.round(100 * fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length) : 0;
-    return `Walls ${wallPct}% · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}`;
+    const weak = fences.filter(f => f.userData.hp / f.userData.maxHp < 0.5).length;
+    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}`;
   }
   function startWave(day) {
     wave.day = day;
@@ -1400,7 +1729,32 @@
     wave.siegeLeft = day >= CFG.SIEGE_FROM_DAY ? 1 + (Math.random() < 0.5 ? 1 : 0) : 0;      // Day 4부터 밤마다 공성 투척병 1~2마리
     if (day === CFG.BOSS_DAY) { wave.remaining = Math.ceil(wave.remaining / 2); wave.bossLeft = 1; }     // 보스 밤: 일반 적 절반 + 베헤모스 1마리
     if (chapterCleared && day > CFG.BOSS_DAY) wave.remaining += (day - CFG.BOSS_DAY) * CFG.ENDLESS_EXTRA_PER_DAY;   // 무한 모드 물량 증가
+    wave.champ = 0;
+    if (chapterCleared && day > CFG.BOSS_DAY) { story.raidN = (story.raidN || 0) + 1; if (story.raidN % 2 === 0) { wave.champ = 1; } }       // 무한 모드: 두 번째 큰 습격마다 이름 있는 챔피언이 온다
     spawnCd = 0;
+  }
+  function spawnChampion() {
+    const ch = CFG.CHAMPIONS[(story.champs || 0) % CFG.CHAMPIONS.length], before = enemies.length;
+    spawnEnemy('brute'); if (enemies.length === before) return;
+    const e = enemies[enemies.length - 1], u = e.userData, s = ch.scale;
+    u.hp *= ch.hpMul; u.maxHp = u.hp; u.champ = true; u.contact *= 1.25; u.r *= s; u.baseY *= s; e.scale.multiplyScalar(s); e.position.y = u.baseY;
+    frostTint(e, ch.faction); addGlow(e, FOE_GLOW[ch.faction] || 0xff6a4a, 3.2, 1.4);
+    const lbl = textSprite(ch.name, '#ff9a5a', 1.5, 0.5, 'bold 56px sans-serif'); lbl.position.set(0, 2.5, 0); e.add(lbl);
+    showWarning(`Champion: the ${ch.name} has come!`);
+  }
+  // 날짜가 지날수록 특수 적이 섞인다: 폭파병(4일~) / 궁수(5일~) / 치유사(6일~). 한 번에 살아 있는 수를 제한한다
+  function specialKind(day) {
+    const alive = (k) => enemies.filter(x => x.userData.kind === k && !x.userData.sinking).length, r = Math.random(), f = Math.min(1.6, 1 + (day - 4) * 0.08);
+    if (day >= 4 && alive('sapper') < 2 + Math.floor(day / 8) && r < 0.09 * f) return 'sapper';
+    if (day >= 5 && alive('archer') < 2 + Math.floor(day / 6) && r < 0.2 * f) return 'archer';
+    if (day >= 6 && alive('healer') < 1 + Math.floor(day / 10) && r < 0.28 * f) return 'healer';
+    return 'normal';
+  }
+  // 성벽의 약한 곳: 체력 비율이 낮고(목책은 돌보다 약하게 친다) 가까운 구간. 멀쩡한 성벽(80%↑)은 표적이 되지 않는다
+  function weakestWall(e) {
+    let best = null, bs = 0.8;
+    for (const o of obstacles) { if (o.userData.type !== 'fence') continue; const d = Math.hypot(o.position.x - e.position.x, o.position.z - e.position.z); if (d > 28) continue; const sc = (o.userData.hp / o.userData.maxHp) * (o.userData.level === 'wood' ? 0.9 : 1) + d / 140; if (sc < bs) { bs = sc; best = o; } }
+    return best;
   }
   function updateEnemies(dt, night, waveDay) {
     if (night && wave.day !== waveDay) startWave(waveDay);
@@ -1409,6 +1763,7 @@
       spawnEnemy('boss'); wave.bossLeft = 0;
       showWarning('The Behemoth has appeared!'); shake = Math.max(shake, 0.8);
     }
+    if (night && !dead && wave.champ > 0 && nh >= CFG.BOSS_SPAWN_HOUR) { wave.champ = 0; spawnChampion(); }
     if (night && !dead && (wave.remaining > 0 || wave.siegeLeft > 0)) {
       spawnCd -= dt;
       if (spawnCd <= 0 && enemies.length < CFG.MAX_ALIVE) {
@@ -1417,7 +1772,7 @@
         } else {
           const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
-            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : 'normal');
+            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : specialKind(waveDay));
           spawnEnemy(kind);
           wave.remaining--;
         }
@@ -1427,7 +1782,7 @@
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
-      if (!night && !u.sinking && !u.boss && !u.ex) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
+      if (!night && !u.sinking && !u.boss && !u.ex && !u.roam && !(u.keepDay && caravan)) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
       if (u.sinking) {
         if (u.dying > 0) { u.dying -= dt; continue; }
         e.position.y -= dt * 0.8;
@@ -1436,12 +1791,19 @@
       }
       if (dead) continue;
       if (u.ex) { exEnemyStep(e, u, dt); continue; }                    // 원정 지역의 적은 별도 AI
+      if (u.amb) { ambushStep(e, u, dt); continue; }                  // 마차를 노리는 도적
       if (u.prowl) { prowlStep(e, u, dt); continue; }                   // 밤사냥 방랑자: 떠돌다가 플레이어를 보면 쫓는다
 
       // 기본 목표는 모닥불, 플레이어가 인식 거리 안이면 플레이어를 추적 (Aggro)
       const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
       u.aggro = u.siege ? false : (u.boss && u.lureT > 0) ? true : (u.aggro ? pd < DEAGGRO : pd < AGGRO);      // 보스는 맞은 뒤 10초간 플레이어 고정      // 공성 투척병은 플레이어를 쫓지 않는다
-      const tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      let tx = u.aggro ? player.position.x : 0, tz = u.aggro ? player.position.z : 0;
+      if (u.sapper && !u.aggro) { let bd = 1e9; for (const o of obstacles) { if (o.userData.type !== 'fence') continue; const q = (o.position.x - e.position.x) ** 2 + (o.position.z - e.position.z) ** 2; if (q < bd) { bd = q; tx = o.position.x; tz = o.position.z; } } }       // 폭파병은 가장 가까운 목책으로
+      else if (!u.aggro && !u.siege && !u.boss && !u.archer && !u.healer) {                      // 약한 곳 노리기: 근처에 크게 다친 성벽이 있으면 그쪽으로 몰려간다
+        if ((u.wallT = (u.wallT || 0) - dt) <= 0) { u.wallT = 1.5; u.wallGoal = weakestWall(e); }
+        if (u.wallGoal && obstacles.includes(u.wallGoal)) { tx = u.wallGoal.position.x; tz = u.wallGoal.position.z; }
+      }
+      if (u.archer) archerStep(e, u, dt); if (u.healer) healerStep(e, u, dt);
       e.lookAt(tx, e.position.y, tz);
       const dx = tx - e.position.x, dz = tz - e.position.z;
       const d = Math.hypot(dx, dz);
@@ -1449,7 +1811,7 @@
       if (u.kbT > 0) {                       // 넉백 중에는 밀려남
         u.kbT -= dt;
         e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt;
-      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF)) {   // 투척병은 안전거리에서 멈춘다
+      } else if (d > 0.8 && !(u.slamT > 0) && !(u.castT > 0) && !(u.stunT > 0) && !(u.siege && Math.hypot(e.position.x, e.position.z) <= CFG.SIEGE_STANDOFF) && !(u.archer && d < 9.5)) {   // 투척병은 안전거리에서 멈춘다
         e.position.x += dx / d * u.speed * dt;
         e.position.z += dz / d * u.speed * dt;
       }
@@ -1463,6 +1825,7 @@
           if (o.userData.type === 'fence') blocked = o;
         }
       }
+      if (u.sapper && (blocked || pd < 1.3)) { sapperBoom(e, u); continue; }
       if (blocked) {
         e.position.x += (Math.random() - .5) * 0.02;
         if (!(u.stunT > 0)) blocked.userData.hp -= CFG.STRUCT_DPS[u.dpsKey][blocked.userData.level === 'stone' ? 'stone' : 'wood'] * dt * dm().dmg;   // 구조물 체력 감소
@@ -1484,8 +1847,8 @@
           if (u.stunT <= 0) bossRecover(e);
         } else if (u.slamT > 0) {
           u.slamT -= dt;
-          e.position.y = u.baseY + Math.sin((1 - Math.max(u.slamT, 0) / CFG.BOSS_JUMP_TIME) * Math.PI) * 1.8;
-          if (u.slamT <= 0) { e.position.y = u.baseY; spawnShockwave(e.position.x, e.position.z); }
+          e.position.y = u.baseY + (u.gy || 0) + Math.sin((1 - Math.max(u.slamT, 0) / CFG.BOSS_JUMP_TIME) * Math.PI) * 1.8;
+          if (u.slamT <= 0) { e.position.y = u.baseY + (u.gy || 0); spawnShockwave(e.position.x, e.position.z); }
         } else if (u.castT > 0) {
           u.castT -= dt;
           const pulse = 0.5 + 0.5 * Math.sin(u.castT * 24);
@@ -1529,6 +1892,7 @@
         }
       }
     }
+    updateEnemyArrows(dt);
     hurtCd -= dt;
     for (const n of npcs) n.hurtCd -= dt;
   }
@@ -1561,8 +1925,13 @@
     return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false });
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
-    n.rig.main = n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
-    n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
+    if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
+    const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
+    n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
+    n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
+    { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
+    n.rig.setGear('staff', cls === 'medic' ? {} : null);
     n.rig.setGear('bow', n.role === 'archer' ? gearDef(n.gear.bow) : null);
     n.rig.setArmor(n.role === 'citizen' ? null : gearDef(n.gear.armor));
     n.rig.hold(n.rig.main);
@@ -1626,7 +1995,7 @@
   }
 
   const TR = (n) => CFG.TRAITS[n.trait] || {};
-  const workMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.6 : 1) * (TR(n).work || 1) * (n.mood >= CFG.MOOD_HAPPY ? 1.1 : n.mood < CFG.MOOD_UNHAPPY ? 0.8 : 1);
+  const workMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.6 : 1) * (TR(n).work || 1) * (n.mood >= CFG.MOOD_HAPPY ? 1.1 : n.mood < CFG.MOOD_UNHAPPY ? 0.8 : 1) * (n.foreman ? 1.25 : npcs.some(f => f.foreman && !f.down) ? 1.12 : 1);
   const moveMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.75 : 1) * (TR(n).move || 1) * (n.mood < CFG.MOOD_UNHAPPY ? 0.9 : 1);
   const rationOf = (n) => Math.ceil(CFG.RATION * (TR(n).ration || 1) * season().ration);
   const moodLabel = (v) => v < CFG.MOOD_LEAVE ? 'Miserable' : v < CFG.MOOD_UNHAPPY ? 'Unhappy' : v < 60 ? 'Content' : v < CFG.MOOD_HAPPY ? 'Happy' : 'Joyful';
@@ -1685,7 +2054,7 @@
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
-    if (n.role !== 'citizen' || age < 2) return;
+    if (n.role !== 'citizen' || age < 2 || n.rig.skin) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
     if (age === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
@@ -1693,7 +2062,7 @@
     n.body.add(g); n.decor = g;
   }
   function refreshCitizens() {
-    for (const n of npcs) if (n.role === 'citizen') { n.baseColor = citizenColor(); if (!n.down) n.mat.color.set(n.baseColor); applyCitizenLook(n); }
+    for (const n of npcs) if (n.role === 'citizen') { n.baseColor = n.rig.skin ? 0xffffff : citizenColor(); if (!n.down) n.mat.color.set(n.baseColor); applyCitizenLook(n); }
   }
 
   // ---------- 인구 / 직업 (문명 시스템) ----------
@@ -1723,15 +2092,18 @@
     if (moodEl.textContent !== mt) moodEl.textContent = mt;
   }
   // ---------- 아침 요약 카드: 어젯밤과 어제 하루 동안 마을에서 일어난 일 ----------
-  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, newCit: 0, equipped: 0, forged: 0, ill: [], healed: [], season: '', camps: '', res: { ...res }, pros: prosScore, pop: 0 });
+  const freshReport = () => ({ left: [], kills: 0, lostCit: 0, wallsLost: 0, built: 0, upgraded: 0, fort: 0, rep: 0, newCit: 0, equipped: 0, forged: 0, ill: [], healed: [], season: '', camps: '', res: { ...res }, pros: prosScore, pop: 0 });
   let report = freshReport();
   const repEl = document.getElementById('report'), repList = document.getElementById('repList');
   let repTimer;
   function showReport(dayNo) {
     const r = report, rows = [], d = (k) => res[k] - r.res[k];
+    if (dayNo > 1) { (story.stats || (story.stats = [])).push({ d: dayNo - 1, raid: isRaid(dayNo - 1) ? 1 : 0, k: r.kills, wl: r.wallsLost, cl: r.lostCit, f: r.fort, b: r.built, pop: npcs.length, pr: Math.round(prosScore), lv: pl.lvl, pw: Math.round(powerOf().total), w: res.wood, s: res.stone, i: res.iron, fd: Math.floor(res.food) }); if (story.stats.length > 120) story.stats.shift(); }
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
+    { const fm = npcs.find(n => n.foreman), woodLeft = age >= CFG.UPGRADE_FENCE_AGE ? obstacles.filter(o => o.userData.type === 'fence' && o.userData.level === 'wood').length : 0;
+      if (r.fort || r.rep || woodLeft) rows.push(`${fm ? 'Foreman ' + fm.name : 'Workers'}: ${r.fort} wall${r.fort === 1 ? '' : 's'} fortified, ${r.rep} repaired${woodLeft ? ` · ${woodLeft} wooden left${res.stone < CFG.FENCE_UPGRADE_STONE ? ' (need stone)' : ''}` : ''}`); }
     if (isRaid(dayNo)) rows.push(`⚠ Raid tonight: ${forecast(dayNo)}`); else if (isRaid(dayNo + 1)) rows.push(`⚠ Raid TOMORROW night: ${forecast(dayNo + 1)}`);
     if (r.season) rows.push(r.season);
     if (r.camps) rows.push(`Camps delivered: ${r.camps}`);
@@ -1767,11 +2139,13 @@
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
   const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
+  const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
+  const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
   function renderCard() {
     const n = cardNpc;
     if (!n || !npcs.includes(n)) { cardNpc = null; ncEl.style.display = 'none'; return; }
     const tr = TR(n), m = Math.round(n.mood), col = m < CFG.MOOD_LEAVE ? '#d9534f' : m < CFG.MOOD_UNHAPPY ? '#e8923a' : m < CFG.MOOD_HAPPY ? '#d9c84a' : '#5cc86a';
-    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${ROLE_TITLE[n.role]} · HP ${n.hp}/${n.maxHp}`;
+    document.getElementById('ncName').textContent = n.name; document.getElementById('ncRole').textContent = `${clsTitle(n)} · HP ${n.hp}/${n.maxHp}`;
     document.getElementById('ncTrait').innerHTML = `<b>${tr.label}</b> - ${tr.desc}`;
     const bar = document.getElementById('ncMoodBar'); bar.style.width = `${m}%`; bar.style.background = col;
     document.getElementById('ncMoodTxt').textContent = `Mood: ${moodLabel(m)} (${m}/100)` + (m < CFG.MOOD_UNHAPPY ? ' - works slower' : m >= CFG.MOOD_HAPPY ? ' - works a bit faster' : '');
@@ -1786,10 +2160,13 @@
       const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
+    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -1912,6 +2289,52 @@
       }).concat(npcs.some(n => n.sick > 0) ? [{ label: 'Buy healing herbs', sub: 'Costs 2 Iron · cures every sick citizen', ok: () => res.iron >= 2, run: () => { res.iron -= 2; npcs.forEach(n => { n.sick = 0; }); setTimeout(() => merchantMenu(lots, rate, p), 450); return 'The sick are on their feet again'; } }] : [])
         .concat([{ label: 'Farewell', alt: true, run: () => 'The merchant moves on' }]) });
   }
+  // ---------- 교역 마차: 닷새째부터 나흘마다 강 건너편에서 다리를 건너 마을 문으로 온다. 길이 많을수록 교역이 커지고, 가끔 도적이 매복한다 ----------
+  let caravan = null, caravanDay = 0, caravanDone = 0;
+  const cartMat = mat(0x8a5a30), cartCover = mat(0xe8dcc4), wheelMat = mat(0x3a2a1a);
+  function caravanMorning(dayNo) {
+    if (dayNo >= 5 && (dayNo - 5) % 4 === 0 && caravanDone !== dayNo && builtBuildings('market').length) { caravanDay = dayNo; setTimeout(() => toast('A trade caravan is on the road - it crosses the bridge this morning'), 4200); }
+  }
+  function spawnCaravan() {
+    const g = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.0), cartMat), cover = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8, 1, false, 0, Math.PI), cartCover);
+    body.position.y = 0.6; cover.rotation.z = Math.PI / 2; cover.position.y = 1.0; g.add(body, cover);
+    for (const sx of [-0.55, 0.55]) for (const sz of [-0.55, 0.55]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 10), wheelMat); w.rotation.x = Math.PI / 2; w.position.set(sx, 0.3, sz); g.add(w); }
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.04), bannerMat); flag.position.set(0, 1.9, 0); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 5), wheelMat); pole.position.set(-0.25, 1.5, 0); g.add(pole, flag);
+    g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+    const gate = gateWaypoints.slice().sort((a, b) => Math.hypot(a.x - BR.x, a.z - BR.z) - Math.hypot(b.x - BR.x, b.z - BR.z))[0];
+    const goal = gate ? { x: gate.x + gate.nx * 4, z: gate.z + gate.nz * 4 } : { x: BR.x * 0.2, z: BR.z * 0.2 };
+    const far = { x: BR.ux * (TERR.riverR + 12), z: BR.uz * (TERR.riverR + 12) }, pts = [far, { x: BR.x + BR.ux * 8, z: BR.z + BR.uz * 8 }, { x: BR.x - BR.ux * 8, z: BR.z - BR.uz * 8 }, goal];
+    g.position.set(far.x, actorH(far.x, far.z), far.z); scene.add(g);
+    caravan = { g, pts, i: 1, hp: 70, maxHp: 70, wait: 0, back: false, amb: Math.random() < 0.4, ambDone: false, road: Math.min(1.5, 1 + (story.roads || []).length / 80) };
+    caravanDone = caravanDay; toast('Caravan sighted by the river');
+  }
+  function endCaravan(ok) { if (!caravan) return; scene.remove(caravan.g); caravan = null; if (!ok) toast('The caravan was lost'); }
+  function caravanTick(dt) {
+    const h = (gameMin / 60) % 24;
+    if (!caravan && caravanDay && caravanDay === dayNow() && h >= 8 && h < 16 && !exActive && !dead && caravanDone !== caravanDay) spawnCaravan();
+    if (!caravan) return;
+    const c = caravan; if (exActive || dead) return;
+    if (h >= 18 || h < 6) { endCaravan(true); return; }
+    if (c.hp <= 0) { burst(c.g.position, 20); endCaravan(false); return; }
+    if (c.amb && !c.ambDone && c.i >= 2) {                               // 매복: 다리를 건넌 뒤 도적 3~4명이 길목에서 튀어나온다
+      c.ambDone = true; const n = 3 + Math.floor(dayNow() / 10), p = c.g.position;
+      for (let k = 0; k < n; k++) { spawnEnemy('normal', { x: p.x + BR.ux * 9 + rand(-3, 3), z: p.z + BR.uz * 9 + rand(-3, 3) }); const b = enemies[enemies.length - 1]; b.userData.ex = false; b.userData.amb = true; b.userData.keepDay = true; b.userData.aggro = true; frostTint(b, 'ash'); }
+      showWarning('Bandits ambush the caravan!');
+    }
+    if (c.wait > 0) { c.wait -= dt; if (c.wait <= 0) { c.back = true; c.i = c.pts.length - 2; } return; }
+    const tgt = c.pts[c.i], p = c.g.position, dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz);
+    const stopped = enemies.some(e => e.userData.amb && !e.userData.sinking && Math.hypot(e.position.x - p.x, e.position.z - p.z) < 3.2);       // 도적이 붙으면 멈춘다
+    if (d > 0.5 && !stopped) { const sp = 2.6 * terrSpd(p.x, p.z) * dt; p.x += dx / d * sp; p.z += dz / d * sp; c.g.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; p.y = actorH(p.x, p.z); }
+    if (d <= 0.5) {
+      if (!c.back && c.i === c.pts.length - 1) {                           // 도착: 교역
+        const day = dayNow(), k = c.road, iron = Math.round((6 + day * 0.6) * k), food = Math.round((10 + day) * k), gold = story.beacon ? 1 + (k > 1.25 ? 1 : 0) : 0;
+        res.iron += iron; res.food += food; res.shard += gold; updateHud(); giveXp(15 + day);
+        floatText(`Caravan: +${iron} Iron, +${food} Food${gold ? ', +' + gold + ' Shard' : ''}`, p.x, 3.2, p.z); toast(`The caravan traded: +${iron} Iron, +${food} Food${gold ? `, +${gold} Shard` : ''}${k > 1.2 ? ' (busy roads pay well)' : ''}`); Snd.play('chime');
+        report.season = (report.season ? report.season + ' | ' : '') + 'Caravan trade completed'; c.wait = 4;
+      } else if (c.back && c.i === 0) { endCaravan(true); return; }
+      else c.i += c.back ? -1 : 1;
+    }
+  }
   function merchantVisit(dayNo) {
     if (!builtBuildings('market').length || dayNo < 4 || (dayNo - 4) % 3 !== 0 || lastMerchantDay === dayNo) return;
     lastMerchantDay = dayNo;
@@ -1962,7 +2385,14 @@
     const before = skillLv(n, k); n.xp[k] = (n.xp[k] || 0) + 1;
     if (skillLv(n, k) > before) floatText(`${CFG.JOBS[k]}: ${CFG.SKILL_NAMES[skillLv(n, k)]}!`, n.position.x, 3.2, n.position.z);
   }
-  const jobTitle = (n) => { const k = jobKind(n); return k ? `${CFG.JOBS[k]} (${CFG.SKILL_NAMES[skillLv(n, k)]})` : 'Laborer'; };
+  // 작업반장: 마을이 커지면(5명 이상) 경험이 가장 많은 사람이 반장이 된다. 반장은 일이 25% 빠르고, 반장이 살아 있으면 나머지도 12% 빨라진다
+  function assignForeman() {
+    for (const n of npcs) n.foreman = false;
+    const pool = npcs.filter(n => !n.down && !n.promote && !n.escort); if (pool.length < 5) return;
+    let best = null, bs = -1; for (const n of pool) { const s = Object.values(n.xp || {}).reduce((a, b) => a + b, 0) + (n.vxp || 0) * 0.5; if (s > bs) { bs = s; best = n; } }
+    if (best) { best.foreman = true; if (!story.foreman) { story.foreman = true; setTimeout(() => toast(`${best.name} has become the foreman: building and repairs go faster`), 2500); } }
+  }
+  const jobTitle = (n) => { if (n.foreman) return 'Foreman'; const k = jobKind(n); return k ? `${CFG.JOBS[k]} (${CFG.SKILL_NAMES[skillLv(n, k)]})` : 'Laborer'; };
   const PREF_LABEL = (p) => p === 'free' ? 'Laborer' : p ? CFG.JOBS[p] : 'Auto';
   function nextPref(n) {                           // 카드 버튼: Auto → (지어진 일터 종류들) → Laborer → Auto
     const opts = [null, ...Object.keys(CFG.JOBS).filter(k => builtBuildings(k).length), 'free'];
@@ -1978,6 +2408,12 @@
     if (!chapterCleared || dayNo <= CFG.BOSS_DAY || dayNo % 5 !== 0 || (story.ms && story.ms[dayNo])) return;
     (story.ms || (story.ms = {}))[dayNo] = 1; giveXp(60 + dayNo * 2); res.iron += 10 + dayNo; if (story.beacon) res.shard++; updateHud();
     report.season = `Endless milestone: Day ${dayNo} survived! (+${10 + dayNo} Iron${story.beacon ? ', +1 Shard' : ''}, XP)`;
+  }
+  // 낚시: 마을 사람들이 강에서 물고기를 잡아 온다 (겨울에는 얼음 낚시라 절반). 시민 3명당 식량 1 + 기본 1
+  function fishingTick(dayNo) {
+    const folks = npcs.filter(n => n.role === 'citizen' && !n.down).length; if (folks < 2) return 0;
+    const f = Math.max(1, Math.floor((1 + Math.floor(folks / 3)) * (seasonOfDay(dayNo).id === 'winter' ? 0.5 : 1))); res.food += f;
+    report.season = (report.season ? report.season + ' | ' : '') + `Fishers brought ${f} food from the river`; return f;
   }
   function seasonTick(dayNo) {
     const s = seasonOfDay(dayNo);
@@ -2413,9 +2849,15 @@
     }
   }
   // 낮 작업 배분: 수리 > (채집조/건설조 분업). 자원이 부족하면 채집 담당을 먼저 정해 두고, 나머지는 '살 수 있는' 청사진만 지으러 간다
+  let fortifyTold = false;
   function pickDayTask() {
-    const damaged = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.hp < o.userData.maxHp && unclaimed(o));
+    let damaged = null, bs = Infinity;                                      // 가장 많이 다친 성벽부터 (거리는 조금만 반영)
+    for (const o of obstacles) { if (o.userData.type !== 'fence' || o.userData.hp >= o.userData.maxHp || !unclaimed(o)) continue; const sc = o.userData.hp / o.userData.maxHp + Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) / 120; if (sc < bs) { bs = sc; damaged = o; } }
     if (damaged) return { kind: 'repair', target: damaged };
+    if (age >= CFG.UPGRADE_FENCE_AGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
+      const wf = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.level === 'wood' && unclaimed(o));
+      if (wf) { if (!fortifyTold) { fortifyTold = true; toast('Your workers will now rebuild the wooden fences in stone'); } return { kind: 'fortify', target: wf }; }
+    }
     const workers = npcs.filter(n => !n.down && !n.promote);
     const gatherers = workers.filter(n => n !== npc && n.task && n.task.kind === 'gather').length;
     const need = { wood: -res.wood, stone: -res.stone };                 // 청사진 전체 비용 - 보유량 = 부족분
@@ -2437,20 +2879,47 @@
   function taskValid(tk) {
     if (tk.kind === 'build') return blueprints.includes(tk.target);
     if (!obstacles.includes(tk.target)) return false;
+    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && age >= CFG.UPGRADE_FENCE_AGE;
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
-  function soldierStrike(foe) {
-    npc.atkCd = 0.8;
-    const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z), base = gearDef(npc.gear.sword);
-    npc.anim.once('attackSword'); sfxAt('swing', npc.position.x, npc.position.z);
-    spawnSlash(npc.position.x, npc.position.z, ang, base);
-    sectorHit(npc.position.x, npc.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(npc) });
+  const strikeRange = () => npc.cls === 'spear' ? 3.3 : npc.cls === 'greatsword' ? 2.6 : 1.7;               // 창병은 멀리서 찌른다
+  function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
+    const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic', great = n.cls === 'greatsword';
+    n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
+    const dur = n.anim.shot ? n.anim.shot.dur : 0.6, heavy = !spear && n.anim.heavy, hitIn = n.anim.hitIn ?? 0.25;
+    n.atkCd = Math.max(spear ? 1.0 : medic ? 0.9 : great ? 1.1 : 0.6, dur * 0.95); n.atkLock = dur * 0.9;
+    later(hitIn, () => {
+      if (!npcs.includes(n) || n.down) return;
+      const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y;
+      if (spear) {
+        if (n.anim.variant === 'slash') { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.1, half: Math.PI / 2.8, rangeMul: 1.3, slash: 1.3 }); }
+        else sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.2, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 });
+        return;
+      }
+      if (great) {                                                                  // 대검: 느리지만 묵직하고 사거리가 길다 / 네 번째는 제자리 회전 베기
+        if (heavy) { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.7 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 2.4, half: Math.PI, rangeMul: 1.5, slash: 1.7, tier: 1 }); return; }
+        spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.5 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.7, half: Math.PI / 2.3, rangeMul: 1.4, slash: 1.5 }); return;
+      }
+      if (heavy) { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.8, half: Math.PI, rangeMul: 1.25, slash: 1.3, tier: 1 }); return; }
+      spawnSlash(n.position.x, n.position.z, ang, base);
+      sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * (medic ? 0.5 : 1) });
+    });
+  }
+  function medicTick(dt) {                                                  // 치료사: 3초마다 7칸 안의 다친 아군(병사·주민·주인공)을 최대 체력의 12%씩 치료
+    npc.healT = (npc.healT || 0) - dt; if (npc.healT > 0 || npc.down) return; npc.healT = 3;
+    let healed = 0;
+    for (const o of npcs) if (o !== npc && !o.down && o.hp < o.maxHp && Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) < 7) { o.hp = Math.min(o.maxHp, o.hp + Math.ceil(o.maxHp * 0.12)); healed++; burst(o.position, 3); }
+    if (hp < pMaxHp() && !dead && Math.hypot(player.position.x - npc.position.x, player.position.z - npc.position.z) < 7) { healPlayer(Math.ceil(pMaxHp() * 0.06)); healed++; }
+    if (healed) { floatText('+heal', npc.position.x, 2.6, npc.position.z); Snd.play('heal', 0.4); }
   }
   function soldierShoot(foe) {
     const ang = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z);
     npc.face = ang; npc.rotation.y = ang;
-    if (npc.atkCd <= 0) { npc.atkCd = CFG.ARCHER_FIRE_INTERVAL; npc.anim.once('attackBow'); sfxAt('bow', npc.position.x, npc.position.z); fireArrow(npc.position.x, npc.position.z, ang, false, gearDef(npc.gear.bow).dmg * soldierMult(npc)); }
+    if (npc.atkCd <= 0) {                                                  // 화살을 뽑아 걸고 시위를 놓는 순간에 발사한다
+      const n = npc; n.atkCd = CFG.ARCHER_FIRE_INTERVAL; n.anim.once('attackBow');
+      later(n.anim.hitIn ?? 0.3, () => { if (!npcs.includes(n) || n.down) return; const a2 = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : ang; sfxAt('bow', n.position.x, n.position.z); fireArrow(n.position.x, n.position.z, a2, false, gearDef(n.gear.bow).dmg * soldierMult(n)); });
+    }
   }
   // 지휘 명령 'Follow': 병사들이 플레이어 곁에 모여 따라다니며, 플레이어 주변의 적을 함께 상대한다 (낮에도 일을 멈추고 따른다)
   function followStep(dt) {
@@ -2467,8 +2936,8 @@
       if (npc.archer) {
         if (Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) <= CFG.ARCHER_AGGRO) { soldierShoot(foe); return 'Fighting'; }
       } else {
-        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
-        if (d < 1.7 && npc.atkCd <= 0) soldierStrike(foe);
+        const d = npc.atkLock > 0 ? Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) : npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        if (d < strikeRange() && npc.atkCd <= 0) soldierStrike(foe);
         return 'Fighting';
       }
     }
@@ -2487,7 +2956,7 @@
   function archerDefend(dt) {
     const rs = peaceful ? restSpot(npc, 'night') : null, hx = rs ? rs.x : npc.home.x, hz = rs ? rs.z : npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
-    let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1);
+    let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
     for (const e of enemies) {
       if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;      // 공성 투척병은 궁수가 노릴 수 없다
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
@@ -2520,8 +2989,9 @@
     if (npc.down) {
       if (isDay) reviveNpc(); else { setLabel('Down'); return; }
     }
-    npc.atkCd -= dt;
+    npc.atkCd -= dt; npc.atkLock = (npc.atkLock || 0) - dt;
     npc.graceT -= dt;
+    if (npc.cls === 'medic' && npc.role === 'melee') medicTick(dt);
     let state = 'Idle';
     let bob = 0;
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
@@ -2547,8 +3017,8 @@
       }
       if (task) {
         const o = task.target;
-        state = { repair: 'Repairing', build: 'Building', gather: 'Gathering' }[task.kind];
-        const stop = task.kind === 'build' ? (o.userData.stand ?? 1.2) : o.userData.radius + PLAYER_R + (task.kind === 'repair' ? 0.4 : 0.3);
+        state = { repair: 'Repairing', build: 'Building', gather: 'Gathering', fortify: 'Fortifying' }[task.kind];
+        const stop = task.kind === 'build' ? (o.userData.stand ?? 1.2) : o.userData.radius + PLAYER_R + (task.kind === 'repair' || task.kind === 'fortify' ? 0.4 : 0.3);
         const d = Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z);
         if (d > stop) { npcMove(o.position.x, o.position.z, 3.5, dt); npc.workT = 0; }
         else {
@@ -2571,8 +3041,12 @@
               }
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'repair' && npc.workT >= CFG.REPAIR_TIME) {
-              o.userData.hp = o.userData.maxHp;
+              o.userData.hp = o.userData.maxHp; report.rep++;
               dust(o.position.x, o.position.z);
+              setTask(null); npc.workT = 0;
+            } else if (task.kind === 'fortify' && npc.workT >= CFG.REPAIR_TIME * 1.5) {
+              if (res.stone >= CFG.FENCE_UPGRADE_STONE) { res.stone -= CFG.FENCE_UPGRADE_STONE; makeStoneFence(o); updateHud(); dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); report.fort++; }
+              else o.userData.skipUntil = gameMin + 120;
               setTask(null); npc.workT = 0;
             } else if (task.kind === 'gather' && npc.workT >= CFG.GATHER_TIME) {
               const type = o.userData.type;
@@ -2603,8 +3077,8 @@
         if (npcMove(tgt.x, tgt.z, 5, dt) < 0.8) { npc.returning = false; if (post) { state = 'Guarding'; npc.face = Math.atan2(-post.x, -post.z) + Math.PI; npc.rotation.y = npc.face; } else if (peaceful) { state = trainTick(dt) ? 'Training' : 'Resting'; if (rs) faceTo(rs.fx, rs.fz); else faceFire(); } }      // 성문 경비는 문 앞에 서고, 나머지는 평화로운 밤에 모닥불 곁에 앉아 쉰다
       } else {
         state = 'Fighting';
-        const d = npcMove(foe.position.x, foe.position.z, 5.5, dt);
-        if (d < 1.7 && npc.atkCd <= 0) {
+        const d = npc.atkLock > 0 ? Math.hypot(foe.position.x - npc.position.x, foe.position.z - npc.position.z) : npcMove(foe.position.x, foe.position.z, 5.5, dt);
+        if (d < strikeRange() && npc.atkCd <= 0) {
           soldierStrike(foe);
           if (!enemies.includes(foe)) npc.returning = true;     // 처치했으면 모닥불로 복귀
         }
@@ -2616,7 +3090,10 @@
     npc.px = npc.position.x; npc.pz = npc.position.z;
     const working = state === 'Gathering' || state === 'Building' || state === 'Repairing' || state === 'Chopping' || state === 'Quarrying' || state === 'Farming';
     let anim = mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle';
-    if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = 'gather';
+    if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = state === 'Farming' ? 'farm' : 'gather';
+    npc.rig.tool = state === 'Chopping' || (npc.task && npc.task.kind === 'gather' && npc.task.target.userData.type === 'wood') ? 'axe' : 'pick';
+    npc.rig.combat = !!exActive || enemyWithin(npc.position.x, npc.position.z, 24);       // 적이 가까우면 전투 자세 이동(칼·방패 / 활), 아니면 평상시 이동
+    npc.rig.sheathe(npc.role !== 'citizen' && npc.cls !== 'medic' && !npc.rig.combat && !npc.anim.shot);       // 평상시 마을 안에서는 무기를 치우고 일반 이동으로 걷는다
     npc.anim.base(anim, mv);
     const bs = npc.rig.baseScale;
     npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
@@ -2633,44 +3110,81 @@
 
   // ---------- 플레이어 공격 ----------
   let atkT = 0, atkCd = 0, shake = 0;
+  let tapTip = false; try { tapTip = !!localStorage.getItem('nf_tiptap'); } catch (e) {}
+  // 지연 실행: 공격 애니메이션에서 칼이 휘둘러지는 순간(hitIn초 뒤)에 피해를 준다
+  const delayed = [];
+  const later = (t, fn) => delayed.push({ t: Number.isFinite(t) ? t : 0.25, fn });             // 시간 값이 없어도 (옛 캐시 파일 등) 반드시 실행되게 한다
+  function tickDelayed(dt) { for (let i = delayed.length - 1; i >= 0; i--) { const d = delayed[i]; if ((d.t -= dt) <= 0) { delayed.splice(i, 1); try { d.fn(); } catch (e) { console.error(e); } } } }
+  let atkLock = 0;                                                       // 근접 공격 동안 제자리에 서 있는다
   function attack() {
-    if (dead || atkCd > 0) return;
-    atkCd = ATK_CD;
+    if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
+    if (dead || atkCd > 0 || dashT > 0) return;
     gathering = null;
     if (weaponMode === 'bow') {
-      shake = Math.max(shake, 0.08);
-      playerAnim.once('attackBow'); Snd.play('bow');
-      fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg());
+      playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
+      later(playerAnim.hitIn, () => { if (dead) return; shake = Math.max(shake, 0.08); Snd.play('bow'); fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch)); });
       return;
     }
-    atkT = SLASH_LIFE; shake = 0.3;
-    playerAnim.once('attackSword'); Snd.play('swing');
-    spawnSlash(player.position.x, player.position.z, facing);
-    // 광역(Cleave): 부채꼴 안의 모든 적이 동시에 피해와 넉백을 받는다
-    const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...gearDef(playerGear.sword), dmg: gearDef(playerGear.sword).dmg * pDmg() });
-    if (hits >= 2) {
-      shake = Math.min(0.7, 0.3 + hits * 0.06);
-      floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+    if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
+      playerAnim.once('attackSpear'); const dur = playerAnim.shot.dur, slash = playerAnim.variant === 'slash'; atkCd = Math.max(ATK_CD * 1.25, dur * 0.9); atkLock = dur * 0.9; Snd.play('swing');
+      later(playerAnim.hitIn, () => {
+        if (dead) return; const base = gearDef(playerGear.sword), reach = 1 + 0.08 * pl.st.spear, dm = base.dmg * pDmg() * (1 + 0.2 * pl.st.spear);
+        atkT = SLASH_LIFE;
+        if (slash) {                                                                                          // 휘둘러 베기: 앞쪽 넓은 부채꼴
+          shake = 0.3; spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: 1.5 });
+          const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: dm * 1.15, half: Math.PI / 2.6, rangeMul: 1.45 * reach, slash: 1.5 });
+          if (hits >= 2) floatText(`SWEEP x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+          return;
+        }
+        const sd = { ...base, dmg: dm * 1.25, half: Math.PI / 10, rangeMul: 1.9 * reach, slash: (base.slash || 1) * 1.6 };          // 찌르기: 좁고 아주 긴 사거리
+        shake = 0.2; spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
+        if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
+      });
+      return;
     }
+    const great = weaponMode === 'great';                                 // 대검: 느리지만 묵직하고 사거리가 길다, 네 번째는 제자리 회전 베기
+    playerAnim.once('attackSword'); const dur = playerAnim.shot.dur, heavy = playerAnim.heavy;
+    atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
+    later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
+      if (dead) return;
+      const base = gearDef(playerGear.sword), mulDps = great ? 1.7 : playerAnim.rig.style === 'ss' ? 1.4 : 1;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
+      if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
+        spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 : 2.3), half: Math.PI, rangeMul: great ? 1.55 : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
+        floatText(hits ? `${great ? 'SPIN' : 'SLAM'} x${hits}!` : great ? 'SPIN!' : 'SLAM!', player.position.x, 2.8, player.position.z); return;
+      }
+      spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
+      if (hits >= 2) { shake = Math.min(0.7, 0.3 + hits * 0.06); floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2); }
+    });
   }
 
-  // ---------- 무기 교체 / 화살 ----------
+  // 창 찌르기 궤적: 앞으로 쭉 뻗는 가늘고 긴 빛줄기
+  const thrustGeo = new THREE.PlaneGeometry(0.34, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5);
+  function spawnThrust(x, z, ang, len) {
+    const g = new THREE.Group(), m = new THREE.Mesh(thrustGeo, new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
+    m.scale.z = len; g.add(m); g.position.set(x, 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
+  }
+  const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear' };
   function swapWeapon() {
     if (dead) return;
-    weaponMode = weaponMode === 'sword' ? 'bow' : 'sword';
-    playerRig.main = weaponMode;
-    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
-    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : 'Sword equipped (melee)');
+    weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
+    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
+    document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
+    toast(weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
-  const arrowGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6);
+  const arrowGeo = new THREE.CylinderGeometry(0.045, 0.045, 1.6, 6), arrowTipGeo = new THREE.ConeGeometry(0.1, 0.28, 5), arrowTipMat = new THREE.MeshBasicMaterial({ color: 0xd8dde6 });
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x8a5a2b });
   function fireArrow(x, z, ang, byPlayer = false, dmg = null, y = 1.0) {
     const g = new THREE.Group();
     const m = new THREE.Mesh(arrowGeo, arrowMat);
     m.rotation.x = Math.PI / 2;                     // 원기둥 축을 진행(+Z) 방향으로 눕힘
-    g.add(m);
+    const tip = new THREE.Mesh(arrowTipGeo, arrowTipMat); tip.rotation.x = Math.PI / 2; tip.position.z = 0.9;     // 쇠 화살촉
+    g.add(m, tip);
     const sx = Math.sin(ang), sz = Math.cos(ang);
     g.position.set(x + sx * 0.7, y, z + sz * 0.7);
     g.rotation.y = ang;
@@ -2809,8 +3323,8 @@
   let dashT = 0, dashCd = 0, invincibleT = 0, dashDX = 0, dashDZ = 0;
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
-    dashDX = Math.sin(facing); dashDZ = Math.cos(facing);
-    dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
+    if (performance.now() - lastMT < 350) { dashDX = lastMX; dashDZ = lastMZ; } else { dashDX = Math.sin(facing); dashDZ = Math.cos(facing); }          // 입력 방향으로 (입력이 없으면 정면)
+    atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
   const barBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthTest: false, fog: false }));
@@ -2912,7 +3426,7 @@
     const u = e.userData;
     u.castT = 0; u.slamT = 0; hideTelegraph(e);
     u.stunT = CFG.BOSS_STUN_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL;
-    e.position.y = u.baseY;
+    e.position.y = u.baseY + (u.gy || 0);
     if (e.material.emissive) { e.material.emissive.setHex(0x000000); e.material.emissiveIntensity = 0; }
     e.material.color.setHex(0x8a8a92);                                           // 기절: 회색
     floatText('COUNTER! STUNNED!', e.position.x, e.position.y + 5.8, e.position.z);
@@ -3028,7 +3542,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -3062,8 +3576,8 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
-    totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
+    Object.assign(story, { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
+    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
@@ -3079,10 +3593,11 @@
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
     for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
-    for (const g of sn.gates) addGate(g.x, g.z, g.r, g.nx, g.nz);
+    for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
-      if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); }
+      n.cls = d.cls || 'sword';
+      if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); } else if (n.role === 'melee') applyGear(n);
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
     }
@@ -3094,7 +3609,7 @@
     document.getElementById('gameover').style.display = 'none';
     clearEl.classList.remove('show'); warnEl.classList.remove('show');
     updateHud(); hpEl.textContent = Math.ceil(hp); updateDesignBtn(); updatePopUi();
-    document.getElementById('swapCur').textContent = `Q · ${weaponMode === 'bow' ? 'Bow' : 'Sword'}`;
+    document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode] || 'Sword'}`;
     updateTownBtn();
   }
   function rewindTo(cp) {
@@ -3162,8 +3677,8 @@
         if (d < bd) { bd = d; foe = e; }
       }
       if (!foe) continue;
-      t.userData.shootCd = CFG.TOWER_INTERVAL;
-      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1), 4.9);
+      t.userData.shootCd = CFG.TOWER_INTERVAL * (1 - 0.12 * (lvOf(t) - 1));
+      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1) * (1 + 0.35 * (lvOf(t) - 1)), 4.9);
     }
   }
   let eatCd = 0;
@@ -3224,7 +3739,7 @@
   const warnEl = document.getElementById('warn');
   let warnTimer;
   function showWarning(msg) {
-    buzz([120, 60, 120]); warnEl.textContent = msg; warnEl.classList.add('show'); Snd.play(/Behemoth|massive/.test(msg) ? 'roar' : 'horn');
+    buzz([120, 60, 120]); warnEl.textContent = msg; warnEl.classList.add('show'); Snd.play(/Behemoth|massive/.test(msg) ? 'roar' : /^Warning/.test(msg) ? 'bell' : 'horn');
     clearTimeout(warnTimer); warnTimer = setTimeout(() => warnEl.classList.remove('show'), 3000);
   }
   const countType = (t) => obstacles.filter(o => o.userData.type === t).length;
@@ -3256,7 +3771,7 @@
     const o = factory();
     for (let i = 0; i < 30; i++) {
       const a = rand(0, Math.PI * 2), r = rand(rMin, rMax), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-      if (Math.max(Math.abs(x), Math.abs(z)) > MAP - 3 || Math.hypot(x, z) < 6 || !free(x, z)) continue;
+      if (Math.max(Math.abs(x), Math.abs(z)) > MAP - 3 || Math.hypot(x, z) < 6 || inRiver(x, z) || !free(x, z)) continue;
       if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
       o.position.set(x, 0, z); o.rotation.y = rand(0, Math.PI * 2); scene.add(o); obstacles.push(o);
       return true;
@@ -3308,7 +3823,7 @@
   const FACTION_COLOR = { frost: new THREE.Color(0x9fd6ff), hollow: new THREE.Color(0xb08cff), night: new THREE.Color(0x6f7cff), wisp: new THREE.Color(0x7affd0), ash: new THREE.Color(0xff9a5a) };
   function frostTint(e, faction = 'frost') {                        // 서리 세력: 몸 재질을 복제해 푸르게 물들인다 (공유 재질은 건드리지 않는다)
     const map = new Map();
-    e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.color.lerp(FACTION_COLOR[faction] || FACTION_COLOR.frost, 0.55); map.set(o.material, c); } o.material = c; } });
+    e.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.isMeshBasicMaterial) { let c = map.get(o.material); if (!c) { c = o.material.clone(); c.skinning = o.material.skinning; c.color.lerp(FACTION_COLOR[faction] || FACTION_COLOR.frost, 0.55); map.set(o.material, c); } o.material = c; } });
     if (map.has(e.material)) e.material = map.get(e.material);
   }
   function buildZone(d) {
@@ -3404,6 +3919,7 @@
     const n = npc;
     if (n.down) { setLabel('Down'); n.anim.base('idle', 0); n.stateNow = 'Down'; return; }
     n.atkCd -= dt;
+    if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
     let foe = null, bd = 16;
     for (const e of enemies) {
       if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
@@ -3427,6 +3943,7 @@
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
+    n.rig.combat = true; n.rig.sheathe(false);                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
     n.stateNow = state; setLabel(state);
   }
@@ -3434,13 +3951,13 @@
     const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
     if (d.ch >= 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
-    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chime'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
+    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chest'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
     if (o.userData.relic) foundRelic(d);
   }
 
   // ---------- 이야기 ----------
-  const story = { relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} };
-  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []).concat(story.road ? CFG.STORY5 : []);
+  const story = { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} };
+  const storyChain = () => CFG.STORY.concat(story.beacon ? CFG.STORY2 : []).concat(story.dawn ? CFG.STORY3 : []).concat(story.hollow ? CFG.STORY4 : []).concat(story.road ? CFG.STORY5 : []).concat(story.eclipse ? CFG.STORY6 : []);
   let beaconMesh = null;
   function setBeacon(on) {
     if (on && !beaconMesh) {
@@ -3489,6 +4006,14 @@
       story.wide = true; story.log.push(`${CFG.STORY_WIDE.title}: ${CFG.STORY_WIDE.text}`);
       storyDialog(CFG.STORY_WIDE.title, CFG.STORY_WIDE.text); shake = Math.max(shake, 0.5); Snd.play('horn');
     }
+    if (story.wide && !story.eclipse) {
+      story.eclipse = true; story.log.push(`${CFG.STORY_ECLIPSE.title}: ${CFG.STORY_ECLIPSE.text}`);
+      setTimeout(() => storyDialog(CFG.STORY_ECLIPSE.title, CFG.STORY_ECLIPSE.text), 2500);
+    }
+    if (story.eclipse && !story.dusk && CFG.STORY6.every(s => storyDone(s.id))) {
+      story.dusk = true; story.log.push(`${CFG.STORY_END6.title}: ${CFG.STORY_END6.text}`);
+      storyDialog(CFG.STORY_END6.title, CFG.STORY_END6.text); shake = Math.max(shake, 0.6); Snd.play('victory'); updateHud();
+    }
     if (story.dawn && !story.crown && CFG.STORY3.every(s => storyDone(s.id))) {
       story.crown = true; story.log.push(`${CFG.STORY_CROWN.title}: ${CFG.STORY_CROWN.text}`);
       storyDialog(CFG.STORY_CROWN.title, CFG.STORY_CROWN.text); shake = Math.max(shake, 0.5); Snd.play('horn');
@@ -3528,6 +4053,7 @@
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
+    if (d.ch === 6 && !story.eclipse) return toast('Light the Wide Road first');
     if (d.ch === 5 && !story.road) return toast('Swear the Keeper\'s Oath first');
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('Recover the earlier relics first: this place stays hidden until you carry them');
     if (powerOf().total < needOf(d)) return toast(`Too dangerous for now: needs power ${needOf(d)} (you have ${powerOf().total}). Upgrade gear, train soldiers, level up.`);
@@ -3580,7 +4106,7 @@
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.2, 6), woodMat2); pole.position.set(1.8, 1.6, 0);
       const flag = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.04), campFlagMat); flag.position.set(2.15, 2.9, 0);
       g.add(tent, pole, flag); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
-      g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); g.rotation.y = -a; scene.add(g); campMeshes.push(g);
+      g.position.set(Math.cos(a) * r, actorH(Math.cos(a) * r, Math.sin(a) * r), Math.sin(a) * r); g.rotation.y = -a; scene.add(g); campMeshes.push(g);
     });
   }
   function buildCamp(id) {
@@ -3631,7 +4157,7 @@
     const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
     const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
-      const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
+      const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
@@ -3678,8 +4204,35 @@
   }
   // ---------- 메인 루프 ----------
   const SPEED = 6;
+  // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
+  const WX_N = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
+  for (let i = 0; i < WX_N; i++) { const x = rand(-16, 16), y = rand(0, 14), z = rand(-16, 16); wxPos.set([x, y, z, x, y + 0.7, z], i * 6); wxVel[i] = rand(0.8, 1.2); }
+  wxLines.geometry.setAttribute('position', new THREE.BufferAttribute(wxPos, 3)); wxLines.frustumCulled = false; scene.add(wxLines);
+  let wx = { kind: 'none', day: -1, lvl: 0, target: 0, snd: 0 };
+  const dayWeather = (d) => { const s = seasonOfDay(d).id, h = ((d * 2654435761) >>> 0) % 100; return s === 'winter' ? (h < 38 ? 'snow' : 'none') : s === 'summer' ? (h < 10 ? 'rain' : 'none') : (h < 30 ? 'rain' : 'none'); };
+  const rainNow = () => wx.lvl * (wx.kind === 'rain' ? 1 : 0);
+  function weatherStep(dt, night, hour) {
+    const dn = dayNow();
+    if (dn !== wx.day) { wx.day = dn; wx.kind = dayWeather(dn); if (dn > 1 && wx.kind !== 'none') setTimeout(() => toast(wx.kind === 'rain' ? 'Rain today: the view is shorter and archers shoot less far' : 'It is snowing today'), 3500); }
+    const storm = night && wave.type === 'storm' && !exActive, kind = storm ? 'rain' : wx.kind;
+    const want = exActive ? 0 : storm ? 1 : (kind !== 'none' && hour >= 7 && hour < 20) ? 0.7 : (kind !== 'none' ? 0.5 : 0);
+    wx.lvl += (want - wx.lvl) * Math.min(1, dt * 0.5);
+    const show = wx.lvl > 0.03, snow = !storm && wx.kind === 'snow';
+    wxLines.visible = show; if (!show) return;
+    const mat = wxLines.material; mat.color.setHex(snow ? 0xffffff : 0xaec6ff); mat.opacity = Math.min(0.55, wx.lvl * 0.6);
+    wxLines.position.set(player.position.x, player.position.y, player.position.z);
+    const a = wxLines.geometry.attributes.position.array, fall = snow ? 2.2 : 16, len = snow ? 0.12 : 0.75;
+    for (let i = 0; i < WX_N; i++) {
+      const o = i * 6; let y = a[o + 1] - fall * wxVel[i] * dt; if (y < 0) y += 14;
+      a[o + 1] = y; a[o + 4] = y + len; a[o] = a[o + 3] += (snow ? Math.sin(y * 2 + i) * 0.4 : -2.0) * dt; if (a[o] < -16) a[o] = a[o + 3] += 32; a[o + 2] = a[o + 5];
+    }
+    wxLines.geometry.attributes.position.needsUpdate = true;
+    ambient.intensity *= 1 - 0.14 * wx.lvl; sun.intensity *= 1 - 0.3 * wx.lvl; scene.fog.near *= 1 - 0.3 * wx.lvl; scene.fog.far *= 1 - 0.3 * wx.lvl;
+    if (!snow && (wx.snd -= dt) <= 0) { wx.snd = 0.5; Snd.play('rain', wx.lvl); }
+  }
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
-  let facing = 0;
+  const xhairEl = document.getElementById('xhair'), xhV = new THREE.Vector3(); let xhLock = false;
+  let facing = 0, moveDir = 'f', lastMX = 0, lastMZ = 0, lastMT = -1e9;
   const clock = new THREE.Clock();
   let resting = false, sparT = 0;
   let fpsT = 0, fpsN = 0, stormT = 5, lightning = 0, thunderIn = 0;
@@ -3707,6 +4260,7 @@
       for (const b of exBeams) { const d = Math.hypot(b.parent.position.x - player.position.x, b.parent.position.z - player.position.z); b.material.opacity = (0.1 + 0.2 * nf) * Math.min(1, d / 9); }       // 가까이 가면 기둥이 옅어진다
     }
     if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
+    weatherStep(dt, night, hour);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
@@ -3719,6 +4273,7 @@
     nowHour = hour;
     if (exActive && !exEnding && (exActive.night ? (hour >= CFG.EXP_NIGHT_FORCE && hour < 12) : hour >= CFG.EXP_FORCE)) endExpedition(true);       // 해 지기 전에 자동 귀환
     updateRaidUi(hour, dayNo);
+    roamerTick(dt);
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
       if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('WARNING: A massive threat approaches!'); bossShakeT = 3; }
@@ -3731,7 +4286,7 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); upgradeGates(); caravanMorning(dayNo); assignForeman(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); fishingTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
@@ -3754,8 +4309,8 @@
     updateTowers(dt);
     updateFood(dt);
     updateDash(dt);
-    updateFloaters(dt); updateSmith(dt, t);
-    Snd.setMood(nf, danger && night);
+    updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt); tickDelayed(dt);
+    Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
     atkCd -= dt;
@@ -3772,6 +4327,8 @@
     const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
     if (dead) { ix = iy = 0; }
     else if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
+    atkLock -= dt; const locked = atkLock > 0 && dashT <= 0;
+    if (locked) { ix = iy = 0; }                                       // 공격 모션 중에는 움직이지 않는다
     const mag = Math.min(1, Math.hypot(ix, iy));
 
     if (dashT > 0) {                       // 대시 중: 입력 이동 대신 바라보는 방향으로 질주
@@ -3781,20 +4338,30 @@
       dashT -= dt;
     } else if (mag > 0.08) {
       // 현재 카메라가 바라보는 방향(수평) 기준으로 전진/우측 벡터 계산
-      const fwdX = -Math.sin(yaw), fwdZ = -Math.cos(yaw);
-      const rightX = Math.cos(yaw), rightZ = -Math.sin(yaw);
+      const vy = viewYaw(), fwdX = -Math.sin(vy), fwdZ = -Math.cos(vy);                  // 입력은 화면 기준 (앞모습 보기에서는 화면 위쪽 = 카메라에서 멀어지는 쪽)
+      const rightX = Math.cos(vy), rightZ = -Math.sin(vy);
       let mx = rightX * ix + fwdX * iy, mz = rightZ * ix + fwdZ * iy;
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
-      player.position.x += mx * SPEED * spdMul() * mag * dt;
-      player.position.z += mz * SPEED * spdMul() * mag * dt;
+      const ts = terrSpd(player.position.x, player.position.z);
+      player.position.x += mx * SPEED * spdMul() * ts * mag * dt;
+      player.position.z += mz * SPEED * spdMul() * ts * mag * dt;
 
-      // 이동 방향으로 부드럽게 회전
-      let diff = Math.atan2(mx, mz) - facing;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      facing += diff * Math.min(1, dt * 14);
-      player.rotation.y = facing;
+      lastMX = mx; lastMZ = mz; lastMT = performance.now();
+      { const fx = Math.sin(facing), fz = Math.cos(facing), f = mx * fx + mz * fz, sd = mx * fz - mz * fx;       // 바라보는 방향 기준 앞/뒤/옆걸음
+        moveDir = f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'; }
     }
+    if (!(mag > 0.08)) moveDir = 'f';
+    if (bird) {                                                          // 지도 보기: 화면을 돌려도 영웅은 따라 돌지 않고, 걷는 방향을 본다
+      moveDir = 'f';
+      if (mag > 0.08 && dashT <= 0) { let diff = Math.atan2(lastMX, lastMZ) - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff)); facing += diff * Math.min(1, dt * 14); player.rotation.y = facing; }
+    } else if (!gathering) {                                                    // 몸은 화면(카메라)이 향한 쪽만 본다: 화면을 터치/마우스로 돌릴 때만 회전하고, 이동은 옆걸음·뒤로걷기로 한다
+      let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
+    }
+    playerRig.combat = !!exActive || enemyWithin(player.position.x, player.position.z, 26);        // 적이 가깝거나 원정 중이면 전투 자세 이동
+    playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
+    playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
     playerAnim.base(gathering ? 'gather' : dashT > 0 ? 'run' : mag > 0.08 ? (mag > 0.6 ? 'run' : 'walk') : 'idle', SPEED * mag);   // Idle / Walk / Run / Gather CrossFade
     playerAnim.update(dt);
 
@@ -3818,11 +4385,42 @@
       player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));
     }
 
+    // 지형 높이 적용: 주인공/주민은 바닥 높이를 그대로, 적은 (몸 높이 + 지형 변화량)만큼 올린다. 나무/바위는 처음 한 번만 맞춘다
+    if (!exActive) {
+      const dn = dayNow();
+      if (dn !== riverDay) {                                                // 하루가 바뀌면 강의 상태(범람/결빙)를 다시 정한다
+        riverDay = dn; const s = seasonOfDay(dn), firstSpring = s.id === 'spring' && dn > 1 && (dn - 1) % CFG.SEASON_DAYS === 0, prev = riverMode;
+        riverMode = s.id === 'winter' ? 'ice' : firstSpring ? 'flood' : 'normal';
+        if (waterMesh) waterMesh.position.y = riverMode === 'flood' ? 0.32 : 0;
+        waterMat.opacity = riverMode === 'ice' ? 1 : 0.82;
+        if (riverMode !== prev && dn > 1) toast(riverMode === 'flood' ? 'Spring flood: the river runs high and fast - crossing is slow' : riverMode === 'ice' ? 'The river has frozen - raiders can cross it anywhere' : prev === 'ice' ? 'The ice has thawed' : 'The flood has gone down');
+      }
+      if (!dead) { if (player.userData.lastX !== undefined && Math.hypot(player.position.x - player.userData.lastX, player.position.z - player.userData.lastZ) > 0.02) stepRoad(player.position.x, player.position.z, dt); player.userData.lastX = player.position.x; player.userData.lastZ = player.position.z; }
+      for (const n of npcs) if (!n.escort && !n.down) stepRoad(n.position.x, n.position.z, dt * 0.5);
+      player.position.y = actorH(player.position.x, player.position.z);
+      for (const n of npcs) n.position.y = actorH(n.position.x, n.position.z);
+      for (const e of enemies) { const u = e.userData; if (u.sinking || u.ex) continue; const nh = actorH(e.position.x, e.position.z); e.position.y += nh - (u.gy || 0); u.gy = nh; }
+    } else player.position.y = 0;
+    for (const o of obstacles) { const ud = o.userData; if (!ud.gset && (ud.type === 'wood' || ud.type === 'stone')) { ud.gset = true; o.position.y = terrH(o.position.x, o.position.z); } }
+
     // 카메라 Lerp 추적
     const k = 1 - Math.exp(-6 * dt);
     camera.position.lerp(goalPos(camGoal), k);
-    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H, camFocus().z), k);
+    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
+    { const gy = terrH(camera.position.x, camera.position.z) + 1.3; if (camera.position.y < gy) camera.position.y = gy; }
     camera.lookAt(lookAt);
+    { // 활: 화살이 날아갈 쪽에 작은 조준 십자선 (적이 그 선 위에 있으면 붉게)
+      const xh = xhairEl;
+      if (weaponMode === 'bow' && !dead && !bird && !camFront && !uiPause) {
+        camera.updateMatrixWorld(); xhV.set(player.position.x + Math.sin(facing) * 12, player.position.y + 1.1, player.position.z + Math.cos(facing) * 12).project(camera);
+        if (xhV.z < 1 && Math.abs(xhV.x) < 1.2 && Math.abs(xhV.y) < 1.2) {
+          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px)`;
+          let lock = false; const fx = Math.sin(facing), fz = Math.cos(facing);
+          for (const e of enemies) { if (e.userData.sinking) continue; const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z, d = Math.hypot(dx, dz); if (d < 26 && d > 1 && (dx * fx + dz * fz) / d > 0.985) { lock = true; break; } }
+          if (lock !== xhLock) { xhLock = lock; xh.classList.toggle('lock', lock); }
+        } else xh.style.display = 'none';
+      } else if (xh.style.display !== 'none') xh.style.display = 'none';
+    }
 
     // 그림자 범위가 플레이어를 따라가게
     sun.target.position.copy(player.position);
@@ -3848,6 +4446,11 @@
     if (!saveReady || dead || exActive || exEnding) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, ts: Date.now(), day: Math.floor(gameMin / 1440) + 1, snap: makeSnapshot(), tut, diff, ng: ngLevel })); } catch (e) {}
   }
+  // 앱을 나가거나 다른 앱으로 전환할 때도 저장한다 (적이 마을을 습격 중이면 건너뛴다 - 그때 불러오면 전투 중간이 끊기기 때문)
+  const calmNow = () => !eventOpen && !enemies.some(e => !e.userData.sinking && !e.userData.prowl && !e.userData.ex);
+  const autoSave = () => { if (calmNow()) saveGame(); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) autoSave(); });
+  addEventListener('pagehide', autoSave);
   function readSave() {
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -3863,19 +4466,24 @@
   }
 
   // 설정 (볼륨 · 글자 크기 · 그래픽)
-  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true };
+  const setEl = document.getElementById('setPanel'), settings = { text: 'm', gfx: 'hi', haptic: true, hand: 'r', bsz: 'm', plan: 'balanced' };
   try { Object.assign(settings, JSON.parse(localStorage.getItem('nf_settings') || '{}')); } catch (e) {}
   function applySettings() {
-    document.documentElement.dataset.ts = settings.text;
-    const lo = settings.gfx === 'lo';
-    renderer.setPixelRatio(lo ? 1 : Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight, false);
+    document.documentElement.dataset.ts = settings.text; document.documentElement.dataset.hand = settings.hand; document.documentElement.dataset.bsz = settings.bsz;
+    const min = settings.gfx === 'min', lo = settings.gfx === 'lo' || min;
+    renderer.setPixelRatio(min ? 0.7 : lo ? 1 : Math.min(devicePixelRatio, 2));
+    camera.far = min ? 95 : 200; camera.updateProjectionMatrix(); for (const d of decorMeshes) d.visible = !min; wxLines.material.visible = !min; renderer.setSize(innerWidth, innerHeight, false);
     renderer.shadowMap.enabled = !lo; sun.castShadow = !lo;
     scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
   }
   // 느린 기기 자동 대응: 터치 기기에서 처음 몇 초의 프레임이 낮으면 그래픽을 '낮음'으로 바꾸고 알려 준다 (한 번만, 직접 고른 설정은 건드리지 않는다)
-  const fpsLog = [];
+  const fpsLog = [], fpsLo = [];
   setInterval(() => {
-    if (settings.auto || settings.gfx === 'lo' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
+    if (settings.gfx === 'lo' && !settings.auto2 && saveReady && !uiPause && !eventOpen && !document.hidden && window.__nfFps) {          // 낮음에서도 느리면 한 단계 더: 가장 낮음
+      fpsLo.push(window.__nfFps); if (fpsLo.length > 10) fpsLo.shift();
+      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics set to Lowest for old phones (change it in Settings)'); }
+    }
+    if (settings.auto || settings.gfx === 'lo' || settings.gfx === 'min' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
     fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
     if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
       settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
@@ -3886,6 +4494,7 @@
     document.getElementById('setMusic').value = Math.round(Snd.getVol('music') * 100);
     document.getElementById('setSfx').value = Math.round(Snd.getVol('sfx') * 100);
     { const sd = document.getElementById('setDiff'); if (!sd.options.length) Object.entries(CFG.DIFFS).forEach(([id, d]) => sd.add(new Option(d.label, id))); sd.value = diff; }
+    document.getElementById('setHand').value = settings.hand; document.getElementById('setBsz').value = settings.bsz;
     document.getElementById('setHaptic').value = settings.haptic === false ? 'off' : 'on';
     document.getElementById('setText').value = settings.text; document.getElementById('setGfx').value = settings.gfx;
     const d = readSave(); document.getElementById('setSaveInfo').textContent = d ? `Saved: Day ${d.day} (auto-saves every morning)` : 'No save yet - the game auto-saves every morning';
@@ -3898,9 +4507,11 @@
   document.getElementById('setSfx').addEventListener('input', e => Snd.setVol('sfx', e.target.value / 100));
   document.getElementById('setText').addEventListener('change', e => { settings.text = e.target.value; saveSettings(); applySettings(); });
   document.getElementById('setDiff').addEventListener('change', e => { diff = e.target.value; try { localStorage.setItem('nf_diff', diff); } catch (x) {} toast(`Difficulty: ${CFG.DIFFS[diff].label}`); saveGame(); });
+  document.getElementById('setHand').addEventListener('change', e => { settings.hand = e.target.value; saveSettings(); applySettings(); });
+  document.getElementById('setBsz').addEventListener('change', e => { settings.bsz = e.target.value; saveSettings(); applySettings(); });
   document.getElementById('setHaptic').addEventListener('change', e => { settings.haptic = e.target.value === 'on'; saveSettings(); buzz(60); });
   document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
-  document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
+  document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); coachSeen = false; toast('Tips restarted'); });
   document.getElementById('setDel').addEventListener('click', e => {
     if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to confirm'; return; }
     clearSave(); e.target.dataset.sure = ''; e.target.textContent = 'Delete save'; document.getElementById('setSaveInfo').textContent = 'Save deleted'; toast('Save deleted');
@@ -3910,12 +4521,33 @@
   // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
   const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
   const TUT = [
-    { text: 'Tap Defense Line to plan a fence - soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Gather wood: the village plan sets up a fence by itself and soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
     { text: 'Defeat raiders to level up, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
-    { text: 'Tap Plan Town Buildings', done: () => townStage > 0 },
+    { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
+  // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
+  const COACH = [
+    { sel: '#joy', text: 'Drag the stick to move. Tap anywhere on the screen to attack.' },
+    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather to collect wood and stone. Your villagers gather too.' },
+    { sel: '#planBtn', text: 'The Village Plan builds fences and houses by itself once you have the resources. Tap it to change what comes first.' },
+    { sel: '#hudBar', text: 'Your health, level and resources are up here. Tap it for the full stats.' },
+    { sel: null, text: 'Raiders come at night - stay near the fire with your soldiers. A big raid is announced a day ahead. Good luck, Keeper!' },
+  ];
+  let coachStep = -1, coachSeen = false; try { coachSeen = !!localStorage.getItem('nf_coach'); } catch (e) {}
+  const coachEl = document.createElement('div'); coachEl.id = 'coach'; coachEl.innerHTML = '<p id="coachTxt"></p><div class="tbtns"><button id="coachNext">Next</button><button id="coachSkip">Skip</button></div>'; document.body.appendChild(coachEl);
+  function coachShow(i) {
+    document.querySelectorAll('.coachHi').forEach(e => e.classList.remove('coachHi'));
+    if (i >= COACH.length) { coachStep = -1; coachEl.style.display = 'none'; uiPause = false; coachSeen = true; try { localStorage.setItem('nf_coach', '1'); } catch (e) {} return; }
+    coachStep = i; const c = COACH[i], el = c.sel && document.querySelector(c.sel);
+    if (el && el.offsetWidth) el.classList.add('coachHi');
+    document.getElementById('coachTxt').textContent = c.text; document.getElementById('coachNext').textContent = i === COACH.length - 1 ? 'Start' : 'Next';
+    coachEl.style.display = 'block'; uiPause = true;
+  }
+  document.getElementById('coachNext').addEventListener('click', () => coachShow(coachStep + 1));
+  document.getElementById('coachSkip').addEventListener('click', () => coachShow(COACH.length));
+  setInterval(() => { if (!coachSeen && coachStep < 0 && saveReady && !eventOpen && !dead && !uiPause && playerClass && dayNow() <= 1 && !(/[?&]debug/.test(location.search) && !/[?&]coach/.test(location.search))) coachShow(0); }, 1500);
   function tutorStep() {
     if (exActive) { tutEl.style.display = 'none'; return; }
     if (!saveReady || dead || eventOpen || uiPause) return;
@@ -3959,6 +4591,11 @@
     { id: 'ng1', name: 'Again, Stronger', desc: 'Begin a New Game+', test: () => ngLevel >= 1 },
     { id: 'hardwin', name: 'Hard Road', desc: 'Finish the story on Hard or Nightmare', test: () => story.finale && (diff === 'hard' || diff === 'nightmare') },
     { id: 'wide', name: 'Keeper of the Road', desc: 'Light the Wide Road (Chapter 5)', test: () => story.wide },
+    { id: 'dusk', name: 'The Long Dawn', desc: 'End the Eclipse (Chapter 6)', test: () => story.dusk },
+    { id: 'champ3', name: 'Champion Slayer', desc: 'Defeat 3 Champions in endless mode', test: () => (story.champs || 0) >= 3 },
+    { id: 'champ10', name: 'Name Taker', desc: 'Defeat 10 Champions in endless mode', test: () => (story.champs || 0) >= 10 },
+    { id: 'kills500', name: 'Five Hundred', desc: 'Defeat 500 enemies in one run', test: () => totalKills >= 500 },
+    { id: 'day50', name: 'Half a Hundred', desc: 'Survive to Day 50', test: () => dayNow() >= 50 },
     { id: 'day15', name: 'Fifteen Days', desc: 'Survive to Day 15', test: () => dayNow() >= 15 },
     { id: 'day30', name: 'A Month of Nights', desc: 'Survive to Day 30', test: () => dayNow() >= 30 },
     { id: 'lvl5', name: 'Veteran', desc: 'Reach player level 5', test: () => pl.lvl >= 5 },
@@ -3987,6 +4624,10 @@
     document.getElementById('achList').innerHTML = ACH.map(a => `<div class="ach ${achSave[a.id] ? 'got' : ''}"><span>${achSave[a.id] ? '🏆' : '🔒'}</span><div><b>${a.name}</b><small>${a.desc}</small></div></div>`).join('');
     achEl.style.display = 'flex';
   }
+  { const rp = document.getElementById('repPanel'), rt = document.getElementById('repText');
+    document.getElementById('setRep').addEventListener('click', () => { closeSettings(); uiPause = true; rt.value = balanceReport(); rp.style.display = 'flex'; });
+    document.getElementById('repClose').addEventListener('click', () => { rp.style.display = 'none'; uiPause = false; });
+    document.getElementById('repCopy').addEventListener('click', () => { rt.select(); try { navigator.clipboard.writeText(rt.value); toast('Report copied'); } catch (e) { document.execCommand && document.execCommand('copy'); toast('Report selected - copy it'); } }); }
   document.getElementById('setAch').addEventListener('click', () => { closeSettings(); uiPause = true; openAch(); });
   document.getElementById('achClose').addEventListener('click', () => { achEl.style.display = 'none'; uiPause = false; });
 
@@ -4012,6 +4653,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

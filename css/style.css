@@ -167,7 +167,7 @@
   #npcCard .moodbar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; } #ncMoodBar { height: 100%; width: 50%; border-radius: 6px; transition: width .4s; }
   #ncMoodTxt { font-size: 12.5px; margin: 4px 0 8px; color: #d8e4ff; } #ncInfo { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #cfd6e6; }
   #ncClose { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: 0; cursor: pointer; color: #fff; background: #666; box-shadow: 0 2px 0 #333; display: block; margin: 0 auto; }
-  #birdBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
+  #birdBtn.on, #viewBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
 
 #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 30; }
 #journalPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 18; padding: 12px; }
@@ -238,3 +238,65 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-width: 640px) and (orientation: portrait) { #planBox { top: 100px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } #swapBtn { min-width: 62px; min-height: 34px; padding: 3px 8px; font-size: 10px; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #planBox { top: 88px; } }
 @media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 62px; } #leftActions { bottom: 126px; } }
+
+/* button size setting (scales the round buttons and the stick) */
+html[data-bsz="s"] .btn { transform: scale(.86); transform-origin: bottom right; }
+html[data-bsz="s"] #joy { width: 96px !important; height: 96px !important; }
+/* left-handed: stick and its shortcuts on the right, action buttons on the left */
+html[data-hand="l"] #joy { left: auto !important; right: 14px; }
+html[data-hand="l"] #actions { right: auto !important; left: 8px; align-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
+html[data-hand="l"] #leftActions { left: auto !important; right: 14px; align-items: flex-end; }
+html[data-hand="l"] #ctxActions { right: auto !important; left: 76px; }
+html[data-hand="l"] #muteBtn { left: auto !important; right: 150px; }
+html[data-hand="l"] #setBtn { left: auto !important; right: 194px; }
+html[data-hand="l"] #actions .btn, html[data-hand="l"] #swapBtn { align-self: flex-start; }
+html[data-hand="l"][data-bsz="s"] .btn { transform-origin: bottom left; }
+@media not all and (max-height: 520px) and (orientation: landscape) {
+html[data-bsz="l"] .btn { width: 62px !important; height: 62px !important; font-size: 11.5px !important; }
+html[data-bsz="l"] #swapBtn { width: auto !important; height: auto !important; }
+html[data-bsz="l"] #joy { width: 150px !important; height: 150px !important; }
+html[data-bsz="l"] #leftActions { bottom: 178px !important; }
+html[data-bsz="l"] #muteBtn { left: 176px !important; } html[data-bsz="l"] #setBtn { left: 220px !important; }
+html[data-bsz="s"] #leftActions { bottom: 112px !important; }
+html[data-hand="l"][data-bsz="l"] #muteBtn { left: auto !important; right: 176px !important; } html[data-hand="l"][data-bsz="l"] #setBtn { left: auto !important; right: 220px !important; }
+}
+html[data-hand="l"] #planBox { margin-top: 0; }
+html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
+@media (max-width: 640px) and (orientation: portrait) { html[data-hand="l"] #planBox { right: 6px; } }
+@media (max-height: 520px) and (orientation: landscape) { html[data-hand="l"] #leftActions { bottom: 124px !important; gap: 2px; } html[data-hand="l"] #planBox { right: 6px; } }
+#planBox #planBtn { position: static; width: 150px; font: inherit; font-weight: 800; font-size: 12.5px; color: #fff; padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
+  background: linear-gradient(#5b8fd6, #2c5aa0); box-shadow: 0 4px 0 #1a3a6a, 0 8px 18px rgba(0,0,0,.4); }
+#planBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .92; margin-top: 1px; white-space: normal; }
+#planBtn.done { background: #555; box-shadow: none; opacity: .7; }
+#planBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a3a6a; }
+@media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #planBox #planBtn { width: 132px; font-size: 11px; padding: 4px 6px; } #planBtn small { font-size: 9px; } }
+#repPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 32; padding: 12px; }
+#repPanel .scard2 { width: min(560px, 100%); max-height: 92%; overflow: auto; }
+#ncClass { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
+
+#treePanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 31; padding: 10px; }
+#treePanel .tree { width: min(720px, 100%); max-height: 94%; overflow: auto; }
+#treeCols { display: flex; gap: 8px; margin: 6px 0 10px; align-items: flex-start; }
+.tcol { flex: 1; min-width: 0; border-top: 3px solid var(--bc); background: rgba(255,255,255,.04); border-radius: 8px; padding: 6px; }
+.tcol h4 { margin: 0 0 6px; font-size: 14px; color: var(--bc); } .tcol h4 small { color: #b9a98a; font-weight: 400; }
+.tlink { width: 3px; height: 8px; margin: 0 auto; background: var(--bc); opacity: .5; }
+.tnode { display: block; width: 100%; text-align: left; font: inherit; color: #f2e6cc; background: #2a2118; border: 1px solid #5a4a30; border-radius: 8px; padding: 6px 8px; }
+.tnode b { display: block; font-size: 13px; } .tnode small { display: block; font-size: 11px; opacity: .8; margin: 2px 0; } .tnode .dots { font-size: 11px; letter-spacing: 2px; color: var(--bc); } .tnode em { display: block; font-size: 10px; color: #c78a6a; font-style: normal; margin-top: 2px; }
+.tnode.can { border-color: var(--bc); box-shadow: 0 0 0 1px var(--bc) inset; cursor: pointer; background: #3a2d1e; } .tnode.lock, .tnode.off { opacity: .45; }
+@media (max-width: 640px) { #treeCols { flex-direction: column; } .tcol { width: 100%; } }
+#treePanel .tnode { background: #2a2118 !important; color: #f2e6cc !important; border: 1px solid #5a4a30 !important; box-shadow: none !important; text-shadow: none; border-radius: 8px; text-align: left; font-weight: 400; }
+#treePanel .tnode.can { background: #3d3020 !important; border-color: var(--bc) !important; box-shadow: 0 0 0 1px var(--bc) inset !important; }
+#treePanel .tnode b { font-weight: 800; }
+#treePanel .tree { padding-bottom: 8px; } #treePanel .tbtns { position: sticky; bottom: 0; padding-top: 6px; }
+
+#coach { position: fixed; left: 50%; bottom: 24%; transform: translateX(-50%); width: min(420px, 92%); display: none; z-index: 29; background: rgba(28,22,16,.97); border: 2px solid #ffd45a; border-radius: 14px; padding: 12px 16px; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+#coach p { margin: 0 0 10px; font-size: 15px; line-height: 1.4; }
+@keyframes coachPulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(255,212,90,.9), 0 0 18px 6px rgba(255,212,90,.5); } 50% { box-shadow: 0 0 0 8px rgba(255,212,90,.35), 0 0 30px 12px rgba(255,212,90,.25); } }
+.coachHi { outline: 3px solid #ffd45a !important; animation: coachPulse 1s ease-in-out infinite; z-index: 30 !important; border-radius: 12px; }
+#joy.coachHi { border-radius: 50%; }
+#coach button { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
+#coach .tbtns { display: flex; gap: 8px; }
+
+#ncPick { display: flex; gap: 5px; margin: 8px 0 4px; flex-wrap: wrap; justify-content: center; } #ncPick button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 9px; border: 2px solid #5a4a32; cursor: pointer; color: #e8dcc0; background: #3a2e20; } #ncPick button.on { border-color: #ffd27a; background: #c8832a; color: #fff; }
+
+#xhair { position: fixed; left: 0; top: 0; width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none; z-index: 4; display: none; opacity: .72; will-change: transform; } #xhair.lock { opacity: .95; filter: drop-shadow(0 0 3px #ff3a2a) hue-rotate(-30deg) saturate(3); } #xhair.lock path { stroke: #ff6a5a; }

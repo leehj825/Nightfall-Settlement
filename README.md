@@ -77,9 +77,124 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - Chapter 5 - The Wide Road: after the finale, Ashford, Reedhaven and Stonegate open; collecting their embers ends the story with permanent perks.
 - Endless milestones every 5 days after the story is cleared (iron, XP, shards) and per-difficulty best records shown on the game-over screen.
 
+## Source layout
+`js/game.js` is generated from `src/game/*.js` (numbered parts) by `python3 tools/build_game.py`; edit the parts, rebuild, commit both. See `src/game/README.md`.
+
+## Controls (simplified)
+- Tap an empty spot on the screen to attack (or press `F`). Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
+- Settings: left-handed layout, button size (small / normal / large), text size, vibration, volumes.
+
+- Stone walls are no longer built by hand: from Age 3 your workers and soldiers replace wooden fences with stone on their own (5 stone each, taken from your stock), after repairs and building plans. The Stone Wall button and `U` key are gone.
+
+## Terrain
+The village stays on flat ground; beyond the walls the land rolls into hills, and a river runs along the south-east with one wooden bridge. Wading through the river slows the hero and raiders to 60% speed; the bridge is full speed. Trees and rocks do not grow in the water.
+
+## Chapter 6 and endless Champions
+- Chapter 6 - The Eclipse opens after the Wide Road: Cinder Warrens, Drowned Archive, then the Eclipse Throne (needs both relics). Ending perks: +10% hero damage, +20 health, +10% soldier strength.
+- In endless mode every second big raid brings a named Champion (Frost Tyrant, Hollow Duelist, Ash Reaver, Lantern Warden, Night Marshal) with iron, shard and XP rewards; new achievements track Champions, kills and days.
+
+## Music
+Chord-based synthesized music (bright day arpeggios, slow minor night pads, pulsing danger and boss themes) plus extra effects: level-up, chest, heal, warning bell, howl, victory.
+
+## Hands-off village (latest)
+- **Village Plan:** one button replaces the two planning buttons. Workers plan fences and town buildings themselves whenever the resources allow; you only pick the priority (Defense first / Balanced / Economy first).
+- **Foreman:** once the village has 5+ people the most experienced villager becomes foreman (+25% work speed, everyone else +12%). The morning report lists walls fortified and repaired.
+- **Upgrades by workers:** from Age 3 workers replace wooden fences with stone; each morning they also level up one building, tower (more damage, faster) or gate (stone pillars; soldiers near it hit 7% harder per level).
+- **Autosave** when you leave the app (skipped while raiders are attacking).
+
+## Terrain, river and roads
+- High ground: hits from higher than the target deal up to +25%; raiders slow down climbing.
+- River: spring flood on the first spring day of each year (slower wading), frozen in winter (raiders cross anywhere), and villagers fish for food.
+- Roads wear into the ground wherever people often walk outside the walls (20% faster).
+
+## Weapons and raiders
+- Third weapon: **Spear** (long narrow thrust, pierces lines, slower). New level-up picks: Spear Mastery, Fletching, Second Wind, Forager.
+- New raiders: **archers** (day 5+), **healers** (day 6+, heal nearby raiders), **sappers** (day 4+, run to a fence and explode).
+- Settings > **Balance report** shows a night-by-night log and past runs; copy it to share when tuning.
+
+## Latest round
+- **Models:** hooded archers with quivers, healers with glowing staffs, sappers with powder kegs, and a round shield for the hero.
+- **Soldier classes:** tap a soldier and change class: Swordsman (wide sweep), Spearman (long thrust, holds the line) or Medic (heals allies nearby, weak attack).
+- **Walls:** raiders are drawn to badly damaged wall sections, workers repair the most damaged section first, and the morning report counts weak walls.
+- **Caravans:** from day 5, every fourth day a trade caravan crosses the bridge to your gate. Roads raise the payout; bandits sometimes ambush it - defend it or it is lost.
+- **Hero skills:** level-ups open a skill tree (Vanguard / Ranger / Tactician) instead of random picks; deeper nodes need points in the same branch. Tap the stats bar level row to view it any time.
+- **Weather:** rain (and snow in winter) cuts vision and archer range; storm nights always rain.
+- **World dressing:** bushes on the hills, a fishing pier, and farm plots that appear beside well-worn roads.
+- **Guided first day:** short highlighted tips on a new game (Settings > Replay tips to see them again).
+- **Graphics:** a new Lowest setting for old phones (also switched on automatically if Low is still too slow).
+- **Farming:** farmers now play the Farming Pack clips (plant, water, pull, pick fruit, cycling) instead of the pickaxe animation. The archery range model is smaller.
+- **Medics on expeditions:** a Medic soldier in your escort now heals you and the other escorts as it does at home.
+
+## Motion-capture animations
+The Mixamo Locomotion Pack and Lite Sword and Shield Pack are retargeted onto the game's stick-man skeleton (`tools/retarget_mixamo.js` writes `js/anims.js`). Everyone uses the captured idle / walk / run / death; swordsmen and the hero in sword mode use the sword-and-shield guard idle, run and three rotating slashes plus a jumping slam every fourth attack. Bow users (hero in bow mode, archers) use the captured draw-arrow and run (walking uses the normal walk, the crouch-walk clip looked odd); the arrow leaves when the hand reaches forward. Spear users hold the spear upright when standing, and like a sword (shaft at a right angle to the forearm) when running and attacking: they use the sword-and-shield run, the captured bayonet stab (narrow, very long reach; shaft aligned from shoulder to hand) and a sword slash clip (wide sweep). Mining combines the leg step of the first sword attack with the upper body of the jumping slam (the pickaxe shaft follows the right arm); woodcutting is a procedural baseball swing (torso wound back, then whipped around with the axe level) on the same sword-attack leg step; the medic pose stays procedural. The wrist is retargeted too (`handL`/`handR` tracks), so swords and bows follow the captured hand; spears are thrust with one hand (the shaft follows the shoulder-to-hand line during a stab or slash) while the other arm carries the shield, which is strapped to the outside of the forearm, and the bow is held in the left hand, whose arm the draw clip extends forward. On model characters the hand bones sit at the fist (0.45 below the elbow) so weapons are gripped by the hand.
+To regenerate: `node tools/retarget_mixamo.js <three@0.128 folder> <locomotion fbx folder> <sword-shield fbx folder>`.
+
+## Character and weapon models
+Characters are skinned meshes (`js/models.js`, built by `tools/build_models.py <models folder>`): the hero is the Leader, swordsmen use Soldier_sword, archers Soldier_bow, citizens the male/female models (picked per person), raiders Bandit1/Bandit2 (tinted per raider type). The meshes are weighted to the same 11-bone skeleton, so all animations (captured and procedural) drive them; weapons come from the weapons pack (sword, spear, bow, round shield - the scabbard is left out) and gathering uses the pickaxe / axe models (axe for trees, pickaxe for rock); the staff is still procedural and armor tiers are hidden (armor pieces are not drawn on the models). Textures are downsized to 512 px. If a model file is missing the game falls back to the old stick-man figures.
+
 ## Releasing to Google Play
 See `RELEASE.md` (signing key, GitHub secrets, `Android release` workflow) and `docs/privacy-policy.md`.
 
 ## Android (debug APK)
 See [ANDROID.md](ANDROID.md): a Capacitor wrapper plus a GitHub Actions workflow that builds `app-debug.apk` (Actions -> "Android debug APK" -> Run workflow). three.js is now bundled in `vendor/`, so the game (and the app) work fully offline.
 
+
+### Structure models
+
+The well, blacksmith, archery range, tent (age-1 houses), campfire ring, wooden fence, brick wall and pine tree are static meshes from `js/structures.js`, built by `tools/build_structures.py <folder>` (a folder with `Well/`, `Blacksmith/`, `archery_target/`, `camping_scene_3d_model/`). `structMesh(key)` in `js/rig.js` returns a mesh with the base centre at the origin and the front toward +z; if `structures.js` is missing the game falls back to the old box-built versions. Collision radii, blueprints and wall HP are unchanged.
+
+> Temporary: the skinned character models are switched off (everyone uses the polygon stick-man rig so the movement can be judged). Add `?models=1` to the URL, or set `USE_CHAR_MODELS` in `js/rig.js`, to turn them back on.
+
+### Polygon characters (concept-art look)
+
+With the skinned models off, `buildStickman` in `js/rig.js` draws everyone from low-poly parts: a faceted head (carved from a sphere: flat face, squared jaw, brow ridge, nose, cheekbones, eyes), beards and hair styles, leather vests with crossed straps and double belts, chain-mail sleeves and tunics (with a mesh texture), steel pauldrons and greaves, tall cuffed boots, simple hands and feet (no fingers or toes). Roles: hero (mail + leather vest + one steel pauldron + beard), soldiers (nasal helm with cheek guards), archers (leather cuirass, hood or short hair), citizens (blacksmith apron, farmer hat, elder robe, woman with kerchief and dress) and five raider types (helmed fighter, hooded masked rogue, fur-collared brute, cloaked woman, scarfed youth).
+
+### Aiming and strafing
+
+The hero no longer turns toward the movement direction. The body always faces where the camera looks, and it turns only when you turn the screen (drag on touch, mouse drag). Movement is relative to that facing: forward runs, left/right play the captured strafe clips (the leg motion is mixed with the sword-and-shield or bow upper body), and backward plays the run clip in reverse. Attacks and arrows go where the camera looks; a dash goes in the input direction (or straight ahead when there is no input). Villagers, soldiers and raiders still face the way they walk.
+
+The skinned/polygon heads are now rounded boxes (flat face, squared jaw).
+
+### Camera
+
+- **Front View (H)** button: puts the camera in front of the hero so you can see his face and front; press again for the usual back view. Controls stay screen-relative (stick up = away from the camera, so the hero backpedals toward you).
+- **Map View (B)**: the camera is free - drag to turn/tilt (now up to straight down), pinch or wheel to zoom much closer (down to 5 units), and two fingers (or right mouse drag) to pan the camera across the map. The hero does not turn with the camera in map view; he faces the way he walks.
+
+### Movement sets (Locomotion + Pro Longbow + Pro Sword and Shield packs)
+
+`node tools/retarget_mixamo.js <three-r128-dir> <loco-dir> <ss-dir> <bow-dir> <spear-dir>` writes `js/anims.js` with three movement sets, each with idle, walk, run, left/right strafe and backward:
+
+- **Normal** (Locomotion Pack): used by everyone with a weapon while no enemy is near. Backward is the forward clip played in reverse.
+- **Sword and shield** (Pro Sword and Shield Pack): used by the hero, swordsmen and spearmen when an enemy is within about 25 units or on a journey (the clips are `ssIdle`, `ssWalk/ssWalkB`, `ssRun/ssRunB`, `ssStrafeP/N` and `ssStrafeP/NW` for walking strafes).
+- **Bow** (Pro Longbow Pack): used by the hero in bow mode and by archers in the same situations (`bowIdle`, `bowWalk/B/P/N`, `bowRun/B/P/N`), plus the bow death.
+
+Raiders and journey escorts are always in the combat set. The attack clips are unchanged (sword-and-shield attacks, the captured bayonet stab and slash, the bow draw); `die` is the sword-and-shield death and `dieBow` the bow death.
+
+### Movement per weapon pack, and the Great Swordsman
+
+Each weapon now moves with its own pack instead of the generic locomotion (people without a weapon pose, and raiders with melee weapons, still use the Locomotion Pack):
+
+| Weapon | Pack | Calm (no enemy near) | Combat (enemy within ~25 units, or on a journey) |
+|---|---|---|---|
+| Sword, spear (+ shield) | Pro Sword and Shield | relaxed idle (idle 3), same walk / run / strafe / backward clips | guard idle, same walk / run / strafe / backward clips |
+| Bow | Pro Longbow | idle 02, walk with the bow lowered, run | idle 01, aimed walk in all four directions, run |
+| Great sword | Great Sword | relaxed idle (idle 5), walk / run / strafe / backward | guard idle, same walk / run / strafe / backward clips |
+
+The Sword and Shield and Great Sword packs only contain guarded-stance locomotion, so there the calm/combat difference is the idle pose.
+
+**Great Swordsman** (new soldier class; tap a soldier's card to cycle classes): a longer two-handed sword (the sword mesh at 1.6x), slow heavy cleaves (reach 2.6, 1.7x damage, wide arc) with every fourth attack a spinning 360-degree slash (2.4x damage). Attacks use the Great Sword pack (`gsAttack1..4`), death is `dieGs`.
+
+### Town peace: weapons put away
+Guards (swordsmen, spearmen, great swordsmen) and archers put their weapons (and shield) away while no enemy is within about 24 units and they are not on a journey or mid-attack, and they walk and idle with the normal Locomotion clips. When an enemy comes near they draw the weapon again and switch to their weapon pack's movement. The hero never sheathes. The spear is always held like a sword (tip up and forward); only the stab uses the shoulder-to-hand alignment.
+
+The soldier card now has a class picker (Sword / Spear / Great Sword / Medic) as well as the tap-to-cycle button.
+
+### Hero great sword
+The Q weapon switch now cycles Sword, Great Sword, Bow, Spear. The great sword is two-handed (no shield), uses the Great Sword pack for moving and attacking, has longer reach (wide arc, 1.7x damage, slower cooldown) and every fourth attack is a spinning slash around the hero (2.4x damage, 360 degrees). It uses the equipped sword's tier and upgrades.
+
+### Great sword grip
+During an attack the great sword is held with both hands: a two-bone arm solver reaches the left hand to the hilt (and pulls the right hand in to meet it when the hilt is out of reach), keeping the sword's direction from the captured right wrist. While walking, running or standing the left arm hangs naturally and the sword is held in one hand.
+
+### Bow reticle and roaming enemies
+- With the bow equipped a small white crosshair (dark outline, ~70% opacity) shows where arrows fly (12 units ahead of the hero along his facing). It turns red when an enemy is almost exactly on that line within range. It is hidden in map view, front view and menus.
+- A few raiders and beasts (2 at the start, up to 6 later) now roam the map outside the village by day and by night. They wander slowly, chase the hero when he comes within about 11 units (give up at about 18), never come closer to the village than 34 units and lose interest when the hero is inside the village (within 32). Soldiers and archers ignore them. They drop a little iron and give about 1.3x XP, and respawn after a while. Night hunt prowlers are unchanged.

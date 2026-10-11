@@ -4,6 +4,7 @@
   "private": true,
   "description": "Nightfall Settlement - a 3D village survival game (web + Android wrapper)",
   "scripts": {
+    "build:game": "python3 tools/build_game.py",
     "www": "node tools/make_www.js",
     "android:sync": "npm run www && npx cap sync android",
     "android:debug": "npm run android:sync && cd android && ./gradlew assembleDebug"
