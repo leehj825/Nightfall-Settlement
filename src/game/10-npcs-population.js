@@ -28,9 +28,9 @@
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
-    n.rig.style = cls === 'sword' ? 'ss' : n.role === 'archer' ? 'bow' : '';
+    n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
-    n.rig.setGear('sword', n.role === 'melee' ? gearDef(n.gear.sword) : null);
+    n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
     { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
     n.rig.setGear('staff', cls === 'medic' ? {} : null);
     n.rig.setGear('bow', n.role === 'archer' ? gearDef(n.gear.bow) : null);
@@ -240,8 +240,8 @@
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
   const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
-  const CLS_ORDER = ['sword', 'spear', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
-  const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
+  const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
+  const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
   function renderCard() {
     const n = cardNpc;
     if (!n || !npcs.includes(n)) { cardNpc = null; ncEl.style.display = 'none'; return; }
@@ -266,7 +266,7 @@
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
-  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % 3]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });

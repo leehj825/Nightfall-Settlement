@@ -167,3 +167,17 @@ The skinned/polygon heads are now rounded boxes (flat face, squared jaw).
 - **Bow** (Pro Longbow Pack): used by the hero in bow mode and by archers in the same situations (`bowIdle`, `bowWalk/B/P/N`, `bowRun/B/P/N`), plus the bow death.
 
 Raiders and journey escorts are always in the combat set. The attack clips are unchanged (sword-and-shield attacks, the captured bayonet stab and slash, the bow draw); `die` is the sword-and-shield death and `dieBow` the bow death.
+
+### Movement per weapon pack, and the Great Swordsman
+
+Each weapon now moves with its own pack instead of the generic locomotion (people without a weapon pose, and raiders with melee weapons, still use the Locomotion Pack):
+
+| Weapon | Pack | Calm (no enemy near) | Combat (enemy within ~25 units, or on a journey) |
+|---|---|---|---|
+| Sword, spear (+ shield) | Pro Sword and Shield | relaxed idle (idle 3), same walk / run / strafe / backward clips | guard idle, same walk / run / strafe / backward clips |
+| Bow | Pro Longbow | idle 02, walk with the bow lowered, run | idle 01, aimed walk in all four directions, run |
+| Great sword | Great Sword | relaxed idle (idle 5), walk / run / strafe / backward | guard idle, same walk / run / strafe / backward clips |
+
+The Sword and Shield and Great Sword packs only contain guarded-stance locomotion, so there the calm/combat difference is the idle pose.
+
+**Great Swordsman** (new soldier class; tap a soldier's card to cycle classes): a longer two-handed sword (the sword mesh at 1.6x), slow heavy cleaves (reach 2.6, 1.7x damage, wide arc) with every fourth attack a spinning 360-degree slash (2.4x damage). Attacks use the Great Sword pack (`gsAttack1..4`), death is `dieGs`.

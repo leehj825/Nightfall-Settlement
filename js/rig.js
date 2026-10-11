@@ -500,7 +500,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   function makeSwordMesh(def) {
     const wm = weaponModel('sword', def.tier);
-    if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); wm.scale.setScalar(def.tier > 0 ? 1.25 : 1); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
+    if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); wm.scale.setScalar((def.tier > 0 ? 1.25 : 1) * (def.great ? 1.6 : 1)); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
     const g = new THREE.Group(), inner = new THREE.Group(), len = def.tier > 0 ? 1.05 : 0.8;
     const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 6), darkMat);
     const guard = new THREE.Mesh(new THREE.BoxGeometry(def.tier > 0 ? 0.34 : 0.26, 0.05, 0.07), gearMat('guard' + def.tier, def.tier > 0 ? 0xc9a23a : 0x6a5a48));
@@ -612,26 +612,28 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^ss(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n); }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n); }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
-    // 이동 클립 고르기: 평상시에는 일반 이동(Locomotion), 적이 가깝거나 원정 중(rig.combat)이면 무기별 전투 자세 이동(칼·방패 / 활).
+    // 이동 클립 고르기: 무기마다 자기 팩의 동작을 쓴다 (칼·창 = 칼·방패 팩 / 활 = 롱보우 팩 / 대검 = 대검 팩). 그런 무기가 없으면 일반 이동(Locomotion).
+    // rig.combat(적이 가깝거나 원정 중)이면 전투 대기 자세, 아니면 평상시 대기 자세(활은 걷기도 겨누지 않은 동작)
     // moveDir: f 앞 / b 뒤 / p,n 옆걸음 (p: +x쪽, n: -x쪽, 정면 +z 기준)
     _res(name) {
       const rig = this.rig, md = this.moveDir || 'f';
       if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
-      const set = rig.combat ? (rig.style === 'ss' || rig.main === 'spear' ? 'ss' : rig.style === 'bow' ? 'bow' : '') : '';
+      const set = rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
-      if (name === 'idle') { const k = set === 'ss' ? 'ssIdle' : set === 'bow' ? 'bowIdle' : 'idle'; return this.acts[k] ? k : 'idle'; }
+      if (name === 'idle') { const k = set === 'ss' ? (war ? 'ssIdle' : 'ssIdleCalm') : set === 'gs' ? (war ? 'gsIdle' : 'gsIdleCalm') : set === 'bow' ? (war ? 'bowIdle' : 'bowIdleCalm') : 'idle'; return this.acts[k] ? k : 'idle'; }
       if (name === 'walk' || name === 'run') {
         const run = name === 'run', side = md === 'p' || md === 'n';
         let k;
         if (set === 'ss') k = side ? 'ssStrafe' + suf + (run ? '' : 'W') : (run ? 'ssRun' : 'ssWalk') + suf;
-        else if (set === 'bow') k = (run ? 'bowRun' : 'bowWalk') + suf;
-        else k = side ? 'strafe' + suf + (run ? '' : 'W') : name;                              // 평상시: 뒤로 걷기는 앞으로 걷기를 거꾸로 재생한다
+        else if (set === 'gs') k = side ? 'gsStrafe' + suf + (run ? '' : 'W') : (run ? 'gsRun' : 'gsWalk') + suf;
+        else if (set === 'bow') k = run ? 'bowRun' + suf : (war ? 'bowAimWalk' : 'bowWalk') + suf;
+        else k = side ? 'strafe' + suf + (run ? '' : 'W') : name;                              // 무기 자세가 없는 사람: 뒤로 걷기는 앞으로 걷기를 거꾸로 재생한다
         if (this.acts[k]) return k;
         return name;
       }
@@ -665,6 +667,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; this.heavy = this.atkI === 4;
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.15 : 0.65);
       }
+      if (name === 'attackSword' && this.rig.style === 'gs' && this.acts.gsAttack1) {                 // 대검: 세 번은 크게 베기, 네 번째는 제자리 회전 베기 (범위가 넓다)
+        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'gsAttack' + this.atkI; this.heavy = this.atkI === 4;
+        ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 1.1);
+      }
       const act = this.acts[name]; act.timeScale = ts;
       const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name];
       this.shot = { t: 0, dur };
@@ -672,7 +678,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
-    die() { this.dead = true; this.shot = null; this.rig.aim(false); const dk = this.rig.style === 'bow' && this.acts.dieBow ? 'dieBow' : 'die'; this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE; }
+    die() { this.dead = true; this.shot = null; this.rig.aim(false); const dk = this.rig.style === 'bow' && this.acts.dieBow ? 'dieBow' : this.rig.style === 'gs' && this.acts.dieGs ? 'dieGs' : 'die'; this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE; }
     revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
