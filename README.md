@@ -146,3 +146,9 @@ The well, blacksmith, archery range, tent (age-1 houses), campfire ring, wooden 
 ### Polygon characters (concept-art look)
 
 With the skinned models off, `buildStickman` in `js/rig.js` draws everyone from low-poly parts: a faceted head (carved from a sphere: flat face, squared jaw, brow ridge, nose, cheekbones, eyes), beards and hair styles, leather vests with crossed straps and double belts, chain-mail sleeves and tunics (with a mesh texture), steel pauldrons and greaves, tall cuffed boots, hands with fingers. Roles: hero (mail + leather vest + one steel pauldron + beard), soldiers (nasal helm with cheek guards), archers (leather cuirass, hood or short hair), citizens (blacksmith apron, farmer hat, elder robe, woman with kerchief and dress) and five raider types (helmed fighter, hooded masked rogue, fur-collared brute, cloaked woman, scarfed youth).
+
+### Aiming and strafing
+
+The hero no longer turns toward the movement direction. The body always faces where the camera looks, and it turns only when you turn the screen (drag on touch, mouse drag). Movement is relative to that facing: forward runs, left/right play the captured strafe clips (the leg motion is mixed with the sword-and-shield or bow upper body), and backward plays the run clip in reverse. Attacks and arrows go where the camera looks; a dash goes in the input direction (or straight ahead when there is no input). Villagers, soldiers and raiders still face the way they walk.
+
+The skinned/polygon heads are now rounded boxes (flat face, squared jaw).

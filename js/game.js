@@ -3278,7 +3278,7 @@
   let dashT = 0, dashCd = 0, invincibleT = 0, dashDX = 0, dashDZ = 0;
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
-    dashDX = Math.sin(facing); dashDZ = Math.cos(facing);
+    if (performance.now() - lastMT < 350) { dashDX = lastMX; dashDZ = lastMZ; } else { dashDX = Math.sin(facing); dashDZ = Math.cos(facing); }          // 입력 방향으로 (입력이 없으면 정면)
     atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
@@ -4184,7 +4184,7 @@
     if (!snow && (wx.snd -= dt) <= 0) { wx.snd = 0.5; Snd.play('rain', wx.lvl); }
   }
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
-  let facing = 0;
+  let facing = 0, moveDir = 'f', lastMX = 0, lastMZ = 0, lastMT = -1e9;
   const clock = new THREE.Clock();
   let resting = false, sparT = 0;
   let fpsT = 0, fpsN = 0, stormT = 5, lightning = 0, thunderIn = 0;
@@ -4298,12 +4298,16 @@
       player.position.x += mx * SPEED * spdMul() * ts * mag * dt;
       player.position.z += mz * SPEED * spdMul() * ts * mag * dt;
 
-      // 이동 방향으로 부드럽게 회전
-      let diff = Math.atan2(mx, mz) - facing;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      facing += diff * Math.min(1, dt * 14);
-      player.rotation.y = facing;
+      lastMX = mx; lastMZ = mz; lastMT = performance.now();
+      { const fx = Math.sin(facing), fz = Math.cos(facing), f = mx * fx + mz * fz, sd = mx * fz - mz * fx;       // 바라보는 방향 기준 앞/뒤/옆걸음
+        moveDir = f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'; }
     }
+    if (!(mag > 0.08)) moveDir = 'f';
+    if (!gathering) {                                                    // 몸은 화면(카메라)이 향한 쪽만 본다: 화면을 터치/마우스로 돌릴 때만 회전하고, 이동은 옆걸음·뒤로걷기로 한다
+      let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
+    }
+    playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
     playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
     playerAnim.base(gathering ? 'gather' : dashT > 0 ? 'run' : mag > 0.08 ? (mag > 0.6 ? 'run' : 'walk') : 'idle', SPEED * mag);   // Idle / Walk / Run / Gather CrossFade
     playerAnim.update(dt);

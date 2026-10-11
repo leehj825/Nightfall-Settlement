@@ -19,6 +19,7 @@ const WANT = {
   ssAttack1: ['sword and shield attack (4)', false], ssAttack2: ['sword and shield attack (2)', false], ssAttack3: ['sword and shield attack (3)', false], ssAttack4: ['sword and shield attack', false],
   ssBlock: ['sword and shield block', false],
   spearStab: ['Bayonet_Stab', false], spearSlash: ['Slash_Advance', false],
+  strafeN: ['left strafe', true], strafeP: ['right strafe', true], strafeNW: ['left strafe walking', true], strafePW: ['right strafe walking', true],       // N: 캐릭터가 -x쪽으로, P: +x쪽으로 (정면 +z 기준) 옆걸음
   bowDraw: ['Standing_Draw_Arrow', false], bowRun: ['Standing_Run_Forward', true], bowWalk: ['Crouch_Walk_Forward', true], die: ['sword and shield death', false],
 };
 const MAXF = 48;
@@ -44,7 +45,7 @@ for (const [name, [file, loop]] of Object.entries(WANT)) {
   const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
   const mixer = new THREE.AnimationMixer(obj); mixer.clipAction(clip).play();
   const n = Math.min(MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
-  let z0 = null;
+  let z0 = null; const xStart = (mixer.setTime(0), obj.updateMatrixWorld(true), wp(B.Hips).x);
   for (let i = 0; i <= n; i++) {
     mixer.setTime(clip.duration * i / n); obj.updateMatrixWorld(true);
     const Wh = wq(B.Hips).multiply(rest.Hips.clone().invert()), Ws = wq(B.Spine1).multiply(rest.Spine1.clone().invert()), Wd = wq(B.Head).multiply(rest.Head.clone().invert());
@@ -70,6 +71,7 @@ for (const [name, [file, loop]] of Object.entries(WANT)) {
   { const ys = tr.hipsY, mx = Math.max(...ys), mn = Math.min(...ys);               // 점프 공격: 타격 순간 = 공중에서 내려와 착지하는 때
     if (name.startsWith('ssAttack') && mx - mn > 0.6) { const p = ys.indexOf(mx); for (let i = p; i <= n; i++) if (ys[i] < mn + 0.25 * (mx - mn)) { bi = i; break; } } }
   if (name === 'bowDraw') bi = Math.round(n * 0.5);               // 화살을 뽑아 시위에 건 손이 앞에 닿는 순간 = 발사
+  if (/^strafe/.test(name)) { const dx = wp(B.Hips).x - xStart; console.log('   strafe hips x travel (game space)', dx.toFixed(2)); }
   const drift = Math.abs(tr.hipsZ[n]); out[name] = { d: +clip.duration.toFixed(3), n, loop, hit: +(bi / n).toFixed(3), t: tr };
   console.log(name.padEnd(10), file.padEnd(30), clip.duration.toFixed(2) + 's', n + 'f', 'hit@' + (bi / n).toFixed(2), 'hips Z drift (ignored)', drift.toFixed(2));
 }

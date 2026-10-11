@@ -51,23 +51,25 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   let Q = 1;                                                    // 분할 정밀도: 적은 0.5로 만들어 삼각형 수를 줄인다
   const cyl = (rt, rb, h, seg = 12, open = false) => new THREE.CylinderGeometry(rt, rb, h, Math.max(6, Math.round(seg * Q)), 1, open), sph = (r, w = 14, h = 10, ps = 0, pl = Math.PI * 2, ts = 0, tl = Math.PI) => new THREE.SphereGeometry(r, Math.max(6, Math.round(w * Q)), Math.max(4, Math.round(h * Q)), ps, pl, ts, tl);
 
-  // 얼굴이 있는 각진 로우폴리 머리: 구를 깎아서 이마·광대·턱을 만든다 (둥근 공이 아니라 네모진 턱과 평평한 얼굴)
+  // 얼굴이 있는 각진 로우폴리 머리: 모서리가 둥근 직육면체(네모난 이마·턱·광대)를 깎아 만든다
   function faceHeadGeo(w, h) {
-    const g = new THREE.SphereGeometry(0.19, Math.max(8, Math.round(w * Q)), Math.max(6, Math.round(h * Q))), p = g.attributes.position;
+    const hx = 0.145, hy = 0.2, hz = 0.15, r = 0.06, n = Math.max(3, Math.round(4 * Q)), g = new THREE.BoxGeometry(hx * 2, hy * 2, hz * 2, n, n + 1, n), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
-      let x = p.getX(i), y = p.getY(i), z = p.getZ(i); const ny = y / 0.19;
-      const wid = ny > 0 ? 1 - 0.28 * ny * ny : 1 - 0.55 * Math.pow(-ny, 1.6), dep = ny > 0 ? 1 - 0.1 * ny : 1 - 0.18 * (-ny);
-      x = Math.sign(x) * Math.pow(Math.abs(x) / 0.19, 0.82) * 0.19 * wid * 0.98;                 // 옆으로 각지게
-      z = z * dep + (ny < -0.2 ? 0.035 * (-ny - 0.2) : 0);                                        // 턱이 앞으로
-      if (z > 0.1) z = 0.1 + (z - 0.1) * 0.55;                                                    // 얼굴 앞면을 평평하게
-      p.setXYZ(i, x, y * 1.1, z);
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const cx = Math.max(-(hx - r), Math.min(hx - r, x)), cy = Math.max(-(hy - r), Math.min(hy - r, y)), cz = Math.max(-(hz - r), Math.min(hz - r, z));
+      let dx = x - cx, dy = y - cy, dz = z - cz; const l = Math.hypot(dx, dy, dz);
+      if (l > 1e-6) { x = cx + dx / l * r; y = cy + dy / l * r; z = cz + dz / l * r; }
+      const ny = y / hy;                                                                        // -1 턱 ... +1 정수리
+      if (ny < -0.1) { const k = (-ny - 0.1) / 0.9; x *= 1 - 0.22 * k; z = z * (1 - 0.1 * k) + 0.02 * k; }          // 턱은 조금 좁게
+      else if (ny > 0.55) { const k = (ny - 0.55) / 0.45; x *= 1 - 0.1 * k; }                    // 정수리는 살짝 둥글게
+      p.setXYZ(i, x, y, z);
     }
     g.computeVertexNormals(); return g;
   }
   const makeRG = () => ({
     pelvis: cyl(0.2, 0.215, 0.22, 14), waist: cyl(0.2, 0.17, 0.28, 14), chest: cyl(0.275, 0.2, 0.38, 16), yoke: sph(0.16, 12, 8), belt: cyl(0.208, 0.208, 0.06, 14), buckle: new THREE.BoxGeometry(0.07, 0.06, 0.02),
     neck: cyl(0.068, 0.082, 0.14, 8), head: sph(0.19, 18, 14), headV: faceHeadGeo(11, 9), noseW: new THREE.ConeGeometry(0.028, 0.09, 4), browRidge: new THREE.BoxGeometry(0.17, 0.028, 0.05), cheek: sph(0.04, 6, 5), eyeBox: new THREE.BoxGeometry(0.042, 0.022, 0.012), irisBox: new THREE.BoxGeometry(0.022, 0.02, 0.012), beardJaw: new THREE.ConeGeometry(0.115, 0.17, 6), sideburn: new THREE.BoxGeometry(0.03, 0.1, 0.035), fringe: new THREE.BoxGeometry(0.2, 0.05, 0.07), finger: cyl(0.014, 0.012, 0.075, 5), pauldronBig: sph(0.17, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), helmCheek: new THREE.BoxGeometry(0.035, 0.15, 0.11), fur: cyl(0.3, 0.33, 0.1, 10), furBump: sph(0.07, 6, 5), kerchief: sph(0.205, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), dressSkirt: cyl(0.22, 0.36, 0.66, 12), tab: new THREE.BoxGeometry(0.09, 0.2, 0.015), robe: cyl(0.24, 0.36, 0.9, 12), cloakLong: new THREE.BoxGeometry(0.5, 0.95, 0.04), scarfRing: new THREE.TorusGeometry(0.12, 0.04, 6, 10), toe: sph(0.075, 8, 6), jaw: sph(0.13, 14, 10), ear: sph(0.035, 8, 6), eyeW: sph(0.033, 10, 8), pupil: sph(0.019, 8, 6), brow: new THREE.BoxGeometry(0.075, 0.016, 0.022), nose: sph(0.026, 8, 6), mouth: new THREE.BoxGeometry(0.07, 0.013, 0.01),
-    hairCap: sph(0.205, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairLong: cyl(0.16, 0.115, 0.42, 12), ball: sph(0.08, 10, 8), curl: sph(0.085, 8, 6), tail: new THREE.ConeGeometry(0.05, 0.32, 8), beard: sph(0.1, 10, 8), stache: new THREE.BoxGeometry(0.1, 0.022, 0.03),
+    hairCap: sph(0.18, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairLong: cyl(0.16, 0.115, 0.42, 12), ball: sph(0.08, 10, 8), curl: sph(0.085, 8, 6), tail: new THREE.ConeGeometry(0.05, 0.32, 8), beard: sph(0.1, 10, 8), stache: new THREE.BoxGeometry(0.1, 0.022, 0.03),
     hood: sph(0.235, 20, 12, Math.PI / 2 + 0.8, Math.PI * 2 - 1.6, 0, Math.PI * 0.72), cowl: cyl(0.2, 0.29, 0.15, 14), mask: new THREE.BoxGeometry(0.2, 0.1, 0.06),
     shoulder: sph(0.08, 18, 12), pauldron: sph(0.145, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), spike: new THREE.ConeGeometry(0.04, 0.16, 6),
     upper: cyl(0.072, 0.058, 0.3, 10), elbow: sph(0.06, 14, 10), lower: cyl(0.056, 0.044, 0.3, 10), cuff: cyl(0.062, 0.062, 0.05, 10), bracer: cyl(0.065, 0.055, 0.15, 10), palm: sph(0.055, 12, 10), thumb: sph(0.022, 6, 5),
@@ -399,6 +401,23 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       STICK_CLIPS.gatherAxe = new THREE.AnimationClip('gatherAxe', T2, keep);
     }
   }
+  // 옆걸음: 다리는 옆걸음 모션캡처, 상체(골반 회전·척추·팔)는 무기 자세의 달리기 클립을 합친다 (칼·방패 / 활 자세가 옆걸음에서도 유지된다)
+  if (typeof MIXAMO_CLIPS !== 'undefined') {
+    const eul2 = new THREE.Euler(), q2 = new THREE.Quaternion(), smp = (arr, c, u) => { const f = Math.min(1, u) * c.n, i = Math.min(c.n - 1, Math.floor(f)), k = f - i, a0 = arr[i], a1 = arr[i + 1]; return [a0[0] + (a1[0] - a0[0]) * k, a0[1] + (a1[1] - a0[1]) * k, a0[2] + (a1[2] - a0[2]) * k]; };
+    for (const [pre, upName] of [['ss', 'ssRun'], ['bow', 'bowRun']]) for (const sfx of ['P', 'N']) {
+      const Lc = MIXAMO_CLIPS['strafe' + sfx], Uc = MIXAMO_CLIPS[upName]; if (!Lc || !Uc) continue;
+      const T = Lc.d, N = 24, times = [], rot = {}, pos = [], LEG3 = ['hipL', 'hipR', 'kneeL', 'kneeR'];
+      for (const b of TBONES) rot[b] = [];
+      for (let i = 0; i <= N; i++) {
+        const u = i / N; times.push(T * u);
+        for (const b of TBONES) { const src = LEG3.includes(b) ? Lc : Uc, v = src.t[b] ? smp(src.t[b], src, u) : [0, 0, 0]; eul2.set(v[0], v[1], v[2]); q2.setFromEuler(eul2); rot[b].push(q2.x, q2.y, q2.z, q2.w); }
+        const f = u * Lc.n, j = Math.min(Lc.n - 1, Math.floor(f)); pos.push(0, Lc.t.hipsY[j] + (Lc.t.hipsY[j + 1] - Lc.t.hipsY[j]) * (f - j), 0);
+      }
+      const tracks = TBONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
+      tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
+      STICK_CLIPS[pre + 'Strafe' + sfx] = new THREE.AnimationClip(pre + 'Strafe' + sfx, T, tracks);
+    }
+  }
   // ----- 짐승: 네발 리그 (몸통/머리/꼬리/다리 4개 Bone) -----
   const BEAST_CLIPS = (() => {
     const clips = {}, eul = new THREE.Euler(), q = new THREE.Quaternion(), B = ['body', 'headB', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'];
@@ -598,7 +617,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
-    _res(name) { if (name === 'gather') { const k = this.rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; } if (this.rig.main === 'spear' && name === 'run' && this.acts.ssRun) return 'ssRun'; if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
+    _res(name) {
+      const md = this.moveDir;
+      if ((name === 'run' || name === 'walk') && (md === 'p' || md === 'n')) {                                 // 옆걸음 (p: +x쪽, n: -x쪽)
+        const sf = md === 'p' ? 'P' : 'N', st = this.rig.style === 'ss' || this.rig.main === 'spear' ? 'ss' : this.rig.style === 'bow' ? 'bow' : '';
+        const k = st ? st + 'Strafe' + sf : (name === 'walk' ? 'strafe' + sf + 'W' : 'strafe' + sf); if (this.acts[k]) return k;
+      }
+      return this._res0(name);
+    }
+    _res0(name) { if (name === 'gather') { const k = this.rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; } if (this.rig.main === 'spear' && name === 'run' && this.acts.ssRun) return 'ssRun'; if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
     _play(name, fade, force) {
       name = this._res(name);
       const next = this.acts[name] || this.acts.idle;
@@ -612,7 +639,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const rs = this._res(name);
       if (name !== this.baseName || rs !== this.resName) { this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
       const a = this.acts[rs];
-      if (a && !this.shot) a.timeScale = name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1;
+      if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (name === 'walk' || name === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
     }
     once(name) {
       if (this.dead || !this.acts[name]) return;

@@ -212,7 +212,7 @@
   let dashT = 0, dashCd = 0, invincibleT = 0, dashDX = 0, dashDZ = 0;
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
-    dashDX = Math.sin(facing); dashDZ = Math.cos(facing);
+    if (performance.now() - lastMT < 350) { dashDX = lastMX; dashDZ = lastMZ; } else { dashDX = Math.sin(facing); dashDZ = Math.cos(facing); }          // 입력 방향으로 (입력이 없으면 정면)
     atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
