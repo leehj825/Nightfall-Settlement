@@ -132,8 +132,8 @@
       dashT -= dt;
     } else if (mag > 0.08) {
       // 현재 카메라가 바라보는 방향(수평) 기준으로 전진/우측 벡터 계산
-      const fwdX = -Math.sin(yaw), fwdZ = -Math.cos(yaw);
-      const rightX = Math.cos(yaw), rightZ = -Math.sin(yaw);
+      const vy = viewYaw(), fwdX = -Math.sin(vy), fwdZ = -Math.cos(vy);                  // 입력은 화면 기준 (앞모습 보기에서는 화면 위쪽 = 카메라에서 멀어지는 쪽)
+      const rightX = Math.cos(vy), rightZ = -Math.sin(vy);
       let mx = rightX * ix + fwdX * iy, mz = rightZ * ix + fwdZ * iy;
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
@@ -146,7 +146,10 @@
         moveDir = f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'; }
     }
     if (!(mag > 0.08)) moveDir = 'f';
-    if (!gathering) {                                                    // 몸은 화면(카메라)이 향한 쪽만 본다: 화면을 터치/마우스로 돌릴 때만 회전하고, 이동은 옆걸음·뒤로걷기로 한다
+    if (bird) {                                                          // 지도 보기: 화면을 돌려도 영웅은 따라 돌지 않고, 걷는 방향을 본다
+      moveDir = 'f';
+      if (mag > 0.08 && dashT <= 0) { let diff = Math.atan2(lastMX, lastMZ) - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff)); facing += diff * Math.min(1, dt * 14); player.rotation.y = facing; }
+    } else if (!gathering) {                                                    // 몸은 화면(카메라)이 향한 쪽만 본다: 화면을 터치/마우스로 돌릴 때만 회전하고, 이동은 옆걸음·뒤로걷기로 한다
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }

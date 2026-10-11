@@ -167,7 +167,7 @@
   #npcCard .moodbar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; } #ncMoodBar { height: 100%; width: 50%; border-radius: 6px; transition: width .4s; }
   #ncMoodTxt { font-size: 12.5px; margin: 4px 0 8px; color: #d8e4ff; } #ncInfo { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #cfd6e6; }
   #ncClose { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: 0; cursor: pointer; color: #fff; background: #666; box-shadow: 0 2px 0 #333; display: block; margin: 0 auto; }
-  #birdBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
+  #birdBtn.on, #viewBtn.on { box-shadow: 0 0 0 3px #8affc0, 0 4px 0 #a8480f; }
 
 #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 30; }
 #journalPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 18; padding: 12px; }

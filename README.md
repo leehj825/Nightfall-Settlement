@@ -152,3 +152,8 @@ With the skinned models off, `buildStickman` in `js/rig.js` draws everyone from 
 The hero no longer turns toward the movement direction. The body always faces where the camera looks, and it turns only when you turn the screen (drag on touch, mouse drag). Movement is relative to that facing: forward runs, left/right play the captured strafe clips (the leg motion is mixed with the sword-and-shield or bow upper body), and backward plays the run clip in reverse. Attacks and arrows go where the camera looks; a dash goes in the input direction (or straight ahead when there is no input). Villagers, soldiers and raiders still face the way they walk.
 
 The skinned/polygon heads are now rounded boxes (flat face, squared jaw).
+
+### Camera
+
+- **Front View (H)** button: puts the camera in front of the hero so you can see his face and front; press again for the usual back view. Controls stay screen-relative (stick up = away from the camera, so the hero backpedals toward you).
+- **Map View (B)**: the camera is free - drag to turn/tilt (now up to straight down), pinch or wheel to zoom much closer (down to 5 units), and two fingers (or right mouse drag) to pan the camera across the map. The hero does not turn with the camera in map view; he faces the way he walks.

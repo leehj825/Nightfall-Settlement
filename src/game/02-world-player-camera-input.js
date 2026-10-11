@@ -87,15 +87,17 @@
   let yaw = 0, pitch = 0.45;
   let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
-  let bird = false, savedView = null;                                // 버드아이 뷰: 마을 전체를 한눈에
-  const camFocus = () => bird ? (exActive ? EXC : { x: 0, z: 0 }) : player.position;
-  const setDist = d => { DIST = bird ? Math.min(95, Math.max(24, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
+  let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
+  const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
+  const setDist = d => { DIST = bird ? Math.min(95, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
+  const viewYaw = () => yaw + (camFront && !bird ? Math.PI : 0);          // 카메라가 실제로 놓이는 각도 (앞모습 보기에서는 영웅 정면에 놓인다)
   function goalPos(out) {
+    const va = viewYaw();
     return out.set(
-      camFocus().x + Math.sin(yaw) * Math.cos(pitch) * DIST,
+      camFocus().x + Math.sin(va) * Math.cos(pitch) * DIST,
       LOOK_H + (bird ? 0 : player.position.y) + Math.sin(pitch) * DIST,
-      camFocus().z + Math.cos(yaw) * Math.cos(pitch) * DIST);
+      camFocus().z + Math.cos(va) * Math.cos(pitch) * DIST);
   }
   camera.position.copy(goalPos(camGoal));
   lookAt.set(0, LOOK_H, 0);
@@ -116,9 +118,15 @@
   let pinchD = 0;
   const pinchDist = () => { const [p, q] = [...ptrs.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  let panMid = null, panId = null;
+  const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
+    const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    birdX = Math.max(-90, Math.min(90, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-90, Math.min(90, birdZ + (-rz * dx + fz * dy) * sc));
+  };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; return; }
+    if (bird && e.pointerType === 'mouse' && e.button === 2) { panId = e.pointerId; panMid = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); return; }
+    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; panMid = null; return; }
     const ok = e.pointerType === 'mouse' ? e.button === 0 : (settings.hand === 'l' ? e.clientX < innerWidth * 0.6 : e.clientX > innerWidth * 0.4);
     if (!ok || look.id !== null) return;
     look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
@@ -126,17 +134,20 @@
   });
   canvas.addEventListener('pointermove', e => {
     const p = ptrs.get(e.pointerId); if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (e.pointerId === panId && panMid) { panView(e.clientX - panMid.x, e.clientY - panMid.y); panMid.x = e.clientX; panMid.y = e.clientY; return; }
     if (ptrs.size === 2 && e.pointerType === 'touch') {
       const d = pinchDist();
       if (pinchD > 0 && d > 0) setDist(DIST * pinchD / d);
-      pinchD = d; return;
+      pinchD = d;
+      if (bird) { const [a, b] = [...ptrs.values()], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; if (panMid) panView(mx - panMid.x, my - panMid.y); panMid = { x: mx, y: my }; }
+      return;
     }
     if (e.pointerId !== look.id) return;
     yaw -= (e.clientX - look.x) * 0.006;
-    pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - look.y) * 0.005));
+    pitch = Math.min(bird ? 1.5 : 1.2, Math.max(bird ? 0.12 : 0.1, pitch + (e.clientY - look.y) * 0.005));
     look.x = e.clientX; look.y = e.clientY;
   });
-  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === look.id) look.id = null; };
+  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === panId) panId = null; panMid = null; if (e.pointerId === look.id) look.id = null; };
   canvas.addEventListener('pointerup', lookEnd);
   canvas.addEventListener('pointercancel', lookEnd);
   canvas.addEventListener('wheel', e => { e.preventDefault(); setDist(DIST * Math.exp(e.deltaY * 0.001)); }, { passive: false });

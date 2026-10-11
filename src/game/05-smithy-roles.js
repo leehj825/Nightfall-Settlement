@@ -56,10 +56,15 @@
     updateHud();
   }
   function toggleBird() {
-    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; }
+    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; birdX = exActive ? EXC.x : 0; birdZ = exActive ? EXC.z : 0; }
     else { bird = false; if (savedView) { DIST = savedView.d; pitch = savedView.p; } }
     document.getElementById('birdBtn').classList.toggle('on', bird);
-    toast(bird ? "Bird's-eye view - press again to return" : 'Back to the hero view');
+    toast(bird ? "Map view - drag to turn, two fingers (or right-drag) to move, pinch to zoom in close. Press again to return" : 'Back to the hero view');
+  }
+  function toggleFront() {                                          // 영웅의 앞모습 ↔ 뒷모습 카메라
+    if (bird) return toast('Leave the map view first');
+    camFront = !camFront;
+    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = camFront ? 'Back View' : 'Front View';
   }
   function toggleOrder() {
     if (dead || playerClass !== 'commander') return;
@@ -88,7 +93,7 @@
     openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
-  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); });
+  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); });
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
@@ -98,6 +103,7 @@
   bindBtn('smithBtn', openSmith);
   bindBtn('ordBtn', toggleOrder);
   bindBtn('birdBtn', toggleBird);
+  bindBtn('viewBtn', toggleFront);
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);

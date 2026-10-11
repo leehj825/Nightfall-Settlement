@@ -212,15 +212,17 @@
   let yaw = 0, pitch = 0.45;
   let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
-  let bird = false, savedView = null;                                // 버드아이 뷰: 마을 전체를 한눈에
-  const camFocus = () => bird ? (exActive ? EXC : { x: 0, z: 0 }) : player.position;
-  const setDist = d => { DIST = bird ? Math.min(95, Math.max(24, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
+  let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
+  const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
+  const setDist = d => { DIST = bird ? Math.min(95, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
+  const viewYaw = () => yaw + (camFront && !bird ? Math.PI : 0);          // 카메라가 실제로 놓이는 각도 (앞모습 보기에서는 영웅 정면에 놓인다)
   function goalPos(out) {
+    const va = viewYaw();
     return out.set(
-      camFocus().x + Math.sin(yaw) * Math.cos(pitch) * DIST,
+      camFocus().x + Math.sin(va) * Math.cos(pitch) * DIST,
       LOOK_H + (bird ? 0 : player.position.y) + Math.sin(pitch) * DIST,
-      camFocus().z + Math.cos(yaw) * Math.cos(pitch) * DIST);
+      camFocus().z + Math.cos(va) * Math.cos(pitch) * DIST);
   }
   camera.position.copy(goalPos(camGoal));
   lookAt.set(0, LOOK_H, 0);
@@ -241,9 +243,15 @@
   let pinchD = 0;
   const pinchDist = () => { const [p, q] = [...ptrs.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  let panMid = null, panId = null;
+  const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
+    const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    birdX = Math.max(-90, Math.min(90, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-90, Math.min(90, birdZ + (-rz * dx + fz * dy) * sc));
+  };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; return; }
+    if (bird && e.pointerType === 'mouse' && e.button === 2) { panId = e.pointerId; panMid = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); return; }
+    if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; panMid = null; return; }
     const ok = e.pointerType === 'mouse' ? e.button === 0 : (settings.hand === 'l' ? e.clientX < innerWidth * 0.6 : e.clientX > innerWidth * 0.4);
     if (!ok || look.id !== null) return;
     look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
@@ -251,17 +259,20 @@
   });
   canvas.addEventListener('pointermove', e => {
     const p = ptrs.get(e.pointerId); if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (e.pointerId === panId && panMid) { panView(e.clientX - panMid.x, e.clientY - panMid.y); panMid.x = e.clientX; panMid.y = e.clientY; return; }
     if (ptrs.size === 2 && e.pointerType === 'touch') {
       const d = pinchDist();
       if (pinchD > 0 && d > 0) setDist(DIST * pinchD / d);
-      pinchD = d; return;
+      pinchD = d;
+      if (bird) { const [a, b] = [...ptrs.values()], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; if (panMid) panView(mx - panMid.x, my - panMid.y); panMid = { x: mx, y: my }; }
+      return;
     }
     if (e.pointerId !== look.id) return;
     yaw -= (e.clientX - look.x) * 0.006;
-    pitch = Math.min(1.2, Math.max(0.1, pitch + (e.clientY - look.y) * 0.005));
+    pitch = Math.min(bird ? 1.5 : 1.2, Math.max(bird ? 0.12 : 0.1, pitch + (e.clientY - look.y) * 0.005));
     look.x = e.clientX; look.y = e.clientY;
   });
-  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === look.id) look.id = null; };
+  const lookEnd = e => { ptrs.delete(e.pointerId); pinchD = 0; if (e.pointerId === panId) panId = null; panMid = null; if (e.pointerId === look.id) look.id = null; };
   canvas.addEventListener('pointerup', lookEnd);
   canvas.addEventListener('pointercancel', lookEnd);
   canvas.addEventListener('wheel', e => { e.preventDefault(); setDist(DIST * Math.exp(e.deltaY * 0.001)); }, { passive: false });
@@ -883,10 +894,15 @@
     updateHud();
   }
   function toggleBird() {
-    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; }
+    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; birdX = exActive ? EXC.x : 0; birdZ = exActive ? EXC.z : 0; }
     else { bird = false; if (savedView) { DIST = savedView.d; pitch = savedView.p; } }
     document.getElementById('birdBtn').classList.toggle('on', bird);
-    toast(bird ? "Bird's-eye view - press again to return" : 'Back to the hero view');
+    toast(bird ? "Map view - drag to turn, two fingers (or right-drag) to move, pinch to zoom in close. Press again to return" : 'Back to the hero view');
+  }
+  function toggleFront() {                                          // 영웅의 앞모습 ↔ 뒷모습 카메라
+    if (bird) return toast('Leave the map view first');
+    camFront = !camFront;
+    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = camFront ? 'Back View' : 'Front View';
   }
   function toggleOrder() {
     if (dead || playerClass !== 'commander') return;
@@ -915,7 +931,7 @@
     openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
-  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); });
+  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); });
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);
@@ -925,6 +941,7 @@
   bindBtn('smithBtn', openSmith);
   bindBtn('ordBtn', toggleOrder);
   bindBtn('birdBtn', toggleBird);
+  bindBtn('viewBtn', toggleFront);
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
@@ -4289,8 +4306,8 @@
       dashT -= dt;
     } else if (mag > 0.08) {
       // 현재 카메라가 바라보는 방향(수평) 기준으로 전진/우측 벡터 계산
-      const fwdX = -Math.sin(yaw), fwdZ = -Math.cos(yaw);
-      const rightX = Math.cos(yaw), rightZ = -Math.sin(yaw);
+      const vy = viewYaw(), fwdX = -Math.sin(vy), fwdZ = -Math.cos(vy);                  // 입력은 화면 기준 (앞모습 보기에서는 화면 위쪽 = 카메라에서 멀어지는 쪽)
+      const rightX = Math.cos(vy), rightZ = -Math.sin(vy);
       let mx = rightX * ix + fwdX * iy, mz = rightZ * ix + fwdZ * iy;
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
@@ -4303,7 +4320,10 @@
         moveDir = f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'; }
     }
     if (!(mag > 0.08)) moveDir = 'f';
-    if (!gathering) {                                                    // 몸은 화면(카메라)이 향한 쪽만 본다: 화면을 터치/마우스로 돌릴 때만 회전하고, 이동은 옆걸음·뒤로걷기로 한다
+    if (bird) {                                                          // 지도 보기: 화면을 돌려도 영웅은 따라 돌지 않고, 걷는 방향을 본다
+      moveDir = 'f';
+      if (mag > 0.08 && dashT <= 0) { let diff = Math.atan2(lastMX, lastMZ) - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff)); facing += diff * Math.min(1, dt * 14); player.rotation.y = facing; }
+    } else if (!gathering) {                                                    // 몸은 화면(카메라)이 향한 쪽만 본다: 화면을 터치/마우스로 돌릴 때만 회전하고, 이동은 옆걸음·뒤로걷기로 한다
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }
