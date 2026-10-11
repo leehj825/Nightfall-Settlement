@@ -563,9 +563,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     rig.kind = kind; rig.main = null; rig.held = null; rig.meshes = {};
     rig.root.scale.setScalar(rig.baseScale);
     rig.setGear = (slot, def) => {             // slot: 'sword'(오른손) | 'bow'(왼손). def가 없으면 비운다
-      const hand = slot === 'sword' || slot === 'spear' || slot === 'staff' ? rig.handR : rig.handL;
+      const hand = slot === 'sword' || slot === 'great' || slot === 'spear' || slot === 'staff' ? rig.handR : rig.handL;
       if (rig.meshes[slot]) hand.remove(rig.meshes[slot]);
-      rig.meshes[slot] = def ? (slot === 'sword' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : slot === 'staff' ? makeStaffMesh() : makeBowMesh(def)) : null;
+      rig.meshes[slot] = def ? (slot === 'sword' || slot === 'great' ? makeSwordMesh(def) : slot === 'spear' ? makeSpearMesh(def) : slot === 'staff' ? makeStaffMesh() : makeBowMesh(def)) : null;
       if (rig.meshes[slot]) hand.add(rig.meshes[slot]);
       rig.applyHold();
     };
@@ -579,10 +579,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const w = rig.held, m = rig.meshes;
       const sh = !!rig.sheathed;                                           // 무기를 치운 상태(평상시 마을 안): 칼·창·활·방패를 숨긴다
       if (m.sword) m.sword.visible = w === 'sword' && !sh;
+      if (m.great) m.great.visible = w === 'great' && !sh;
       if (m.bow) m.bow.visible = w === 'bow' && !sh;
       if (m.spear) m.spear.visible = w === 'spear' && !sh;
       if (m.staff) m.staff.visible = w === 'staff';
-      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && !sh;
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && !sh;
       if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
       if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
       m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';

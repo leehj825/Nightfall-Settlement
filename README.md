@@ -186,3 +186,6 @@ The Sword and Shield and Great Sword packs only contain guarded-stance locomotio
 Guards (swordsmen, spearmen, great swordsmen) and archers put their weapons (and shield) away while no enemy is within about 24 units and they are not on a journey or mid-attack, and they walk and idle with the normal Locomotion clips. When an enemy comes near they draw the weapon again and switch to their weapon pack's movement. The hero never sheathes. The spear is always held like a sword (tip up and forward); only the stab uses the shoulder-to-hand alignment.
 
 The soldier card now has a class picker (Sword / Spear / Great Sword / Medic) as well as the tap-to-cycle button.
+
+### Hero great sword
+The Q weapon switch now cycles Sword, Great Sword, Bow, Spear. The great sword is two-handed (no shield), uses the Great Sword pack for moving and attacking, has longer reach (wide arc, 1.7x damage, slower cooldown) and every fourth attack is a spinning slash around the hero (2.4x damage, 360 degrees). It uses the equipped sword's tier and upgrades.

@@ -357,7 +357,8 @@
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
     const vis = weaponMode;
-    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'bow' ? 'bow' : '';
+    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
+    playerRig.setGear('great', { ...gearDef(playerGear.sword), great: true });
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
     playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
     playerRig.hold(vis);
@@ -3125,19 +3126,20 @@
       });
       return;
     }
+    const great = weaponMode === 'great';                                 // 대검: 느리지만 묵직하고 사거리가 길다, 네 번째는 제자리 회전 베기
     playerAnim.once('attackSword'); const dur = playerAnim.shot.dur, heavy = playerAnim.heavy;
-    atkCd = Math.max(ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
+    atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
     later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
       if (dead) return;
-      const base = gearDef(playerGear.sword), mulDps = playerAnim.rig.style === 'ss' ? 1.4 : 1;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      const base = gearDef(playerGear.sword), mulDps = great ? 1.7 : playerAnim.rig.style === 'ss' ? 1.4 : 1;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
       atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
       if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
-        spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: 1.5 }); Snd.play('boom', 0.6);
-        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * 2.3, half: Math.PI, rangeMul: 1.35, slash: 1.4, tier: 1 });
-        floatText(hits ? `SLAM x${hits}!` : 'SLAM!', player.position.x, 2.8, player.position.z); return;
+        spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 : 2.3), half: Math.PI, rangeMul: great ? 1.55 : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
+        floatText(hits ? `${great ? 'SPIN' : 'SLAM'} x${hits}!` : great ? 'SPIN!' : 'SLAM!', player.position.x, 2.8, player.position.z); return;
       }
-      spawnSlash(player.position.x, player.position.z, facing);
-      const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * mulDps });
+      spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
       if (hits >= 2) { shake = Math.min(0.7, 0.3 + hits * 0.06); floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2); }
     });
   }
@@ -3148,13 +3150,13 @@
     const g = new THREE.Group(), m = new THREE.Mesh(thrustGeo, new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
     m.scale.z = len; g.add(m); g.position.set(x, 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
   }
-  const WEAPON_NAME = { sword: 'Sword', bow: 'Bow', spear: 'Spear' };
+  const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear' };
   function swapWeapon() {
     if (dead) return;
-    weaponMode = weaponMode === 'sword' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
-    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'bow' ? 'bow' : '';
+    weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
+    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
-    toast(weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
+    toast(weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
