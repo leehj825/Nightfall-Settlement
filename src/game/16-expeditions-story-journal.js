@@ -124,6 +124,7 @@
     const n = npc;
     if (n.down) { setLabel('Down'); n.anim.base('idle', 0); n.stateNow = 'Down'; return; }
     n.atkCd -= dt;
+    if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
     let foe = null, bd = 16;
     for (const e of enemies) {
       if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
