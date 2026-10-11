@@ -5417,13 +5417,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
       const on = this.shot && (this.variant === 'stab' || this.variant === 'slash'), k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (on ? dt / 0.1 : -dt / 0.12)));
-      if (k <= 0) { sp.quaternion.identity(); return; }
+      if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
       const R = this.rig; R.root.updateMatrixWorld(true);
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
       d.normalize().applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
+      sp.position.copy(d).multiplyScalar(0.38 * k);          // 한 손 찌르기: 손이 자루 뒤쪽 가까이를 쥐고 창끝이 앞으로 길게 나가게 (자루 뒤끝이 얼굴로 오지 않게)
     }
   }
 
