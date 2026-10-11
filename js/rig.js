@@ -370,7 +370,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return g;
   }
   function makeSpearMesh(def) {                // 창: 긴 나무 자루 + 잎 모양 쇠 촉 + 붉은 술. 손잡이는 자루 중간쯤
-    { const wm = weaponModel('spear', def.tier); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); g.userData.spear = true; g.add(inner); return g; } }
+    { const wm = weaponModel('spear', def.tier); if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(wm); g.userData.spear = true; g.userData.inner = inner; g.add(inner); return g; } }
     const g = new THREE.Group(), inner = new THREE.Group(), steel = gearMat('spearhead' + def.tier, def.tier > 0 ? 0xe4e8f0 : 0xb6bac2);
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 2.1, 7), gearMat('spearshaft', 0x7a5530)); shaft.position.y = 0.45;
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.42, 4), steel); head.position.y = 1.7; head.scale.z = 0.35;
@@ -477,7 +477,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
-    _res(name) { if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
+    _res(name) { if (this.rig.main === 'spear' && name === 'run' && this.acts.ssRun) return 'ssRun'; if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
     _play(name, fade, force) {
       name = this._res(name);
       const next = this.acts[name] || this.acts.idle;
@@ -497,9 +497,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
-      if (name === 'attackSpear' && this.acts.spearStab) {                                                 // 창: 찌르기와 휘두르기를 번갈아
-        this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'spearStab' : 'spearSlash'; this.variant = stab ? 'stab' : 'slash';
-        ts = this.acts[name].getClip().duration / (stab ? 1.1 : 1.05);
+      if (name === 'attackSpear' && this.acts.ssAttack1) {                                                 // 창: 검처럼 쥐고 검 동작으로 찌르기(좁고 긴)와 휘두르기(넓은)를 번갈아
+        this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'ssAttack2' : 'ssAttack1'; this.variant = stab ? 'stab' : 'slash';
+        ts = this.acts[name].getClip().duration / 0.7;
       }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
@@ -522,18 +522,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.mixer.update(dt);
       this._spear(dt);
     }
-    // 창: 한 손(R)으로 찌른다 - 공격 동안 자루를 어깨에서 손으로 뻗은 방향에 맞춘다 (모션캡처의 손목 각도는 두 손 총 자세라 창과 안 맞는다). 다른 손은 방패를 든다
+    // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
-      const on = this.shot && (this.variant === 'stab' || this.variant === 'slash'), k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (on ? dt / 0.1 : -dt / 0.12)));
-      if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
-      const R = this.rig; R.root.updateMatrixWorld(true);
-      const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
-      const d = b.sub(a); if (d.lengthSq() < 0.01) return;
-      const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
-      d.normalize().applyQuaternion(inv);
-      sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
-      sp.position.copy(d).multiplyScalar(0.38 * k);          // 한 손 찌르기: 손이 자루 뒤쪽 가까이를 쥐고 창끝이 앞으로 길게 나가게 (자루 뒤끝이 얼굴로 오지 않게)
+      const idle = !this.shot && (this.baseName === 'idle' || !this.baseName), tgt = idle ? 0 : Math.PI / 2, inn = sp.userData.inner, cur = inn.rotation.x;
+      inn.rotation.x = cur + (tgt - cur) * Math.min(1, dt / 0.08);
     }
   }
 
