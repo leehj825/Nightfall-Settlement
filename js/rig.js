@@ -718,10 +718,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       R.root.updateMatrixWorld(true);
       V.eu.set(0.12, 0, -0.1); V.qHang.setFromEuler(V.eu); V.eu.set(-0.3, 0, 0); V.qHangE.setFromEuler(V.eu);          // 걸어 다닐 때의 왼팔: 몸 옆으로 자연스럽게
       const sh = R.shoulderL, el = R.elbowL;
-      if (k <= 0.001) {                                                                           // 걸을 때는 왼팔이 왼다리와 반대로 자연스럽게 흔들린다
-        const sw = Math.max(-0.7, Math.min(0.7, -R.hipL.rotation.x * 0.9)), run = this.baseName === 'run' ? 1.4 : 1;
-        V.eu.set(0.12 + sw * run, 0, -0.1); sh.quaternion.setFromEuler(V.eu); V.eu.set(-0.3 - Math.max(0, sw) * 0.5 * run, 0, 0); el.quaternion.setFromEuler(V.eu); return;
-      }
+      if (k <= 0.001) return;                                                                      // 공격이 아닐 때는 모션캡처 팔을 그대로 쓴다
       const rq = R.root.getWorldQuaternion(V.qr);
       V.poleL.set(-0.55, -0.8, -0.25).applyQuaternion(rq); const poleR = V.poleR.set(0.55, -0.8, -0.25).applyQuaternion(rq);
       const wm = gm.children[0].children[0], hit = () => { V.T.set(0, -0.1, 0); wm.localToWorld(V.T); return V.T; };
