@@ -5368,7 +5368,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
-    _res(name) { if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun', walk: 'bowWalk' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
+    _res(name) { if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
     _play(name, fade, force) {
       name = this._res(name);
       const next = this.acts[name] || this.acts.idle;
