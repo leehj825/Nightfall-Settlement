@@ -298,3 +298,5 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #coach .tbtns { display: flex; gap: 8px; }
 
 #ncPick { display: flex; gap: 5px; margin: 8px 0 4px; flex-wrap: wrap; justify-content: center; } #ncPick button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 9px; border: 2px solid #5a4a32; cursor: pointer; color: #e8dcc0; background: #3a2e20; } #ncPick button.on { border-color: #ffd27a; background: #c8832a; color: #fff; }
+
+#xhair { position: fixed; left: 0; top: 0; width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none; z-index: 4; display: none; opacity: .72; will-change: transform; } #xhair.lock { opacity: .95; filter: drop-shadow(0 0 3px #ff3a2a) hue-rotate(-30deg) saturate(3); } #xhair.lock path { stroke: #ff6a5a; }

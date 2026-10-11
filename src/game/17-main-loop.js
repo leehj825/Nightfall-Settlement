@@ -27,6 +27,7 @@
     if (!snow && (wx.snd -= dt) <= 0) { wx.snd = 0.5; Snd.play('rain', wx.lvl); }
   }
   let propCd = 0, peaceful = false, peaceT = 0, fogNight = false, fogBoost = 0;          // 주변에 적이 없는 상태가 잠시 이어지면 평화로운 밤 (시민들이 모닥불 곁에서 쉰다)
+  const xhairEl = document.getElementById('xhair'), xhV = new THREE.Vector3(); let xhLock = false;
   let facing = 0, moveDir = 'f', lastMX = 0, lastMZ = 0, lastMT = -1e9;
   const clock = new THREE.Clock();
   let resting = false, sparT = 0;
@@ -68,6 +69,7 @@
     nowHour = hour;
     if (exActive && !exEnding && (exActive.night ? (hour >= CFG.EXP_NIGHT_FORCE && hour < 12) : hour >= CFG.EXP_FORCE)) endExpedition(true);       // 해 지기 전에 자동 귀환
     updateRaidUi(hour, dayNo);
+    roamerTick(dt);
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
       if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('WARNING: A massive threat approaches!'); bossShakeT = 3; }
@@ -203,6 +205,18 @@
     lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
     { const gy = terrH(camera.position.x, camera.position.z) + 1.3; if (camera.position.y < gy) camera.position.y = gy; }
     camera.lookAt(lookAt);
+    { // 활: 화살이 날아갈 쪽에 작은 조준 십자선 (적이 그 선 위에 있으면 붉게)
+      const xh = xhairEl;
+      if (weaponMode === 'bow' && !dead && !bird && !camFront && !uiPause) {
+        camera.updateMatrixWorld(); xhV.set(player.position.x + Math.sin(facing) * 12, player.position.y + 1.1, player.position.z + Math.cos(facing) * 12).project(camera);
+        if (xhV.z < 1 && Math.abs(xhV.x) < 1.2 && Math.abs(xhV.y) < 1.2) {
+          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px)`;
+          let lock = false; const fx = Math.sin(facing), fz = Math.cos(facing);
+          for (const e of enemies) { if (e.userData.sinking) continue; const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z, d = Math.hypot(dx, dz); if (d < 26 && d > 1 && (dx * fx + dz * fz) / d > 0.985) { lock = true; break; } }
+          if (lock !== xhLock) { xhLock = lock; xh.classList.toggle('lock', lock); }
+        } else xh.style.display = 'none';
+      } else if (xh.style.display !== 'none') xh.style.display = 'none';
+    }
 
     // 그림자 범위가 플레이어를 따라가게
     sun.target.position.copy(player.position);

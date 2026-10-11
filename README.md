@@ -192,3 +192,7 @@ The Q weapon switch now cycles Sword, Great Sword, Bow, Spear. The great sword i
 
 ### Great sword grip
 During an attack the great sword is held with both hands: a two-bone arm solver reaches the left hand to the hilt (and pulls the right hand in to meet it when the hilt is out of reach), keeping the sword's direction from the captured right wrist. While walking, running or standing the left arm hangs naturally and the sword is held in one hand.
+
+### Bow reticle and roaming enemies
+- With the bow equipped a small white crosshair (dark outline, ~70% opacity) shows where arrows fly (12 units ahead of the hero along his facing). It turns red when an enemy is almost exactly on that line within range. It is hidden in map view, front view and menus.
+- A few raiders and beasts (2 at the start, up to 6 later) now roam the map outside the village by day and by night. They wander slowly, chase the hero when he comes within about 11 units (give up at about 18), never come closer to the village than 34 units and lose interest when the hero is inside the village (within 32). Soldiers and archers ignore them. They drop a little iron and give about 1.3x XP, and respawn after a while. Night hunt prowlers are unchanged.

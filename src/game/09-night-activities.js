@@ -42,19 +42,35 @@
     if (pd < PLAYER_R + u.r + 0.15 && hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
     if (!c) u.keepDay = false;                                              // 마차가 사라지면 도적도 흩어진다
   }
+  // ---------- 떠돌이: 낮에도 밤에도 마을 밖 지도 곳곳을 어슬렁거리는 적. 마을 안으로는 들어오지 않고, 가까이 가면 쫓아온다 ----------
+  let roamT = 3;
+  function roamerTick(dt) {
+    if (dead || exActive || uiPause || eventOpen) return;
+    roamT -= dt; if (roamT > 0) return;
+    const day = Math.max(1, dayNow()), want = Math.min(6, 2 + Math.floor(day / 3));
+    let n = 0; for (const e of enemies) if (e.userData.roam && !e.userData.sinking) n++;
+    roamT = n < want / 2 ? 2 : 7; if (n >= want) return;
+    for (let k = 0; k < 10; k++) {
+      const a = rand(0, Math.PI * 2), r = rand(38, MAP - 8), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.hypot(x - player.position.x, z - player.position.z) < 24) continue;
+      const kind = Math.random() < 0.45 ? 'beast' : day >= 3 && Math.random() < 0.25 ? 'brute' : 'normal';
+      spawnEnemy(kind, { x, z }); const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; e.userData.roam = true; break;
+    }
+  }
   function prowlStep(e, u, dt) {
     const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
     u.aggro = u.aggro ? pd < 18 : pd < 11;
+    if (u.roam && Math.hypot(player.position.x, player.position.z) < 32) u.aggro = false;       // 떠돌이는 마을 안까지 쫓아오지 않는다
     let moving = false;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
     else if (u.aggro && !(u.stunT > 0) && pd > 0.9) { { const ts = terrSpd(e.position.x, e.position.z) * climbMul(e.position.x, e.position.z, player.position.x, player.position.z); e.position.x += (player.position.x - e.position.x) / pd * u.speed * ts * dt; e.position.z += (player.position.z - e.position.z) / pd * u.speed * ts * dt; } e.lookAt(player.position.x, e.position.y, player.position.z); moving = true; }
     else if (!u.aggro) {
       u.wT = (u.wT || 0) - dt;
-      if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
+      if (u.wT <= 0 || !u.wp) { const a = Math.atan2(e.position.z, e.position.x) + rand(-0.9, 0.9), r = u.roam ? rand(38, MAP - 8) : rand(39, 47); u.wp = { x: Math.cos(a) * r, z: Math.sin(a) * r }; u.wT = rand(4, 8); }
       const dx = u.wp.x - e.position.x, dz = u.wp.z - e.position.z, d = Math.hypot(dx, dz);
       if (d > 0.8) { { const ts = terrSpd(e.position.x, e.position.z) * climbMul(e.position.x, e.position.z, e.position.x + dx, e.position.z + dz); e.position.x += dx / d * u.speed * 0.45 * ts * dt; e.position.z += dz / d * u.speed * 0.45 * ts * dt; } e.lookAt(u.wp.x, e.position.y, u.wp.z); moving = true; }
     }
-    const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; }
+    const rr = Math.hypot(e.position.x, e.position.z); if (rr > MAP - 0.5) { e.position.x *= (MAP - 0.5) / rr; e.position.z *= (MAP - 0.5) / rr; } else if (u.roam && rr < 34) { e.position.x *= 34 / Math.max(rr, 1e-3); e.position.z *= 34 / Math.max(rr, 1e-3); }       // 떠돌이는 성벽 근처까지만
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
     if (pd < PLAYER_R + u.r + 0.15) {
       if (hurtCd <= 0 && !(u.stunT > 0)) { damage(u.contact); hurtCd = 0.8; shake = Math.max(shake, 0.15); }
@@ -132,9 +148,10 @@
     const u = e.userData;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
-    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * (u.prowl || (u.ex && exActive && exActive.night) ? 2 : 1));
+    giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * ((u.prowl && !u.roam) || (u.ex && exActive && exActive.night) ? 2 : u.roam ? 1.3 : 1));
     if (u.guardian && exActive && exActive.night) { pl.pend++; updateLvlUi(); toast('The guardian falls - a bonus upgrade is waiting'); }
-    if (u.prowl) {                                                       // 밤사냥 전리품
+    if (u.roam) { if (Math.random() < 0.35) { res.iron++; floatText('Loot: Iron +1', e.position.x, 2.6, e.position.z); updateHud(); } }
+    else if (u.prowl) {                                                       // 밤사냥 전리품
       if (Math.random() < 0.55) { res.iron++; floatText('Loot: Iron +1', e.position.x, 2.6, e.position.z); }
       if (Math.random() < 0.45) { res.food += 2; floatText('Loot: Food +2', e.position.x, 3.0, e.position.z); }
       if (story.beacon && Math.random() < 0.1) { res.shard++; floatText('Loot: Shard +1', e.position.x, 3.4, e.position.z); }
@@ -291,7 +308,7 @@
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
-      if (!night && !u.sinking && !u.boss && !u.ex && !(u.keepDay && caravan)) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
+      if (!night && !u.sinking && !u.boss && !u.ex && !u.roam && !(u.keepDay && caravan)) u.sinking = true;          // 아침: 땅으로 꺼짐 (보스는 처치할 때까지 남는다)
       if (u.sinking) {
         if (u.dying > 0) { u.dying -= dt; continue; }
         e.position.y -= dt * 0.8;
