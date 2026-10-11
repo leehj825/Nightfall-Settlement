@@ -2142,12 +2142,13 @@
       const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
-    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${CLS_INFO[n.cls || 'sword']} (tap to change)`; }
+    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -3074,6 +3075,7 @@
     if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = 'gather';
     npc.rig.tool = state === 'Chopping' || (npc.task && npc.task.kind === 'gather' && npc.task.target.userData.type === 'wood') ? 'axe' : 'pick';
     npc.rig.combat = !!exActive || enemyWithin(npc.position.x, npc.position.z, 24);       // 적이 가까우면 전투 자세 이동(칼·방패 / 활), 아니면 평상시 이동
+    npc.rig.sheathe(npc.role !== 'citizen' && npc.cls !== 'medic' && !npc.rig.combat && !npc.anim.shot);       // 평상시 마을 안에서는 무기를 치우고 일반 이동으로 걷는다
     npc.anim.base(anim, mv);
     const bs = npc.rig.baseScale;
     npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
@@ -3921,7 +3923,7 @@
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
-    n.rig.combat = true;                                                // 원정 중에는 항상 전투 자세 이동
+    n.rig.combat = true; n.rig.sheathe(false);                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
     n.stateNow = state; setLabel(state);
   }
@@ -4617,6 +4619,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { applyGear, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

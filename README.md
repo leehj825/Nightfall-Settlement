@@ -181,3 +181,8 @@ Each weapon now moves with its own pack instead of the generic locomotion (peopl
 The Sword and Shield and Great Sword packs only contain guarded-stance locomotion, so there the calm/combat difference is the idle pose.
 
 **Great Swordsman** (new soldier class; tap a soldier's card to cycle classes): a longer two-handed sword (the sword mesh at 1.6x), slow heavy cleaves (reach 2.6, 1.7x damage, wide arc) with every fourth attack a spinning 360-degree slash (2.4x damage). Attacks use the Great Sword pack (`gsAttack1..4`), death is `dieGs`.
+
+### Town peace: weapons put away
+Guards (swordsmen, spearmen, great swordsmen) and archers put their weapons (and shield) away while no enemy is within about 24 units and they are not on a journey or mid-attack, and they walk and idle with the normal Locomotion clips. When an enemy comes near they draw the weapon again and switch to their weapon pack's movement. The hero never sheathes. The spear is always held like a sword (tip up and forward); only the stab uses the shoulder-to-hand alignment.
+
+The soldier card now has a class picker (Sword / Spear / Great Sword / Medic) as well as the tap-to-cycle button.

@@ -309,6 +309,8 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #joy.coachHi { border-radius: 50%; }
 #coach button { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
 #coach .tbtns { display: flex; gap: 8px; }
+
+#ncPick { display: flex; gap: 5px; margin: 8px 0 4px; flex-wrap: wrap; justify-content: center; } #ncPick button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 9px; border: 2px solid #5a4a32; cursor: pointer; color: #e8dcc0; background: #3a2e20; } #ncPick button.on { border-color: #ffd27a; background: #c8832a; color: #fff; }
 </style>
 </head>
 <body>
@@ -333,7 +335,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 <div id="toast"></div>
 <div id="journalPanel"><div class="jcard"><h3>Journal</h3><div id="jStory"></div><h4>Expeditions</h4><p class="jhint" id="jPower" style="color:#ffe7a8"></p><p class="jhint" id="jHint"></p><div id="jExp"></div><button id="jClose">Close</button></div></div>
 <div id="fade"></div>
-<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><button id="ncClass"></button><button id="ncJob"></button><button id="ncClose">Close</button></div></div>
+<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><div id="ncPick"><button data-cls="sword">Sword</button><button data-cls="spear">Spear</button><button data-cls="greatsword">Great Sword</button><button data-cls="medic">Medic</button></div><button id="ncClass"></button><button id="ncJob"></button><button id="ncClose">Close</button></div></div>
 <div id="eventPanel"><div class="ecard"><small>Morning event</small><h3 id="evTitle"></h3><p id="evText"></p><div id="evBtns"></div></div></div>
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
@@ -5476,16 +5478,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     };
     rig.applyHold = () => {
       const w = rig.held, m = rig.meshes;
-      if (m.sword) m.sword.visible = w === 'sword';
-      if (m.bow) m.bow.visible = w === 'bow';
-      if (m.spear) m.spear.visible = w === 'spear';
+      const sh = !!rig.sheathed;                                           // 무기를 치운 상태(평상시 마을 안): 칼·창·활·방패를 숨긴다
+      if (m.sword) m.sword.visible = w === 'sword' && !sh;
+      if (m.bow) m.bow.visible = w === 'bow' && !sh;
+      if (m.spear) m.spear.visible = w === 'spear' && !sh;
       if (m.staff) m.staff.visible = w === 'staff';
-      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick';
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && !sh;
       if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
       if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
       m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';
     };
     rig.hold = (what) => { rig.held = what; rig.applyHold(); };
+    rig.sheathe = (on) => { if (!!rig.sheathed !== !!on) { rig.sheathed = !!on; rig.applyHold(); } };
     rig.setArmor = (def) => {                  // 흉갑 + 투구 (몸통/머리 뼈에 부착). 상위 등급은 금색 허리띠
       if (rig.armorMeshes) for (const o of rig.armorMeshes) o.parent && o.parent.remove(o);
       rig.armorMeshes = [];
@@ -5523,7 +5527,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     _res(name) {
       const rig = this.rig, md = this.moveDir || 'f';
       if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
-      const set = rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
+      const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
       if (name === 'idle') { const k = set === 'ss' ? (war ? 'ssIdle' : 'ssIdleCalm') : set === 'gs' ? (war ? 'gsIdle' : 'gsIdleCalm') : set === 'bow' ? (war ? 'bowIdle' : 'bowIdleCalm') : 'idle'; return this.acts[k] ? k : 'idle'; }
       if (name === 'walk' || name === 'run') {
@@ -5606,7 +5610,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
       const stab = !!this.shot && this.variant === 'stab', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
-      const tgt = idle || stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
+      const tgt = stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
       const k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (stab ? dt / 0.1 : -dt / 0.12)));
       if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
       // 찌르기: 모션캡처 손목은 총을 쥔 각도라서, 자루를 어깨에서 손으로 뻗은 방향에 맞추고 손이 자루 뒤쪽을 쥐게 한다
@@ -7769,12 +7773,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
-    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${CLS_INFO[n.cls || 'sword']} (tap to change)`; }
+    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -8701,6 +8706,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = 'gather';
     npc.rig.tool = state === 'Chopping' || (npc.task && npc.task.kind === 'gather' && npc.task.target.userData.type === 'wood') ? 'axe' : 'pick';
     npc.rig.combat = !!exActive || enemyWithin(npc.position.x, npc.position.z, 24);       // 적이 가까우면 전투 자세 이동(칼·방패 / 활), 아니면 평상시 이동
+    npc.rig.sheathe(npc.role !== 'citizen' && npc.cls !== 'medic' && !npc.rig.combat && !npc.anim.shot);       // 평상시 마을 안에서는 무기를 치우고 일반 이동으로 걷는다
     npc.anim.base(anim, mv);
     const bs = npc.rig.baseScale;
     npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
@@ -9548,7 +9554,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
-    n.rig.combat = true;                                                // 원정 중에는 항상 전투 자세 이동
+    n.rig.combat = true; n.rig.sheathe(false);                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
     n.stateNow = state; setLabel(state);
   }
@@ -10244,7 +10250,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { applyGear, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 

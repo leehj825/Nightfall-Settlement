@@ -147,7 +147,7 @@
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
-    n.rig.combat = true;                                                // 원정 중에는 항상 전투 자세 이동
+    n.rig.combat = true; n.rig.sheathe(false);                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
     n.stateNow = state; setLabel(state);
   }

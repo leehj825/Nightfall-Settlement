@@ -296,3 +296,5 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #joy.coachHi { border-radius: 50%; }
 #coach button { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
 #coach .tbtns { display: flex; gap: 8px; }
+
+#ncPick { display: flex; gap: 5px; margin: 8px 0 4px; flex-wrap: wrap; justify-content: center; } #ncPick button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 9px; border: 2px solid #5a4a32; cursor: pointer; color: #e8dcc0; background: #3a2e20; } #ncPick button.on { border-color: #ffd27a; background: #c8832a; color: #fff; }

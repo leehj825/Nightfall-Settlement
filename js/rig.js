@@ -577,16 +577,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     };
     rig.applyHold = () => {
       const w = rig.held, m = rig.meshes;
-      if (m.sword) m.sword.visible = w === 'sword';
-      if (m.bow) m.bow.visible = w === 'bow';
-      if (m.spear) m.spear.visible = w === 'spear';
+      const sh = !!rig.sheathed;                                           // 무기를 치운 상태(평상시 마을 안): 칼·창·활·방패를 숨긴다
+      if (m.sword) m.sword.visible = w === 'sword' && !sh;
+      if (m.bow) m.bow.visible = w === 'bow' && !sh;
+      if (m.spear) m.spear.visible = w === 'spear' && !sh;
       if (m.staff) m.staff.visible = w === 'staff';
-      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick';
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && !sh;
       if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
       if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
       m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';
     };
     rig.hold = (what) => { rig.held = what; rig.applyHold(); };
+    rig.sheathe = (on) => { if (!!rig.sheathed !== !!on) { rig.sheathed = !!on; rig.applyHold(); } };
     rig.setArmor = (def) => {                  // 흉갑 + 투구 (몸통/머리 뼈에 부착). 상위 등급은 금색 허리띠
       if (rig.armorMeshes) for (const o of rig.armorMeshes) o.parent && o.parent.remove(o);
       rig.armorMeshes = [];
@@ -624,7 +626,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     _res(name) {
       const rig = this.rig, md = this.moveDir || 'f';
       if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
-      const set = rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
+      const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
       if (name === 'idle') { const k = set === 'ss' ? (war ? 'ssIdle' : 'ssIdleCalm') : set === 'gs' ? (war ? 'gsIdle' : 'gsIdleCalm') : set === 'bow' ? (war ? 'bowIdle' : 'bowIdleCalm') : 'idle'; return this.acts[k] ? k : 'idle'; }
       if (name === 'walk' || name === 'run') {
@@ -707,7 +709,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
       const stab = !!this.shot && this.variant === 'stab', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
-      const tgt = idle || stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
+      const tgt = stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
       const k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (stab ? dt / 0.1 : -dt / 0.12)));
       if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
       // 찌르기: 모션캡처 손목은 총을 쥔 각도라서, 자루를 어깨에서 손으로 뻗은 방향에 맞추고 손이 자루 뒤쪽을 쥐게 한다
