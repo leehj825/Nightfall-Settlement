@@ -314,6 +314,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
       STICK_CLIPS.gatherPick = new THREE.AnimationClip('gatherPick', T, tracks);
     }
+    // 나무 베기: 상체는 야구 스윙(gatherAxe) 그대로, 다리와 높이는 검 공격(ssAttack1)의 스텝을 쓴다
+    if (L && STICK_CLIPS.gatherAxe) {
+      const ax = STICK_CLIPS.gatherAxe, T2 = ax.duration, N2 = 28, times = [], rot = {}, pos = [], LEG2 = ['hipL', 'hipR', 'kneeL', 'kneeR'];
+      const smp = (arr, c, u) => { const f = Math.min(1, u) * c.n, i = Math.min(c.n - 1, Math.floor(f)), k = f - i, a0 = arr[i], a1 = arr[i + 1]; return [a0[0] + (a1[0] - a0[0]) * k, a0[1] + (a1[1] - a0[1]) * k, a0[2] + (a1[2] - a0[2]) * k]; };
+      for (const b of LEG2) rot[b] = [];
+      for (let i = 0; i <= N2; i++) {
+        const u = i / N2; times.push(T2 * u);
+        for (const b of LEG2) { const v = smp(L.t[b], L, u); eul.set(v[0], v[1], v[2]); q.setFromEuler(eul); rot[b].push(q.x, q.y, q.z, q.w); }
+        const f = u * L.n, j = Math.min(L.n - 1, Math.floor(f)); pos.push(0, L.t.hipsY[j] + (L.t.hipsY[j + 1] - L.t.hipsY[j]) * (f - j), 0);
+      }
+      const keep = ax.tracks.filter(t => !/^(hipL|hipR|kneeL|kneeR)\.quaternion$|^hips\.position$/.test(t.name));
+      for (const b of LEG2) keep.push(new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
+      keep.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
+      STICK_CLIPS.gatherAxe = new THREE.AnimationClip('gatherAxe', T2, keep);
+    }
   }
   // ----- 짐승: 네발 리그 (몸통/머리/꼬리/다리 4개 Bone) -----
   const BEAST_CLIPS = (() => {
