@@ -4368,7 +4368,7 @@
   document.getElementById('setBsz').addEventListener('change', e => { settings.bsz = e.target.value; saveSettings(); applySettings(); });
   document.getElementById('setHaptic').addEventListener('change', e => { settings.haptic = e.target.value === 'on'; saveSettings(); buzz(60); });
   document.getElementById('setGfx').addEventListener('change', e => { settings.gfx = e.target.value; settings.auto = true; saveSettings(); applySettings(); });
-  document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); toast('Tips restarted'); });
+  document.getElementById('setTips').addEventListener('click', () => { Object.assign(tut, { done: false, step: 0, hints: {} }); closeSettings(); coachSeen = false; toast('Tips restarted'); });
   document.getElementById('setDel').addEventListener('click', e => {
     if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to confirm'; return; }
     clearSave(); e.target.dataset.sure = ''; e.target.textContent = 'Delete save'; document.getElementById('setSaveInfo').textContent = 'Save deleted'; toast('Save deleted');
@@ -4384,6 +4384,27 @@
     { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
+  // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
+  const COACH = [
+    { sel: '#joy', text: 'Drag the stick to move. Tap anywhere on the screen to attack.' },
+    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather to collect wood and stone. Your villagers gather too.' },
+    { sel: '#planBtn', text: 'The Village Plan builds fences and houses by itself once you have the resources. Tap it to change what comes first.' },
+    { sel: '#hudBar', text: 'Your health, level and resources are up here. Tap it for the full stats.' },
+    { sel: null, text: 'Raiders come at night - stay near the fire with your soldiers. A big raid is announced a day ahead. Good luck, Keeper!' },
+  ];
+  let coachStep = -1, coachSeen = false; try { coachSeen = !!localStorage.getItem('nf_coach'); } catch (e) {}
+  const coachEl = document.createElement('div'); coachEl.id = 'coach'; coachEl.innerHTML = '<p id="coachTxt"></p><div class="tbtns"><button id="coachNext">Next</button><button id="coachSkip">Skip</button></div>'; document.body.appendChild(coachEl);
+  function coachShow(i) {
+    document.querySelectorAll('.coachHi').forEach(e => e.classList.remove('coachHi'));
+    if (i >= COACH.length) { coachStep = -1; coachEl.style.display = 'none'; uiPause = false; coachSeen = true; try { localStorage.setItem('nf_coach', '1'); } catch (e) {} return; }
+    coachStep = i; const c = COACH[i], el = c.sel && document.querySelector(c.sel);
+    if (el && el.offsetWidth) el.classList.add('coachHi');
+    document.getElementById('coachTxt').textContent = c.text; document.getElementById('coachNext').textContent = i === COACH.length - 1 ? 'Start' : 'Next';
+    coachEl.style.display = 'block'; uiPause = true;
+  }
+  document.getElementById('coachNext').addEventListener('click', () => coachShow(coachStep + 1));
+  document.getElementById('coachSkip').addEventListener('click', () => coachShow(COACH.length));
+  setInterval(() => { if (!coachSeen && coachStep < 0 && saveReady && !eventOpen && !dead && !uiPause && playerClass && dayNow() <= 1 && !(/[?&]debug/.test(location.search) && !/[?&]coach/.test(location.search))) coachShow(0); }, 1500);
   function tutorStep() {
     if (exActive) { tutEl.style.display = 'none'; return; }
     if (!saveReady || dead || eventOpen || uiPause) return;
