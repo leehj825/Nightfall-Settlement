@@ -419,23 +419,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       STICK_CLIPS.gatherAxe = new THREE.AnimationClip('gatherAxe', T2, keep);
     }
   }
-  // 옆걸음: 다리는 옆걸음 모션캡처, 상체(골반 회전·척추·팔)는 무기 자세의 달리기 클립을 합친다 (칼·방패 / 활 자세가 옆걸음에서도 유지된다)
-  if (typeof MIXAMO_CLIPS !== 'undefined') {
-    const eul2 = new THREE.Euler(), q2 = new THREE.Quaternion(), smp = (arr, c, u) => { const f = Math.min(1, u) * c.n, i = Math.min(c.n - 1, Math.floor(f)), k = f - i, a0 = arr[i], a1 = arr[i + 1]; return [a0[0] + (a1[0] - a0[0]) * k, a0[1] + (a1[1] - a0[1]) * k, a0[2] + (a1[2] - a0[2]) * k]; };
-    for (const [pre, upName] of [['ss', 'ssRun'], ['bow', 'bowRun']]) for (const sfx of ['P', 'N']) {
-      const Lc = MIXAMO_CLIPS['strafe' + sfx], Uc = MIXAMO_CLIPS[upName]; if (!Lc || !Uc) continue;
-      const T = Lc.d, N = 24, times = [], rot = {}, pos = [], LEG3 = ['hipL', 'hipR', 'kneeL', 'kneeR'];
-      for (const b of TBONES) rot[b] = [];
-      for (let i = 0; i <= N; i++) {
-        const u = i / N; times.push(T * u);
-        for (const b of TBONES) { const src = LEG3.includes(b) ? Lc : Uc, v = src.t[b] ? smp(src.t[b], src, u) : [0, 0, 0]; eul2.set(v[0], v[1], v[2]); q2.setFromEuler(eul2); rot[b].push(q2.x, q2.y, q2.z, q2.w); }
-        const f = u * Lc.n, j = Math.min(Lc.n - 1, Math.floor(f)); pos.push(0, Lc.t.hipsY[j] + (Lc.t.hipsY[j + 1] - Lc.t.hipsY[j]) * (f - j), 0);
-      }
-      const tracks = TBONES.map(b => new THREE.QuaternionKeyframeTrack(b + '.quaternion', times, rot[b]));
-      tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, pos));
-      STICK_CLIPS[pre + 'Strafe' + sfx] = new THREE.AnimationClip(pre + 'Strafe' + sfx, T, tracks);
-    }
-  }
   // ----- 짐승: 네발 리그 (몸통/머리/꼬리/다리 4개 Bone) -----
   const BEAST_CLIPS = (() => {
     const clips = {}, eul = new THREE.Euler(), q = new THREE.Quaternion(), B = ['body', 'headB', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'];
@@ -629,21 +612,31 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || n === 'die' || /^ss(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = n === 'die'; }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^ss(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n); }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
       this.base('idle');
     }
+    // 이동 클립 고르기: 평상시에는 일반 이동(Locomotion), 적이 가깝거나 원정 중(rig.combat)이면 무기별 전투 자세 이동(칼·방패 / 활).
+    // moveDir: f 앞 / b 뒤 / p,n 옆걸음 (p: +x쪽, n: -x쪽, 정면 +z 기준)
     _res(name) {
-      const md = this.moveDir;
-      if ((name === 'run' || name === 'walk') && (md === 'p' || md === 'n')) {                                 // 옆걸음 (p: +x쪽, n: -x쪽)
-        const sf = md === 'p' ? 'P' : 'N', st = this.rig.style === 'ss' || this.rig.main === 'spear' ? 'ss' : this.rig.style === 'bow' ? 'bow' : '';
-        const k = st ? st + 'Strafe' + sf : (name === 'walk' ? 'strafe' + sf + 'W' : 'strafe' + sf); if (this.acts[k]) return k;
+      const rig = this.rig, md = this.moveDir || 'f';
+      if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
+      const set = rig.combat ? (rig.style === 'ss' || rig.main === 'spear' ? 'ss' : rig.style === 'bow' ? 'bow' : '') : '';
+      const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
+      if (name === 'idle') { const k = set === 'ss' ? 'ssIdle' : set === 'bow' ? 'bowIdle' : 'idle'; return this.acts[k] ? k : 'idle'; }
+      if (name === 'walk' || name === 'run') {
+        const run = name === 'run', side = md === 'p' || md === 'n';
+        let k;
+        if (set === 'ss') k = side ? 'ssStrafe' + suf + (run ? '' : 'W') : (run ? 'ssRun' : 'ssWalk') + suf;
+        else if (set === 'bow') k = (run ? 'bowRun' : 'bowWalk') + suf;
+        else k = side ? 'strafe' + suf + (run ? '' : 'W') : name;                              // 평상시: 뒤로 걷기는 앞으로 걷기를 거꾸로 재생한다
+        if (this.acts[k]) return k;
+        return name;
       }
-      return this._res0(name);
+      return name;
     }
-    _res0(name) { if (name === 'gather') { const k = this.rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; } if (this.rig.main === 'spear' && name === 'run' && this.acts.ssRun) return 'ssRun'; if (this.rig.style === 'ss' || this.rig.style === 'bow') { const k = (this.rig.style === 'ss' ? { idle: 'ssIdle', run: 'ssRun' } : { run: 'bowRun' })[name]; if (k && this.acts[k]) return k; } return name; }          // 방패 자세(rig.style='ss')면 검·방패 클립으로 바꿔 쓴다
     _play(name, fade, force) {
       name = this._res(name);
       const next = this.acts[name] || this.acts.idle;
@@ -657,7 +650,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const rs = this._res(name);
       if (name !== this.baseName || rs !== this.resName) { this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
       const a = this.acts[rs];
-      if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (name === 'walk' || name === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
+      if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
     }
     once(name) {
       if (this.dead || !this.acts[name]) return;
@@ -679,7 +672,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
-    die() { this.dead = true; this.shot = null; this.rig.aim(false); this._play('die', 0.15, true); if (this.acts.die) this.acts.die.timeScale = MIXAMO_FAST_DIE; }
+    die() { this.dead = true; this.shot = null; this.rig.aim(false); const dk = this.rig.style === 'bow' && this.acts.dieBow ? 'dieBow' : 'die'; this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE; }
     revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }

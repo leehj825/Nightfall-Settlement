@@ -157,3 +157,13 @@ The skinned/polygon heads are now rounded boxes (flat face, squared jaw).
 
 - **Front View (H)** button: puts the camera in front of the hero so you can see his face and front; press again for the usual back view. Controls stay screen-relative (stick up = away from the camera, so the hero backpedals toward you).
 - **Map View (B)**: the camera is free - drag to turn/tilt (now up to straight down), pinch or wheel to zoom much closer (down to 5 units), and two fingers (or right mouse drag) to pan the camera across the map. The hero does not turn with the camera in map view; he faces the way he walks.
+
+### Movement sets (Locomotion + Pro Longbow + Pro Sword and Shield packs)
+
+`node tools/retarget_mixamo.js <three-r128-dir> <loco-dir> <ss-dir> <bow-dir> <spear-dir>` writes `js/anims.js` with three movement sets, each with idle, walk, run, left/right strafe and backward:
+
+- **Normal** (Locomotion Pack): used by everyone with a weapon while no enemy is near. Backward is the forward clip played in reverse.
+- **Sword and shield** (Pro Sword and Shield Pack): used by the hero, swordsmen and spearmen when an enemy is within about 25 units or on a journey (the clips are `ssIdle`, `ssWalk/ssWalkB`, `ssRun/ssRunB`, `ssStrafeP/N` and `ssStrafeP/NW` for walking strafes).
+- **Bow** (Pro Longbow Pack): used by the hero in bow mode and by archers in the same situations (`bowIdle`, `bowWalk/B/P/N`, `bowRun/B/P/N`), plus the bow death.
+
+Raiders and journey escorts are always in the combat set. The attack clips are unchanged (sword-and-shield attacks, the captured bayonet stab and slash, the bow draw); `die` is the sword-and-shield death and `dieBow` the bow death.

@@ -153,6 +153,7 @@
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }
+    playerRig.combat = !!exActive || enemyWithin(player.position.x, player.position.z, 26);        // 적이 가깝거나 원정 중이면 전투 자세 이동
     playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
     playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
     playerAnim.base(gathering ? 'gather' : dashT > 0 ? 'run' : mag > 0.08 ? (mag > 0.6 ? 'run' : 'walk') : 'idle', SPEED * mag);   // Idle / Walk / Run / Gather CrossFade

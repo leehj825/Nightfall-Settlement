@@ -1257,6 +1257,7 @@
 
   // ---------- 적 (약탈자) ----------
   const enemies = [];
+  const enemyWithin = (x, z, r) => { for (const e of enemies) if (!e.userData.sinking && Math.hypot(e.position.x - x, e.position.z - z) < r) return true; return false; };       // 가까운 적이 있나 (전투 자세 이동용)
   const RAIDER_BLADE = { id: 'raider_blade', slot: 'sword', tier: 0, color: 0x6b6b70 };
   const BRUTE_CLUB = { id: 'brute_club', slot: 'sword', tier: 0, color: 0x5a3a1e };
   const enemyMat = mat(0xc4231a), bruteMat = mat(0x5a0d0a);
@@ -1272,6 +1273,7 @@
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : sapper ? 0.9 : healer ? 1.05 : 1;
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
+    rig.combat = true;                                                  // 적은 항상 전투 자세 이동
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
@@ -3067,6 +3069,7 @@
     let anim = mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle';
     if ((state === 'Resting' || state === 'Lunch break') && mv < 0.5) anim = 'sit'; else if ((working || state === 'Drawing water') && mv < 0.8) anim = 'gather';
     npc.rig.tool = state === 'Chopping' || (npc.task && npc.task.kind === 'gather' && npc.task.target.userData.type === 'wood') ? 'axe' : 'pick';
+    npc.rig.combat = !!exActive || enemyWithin(npc.position.x, npc.position.z, 24);       // 적이 가까우면 전투 자세 이동(칼·방패 / 활), 아니면 평상시 이동
     npc.anim.base(anim, mv);
     const bs = npc.rig.baseScale;
     npc.body.scale.set(bs, bs * (npc.hidden ? 0.55 : 1), bs);                // 숨은 시민은 웅크린다
@@ -3914,6 +3917,7 @@
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
+    n.rig.combat = true;                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
     n.stateNow = state; setLabel(state);
   }
@@ -4327,6 +4331,7 @@
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }
+    playerRig.combat = !!exActive || enemyWithin(player.position.x, player.position.z, 26);        // 적이 가깝거나 원정 중이면 전투 자세 이동
     playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
     playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
     playerAnim.base(gathering ? 'gather' : dashT > 0 ? 'run' : mag > 0.08 ? (mag > 0.6 ? 'run' : 'walk') : 'idle', SPEED * mag);   // Idle / Walk / Run / Gather CrossFade

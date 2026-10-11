@@ -14,13 +14,19 @@ const loader = new THREE.FBXLoader();
 const load = (f) => { const b = fs.readFileSync(f); return loader.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), ''); };
 // wanted clips: output name -> [file name (without .fbx), loop?]
 const WANT = {
+  // 평상시 이동 (Locomotion Pack): 뒤로 걷기는 앞으로 걷기를 거꾸로 재생한다 (게임 쪽)
   idle: ['idle', true], walk: ['walking', true], run: ['running', true],
-  ssIdle: ['sword and shield idle', true], ssRun: ['sword and shield run', true],
-  ssAttack1: ['sword and shield attack (4)', false], ssAttack2: ['sword and shield attack (2)', false], ssAttack3: ['sword and shield attack (3)', false], ssAttack4: ['sword and shield attack', false],
-  ssBlock: ['sword and shield block', false],
-  spearStab: ['Bayonet_Stab', false], spearSlash: ['Slash_Advance', false],
   strafeN: ['left strafe', true], strafeP: ['right strafe', true], strafeNW: ['left strafe walking', true], strafePW: ['right strafe walking', true],       // N: 캐릭터가 -x쪽으로, P: +x쪽으로 (정면 +z 기준) 옆걸음
-  bowDraw: ['Standing_Draw_Arrow', false], bowRun: ['Standing_Run_Forward', true], bowWalk: ['Crouch_Walk_Forward', true], die: ['sword and shield death', false],
+  // 전투 자세 이동: 칼·방패 (Pro Sword and Shield Pack)
+  ssIdle: ['sword and shield idle', true], ssWalk: ['sword and shield walk', true], ssWalkB: ['sword and shield walk (2)', true], ssRun: ['sword and shield run', true], ssRunB: ['sword and shield run (2)', true],
+  ssStrafePW: ['sword and shield strafe', true], ssStrafeNW: ['sword and shield strafe (2)', true], ssStrafeN: ['sword and shield strafe (3)', true], ssStrafeP: ['sword and shield strafe (4)', true],
+  ssAttack1: ['sword and shield attack (4)', false], ssAttack2: ['sword and shield attack (2)', false], ssAttack3: ['sword and shield attack (3)', false], ssAttack4: ['sword and shield attack', false],
+  ssBlock: ['sword and shield block', false], die: ['sword and shield death', false],
+  spearStab: ['Bayonet_Stab', false], spearSlash: ['Slash_Advance', false],
+  // 전투 자세 이동: 활 (Pro Longbow Pack)
+  bowIdle: ['standing idle 01', true], bowWalk: ['standing walk forward', true], bowWalkB: ['standing walk back', true], bowWalkP: ['standing walk right', true], bowWalkN: ['standing walk left', true],
+  bowRun: ['standing run forward', true], bowRunB: ['standing run back', true], bowRunP: ['standing run right', true], bowRunN: ['standing run left', true],
+  bowDraw: ['standing draw arrow', false], dieBow: ['standing death backward 01', false],
 };
 const MAXF = 48;
 const V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;

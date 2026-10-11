@@ -1,5 +1,6 @@
   // ---------- 적 (약탈자) ----------
   const enemies = [];
+  const enemyWithin = (x, z, r) => { for (const e of enemies) if (!e.userData.sinking && Math.hypot(e.position.x - x, e.position.z - z) < r) return true; return false; };       // 가까운 적이 있나 (전투 자세 이동용)
   const RAIDER_BLADE = { id: 'raider_blade', slot: 'sword', tier: 0, color: 0x6b6b70 };
   const BRUTE_CLUB = { id: 'brute_club', slot: 'sword', tier: 0, color: 0x5a3a1e };
   const enemyMat = mat(0xc4231a), bruteMat = mat(0x5a0d0a);
@@ -15,6 +16,7 @@
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : sapper ? 0.9 : healer ? 1.05 : 1;
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
+    rig.combat = true;                                                  // 적은 항상 전투 자세 이동
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
