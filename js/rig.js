@@ -699,7 +699,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     jump() {
       if (this.dead || this.shot || this.guarding) return false;
       const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
-      return this._short(k, 0.75, 0.08);
+      return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
     }
     // 회피(대시): 이동 방향(f 앞 / b 뒤 / p,n 옆)에 맞는 구르기·회피 동작
     dodge(dir) {
@@ -713,7 +713,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const st = this.rig.style, v = Math.random() < 0.5 ? '' : '2', k = st === 'gs' ? 'gsImpact' + v : st === 'bow' ? 'bowReact' + v : 'ssImpact' + v; if (!this.acts[k]) return false;
       this._fl = now; return this._short(k, 0.42, 0.06);
     }
-    _short(k, dur, fade) { const a = this.acts[k]; a.timeScale = a.getClip().duration / dur; this.shot = { t: 0, dur }; this.hitIn = dur; this._play(k, fade, true); return true; }
+    _short(k, dur, fade, a0 = 0, a1 = 1) { const a = this.acts[k], cd = a.getClip().duration; a.timeScale = (a1 - a0) * cd / dur; this.shot = { t: 0, dur }; this.hitIn = dur; this._play(k, fade, true); a.time = a0 * cd; return true; }
     // 막기: 방패 / 대검 / 활 팩의 막기 자세를 잡고 있는다 (끝 자세에서 멈춘다). 풀면 원래 동작으로
     guard(on) {
       on = !!on; if (on === !!this.guarding || this.dead) return;
@@ -727,6 +727,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         this._ft = (this._ft || 0) + dt;
         if (this._ft > this.cur.getClip().duration) { this._ft = 0; this.farmI = ((this.farmI || 0) + 1) % FARM_CLIPS.length; this._play('farm', 0.4, true); }
       }
+      if (this.guarding && this.cur && this.cur === this.acts.bowBlock && this.cur.time > 0.8) this.cur.timeScale = 0;        // 활 막기: 자세를 잡은 채 멈춰 있는다
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);

@@ -78,7 +78,7 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
   const n = Math.min(maxf || MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
   let z0 = null; const xStart = (mixer.setTime(0), obj.updateMatrixWorld(true), wp(B.Hips).x);
   for (let i = 0; i <= n; i++) {
-    mixer.setTime(clip.duration * i / n); obj.updateMatrixWorld(true);
+    mixer.setTime(loop ? clip.duration * i / n : Math.min(clip.duration * i / n, clip.duration - 0.002)); obj.updateMatrixWorld(true);       // 반복하지 않는 클립의 마지막 키가 처음 자세로 되감기지 않게 한다
     const Wh = wq(B.Hips).multiply(rest.Hips.clone().invert()), Ws = wq(B.Spine1).multiply(rest.Spine1.clone().invert()), Wd = wq(B.Head).multiply(rest.Head.clone().invert());
     tr.hips.push(eul(Wh)); const qs = Wh.clone().invert().multiply(Ws); tr.spine.push(eul(qs)); const Wsp = Wh.clone().multiply(qs);
     tr.head.push(eul(Wsp.clone().invert().multiply(Wd)));
