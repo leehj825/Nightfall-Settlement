@@ -29,6 +29,10 @@
       { age: 3, label: 'Plan Towers & Market', cost: { wood: 40, stone: 60 }, lots: [
         { kind: 'market', auto: 'town' },
         { kind: 'tower', x: -12.3, z: -12.3 }, { kind: 'tower', x: 12.3, z: -12.3 }, { kind: 'tower', x: -12.3, z: 12.3 }, { kind: 'tower', x: 12.3, z: 12.3 }] },
+      // 두 번째(돌) 성벽이 완성되면: 첫 목책과 둘째 성벽 사이 바깥 구역에 농장·사격장을 옮겨 짓고(마을 안쪽이 넓어진다), 바깥 모서리에 방어탑을 더 세운다
+      { age: 3, needsOuterWall: true, outer: true, label: 'Plan Outer Fields & Towers', cost: { wood: 60, stone: 60 },
+        farmSlots: [{ x: 20, z: -9.5 }, { x: 20, z: 9.5 }, { x: -20, z: -9.5 }, { x: -20, z: 9.5 }], rangeSlot: { x: -9.5, z: 20 }, farms: 4,
+        lots: [{ kind: 'tower', x: -22.3, z: -22.3 }, { kind: 'tower', x: 22.3, z: -22.3 }, { kind: 'tower', x: -22.3, z: 22.3 }, { kind: 'tower', x: 22.3, z: 22.3 }] },
     ],
     BUILDING: {
       house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 },

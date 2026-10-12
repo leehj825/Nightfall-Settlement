@@ -147,13 +147,15 @@
     setAge(3);                                                // 디버그: 3시대(석조 요새)로
     if (!playerClass) setClass('warrior');
     for (const a of [1, 2, 3]) if (!perks[a]) choosePerk(a, CFG.PERKS[a][0].id);
-    while (townStage < CFG.TOWN_GROUPS.length) designTown();
-    while (CFG.DESIGN[designTier]) designDefense();
-    for (const b of blueprints.slice()) {                     // 도면을 즉시 완성
+    const finishAll = () => { for (const b of blueprints.slice()) {                // 도면을 즉시 완성
       blueprints.splice(blueprints.indexOf(b), 1); scene.remove(b);
       if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
       else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
-    }
+    } };
+    while (CFG.DESIGN[designTier]) designDefense();
+    finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
+    for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown();
+    finishAll();
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
     for (const c of npcs.filter(n => n.promote)) setRole(c, c.promote.to);
     const sm = smiths()[0];                                   // 디버그: 대장간 선반에 장비를 채워 병사들이 수령하게 한다
