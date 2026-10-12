@@ -663,7 +663,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
-      if (performance.now() - (this._ce || 0) > 1000) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
+      if (!this.shot && performance.now() - (this._ce || 0) > 1000) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
       if (name === 'attackSword' && this.rig.brawl && this.acts.brawlPunch) {                                                 // 맨손(주인공 무기 해제·일반 시민): 주먹과 발차기를 끊김 없이 이어 붙인다 (앞뒤의 느린 부분은 잘라 낸다)
         const nm = BRAWL_SEQ[this.brI = ((this.brI || 0) % BRAWL_SEQ.length)]; this.brI++;
         const act = this.acts[nm], cd = act.getClip().duration, meta = MIXAMO_CLIPS[nm], hit = meta ? meta.hit : 0.45, a0 = Math.max(0, hit - 0.28), a1 = Math.min(0.97, hit + 0.2);
