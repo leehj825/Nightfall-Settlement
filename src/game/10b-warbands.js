@@ -38,7 +38,10 @@
   // 전투단 명령 (전쟁 계층 2단계): 전투단마다 하나. 저장된 예전 데이터에는 없으므로 읽을 때 'forward' 로 대신한다. 행동 연결은 다음 단계
   const WB_ORDERS = ['forward', 'stand', 'withdraw', 'charge'];
   function warbandOrder(i) { const o = i >= 0 && warbandInfo && warbandInfo[i] ? warbandInfo[i].order : null; return WB_ORDERS.includes(o) ? o : 'forward'; }
-  function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; return true; }
+  function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; for (const n of warbandMembers(i)) n.hold = null; return true; }
+  const WB_ORDER_LABEL = { forward: 'Forward', stand: 'Stand firm', withdraw: 'Withdraw', charge: 'Charge' };
+  const WB_ORDER_HINT = { forward: 'Fight as usual: take on foes near the village or follow you.', stand: 'Hold the ground: fight only foes that come close, do not chase.', withdraw: 'Fall back: melee men do not engage; on a journey they stay by your side.', charge: 'Rush the foe: notice enemies from further away and chase them harder.' };
+  const orderOf = (n) => n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
   const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
   let wbOpen = -1, wbBarHtml = '';
   function renderWbBar() {
@@ -47,7 +50,7 @@
     if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
       const m = warbandMembers(i); if (!m.length) continue;
       const hurt = m.filter(n => n.down).length, sel = escortWarband === i;
-      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}</button>`;
+      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
     }
     if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
   }
@@ -61,6 +64,7 @@
     wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
       <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
       <button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>
+      <div class="word">${WB_ORDERS.map(o => `<button class="wbord${o === warbandOrder(i) ? ' on' : ''}" data-ord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div><small>${WB_ORDER_HINT[warbandOrder(i)]}</small>
       <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. The Journey button sets the class a soldier takes on journeys; at home they keep their own class. Tap a soldier to open their card and move them to another warband.</small><button id="wbClose">Close</button>`;
   }
   function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
@@ -68,6 +72,7 @@
   wbPanel.addEventListener('pointerdown', e => {
     if (e.target === wbPanel) { closeWbPanel(); return; }
     const t = e.target, i = wbOpen; if (i < 0) return;
+    if (t.dataset && t.dataset.ord) { setWarbandOrder(i, t.dataset.ord); toast(`${wbi(i).name}: ${WB_ORDER_LABEL[t.dataset.ord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
     if (t.dataset && t.dataset.clsN !== undefined) { const n = npcs[+t.dataset.clsN]; if (n && n.role === 'melee' && !n.escort) { cycleTripCls(n); renderWbPanel(); } e.stopPropagation(); return; }
     if (t.id === 'wbClose') { closeWbPanel(); }
     else if (t.id === 'wbBring') { escortWarband = escortWarband === i ? -1 : i; renderWbPanel(); wbBarHtml = ''; renderWbBar(); }

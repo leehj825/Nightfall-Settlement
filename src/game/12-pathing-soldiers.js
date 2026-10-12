@@ -298,7 +298,7 @@
   function archerDefend(dt) {
     const rs = peaceful ? restSpot(npc, 'night') : null, hx = rs ? rs.x : npc.home.x, hz = rs ? rs.z : npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
-    let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
+    let foe = null, bd = (orderOf(npc) === 'charge' ? 1.25 : 1) * CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
     for (const e of enemies) {
       if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;      // 공성 투척병은 궁수가 노릴 수 없다
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
@@ -409,10 +409,11 @@
           if (workStep(dt)) { state = npc.stateLabel; bob = npc.bobAmt; } else state = citizenRest(dt);
         } else state = peaceful ? citizenRest(dt) : citizenHide(dt);
       } else if (npc.archer) state = archerDefend(dt); else {
-      let foe = null, bd = CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
+      const ord = orderOf(npc), post0 = ord === 'stand' ? (sentryPost(npc) || npc.home) : null;       // 명령: Stand firm 은 초소 근처의 적만, Charge 는 더 멀리서, Withdraw 는 싸우러 나가지 않는다
+      let foe = null, bd = ord === 'charge' ? CFG.MELEE_AGGRO * 1.3 : ord === 'stand' ? 14 : CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
-        const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
+        if (e.userData.sinking || e.userData.siege || e.userData.prowl || ord === 'withdraw') continue;
+        const d = post0 ? Math.hypot(e.position.x - post0.x, e.position.z - post0.z) : Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
         if (d < bd) { bd = d; foe = e; }
       }
       if (npc.returning || !foe) {

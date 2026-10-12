@@ -125,23 +125,29 @@
     if (n.down) { setLabel('Down'); n.anim.base('idle', 0); n.stateNow = 'Down'; return; }
     n.atkCd -= dt;
     if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
-    let foe = null, bd = 16;
+    const ord = orderOf(n);                                                                     // 명령: Stand firm 은 그 자리를 지킨다, Withdraw 는 근접병이 싸우지 않고 곁에 붙는다, Charge 는 멀리서 달려든다
+    if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
+    let foe = null, bd = ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
     for (const e of enemies) {
+      if (ord === 'withdraw' && n.role === 'melee') break;
       if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
-      const d = Math.hypot(e.position.x - n.position.x, e.position.z - n.position.z);
+      const o0 = n.hold || n.position, d = Math.hypot(e.position.x - o0.x, e.position.z - o0.z);
       if (d < bd) { bd = d; foe = e; }
     }
-    let state = 'Escorting';
+    if (foe && n.hold) bd = Math.hypot(foe.position.x - n.position.x, foe.position.z - n.position.z);
+    let state = ord === 'withdraw' ? 'Falling back' : 'Escorting';
     if (foe) {
       state = 'Fighting';
       if (n.role === 'melee') {
-        if (bd > 1.7) exMove(n, foe.position.x, foe.position.z, 5.2, dt);
+        if (bd > 1.7) exMove(n, foe.position.x, foe.position.z, ord === 'charge' ? 6 : 5.2, dt);
         else { n.face = Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z); n.rotation.y = n.face; if (n.atkCd <= 0) soldierStrike(foe); }
       } else {
         if (bd > 9) exMove(n, foe.position.x, foe.position.z, 4.5, dt);
         else if (bd < 4) exMove(n, n.position.x * 2 - foe.position.x, n.position.z * 2 - foe.position.z, 4.5, dt);
         if (bd <= 11) soldierShoot(foe);
       }
+    } else if (n.hold) {
+      if (Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) > 0.6) exMove(n, n.hold.x, n.hold.z, 5, dt);       // 지킬 자리로 돌아온다
     } else {
       const k = npcs.filter(x => x.escort).indexOf(n), a = facing + Math.PI + (k - 1) * 0.9, tx = player.position.x + Math.sin(a) * 2.6, tz = player.position.z + Math.cos(a) * 2.6;
       const d = Math.hypot(tx - n.position.x, tz - n.position.z);
@@ -274,7 +280,7 @@
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
         n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);                    // 원정 직업으로 바꾼다 (마을 직업은 clsHome 에 남는다)
-        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 1.8, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+        n.escort = true; n.hold = null; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 1.8, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
       exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;

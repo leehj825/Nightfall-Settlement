@@ -2249,7 +2249,10 @@
   // 전투단 명령 (전쟁 계층 2단계): 전투단마다 하나. 저장된 예전 데이터에는 없으므로 읽을 때 'forward' 로 대신한다. 행동 연결은 다음 단계
   const WB_ORDERS = ['forward', 'stand', 'withdraw', 'charge'];
   function warbandOrder(i) { const o = i >= 0 && warbandInfo && warbandInfo[i] ? warbandInfo[i].order : null; return WB_ORDERS.includes(o) ? o : 'forward'; }
-  function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; return true; }
+  function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; for (const n of warbandMembers(i)) n.hold = null; return true; }
+  const WB_ORDER_LABEL = { forward: 'Forward', stand: 'Stand firm', withdraw: 'Withdraw', charge: 'Charge' };
+  const WB_ORDER_HINT = { forward: 'Fight as usual: take on foes near the village or follow you.', stand: 'Hold the ground: fight only foes that come close, do not chase.', withdraw: 'Fall back: melee men do not engage; on a journey they stay by your side.', charge: 'Rush the foe: notice enemies from further away and chase them harder.' };
+  const orderOf = (n) => n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
   const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
   let wbOpen = -1, wbBarHtml = '';
   function renderWbBar() {
@@ -2258,7 +2261,7 @@
     if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
       const m = warbandMembers(i); if (!m.length) continue;
       const hurt = m.filter(n => n.down).length, sel = escortWarband === i;
-      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}</button>`;
+      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
     }
     if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
   }
@@ -2272,6 +2275,7 @@
     wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
       <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
       <button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>
+      <div class="word">${WB_ORDERS.map(o => `<button class="wbord${o === warbandOrder(i) ? ' on' : ''}" data-ord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div><small>${WB_ORDER_HINT[warbandOrder(i)]}</small>
       <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. The Journey button sets the class a soldier takes on journeys; at home they keep their own class. Tap a soldier to open their card and move them to another warband.</small><button id="wbClose">Close</button>`;
   }
   function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
@@ -2279,6 +2283,7 @@
   wbPanel.addEventListener('pointerdown', e => {
     if (e.target === wbPanel) { closeWbPanel(); return; }
     const t = e.target, i = wbOpen; if (i < 0) return;
+    if (t.dataset && t.dataset.ord) { setWarbandOrder(i, t.dataset.ord); toast(`${wbi(i).name}: ${WB_ORDER_LABEL[t.dataset.ord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
     if (t.dataset && t.dataset.clsN !== undefined) { const n = npcs[+t.dataset.clsN]; if (n && n.role === 'melee' && !n.escort) { cycleTripCls(n); renderWbPanel(); } e.stopPropagation(); return; }
     if (t.id === 'wbClose') { closeWbPanel(); }
     else if (t.id === 'wbBring') { escortWarband = escortWarband === i ? -1 : i; renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
@@ -3084,7 +3089,7 @@
   function archerDefend(dt) {
     const rs = peaceful ? restSpot(npc, 'night') : null, hx = rs ? rs.x : npc.home.x, hz = rs ? rs.z : npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
-    let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
+    let foe = null, bd = (orderOf(npc) === 'charge' ? 1.25 : 1) * CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
     for (const e of enemies) {
       if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;      // 공성 투척병은 궁수가 노릴 수 없다
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
@@ -3195,10 +3200,11 @@
           if (workStep(dt)) { state = npc.stateLabel; bob = npc.bobAmt; } else state = citizenRest(dt);
         } else state = peaceful ? citizenRest(dt) : citizenHide(dt);
       } else if (npc.archer) state = archerDefend(dt); else {
-      let foe = null, bd = CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
+      const ord = orderOf(npc), post0 = ord === 'stand' ? (sentryPost(npc) || npc.home) : null;       // 명령: Stand firm 은 초소 근처의 적만, Charge 는 더 멀리서, Withdraw 는 싸우러 나가지 않는다
+      let foe = null, bd = ord === 'charge' ? CFG.MELEE_AGGRO * 1.3 : ord === 'stand' ? 14 : CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
-        const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
+        if (e.userData.sinking || e.userData.siege || e.userData.prowl || ord === 'withdraw') continue;
+        const d = post0 ? Math.hypot(e.position.x - post0.x, e.position.z - post0.z) : Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
         if (d < bd) { bd = d; foe = e; }
       }
       if (npc.returning || !foe) {
@@ -4062,23 +4068,29 @@
     if (n.down) { setLabel('Down'); n.anim.base('idle', 0); n.stateNow = 'Down'; return; }
     n.atkCd -= dt;
     if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
-    let foe = null, bd = 16;
+    const ord = orderOf(n);                                                                     // 명령: Stand firm 은 그 자리를 지킨다, Withdraw 는 근접병이 싸우지 않고 곁에 붙는다, Charge 는 멀리서 달려든다
+    if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
+    let foe = null, bd = ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
     for (const e of enemies) {
+      if (ord === 'withdraw' && n.role === 'melee') break;
       if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
-      const d = Math.hypot(e.position.x - n.position.x, e.position.z - n.position.z);
+      const o0 = n.hold || n.position, d = Math.hypot(e.position.x - o0.x, e.position.z - o0.z);
       if (d < bd) { bd = d; foe = e; }
     }
-    let state = 'Escorting';
+    if (foe && n.hold) bd = Math.hypot(foe.position.x - n.position.x, foe.position.z - n.position.z);
+    let state = ord === 'withdraw' ? 'Falling back' : 'Escorting';
     if (foe) {
       state = 'Fighting';
       if (n.role === 'melee') {
-        if (bd > 1.7) exMove(n, foe.position.x, foe.position.z, 5.2, dt);
+        if (bd > 1.7) exMove(n, foe.position.x, foe.position.z, ord === 'charge' ? 6 : 5.2, dt);
         else { n.face = Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z); n.rotation.y = n.face; if (n.atkCd <= 0) soldierStrike(foe); }
       } else {
         if (bd > 9) exMove(n, foe.position.x, foe.position.z, 4.5, dt);
         else if (bd < 4) exMove(n, n.position.x * 2 - foe.position.x, n.position.z * 2 - foe.position.z, 4.5, dt);
         if (bd <= 11) soldierShoot(foe);
       }
+    } else if (n.hold) {
+      if (Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) > 0.6) exMove(n, n.hold.x, n.hold.z, 5, dt);       // 지킬 자리로 돌아온다
     } else {
       const k = npcs.filter(x => x.escort).indexOf(n), a = facing + Math.PI + (k - 1) * 0.9, tx = player.position.x + Math.sin(a) * 2.6, tz = player.position.z + Math.cos(a) * 2.6;
       const d = Math.hypot(tx - n.position.x, tz - n.position.z);
@@ -4211,7 +4223,7 @@
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
         n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);                    // 원정 직업으로 바꾼다 (마을 직업은 clsHome 에 남는다)
-        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 1.8, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+        n.escort = true; n.hold = null; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 1.8, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
       exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;

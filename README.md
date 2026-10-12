@@ -143,6 +143,8 @@ Journey power requirements (`CFG.EXP_NEED`) are now multiplied by `CFG.EXP_NEED_
 
 Soldiers now have two classes: the **home class** (used in town, changed on the soldier card while at home) and the **journey class** (used only on journeys). Set the journey class with the **Journey** button beside each soldier in the warband window; changing the class from the card during a journey changes only the journey class. When a warband sets out its soldiers switch to their journey class (for example a medic), and when they return they switch back to their home class and carry on their normal duty. Saves keep both (old saves: journey class = home class).
 
+The warband window now has four **order buttons**: Forward (as before), Stand firm (at night only fight foes near the post; on a journey hold the spot where the order was given), Withdraw (melee men do not engage; on a journey they stay by your side), Charge (notice foes from further away and chase harder). A small letter on the warband chip shows a non-Forward order. The older R key (Follow / Guard) is separate and unchanged. Orders are saved. Not yet tested by watching real fights.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
