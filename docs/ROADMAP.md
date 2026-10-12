@@ -19,7 +19,7 @@
 | drill ground | **Training yard** | building that trains veterans |
 | war map | **Campaign map** | map of realms, holds and castles |
 
-## Status (nf-v63)
+## Status (nf-v64)
 See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
 
 **Done (war layer phase 1, warbands):** soldiers belong to warbands of up to 6 (six heraldic names, banner colours, saved), a soldier cap from barracks and archery ranges, a warband bar on screen, a warband window to rename and recolour and choose the one that goes on your next journey, and journey power counted from the warband you bring (soldiers left home count one third).
@@ -124,7 +124,7 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 - Save format must store warbands, war-map state and realm progress.
 
 ## Suggested phases
-1. **Warbands** (done in `nf-v61`, first version): soldiers grouped into warbands of up to 6, soldier cap from barracks/ranges, foray expeditions with a chosen warband. Still to do: a warband bar on screen, warband names/colours chosen by the player, party-based expedition power.
+1. **Warbands** (done in `nf-v61`, first version): soldiers grouped into warbands of up to 6, soldier cap from barracks/ranges, foray expeditions with a chosen warband. Bar, names/colours and party-based power are done too.
 2. **Commands**: advance / hold / fall back / focus / charge, leader standard, army rally.
 3. **Campaign map and raids**: node map, garrison sizes, march time and food, an enemy outpost to attack.
 4. **Siege**: ladders and rams, breakable gates, defender garrison, capturing a fortress.
