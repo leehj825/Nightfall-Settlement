@@ -140,8 +140,9 @@
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
       const ts = terrSpd(player.position.x, player.position.z);
-      player.position.x += mx * SPEED * spdMul() * ts * mag * dt;
-      player.position.z += mz * SPEED * spdMul() * ts * mag * dt;
+      const bk = blocking ? 0.45 : 1;                                       // 막는 중에는 느리게
+      player.position.x += mx * SPEED * spdMul() * ts * mag * bk * dt;
+      player.position.z += mz * SPEED * spdMul() * ts * mag * bk * dt;
 
       lastMX = mx; lastMZ = mz; lastMT = performance.now();
       { const fx = Math.sin(facing), fz = Math.cos(facing), f = mx * fx + mz * fz, sd = mx * fz - mz * fx;       // 바라보는 방향 기준 앞/뒤/옆걸음
@@ -155,6 +156,7 @@
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }
+    { const wantB = !!(keys.ShiftLeft || keys.ShiftRight || blockBtn) && !dead && dashT <= 0 && !gathering && !uiPause; if (wantB !== blocking) { blocking = wantB; playerAnim.guard(blocking); } }
     playerRig.combat = !!exActive || enemyWithin(player.position.x, player.position.z, 26);        // 적이 가깝거나 원정 중이면 전투 자세 이동
     playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
     playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';

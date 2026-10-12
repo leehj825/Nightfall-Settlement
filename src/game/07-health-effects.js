@@ -37,6 +37,7 @@
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     n = Math.max(1, Math.round(n * dm().dmg * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 난이도 + 방어구 + 성장 피해 감소
+    if (blocking) { n = Math.max(1, Math.round(n * 0.25)); Snd.play('hit', 0.6); } else if (hp - n > 0) playerAnim.flinch();        // 막는 중에는 피해 75% 감소, 아니면 맞는 동작
     hp = Math.max(0, hp - n);
     sinceHurt = 0;
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt'); buzz(hp <= 0 ? 300 : 30);

@@ -615,7 +615,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n); }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n) || /^(ss|gs)(Impact|Jump)/.test(n) || /^bow(Dodge|Block|React)/.test(n) || n === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n) || /Block/.test(n); }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
@@ -654,7 +654,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     base(name, speed = 0) {
       if (this.dead) return;
       const rs = this._res(name);
-      if (name !== this.baseName || rs !== this.resName) { if (name === 'farm' && this.baseName !== 'farm') this._ft = 0; this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
+      if (name !== this.baseName || rs !== this.resName) { if (name === 'farm' && this.baseName !== 'farm') this._ft = 0; this.baseName = name; this.resName = rs; if (!this.shot && !this.guarding) this._play(name, 0.2); }
       const a = this.acts[rs];
       if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
     }
@@ -690,7 +690,37 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
-    die() { this.dead = true; this.shot = null; this.rig.aim(false); const dk = this.rig.style === 'bow' && this.acts.dieBow ? 'dieBow' : this.rig.style === 'gs' && this.acts.dieGs ? 'dieGs' : 'die'; this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE; }
+    die() {
+      this.dead = true; this.shot = null; this.guarding = false; this.rig.aim(false);
+      const set = this.rig.style === 'bow' ? ['dieBow', 'dieBow2'] : this.rig.style === 'gs' ? ['dieGs', 'dieGs2'] : ['die', 'die2'], ok = set.filter(k => this.acts[k]), dk = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 'die';
+      this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE;
+    }
+    // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
+    jump() {
+      if (this.dead || this.shot || this.guarding) return false;
+      const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
+      return this._short(k, 0.75, 0.08);
+    }
+    // 회피(대시): 이동 방향(f 앞 / b 뒤 / p,n 옆)에 맞는 구르기·회피 동작
+    dodge(dir) {
+      if (this.dead || this.guarding) return false;
+      const k = { f: 'bowDodgeF', b: 'bowDodgeB', p: 'bowDodgeP', n: 'bowDodgeN' }[dir] || 'bowDodgeF'; if (!this.acts[k]) return false;
+      this.shot = null; return this._short(k, 0.5, 0.06);
+    }
+    // 피격 반응: 무기 팩의 맞는 동작을 짧게 (공격 중이거나 방금 반응했다면 건너뛴다)
+    flinch() {
+      const now = performance.now(); if (this.dead || this.shot || this.guarding || now - (this._fl || 0) < 700) return false;
+      const st = this.rig.style, v = Math.random() < 0.5 ? '' : '2', k = st === 'gs' ? 'gsImpact' + v : st === 'bow' ? 'bowReact' + v : 'ssImpact' + v; if (!this.acts[k]) return false;
+      this._fl = now; return this._short(k, 0.42, 0.06);
+    }
+    _short(k, dur, fade) { const a = this.acts[k]; a.timeScale = a.getClip().duration / dur; this.shot = { t: 0, dur }; this.hitIn = dur; this._play(k, fade, true); return true; }
+    // 막기: 방패 / 대검 / 활 팩의 막기 자세를 잡고 있는다 (끝 자세에서 멈춘다). 풀면 원래 동작으로
+    guard(on) {
+      on = !!on; if (on === !!this.guarding || this.dead) return;
+      this.guarding = on;
+      if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
+      else this._play(this.baseName || 'idle', 0.15, true);
+    }
     revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.baseName === 'farm' && !this.shot && this.cur) {                 // 농사: 심기 → 물주기 → 뽑기 → 따기 동작을 한 번씩 돌아가며 한다

@@ -8,7 +8,7 @@
   let atkLock = 0;                                                       // 근접 공격 동안 제자리에 서 있는다
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
-    if (dead || atkCd > 0 || dashT > 0) return;
+    if (dead || atkCd > 0 || dashT > 0 || blocking) return;
     gathering = null;
     if (weaponMode === 'bow') {
       playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
@@ -217,9 +217,14 @@
 
   // ---------- 대시 (무적 포함) ----------
   let dashT = 0, dashCd = 0, invincibleT = 0, dashDX = 0, dashDZ = 0;
+  function jump() {                                                         // 점프: 제자리 뛰기 동작 (공격·채집 중에는 못 한다)
+    if (dead || blocking || dashT > 0 || gathering || atkLock > 0) return;
+    if (playerAnim.jump()) { atkCd = Math.max(atkCd, 0.25); Snd.play('dash', 0.4); }
+  }
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
     if (performance.now() - lastMT < 350) { dashDX = lastMX; dashDZ = lastMZ; } else { dashDX = Math.sin(facing); dashDZ = Math.cos(facing); }          // 입력 방향으로 (입력이 없으면 정면)
+    { const fx = Math.sin(facing), fz = Math.cos(facing), f = dashDX * fx + dashDZ * fz, sd = dashDX * fz - dashDZ * fx; playerAnim.dodge(f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'); }       // 이동 방향에 맞는 회피 동작
     atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }

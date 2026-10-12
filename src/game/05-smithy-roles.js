@@ -107,6 +107,10 @@
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
+  bindBtn('jumpBtn', jump);
+  { const bb = document.getElementById('blockBtn'), off = () => { blockBtn = false; bb.classList.remove('held'); };         // 막기: 누르고 있는 동안
+    bb.addEventListener('pointerdown', e => { e.preventDefault(); blockBtn = true; bb.classList.add('held'); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bb.addEventListener(ev, off); }
   bindBtn('ultBtn', ultimate);
   bindBtn('swapBtn', swapWeapon);
 

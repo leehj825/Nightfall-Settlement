@@ -17,6 +17,7 @@
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
     rig.combat = true;                                                  // 적은 항상 전투 자세 이동
+    if (!beast) rig.style = archer ? 'bow' : healer ? '' : 'ss';        // 적도 같은 팩의 전투 이동·공격·피격·죽음 동작을 쓴다 (궁수는 활 팩, 나머지는 칼·방패 팩)
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {

@@ -27,7 +27,7 @@
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
   const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
-  let weaponMode = 'sword';
+  let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {

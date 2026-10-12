@@ -37,6 +37,12 @@ const WANT = {
   // 농사 (Farming Pack): 농부가 밭에서 일할 때 돌아가며 쓴다 (긴 동작이라 프레임을 더 쓴다)
   // 맨손 격투 (Punching / Kicking 클립): 주먹과 발차기를 끊김 없이 이어 쓴다. 타격 순간은 주먹·발 중 가장 빠르게 움직이는 순간
   brawlPunch: ['Punching', false], brawlPunch2: ['Punching_1', false], brawlHook: ['Hook_Punch', false], brawlKick: ['Kicking', false], brawlKick2: ['Kicking_1', false], brawlRound: ['Roundhouse_Kick', false],
+  // 점프·회피·막기·피격·죽음 변형 (Locomotion / 칼·방패 / 대검 / 롱보우 팩)
+  jump: ['jump', false], ssJump: ['sword and shield jump', false], gsJump: ['great sword jump', false],
+  bowDodgeF: ['standing dodge forward', false], bowDodgeB: ['standing dodge backward', false], bowDodgeP: ['standing dodge right', false], bowDodgeN: ['standing dodge left', false],
+  bowBlock: ['standing block', false], ssImpact: ['sword and shield impact', false], ssImpact2: ['sword and shield impact (2)', false], gsImpact: ['great sword impact', false], gsImpact2: ['great sword impact (4)', false],
+  bowReact: ['standing react small from front', false], bowReact2: ['standing react small from headshot', false],
+  die2: ['sword and shield death (2)', false], dieGs2: ['two handed sword death (2)', false], dieBow2: ['standing death forward 01', false],
   farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
 // LIB=1: retarget EVERY clip of every folder into one library (names '<folder>_<file>'), written to js/anims_lib.js as MIXAMO_LIB.

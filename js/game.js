@@ -313,6 +313,7 @@
   const keys = {};
   addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) dash(); }
+    if (e.code === 'KeyX' && !e.repeat) jump();
     if (e.code === 'KeyG' && !e.repeat) gather();
     if (e.code === 'KeyE' && !e.repeat) ultimate();
     if (e.code === 'KeyF' && !e.repeat) attack();
@@ -352,7 +353,7 @@
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
   const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
-  let weaponMode = 'sword';
+  let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
@@ -946,6 +947,10 @@
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
+  bindBtn('jumpBtn', jump);
+  { const bb = document.getElementById('blockBtn'), off = () => { blockBtn = false; bb.classList.remove('held'); };         // 막기: 누르고 있는 동안
+    bb.addEventListener('pointerdown', e => { e.preventDefault(); blockBtn = true; bb.classList.add('held'); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bb.addEventListener(ev, off); }
   bindBtn('ultBtn', ultimate);
   bindBtn('swapBtn', swapWeapon);
 
@@ -1176,6 +1181,7 @@
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     n = Math.max(1, Math.round(n * dm().dmg * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 난이도 + 방어구 + 성장 피해 감소
+    if (blocking) { n = Math.max(1, Math.round(n * 0.25)); Snd.play('hit', 0.6); } else if (hp - n > 0) playerAnim.flinch();        // 막는 중에는 피해 75% 감소, 아니면 맞는 동작
     hp = Math.max(0, hp - n);
     sinceHurt = 0;
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt'); buzz(hp <= 0 ? 300 : 30);
@@ -1275,6 +1281,7 @@
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
     rig.combat = true;                                                  // 적은 항상 전투 자세 이동
+    if (!beast) rig.style = archer ? 'bow' : healer ? '' : 'ss';        // 적도 같은 팩의 전투 이동·공격·피격·죽음 동작을 쓴다 (궁수는 활 팩, 나머지는 칼·방패 팩)
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
@@ -1657,6 +1664,7 @@
     sfxAt('hit', e.position.x, e.position.z);
     if (u.hp <= 0) { if (byPlayer && pl.st.leech) healPlayer(2 * pl.st.leech); killEnemy(e); return true; }
     burst(e.position, 4);
+    if (!u.boss && !u.siege && u.kind !== 'beast' && !(u.kbMul > 1.5)) u.anim.flinch();
     const dx = e.position.x - fromX, dz = e.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
     const dist = (kbDist ?? (strongKb ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK)) * u.kbMul;
     u.kbT = KB_TIME; u.kbVx = dx / d * dist / KB_TIME; u.kbVz = dz / d * dist / KB_TIME;
@@ -1835,7 +1843,7 @@
 
       const mvd = Math.hypot(e.position.x - u.px, e.position.z - u.pz) / Math.max(dt, 1e-4);      // 이동 속도에 맞춰 걷기/대기, 장애물·플레이어 앞에서는 공격 모션
       u.px = e.position.x; u.pz = e.position.z; u.atkAnimCd -= dt;
-      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : 'walk', mvd);
+      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : mvd > 4.6 ? 'run' : 'walk', mvd);
       if ((blocked || pd < PLAYER_R + er + 0.8) && u.atkAnimCd <= 0 && !(u.stunT > 0) && !u.siege) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
       // 베헤모스 지진 강타: 캐스팅(1.5초, 붉게 깜빡 + 예고 링) → 점프 → 내려찍기. 캐스팅 중 궁극기에 맞으면 취소되고 기절
       if (u.boss) {
@@ -3134,7 +3142,7 @@
   let atkLock = 0;                                                       // 근접 공격 동안 제자리에 서 있는다
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
-    if (dead || atkCd > 0 || dashT > 0) return;
+    if (dead || atkCd > 0 || dashT > 0 || blocking) return;
     gathering = null;
     if (weaponMode === 'bow') {
       playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
@@ -3343,9 +3351,14 @@
 
   // ---------- 대시 (무적 포함) ----------
   let dashT = 0, dashCd = 0, invincibleT = 0, dashDX = 0, dashDZ = 0;
+  function jump() {                                                         // 점프: 제자리 뛰기 동작 (공격·채집 중에는 못 한다)
+    if (dead || blocking || dashT > 0 || gathering || atkLock > 0) return;
+    if (playerAnim.jump()) { atkCd = Math.max(atkCd, 0.25); Snd.play('dash', 0.4); }
+  }
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
     if (performance.now() - lastMT < 350) { dashDX = lastMX; dashDZ = lastMZ; } else { dashDX = Math.sin(facing); dashDZ = Math.cos(facing); }          // 입력 방향으로 (입력이 없으면 정면)
+    { const fx = Math.sin(facing), fz = Math.cos(facing), f = dashDX * fx + dashDZ * fz, sd = dashDX * fz - dashDZ * fx; playerAnim.dodge(f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'); }       // 이동 방향에 맞는 회피 동작
     atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
@@ -4366,8 +4379,9 @@
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
       const ts = terrSpd(player.position.x, player.position.z);
-      player.position.x += mx * SPEED * spdMul() * ts * mag * dt;
-      player.position.z += mz * SPEED * spdMul() * ts * mag * dt;
+      const bk = blocking ? 0.45 : 1;                                       // 막는 중에는 느리게
+      player.position.x += mx * SPEED * spdMul() * ts * mag * bk * dt;
+      player.position.z += mz * SPEED * spdMul() * ts * mag * bk * dt;
 
       lastMX = mx; lastMZ = mz; lastMT = performance.now();
       { const fx = Math.sin(facing), fz = Math.cos(facing), f = mx * fx + mz * fz, sd = mx * fz - mz * fx;       // 바라보는 방향 기준 앞/뒤/옆걸음
@@ -4381,6 +4395,7 @@
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }
+    { const wantB = !!(keys.ShiftLeft || keys.ShiftRight || blockBtn) && !dead && dashT <= 0 && !gathering && !uiPause; if (wantB !== blocking) { blocking = wantB; playerAnim.guard(blocking); } }
     playerRig.combat = !!exActive || enemyWithin(player.position.x, player.position.z, 26);        // 적이 가깝거나 원정 중이면 전투 자세 이동
     playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
     playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
