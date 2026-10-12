@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v70`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v71`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement`, dev branch `ccr-9e4a8ed7-fh7jhu` (push there; no pull requests unless the owner asks). The owner writes Korean or English; the game UI is English only. No Play Store work. A medieval setting: avoid modern words (see the terms table in the roadmap).
@@ -48,7 +48,7 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - **Two classes per soldier**: `n.clsHome` (town) and `n.clsTrip` (journey, optional); `n.cls` is the active one, swapped on departure/return in `16-expeditions-story-journal.js`. Helpers `homeCls`, `tripCls`, `setClassFor` in `10b-warbands.js`.
 
 ## Next steps (also in the roadmap)
-1. **Orders (buttons and soldier behaviour done in nf-v66, only UI-tested headless; fights not watched)**, Mark the foe is done (nf-v70, `toggleMark` / `markedFoe` in `10b-warbands.js`); next the leader's standard (war layer phase 2; the saved per-warband `order` field exists in `10b-warbands.js` with `warbandOrder` / `setWarbandOrder`, nothing uses it yet; next: buttons, soldier behaviour, Mark the foe, standard): Forward, Stand firm, Withdraw, Mark the foe, Charge; nearby men fight better near the leader. Needs: a small order set on the warband bar, soldier behaviour states for the selected warband, saved settings.
+1. **Orders (buttons and soldier behaviour done in nf-v66, only UI-tested headless; fights not watched)**, Mark the foe is done (nf-v70, `toggleMark` / `markedFoe` in `10b-warbands.js`); leader's standard done (nf-v71, `standardMods` in `10b-warbands.js`, tuned by `CFG.STANDARD` and the Standard Bearer skill); next the Marshal extras (war layer phase 2; the saved per-warband `order` field exists in `10b-warbands.js` with `warbandOrder` / `setWarbandOrder`, nothing uses it yet; next: buttons, soldier behaviour, Mark the foe, standard): Forward, Stand firm, Withdraw, Mark the foe, Charge; nearby men fight better near the leader. Needs: a small order set on the warband bar, soldier behaviour states for the selected warband, saved settings.
 2. Raids on bandit camps with two or three warbands (Age 2), then the campaign map and sieges (Age 3).
 3. Realms, provisions, banners and the host, the final campaign.
 4. Later: custom models, tuning pass after phone testing.
