@@ -191,8 +191,8 @@
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
     QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
-    SQUAD: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3,        // 분대 최대 인원 / 분대 수 / 병사 수 상한(기본 + 병영·사격장당)
-      NAMES: ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'], COLORS: ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#4ac0c8'] },
+    SQUAD: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3,        // 전투단(warband) 최대 인원 / 전투단 수 / 병사 수 상한(기본 + 병영·사격장당)
+      NAMES: ['Lion', 'Wolf', 'Stag', 'Eagle', 'Raven', 'Boar'], COLORS: ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a'] },
     BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수
     // 공성 투척병 (Day 4~): 초장거리에서 곡사로 폭발 바위를 던져 구조물을 광역 파괴. 궁수(30)가 닿지 않는 거리에 멈춘다
     SIEGE_FROM_DAY: 4, SIEGE_HP: 4, SIEGE_STANDOFF: 42, SIEGE_INTERVAL: 4.5,

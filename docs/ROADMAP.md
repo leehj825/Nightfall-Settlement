@@ -1,10 +1,12 @@
 # Nightfall Settlement - Roadmap
 
+Naming: a small fighting group is a **warband** (6 soldiers, heraldic names: Lion, Wolf, Stag, Eagle, Raven, Boar). Later: several warbands form a **company**, the whole army is the **host**, each warband may get a **captain**, and you are the **leader**.
+
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 
 ## Big idea: from village survival to war
 
-Today the game is "build a village, survive the night". The next level is **commanding an army**: bring your soldiers on expeditions of any size, take dungeons and ruins with a small squad, or lead a full host to assault another city, castle or fortress. You stay on the field as the **leader**: a fighter and a commander at once.
+Today the game is "build a village, survive the night". The next level is **commanding an army**: bring your soldiers on expeditions of any size, take dungeons and ruins with a small warband, or lead a full host to assault another city, castle or fortress. You stay on the field as the **leader**: a fighter and a commander at once.
 
 ### What already exists and can be reused
 - Soldier classes (swordsman, great swordsman, spearman, medic) and archers, with veteran levels.
@@ -13,26 +15,26 @@ Today the game is "build a village, survive the night". The next level is **comm
 - Wall, tower and gate systems; enemies with siege units and a boss.
 - Stronghold economy: farms, quarry, lumber, smith (gear), barracks, population cap by houses.
 
-### Pillar 1 - Army size and squads
+### Pillar 1 - Army size and warbands
 - Barracks capacity limits the number of soldiers. More barracks, a larger drill ground and houses raise it.
-- Soldiers are grouped into **squads** (for example 4 to 8 units of one class). A squad is the unit you command.
-- The expedition screen lets you pick squads to bring instead of a number. Escort stays as the "quick small party".
-- Squads you leave behind keep guarding the village at night; squads you bring are away (the village is weaker).
+- Soldiers are grouped into **warbands** (for example 4 to 8 units of one class). A warband is the unit you command.
+- The expedition screen lets you pick warbands to bring instead of a number. Escort stays as the "quick small party".
+- Warbands you leave behind keep guarding the village at night; warbands you bring are away (the village is weaker).
 
 ### Pillar 2 - Expeditions at three scales
 | Scale | Party | Goal | Time |
 |---|---|---|---|
-| Patrol | 1 squad (4 to 8) | dungeons, ruins, chests, camps | minutes |
-| Raid | 2 to 3 squads | enemy outposts, bandit fort, boss lair | one day |
-| War | 4+ squads, siege gear | attack a city, castle or fortress | several days, with a war map |
+| Patrol | 1 warband (4 to 8) | dungeons, ruins, chests, camps | minutes |
+| Raid | 2 to 3 warbands | enemy outposts, bandit fort, boss lair | one day |
+| War | 4+ warbands, siege gear | attack a city, castle or fortress | several days, with a war map |
 
 - The existing expedition levels become "patrol". New ones add a **war map**: a simple node map of places (outpost, village, castle, fortress), each with a garrison size, wall level and reward.
 - Marching takes time (days) and food. Far targets need supply wagons.
 
 ### Pillar 3 - The leader on the field
-- Commands (few, touch-friendly): **Advance / Hold / Fall back**, **Focus target**, **Charge** (squad rush), **Rally** (existing Rally Cry becomes the army rally).
+- Commands (few, touch-friendly): **Advance / Hold / Fall back**, **Focus target**, **Charge** (warband rush), **Rally** (existing Rally Cry becomes the army rally).
 - Leader aura: nearby allies get damage or morale bonus; if the leader falls the army wavers (not an instant loss).
-- Leader skill tree gets a Commander branch: bigger command radius, extra squad slots, formation bonuses, siege skills.
+- Leader skill tree gets a Commander branch: bigger command radius, extra warband slots, formation bonuses, siege skills.
 - You can fight in the line or stay back and command; both should be valid.
 
 ### Pillar 4 - Siege and fortress assault
@@ -55,13 +57,13 @@ Today the game is "build a village, survive the night". The next level is **comm
 
 ## Technical notes (mobile first)
 - Cap simultaneous units (for example 60 total in view), reduce detail with distance, and share geometry. Already known: animations are cheap, skinned models are not (they stay off by default).
-- Use squad-level movement and simple formations (line, wedge, circle) instead of per-unit pathfinding for large armies.
-- Battle simulation outside the player's view (other squads) can be abstract: strength vs strength with randomness, shown as a bar.
-- Keep touch UI small: a squad bar along the edge with 3 to 4 command buttons. No dense menus.
-- Save format must store squads, war-map state and faction progress.
+- Use warband-level movement and simple formations (line, wedge, circle) instead of per-unit pathfinding for large armies.
+- Battle simulation outside the player's view (other warbands) can be abstract: strength vs strength with randomness, shown as a bar.
+- Keep touch UI small: a warband bar along the edge with 3 to 4 command buttons. No dense menus.
+- Save format must store warbands, war-map state and faction progress.
 
 ## Suggested phases
-1. **Squads** (done in `nf-v60`, first version): soldiers grouped into squads of up to 6, soldier cap from barracks/ranges, patrol expeditions with a chosen squad. Still to do: a squad bar on screen, squad names/colours chosen by the player, party-based expedition power.
+1. **Warbands** (done in `nf-v61`, first version): soldiers grouped into warbands of up to 6, soldier cap from barracks/ranges, patrol expeditions with a chosen warband. Still to do: a warband bar on screen, warband names/colours chosen by the player, party-based expedition power.
 2. **Commands**: advance / hold / fall back / focus / charge, leader aura, army rally.
 3. **War map and raids**: node map, garrison sizes, march time and food, an enemy outpost to attack.
 4. **Siege**: ladders and rams, breakable gates, defender garrison, capturing a fortress.

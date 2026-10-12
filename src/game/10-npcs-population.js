@@ -261,14 +261,14 @@
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
     { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
-    { const sb = document.getElementById('ncSquad'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.squad >= 0 ? `Squad: ${squadName(n.squad)} (${squadMembers(n.squad).length}/${CFG.SQUAD.SIZE}) - tap to change` : 'No squad - tap to join one'; if (isSoldier(n) && n.squad >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${squadColor(n.squad)}`; }
+    { const sb = document.getElementById('ncSquad'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.squad >= 0 ? `${squadName(n.squad)} (${squadMembers(n.squad).length}/${CFG.SQUAD.SIZE}) - tap to change` : 'No warband - tap to join one'; if (isSoldier(n) && n.squad >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${squadColor(n.squad)}`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
-  document.getElementById('ncSquad').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleSquad(cardNpc)) toast('All squads are full'); renderCard(); } });
+  document.getElementById('ncSquad').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleSquad(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });

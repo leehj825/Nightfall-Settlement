@@ -2191,14 +2191,14 @@
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
     { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
-    { const sb = document.getElementById('ncSquad'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.squad >= 0 ? `Squad: ${squadName(n.squad)} (${squadMembers(n.squad).length}/${CFG.SQUAD.SIZE}) - tap to change` : 'No squad - tap to join one'; if (isSoldier(n) && n.squad >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${squadColor(n.squad)}`; }
+    { const sb = document.getElementById('ncSquad'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.squad >= 0 ? `${squadName(n.squad)} (${squadMembers(n.squad).length}/${CFG.SQUAD.SIZE}) - tap to change` : 'No warband - tap to join one'; if (isSoldier(n) && n.squad >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${squadColor(n.squad)}`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
-  document.getElementById('ncSquad').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleSquad(cardNpc)) toast('All squads are full'); renderCard(); } });
+  document.getElementById('ncSquad').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleSquad(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -2209,11 +2209,11 @@
     res.food -= 10; res.iron += gain; updateHud(); report.traded = (report.traded || 0) + 1;
     floatText(`Market: Food→Iron +${gain}`, m.position.x, 3.2, m.position.z);
   }
-  // ---------- 분대 (군대 확장 1단계): 병사를 최대 6명씩 분대로 묶는다. 분대가 원정에 함께 나가는 단위다 ----------
+  // ---------- 전투단 'Warband' (군대 확장 1단계; 코드 이름은 squad): 병사를 최대 6명씩 묶는다. 전투단이 원정에 함께 나가는 단위다 ----------
   // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
   function isSoldier(n) { return n.role !== 'citizen'; }
   function squadMembers(i) { return npcs.filter(n => isSoldier(n) && n.squad === i); }
-  function squadName(i) { return CFG.SQUAD.NAMES[i] || `Squad ${i + 1}`; }
+  function squadName(i) { return `${CFG.SQUAD.NAMES[i] || 'Band ' + (i + 1)} Warband`; }
   function squadColor(i) { return (i >= 0 && CFG.SQUAD.COLORS[i]) || '#9aa0aa'; }
   function assignSquad(n) {                                   // 자리가 있는 첫 분대로 (모두 찼으면 분대 없음 -1)
     if (!isSoldier(n)) { n.squad = null; return; }
@@ -4240,9 +4240,9 @@
     const sqRows = []; for (let i = 0; i < CFG.SQUAD.MAX; i++) {
       const mem = squadMembers(i); if (!mem.length) continue;
       const ready = mem.filter(n => !n.down && !n.escort).length, on = escortSquad === i;
-      sqRows.push(`<div class="ex"><div class="info"><b style="color:${squadColor(i)}">&#9679; ${squadName(i)} squad (${mem.length}/${CFG.SQUAD.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-sq="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
+      sqRows.push(`<div class="ex"><div class="info"><b style="color:${squadColor(i)}">&#9679; ${squadName(i)} (${mem.length}/${CFG.SQUAD.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-sq="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
-    const escHtml = `<div class="ex"><div class="info"><b>Squads</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick one squad to bring: it follows you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their squad.</small></div></div>` + (sqRows.length ? sqRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
+    const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick one warband to bring: it follows you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their warband.</small></div></div>` + (sqRows.length ? sqRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
       const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;

@@ -1,8 +1,8 @@
-  // ---------- 분대 (군대 확장 1단계): 병사를 최대 6명씩 분대로 묶는다. 분대가 원정에 함께 나가는 단위다 ----------
+  // ---------- 전투단 'Warband' (군대 확장 1단계; 코드 이름은 squad): 병사를 최대 6명씩 묶는다. 전투단이 원정에 함께 나가는 단위다 ----------
   // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
   function isSoldier(n) { return n.role !== 'citizen'; }
   function squadMembers(i) { return npcs.filter(n => isSoldier(n) && n.squad === i); }
-  function squadName(i) { return CFG.SQUAD.NAMES[i] || `Squad ${i + 1}`; }
+  function squadName(i) { return `${CFG.SQUAD.NAMES[i] || 'Band ' + (i + 1)} Warband`; }
   function squadColor(i) { return (i >= 0 && CFG.SQUAD.COLORS[i]) || '#9aa0aa'; }
   function assignSquad(n) {                                   // 자리가 있는 첫 분대로 (모두 찼으면 분대 없음 -1)
     if (!isSoldier(n)) { n.squad = null; return; }
