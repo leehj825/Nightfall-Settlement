@@ -237,7 +237,7 @@
     if (report.left.length) setTimeout(() => toast(`${report.left.join(', ')} left the village - keep your people fed and safe`), 2400);
   }
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
-  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
+  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0, cardBackWb = -1;       // cardBackWb: 전투단 창에서 열었으면 닫을 때 그 창으로 돌아간다
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
   const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
   const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
@@ -265,13 +265,14 @@
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
-  function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  function openNpcCard(n) { cardBackWb = -1; cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, c); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
   document.getElementById('ncWarband').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleWarband(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
-  document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
-  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
+  function closeNpcCard() { cardNpc = null; ncEl.style.display = 'none'; if (cardBackWb >= 0) { const i = cardBackWb; cardBackWb = -1; openWbPanel(i); } }
+  document.getElementById('ncClose').addEventListener('click', closeNpcCard);
+  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) closeNpcCard(); });
   // 시장: 매일 아침 남는 식량을 팔아 철을 산다 (식량 30 이상이면 10 → 철 3)
   function marketTrade() {
     if (!builtBuildings('market').length || res.food < 30) return;

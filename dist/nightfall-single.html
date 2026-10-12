@@ -230,13 +230,13 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #hudBar { top: 88px; } }
 
 /* simple controls: tap the screen to attack; journal/map/town hall sit above the stick; contextual buttons keep their slot */
-#leftActions { position: fixed; left: 18px; bottom: 182px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+#leftActions { position: fixed; left: 18px; bottom: 214px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
 #ctxActions { position: fixed; right: 82px; bottom: 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; z-index: 5; }
 #leftActions .btn, #ctxActions .btn { display: block; }
 #leftActions .btn[style*="display: none"], #ctxActions .btn[style*="display: none"] { display: block !important; visibility: hidden; pointer-events: none; }
-@media (max-height: 520px) and (orientation: landscape) { #leftActions { left: 10px; bottom: 128px; gap: 4px; } #ctxActions { right: 68px; bottom: 8px; gap: 4px; } }
-@media (max-width: 640px) and (orientation: portrait) { #leftActions { left: 10px; bottom: 138px; gap: 4px; } #ctxActions { right: 64px; bottom: 8px; gap: 4px; } }
-@media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #leftActions { bottom: 122px; } }
+@media (max-height: 520px) and (orientation: landscape) { #leftActions { left: 10px; bottom: 156px; gap: 4px; } #ctxActions { right: 68px; bottom: 8px; gap: 4px; } }
+@media (max-width: 640px) and (orientation: portrait) { #leftActions { left: 10px; bottom: 170px; gap: 4px; } #ctxActions { right: 64px; bottom: 8px; gap: 4px; } }
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #leftActions { bottom: 152px; } }
 
 /* spacing fixes: planning buttons stack in one box, round buttons get breathing room, labels stay inside */
 #planBox { position: fixed; top: 8px; right: 8px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
@@ -250,7 +250,7 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-height: 520px) and (orientation: landscape) { #planBox { top: 6px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } }
 @media (max-width: 640px) and (orientation: portrait) { #planBox { top: 100px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } #swapBtn { min-width: 62px; min-height: 34px; padding: 3px 8px; font-size: 10px; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #planBox { top: 88px; } }
-@media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 62px; } #leftActions { bottom: 126px; } }
+@media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 62px; } #leftActions { bottom: 156px; } }
 
 /* button size setting (scales the round buttons and the stick) */
 html[data-bsz="s"] .btn { transform: scale(.86); transform-origin: bottom right; }
@@ -268,15 +268,15 @@ html[data-hand="l"][data-bsz="s"] .btn { transform-origin: bottom left; }
 html[data-bsz="l"] .btn { width: 62px !important; height: 62px !important; font-size: 11.5px !important; }
 html[data-bsz="l"] #swapBtn { width: auto !important; height: auto !important; }
 html[data-bsz="l"] #joy { width: 150px !important; height: 150px !important; }
-html[data-bsz="l"] #leftActions { bottom: 178px !important; }
+html[data-bsz="l"] #leftActions { bottom: 214px !important; }
 html[data-bsz="l"] #muteBtn { left: 176px !important; } html[data-bsz="l"] #setBtn { left: 220px !important; }
-html[data-bsz="s"] #leftActions { bottom: 112px !important; }
+html[data-bsz="s"] #leftActions { bottom: 148px !important; }
 html[data-hand="l"][data-bsz="l"] #muteBtn { left: auto !important; right: 176px !important; } html[data-hand="l"][data-bsz="l"] #setBtn { left: auto !important; right: 220px !important; }
 }
 html[data-hand="l"] #planBox { margin-top: 0; }
 html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 @media (max-width: 640px) and (orientation: portrait) { html[data-hand="l"] #planBox { right: 6px; } }
-@media (max-height: 520px) and (orientation: landscape) { html[data-hand="l"] #leftActions { bottom: 124px !important; gap: 2px; } html[data-hand="l"] #planBox { right: 6px; } }
+@media (max-height: 520px) and (orientation: landscape) { html[data-hand="l"] #leftActions { bottom: 156px !important; gap: 2px; } html[data-hand="l"] #planBox { right: 6px; } }
 #planBox #planBtn { position: static; width: 150px; font: inherit; font-weight: 800; font-size: 12.5px; color: #fff; padding: 6px 8px; border-radius: 10px; border: 2px solid rgba(255,255,255,.7); cursor: pointer; touch-action: none; line-height: 1.2;
   background: linear-gradient(#5b8fd6, #2c5aa0); box-shadow: 0 4px 0 #1a3a6a, 0 8px 18px rgba(0,0,0,.4); }
 #planBtn small { display: block; font-weight: 500; font-size: 10px; opacity: .92; margin-top: 1px; white-space: normal; }
@@ -331,6 +331,17 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #wbPanel .wbcls { font-size: 11px; padding: 2px 6px; margin: 0 4px; border-radius: 6px; border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.35); color: #fff; }
 #wbPanel .word { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; } #wbPanel .wbord { flex: 1 1 22%; font-size: 12px; padding: 6px 4px; border-radius: 8px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: #fff; } #wbPanel .wbord.on { border-color: #e0b43c; background: rgba(224,180,60,.25); font-weight: 700; }
 .wbchip u { text-decoration: none; font-size: 10px; background: rgba(255,255,255,.2); border-radius: 4px; padding: 0 4px; }
+
+/* Front View sits at the top, away from the stick (it was pressed by mistake); the stick gets free space above it */
+#planBox #viewBtn { position: static; width: auto; height: 30px; min-width: 96px; border-radius: 15px; padding: 0 12px; font-size: 11.5px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+#planBox #viewBtn small { font-size: 9px; }
+@media (max-width: 640px) and (orientation: portrait) { #actions { max-height: calc(var(--app-h, 100vh) - 282px); } }
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #actions { max-height: calc(var(--app-h, 100vh) - 240px); } }
+@media (max-height: 520px) and (orientation: landscape) { #actions { max-height: calc(var(--app-h, 100vh) - 164px); } }
+/* portrait: the warband bar sits above the sound / settings buttons instead of on top of them */
+@media (max-width: 640px) and (orientation: portrait) { #wbBar { left: 140px; right: 126px; bottom: 56px; transform: none; max-width: none; justify-content: flex-start; flex-wrap: wrap-reverse; gap: 4px; } }
+#wbPanel .wlist li { display: block; } #wbPanel .wr1 { margin-bottom: 2px; } #wbPanel .wr1 span { color: #cfc7b8; font-size: 12px; margin-left: 4px; } #wbPanel .wr2 { display: flex; flex-wrap: wrap; gap: 4px; }
+#wbPanel .wbact { font-size: 11.5px; padding: 5px 8px; margin: 2px 0 0; border-radius: 8px; box-shadow: 0 2px 0 #a8480f; }
 </style>
 </head>
 <body>
@@ -339,6 +350,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 <div id="hudBar" title="Tap for all stats (I)"><span id="barA"></span><small id="barB"></small></div>
 <div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display: none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <div id="planBox">
+<button class="btn" id="viewBtn">Front View<small>H</small></button>
 <button id="planBtn"><span id="planLbl">Village Plan: Balanced</span><small id="planNext">Next: ...</small></button>
 <button id="designBtn" style="display: none"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
 <button id="townBtn" style="display: none"><span id="townLbl">Plan Town Buildings</span><small id="townCost">Costs 40 Wood</small></button>
@@ -384,7 +396,6 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
   <button class="btn" id="hallBtn" style="display: none">Town Hall<small>T</small></button>
   <button class="btn" id="expBtn">Journal<small>J</small></button>
   <button class="btn" id="birdBtn">Map View<small>B</small></button>
-  <button class="btn" id="viewBtn">Front View<small>H</small></button>
 </div>
 <div id="ctxActions">
   <button class="btn" id="restBtn" style="display: none">Rest<small>Z</small></button>
@@ -7935,7 +7946,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (report.left.length) setTimeout(() => toast(`${report.left.join(', ')} left the village - keep your people fed and safe`), 2400);
   }
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
-  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
+  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0, cardBackWb = -1;       // cardBackWb: 전투단 창에서 열었으면 닫을 때 그 창으로 돌아간다
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
   const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
   const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
@@ -7963,13 +7974,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
-  function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  function openNpcCard(n) { cardBackWb = -1; cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, c); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
   document.getElementById('ncWarband').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleWarband(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
-  document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
-  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
+  function closeNpcCard() { cardNpc = null; ncEl.style.display = 'none'; if (cardBackWb >= 0) { const i = cardBackWb; cardBackWb = -1; openWbPanel(i); } }
+  document.getElementById('ncClose').addEventListener('click', closeNpcCard);
+  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) closeNpcCard(); });
   // 시장: 매일 아침 남는 식량을 팔아 철을 산다 (식량 30 이상이면 10 → 철 3)
   function marketTrade() {
     if (!builtBuildings('market').length || res.food < 30) return;
@@ -8004,7 +8016,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function homeCls(n) { return n.clsHome || n.cls || 'sword'; }
   function tripCls(n) { return n.clsTrip || homeCls(n); }
   function setClassFor(n, c) { if (n.escort) n.clsTrip = c; else { n.clsHome = c; n.cls = c; } if (n.escort) n.cls = c; applyGear(n); }
-  function cycleTripCls(n) { const o = ['sword', 'spear', 'greatsword', 'medic']; n.clsTrip = o[(o.indexOf(tripCls(n)) + 1) % o.length]; }
+  const CLS_LIST = ['sword', 'spear', 'greatsword', 'medic'];
+  function setHomeCls(n, c) { n.clsHome = c; if (!n.escort) { n.cls = c; applyGear(n); } }
+  function setTripCls(n, c) { n.clsTrip = c; if (n.escort) { n.cls = c; applyGear(n); } }
+  function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
+  function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length; }
 
   // ---------- 전투단 이름·색(플레이어가 바꿀 수 있음)과 화면 아래 띠, 전투단 창 ----------
@@ -8024,11 +8040,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
   let wbOpen = -1, wbBarHtml = '';
   function renderWbBar() {
-    const show = !dead && !exActive && !uiPause;
+    const show = !dead && !uiPause;                                  // 원정 중에도 보인다 (함께 간 전투단만)
     let html = '';
     if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
-      const m = warbandMembers(i); if (!m.length) continue;
-      const hurt = m.filter(n => n.down).length, sel = escortWarband === i;
+      const m = warbandMembers(i).filter(n => !exActive || n.escort); if (!m.length) continue;
+      const hurt = m.filter(n => n.down).length, sel = !exActive && escortWarband === i;
       html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
     }
     if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
@@ -8039,12 +8055,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const m = warbandMembers(i), info = wbi(i);
     if (!m.length) { closeWbPanel(); return; }
     const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
-    const rows = m.map((n, k) => `<li data-n="${npcs.indexOf(n)}"><b>${clsTitle(n)}</b> ${n.name} <button class="wbcls" data-cls-n="${npcs.indexOf(n)}">${n.role === 'melee' ? 'Journey: ' + clsName(tripCls(n)) : 'Archer'}</button> <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></li>`).join('');
+    const rows = m.map((n, k) => { const ix = npcs.indexOf(n);
+      return `<li data-n="${ix}"><div class="wr1"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></div>
+      <div class="wr2">${n.role === 'melee' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move band</button>`}</div></li>`; }).join('');
     wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
       <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
-      <button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>
+      ${exActive ? '' : `<button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>`}
       <div class="word">${WB_ORDERS.map(o => `<button class="wbord${o === warbandOrder(i) ? ' on' : ''}" data-ord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div><small>${WB_ORDER_HINT[warbandOrder(i)]}</small>
-      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. The Journey button sets the class a soldier takes on journeys; at home they keep their own class. Tap a soldier to open their card and move them to another warband.</small><button id="wbClose">Close</button>`;
+      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. At home sets the class in town; Journey sets the class on journeys. Tap a soldier's name to open their card; the card's Close button brings you back here.</small><button id="wbClose">Close</button>`;
   }
   function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
   function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }
@@ -8052,14 +8070,16 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (e.target === wbPanel) { closeWbPanel(); return; }
     const t = e.target, i = wbOpen; if (i < 0) return;
     if (t.dataset && t.dataset.ord) { setWarbandOrder(i, t.dataset.ord); toast(`${wbi(i).name}: ${WB_ORDER_LABEL[t.dataset.ord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
-    if (t.dataset && t.dataset.clsN !== undefined) { const n = npcs[+t.dataset.clsN]; if (n && n.role === 'melee' && !n.escort) { cycleTripCls(n); renderWbPanel(); } e.stopPropagation(); return; }
+    if (t.dataset && t.dataset.act) { const n = npcs[+t.dataset.ix];
+      if (n) { if (t.dataset.act === 'home' && n.role === 'melee') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role === 'melee') cycleTripCls(n); else if (t.dataset.act === 'band' && !n.escort) { if (cycleWarband(n)) toast(`${n.name} joins ${warbandName(n.warband)}`); else toast('All warbands are full'); wbBarHtml = ''; renderWbBar(); } renderWbPanel(); }
+      e.stopPropagation(); return; }
     if (t.id === 'wbClose') { closeWbPanel(); }
     else if (t.id === 'wbBring') { escortWarband = escortWarband === i ? -1 : i; renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
     else if (t.id === 'wbRename') {
       let v = null; try { v = window.prompt('Name this warband', wbi(i).name); } catch (er) {}
       if (v !== null) { v = v.trim().slice(0, 22); const def = `${CFG.WARBAND.NAMES[i]} Warband`; wbi(i).name = v || def; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
     } else if (t.dataset && t.dataset.color) { wbi(i).color = t.dataset.color; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
-    else { const li = t.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) openNpcCard(n); } }
+    else { const r1 = t.closest('.wr1'), li = r1 && r1.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) { openNpcCard(n); cardBackWb = i; } } }
     e.stopPropagation();
   });
   setInterval(renderWbBar, 600);
