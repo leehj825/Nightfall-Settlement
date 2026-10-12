@@ -279,7 +279,7 @@
     n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = npcMaxHp(role, n.trait); n.hp = n.maxHp;
     n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
     if (n.work) { n.work.userData.worker = null; n.work = null; }          // 전직하면 일터를 떠난다
-    applyCitizenLook(n); assignSquad(n);
+    applyCitizenLook(n); assignWarband(n);
     n.home = homeSlot(npcs.filter(x => x.role !== 'citizen').length);
     n.labelText = ''; n.hungry = false;          // 병사는 배급 대상이 아니므로 굶주림 해제
     applyGear(n);

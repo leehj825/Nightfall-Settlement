@@ -272,7 +272,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 @media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #planBox #planBtn { width: 132px; font-size: 11px; padding: 4px 6px; } #planBtn small { font-size: 9px; } }
 #repPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 32; padding: 12px; }
 #repPanel .scard2 { width: min(560px, 100%); max-height: 92%; overflow: auto; }
-#ncSquad, #ncClass { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
+#ncWarband, #ncClass { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; display: block; margin: 8px auto; }
 
 #treePanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); z-index: 31; padding: 10px; }
 #treePanel .tree { width: min(720px, 100%); max-height: 94%; overflow: auto; }
