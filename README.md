@@ -141,6 +141,8 @@ Soldiers now belong to **warbands** of up to 6, named after heraldic beasts (Lio
 ## Roadmap
 Journey power requirements (`CFG.EXP_NEED`) are now multiplied by `CFG.EXP_NEED_SCALE` (0.8, a guess): they were tuned when every soldier counted fully, but now only the warband you bring counts fully and soldiers left home count one third. Each warband also has a saved order field (`forward`, `stand`, `withdraw`, `charge`; default `forward`, old saves load as `forward`). It has no effect or buttons yet; these come with the next steps of the orders work.
 
+Soldiers now have two classes: the **home class** (used in town, changed on the soldier card while at home) and the **journey class** (used only on journeys). Set the journey class with the **Journey** button beside each soldier in the warband window; changing the class from the card during a journey changes only the journey class. When a warband sets out its soldiers switch to their journey class (for example a medic), and when they return they switch back to their home class and carry on their normal duty. Saves keep both (old saves: journey class = home class).
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
