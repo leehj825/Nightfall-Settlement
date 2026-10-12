@@ -64,7 +64,7 @@
   function toggleFront() {                                          // 영웅의 앞모습 ↔ 뒷모습 카메라
     if (bird) return toast('Leave the map view first');
     camFront = !camFront;
-    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = camFront ? 'Back View' : 'Front View';
+    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = 'View';
   }
   function toggleOrder() {
     if (dead || playerClass !== 'commander') return;

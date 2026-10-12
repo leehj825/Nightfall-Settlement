@@ -320,9 +320,10 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 .wbchip u { text-decoration: none; font-size: 10px; background: rgba(255,255,255,.2); border-radius: 4px; padding: 0 4px; }
 
 /* Front View sits in the right-hand column above Switch Weapon, away from the stick (it was pressed by mistake) */
-#viewBtn { width: auto; min-width: 72px; height: auto; min-height: 34px; border-radius: 12px; padding: 4px 10px; font-size: 11.5px; line-height: 1.15; align-self: flex-end; }
+#viewBtn { width: auto; min-width: 62px; height: auto; min-height: 30px; border-radius: 12px; padding: 3px 8px; font-size: 11.5px; line-height: 1.15; align-self: flex-end; }
 #viewBtn small { font-size: 9px; }
 /* portrait: the warband bar sits above the sound / settings buttons instead of on top of them */
 @media (max-width: 640px) and (orientation: portrait) { #wbBar { left: 140px; right: 126px; bottom: 56px; transform: none; max-width: none; justify-content: flex-start; flex-wrap: wrap-reverse; gap: 4px; } }
 #wbPanel .wlist li { display: block; } #wbPanel .wr1 { margin-bottom: 2px; } #wbPanel .wr1 span { color: #cfc7b8; font-size: 12px; margin-left: 4px; } #wbPanel .wr2 { display: flex; flex-wrap: wrap; gap: 4px; }
 #wbPanel .wbact { font-size: 11.5px; padding: 5px 8px; margin: 2px 0 0; border-radius: 8px; box-shadow: 0 2px 0 #a8480f; }
+#swapBtn { min-width: 62px; min-height: 32px; padding: 3px 8px; }
