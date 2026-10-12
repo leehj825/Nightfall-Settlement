@@ -49,7 +49,7 @@ const WANT = {
   bowReact: ['standing react small from front', false], bowReact2: ['standing react small from headshot', false],
   die2: ['sword and shield death (2)', false], dieGs2: ['two handed sword death (2)', false], dieBow2: ['standing death forward 01', false],
   // 곡괭이질·도끼질 (medieval knight 모델에 든 모션): 채집 때 쓴다
-  mineMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#1', true], chopMocap: [path.join(__dirname, 'anim_src', 'knight_chop.glb') + '#0', true],
+  mineMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#1', true, 48, [0, 36, 8, 26]], chopMocap: [path.join(__dirname, 'anim_src', 'knight_chop.glb') + '#0', true, 48, [0, 26, 8, 4]],
   farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
 // LIB=1: retarget EVERY clip of every folder into one library (names '<folder>_<file>'), written to js/anims_lib.js as MIXAMO_LIB.
@@ -71,7 +71,7 @@ function solveLimb(parentW, dWorld) { const dl = dWorld.clone().applyQuaternion(
 const eul = (q) => { const e = new E().setFromQuaternion(q, 'XYZ'); return [+e.x.toFixed(3), +e.y.toFixed(3), +e.z.toFixed(3)]; };
 async function main() {
 const out = {};
-for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
+for (const [name, [file, loop, maxf, win]] of Object.entries(WANT)) {
   const isGlb = /\.glb(#\d+)?$/i.test(file);
   let fp = null; if (isGlb) fp = file; else if (path.isAbsolute(file)) { if (fs.existsSync(file + '.fbx')) fp = file + '.fbx'; } else for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
   if (!fp) { console.warn('missing', file); continue; }
@@ -84,7 +84,7 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
   // 캐릭터의 왼쪽(+x) = 이 게임의 'R' 뼈, 오른쪽(-x) = 'L' 뼈 (게임 리그는 +z를 보고 sx<0 가 'L')
   const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
   const mixer = new THREE.AnimationMixer(obj); mixer.clipAction(clip).play();
-  const n = Math.min(maxf || MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
+  let n = Math.min(maxf || MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
   let z0 = null; const xStart = (mixer.setTime(0), obj.updateMatrixWorld(true), wp(B.Hips).x);
   for (let i = 0; i <= n; i++) {
     mixer.setTime(loop ? clip.duration * i / n : Math.min(clip.duration * i / n, clip.duration - 0.002)); obj.updateMatrixWorld(true);       // 반복하지 않는 클립의 마지막 키가 처음 자세로 되감기지 않게 한다
@@ -105,6 +105,13 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
     const hp = wp(B.Hips); if (z0 === null) z0 = hp.z; hv.push(brawl ? effs.map(e => wp(e).sub(hp)) : wp(swordHand).sub(hp));                    // 루트 이동을 뺀 손의 위치
     tr.hipsY.push(+(hp.y * scale).toFixed(3)); tr.hipsZ.push(0);                                   // 애니메이션 안의 위치 이동(루트 모션)은 무시한다: 이동은 게임이 맡는다
   }
+  // 구간 자르기 win = [시작 프레임, 끝 프레임, 이음매 프레임 수, 타격 프레임]: 모션캡처 끝에 어중간한 자세가 남은 클립을 한 동작만 남기고, 끝 몇 프레임은 시작 자세로 부드럽게 섞어 반복해도 튀지 않게 한다
+  let nAll = n, dur = clip.duration, hitOverride = null;
+  if (win) {
+    const [i0, i1, K, hf] = win, mixv = (a, b, u) => Array.isArray(a) ? a.map((x, j) => x + (b[j] - x) * u) : a + (b - a) * u;
+    for (const k of Object.keys(tr)) { const arr = tr[k].slice(i0, i1 + 1), first = arr[0]; for (let j = 0; j < K; j++) { const u = (j + 1) / K, e = u * u * (3 - 2 * u); arr[arr.length - K + j] = mixv(arr[arr.length - K + j], first, e); } tr[k] = arr; }
+    dur = clip.duration * (i1 - i0) / nAll; n = i1 - i0; hitOverride = (hf - i0) / n;
+  }
   // 반복 클립은 끝과 처음이 이어지도록 마지막 키를 첫 키로 맞춘다 (이음매의 튐 방지)
   if (loop) for (const k of Object.keys(tr)) tr[k][n] = tr[k][0];
   let best = 0, bi = 0; for (let i = 1; i < Math.floor(hv.length * 0.92); i++) { const sp = brawl ? Math.max(...hv[i].map((v, j) => v.distanceTo(hv[i - 1][j]))) : hv[i].distanceTo(hv[i - 1]); if (sp > best) { best = sp; bi = i; } }
@@ -112,7 +119,8 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
     if (name.startsWith('ssAttack') && mx - mn > 0.6) { const p = ys.indexOf(mx); for (let i = p; i <= n; i++) if (ys[i] < mn + 0.25 * (mx - mn)) { bi = i; break; } } }
   if (name === 'bowDraw') bi = Math.round(n * 0.5);               // 화살을 뽑아 시위에 건 손이 앞에 닿는 순간 = 발사
   if (/^strafe/.test(name)) { const dx = wp(B.Hips).x - xStart; console.log('   strafe hips x travel (game space)', dx.toFixed(2)); }
-  const drift = Math.abs(tr.hipsZ[n]); out[name] = { d: +clip.duration.toFixed(3), n, loop, hit: +(bi / n).toFixed(3), t: tr };
+  if (hitOverride !== null) bi = hitOverride * n;
+  const drift = Math.abs(tr.hipsZ[n]); out[name] = { d: +dur.toFixed(3), n, loop, hit: +(bi / n).toFixed(3), t: tr };
   console.log(name.padEnd(10), file.padEnd(30), clip.duration.toFixed(2) + 's', n + 'f', 'hit@' + (bi / n).toFixed(2), 'hips Z drift (ignored)', drift.toFixed(2));
 }
 const js = '// Generated by tools/retarget_mixamo.js from Mixamo animation packs (Locomotion Pack, Lite Sword and Shield Pack). Do not edit by hand.\nconst ' + (LIB ? 'MIXAMO_LIB' : 'MIXAMO_CLIPS') + ' = ' + JSON.stringify(out) + ';\n';
