@@ -61,7 +61,7 @@ Today the game is "build a village, survive the night". The next level is **comm
 - Save format must store squads, war-map state and faction progress.
 
 ## Suggested phases
-1. **Squads**: group soldiers, squad bar, barracks capacity, patrol expeditions with a chosen squad. Small, testable.
+1. **Squads** (done in `nf-v60`, first version): soldiers grouped into squads of up to 6, soldier cap from barracks/ranges, patrol expeditions with a chosen squad. Still to do: a squad bar on screen, squad names/colours chosen by the player, party-based expedition power.
 2. **Commands**: advance / hold / fall back / focus / charge, leader aura, army rally.
 3. **War map and raids**: node map, garrison sizes, march time and food, an enemy outpost to attack.
 4. **Siege**: ladders and rams, breakable gates, defender garrison, capturing a fortress.

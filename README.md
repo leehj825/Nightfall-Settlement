@@ -135,6 +135,9 @@ Chord-based synthesized music (bright day arpeggios, slow minor night pads, puls
 - **Combo reset:** every attack chain (sword, great sword, spear, brawl) starts again from its first move if you do not attack again within 1 second of the last attack ending.
 - **Jump, block, dodge, reactions:** X (or the Jump button) plays the weapon set's jump clip. Hold Shift (or the Block button) to guard with the shield / great sword / bow guard pose: 75% less damage, slower movement, no attacking. Dash now plays a dodge clip matching the move direction (forward, back, left, right). Getting hit plays a short impact reaction (hero and raiders; not bosses, siege or beasts), and deaths pick between two clips. Raiders now use the combat packs too: sword-and-shield locomotion, attacks and reactions (bow pack for archers), running when fast. Fixed: non-looping captured clips used to end on their first pose (so blocks released and dead bodies popped back up); blocks now hold as long as you hold, and the normal / bow jump plays only the crouch-air-landing part over 1.1 s.
 
+## Squads (army expansion, phase 1)
+Soldiers now belong to **squads** of up to 6 (Alpha, Bravo, ... up to 6 squads, shown by the colour of the health bar frame above each soldier). New soldiers join the first squad with room; tap a soldier and use the **Squad** button on the card to move them. The soldier limit is 6 plus 6 per barracks and 3 per archery range (the morning promotion skips when you are at the limit). In the Journal, the old Escort button became the **Squads** list: pick one squad to bring on an expedition; its soldiers follow you and fight, and are away from the village meanwhile. Squads are saved with the game. Expedition power requirements still count every soldier, not only the ones you bring.
+
 ## Roadmap
 Long-term plans (army and war expansion: squads, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 

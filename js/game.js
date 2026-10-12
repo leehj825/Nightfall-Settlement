@@ -2004,6 +2004,7 @@
     applyCitizenLook(n); applyGear(n);
     scene.add(n);
     npcs.push(n);
+    assignSquad(n);
     return n;
   }
   for (let i = 0; i < NPC_COUNT; i++) {
@@ -2013,12 +2014,13 @@
   let npc = npcs[0];                       // 현재 처리 중인 NPC
 
   function setLabel(state) {                  // 머리 위에는 하는 일 대신 작은 체력 막대만 보여 준다
-    const hpv = Math.max(0, Math.ceil(npc.hp)), text = `${hpv}|${npc.maxHp}`;
+    const hpv = Math.max(0, Math.ceil(npc.hp)), text = `${hpv}|${npc.maxHp}|${npc.squad}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
     const lctx = npc.lctx, r = Math.max(0, Math.min(1, npc.hp / (npc.maxHp || 1)));
     lctx.clearRect(0, 0, 256, 96);
-    lctx.fillStyle = 'rgba(10,10,30,.7)'; lctx.fillRect(48, 38, 160, 18);
+    if (isSoldier(npc)) { lctx.fillStyle = squadColor(npc.squad); lctx.fillRect(44, 34, 168, 26); }          // 분대 색 테두리
+    lctx.fillStyle = 'rgba(10,10,30,.8)'; lctx.fillRect(48, 38, 160, 18);
     lctx.fillStyle = r > 0.5 ? '#5fd35f' : r > 0.25 ? '#e8c43c' : '#e0523c'; lctx.fillRect(51, 41, 154 * r, 12);
     npc.labelTex.needsUpdate = true;
   }
@@ -2189,12 +2191,14 @@
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
     { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
+    { const sb = document.getElementById('ncSquad'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.squad >= 0 ? `Squad: ${squadName(n.squad)} (${squadMembers(n.squad).length}/${CFG.SQUAD.SIZE}) - tap to change` : 'No squad - tap to join one'; if (isSoldier(n) && n.squad >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${squadColor(n.squad)}`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncSquad').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleSquad(cardNpc)) toast('All squads are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -2205,6 +2209,28 @@
     res.food -= 10; res.iron += gain; updateHud(); report.traded = (report.traded || 0) + 1;
     floatText(`Market: Food→Iron +${gain}`, m.position.x, 3.2, m.position.z);
   }
+  // ---------- 분대 (군대 확장 1단계): 병사를 최대 6명씩 분대로 묶는다. 분대가 원정에 함께 나가는 단위다 ----------
+  // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
+  function isSoldier(n) { return n.role !== 'citizen'; }
+  function squadMembers(i) { return npcs.filter(n => isSoldier(n) && n.squad === i); }
+  function squadName(i) { return CFG.SQUAD.NAMES[i] || `Squad ${i + 1}`; }
+  function squadColor(i) { return (i >= 0 && CFG.SQUAD.COLORS[i]) || '#9aa0aa'; }
+  function assignSquad(n) {                                   // 자리가 있는 첫 분대로 (모두 찼으면 분대 없음 -1)
+    if (!isSoldier(n)) { n.squad = null; return; }
+    n.squad = -1;
+    for (let i = 0; i < CFG.SQUAD.MAX; i++) if (squadMembers(i).length < CFG.SQUAD.SIZE) { n.squad = i; break; }
+  }
+  function cycleSquad(n) {                                    // 카드에서 눌러 다음 분대로 옮긴다 (꽉 찬 분대는 건너뜀)
+    const cur = n.squad >= 0 ? n.squad : -1, M = CFG.SQUAD.MAX;
+    for (let k = 1; k <= M; k++) {
+      const i = (cur + k + M) % M;
+      if (i !== cur && squadMembers(i).length < CFG.SQUAD.SIZE) { n.squad = i; return true; }
+    }
+    return false;
+  }
+  // 병사 수 상한: 기본 6명 + 병영 1채당 6명 + 사격장 1채당 3명
+  function soldierCap() { return CFG.SQUAD.CAP_BASE + CFG.SQUAD.CAP_BARRACKS * builtBuildings('barracks').length + CFG.SQUAD.CAP_RANGE * builtBuildings('range').length; }
+  function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length; }
   // ---------- 아침 이벤트: 선택에 따라 득실이 갈리는 짧은 사건 (창이 열려 있는 동안 시간이 멈춘다) ----------
   let eventOpen = false, pendingRaiders = 0; const eventQueue = [];
   const evEl = document.getElementById('eventPanel'), evBtns = document.getElementById('evBtns');
@@ -2486,7 +2512,7 @@
     n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = npcMaxHp(role, n.trait); n.hp = n.maxHp;
     n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
     if (n.work) { n.work.userData.worker = null; n.work = null; }          // 전직하면 일터를 떠난다
-    applyCitizenLook(n);
+    applyCitizenLook(n); assignSquad(n);
     n.home = homeSlot(npcs.filter(x => x.role !== 'citizen').length);
     n.labelText = ''; n.hungry = false;          // 병사는 배급 대상이 아니므로 굶주림 해제
     applyGear(n);
@@ -2506,8 +2532,10 @@
     if (fresh.length) toast(`${fresh.length} new citizen${fresh.length > 1 ? 's' : ''} arrived in the village`);
     const pool = fresh.concat(npcs.filter(n => n.role === 'citizen' && !fresh.includes(n) && !n.promote));
     const barracks = builtBuildings('barracks')[0], range = builtBuildings('range')[0];
-    if (barracks && pool.length) pool.shift().promote = { to: 'melee', target: barracks };
-    if (range && pool.length) pool.shift().promote = { to: 'archer', target: range };
+    let sc = soldierCount(); const cap = soldierCap();                         // 병사 수 상한: 병영·사격장이 많을수록 늘어난다
+    if (barracks && pool.length && sc < cap) { pool.shift().promote = { to: 'melee', target: barracks }; sc++; }
+    if (range && pool.length && sc < cap) { pool.shift().promote = { to: 'archer', target: range }; sc++; }
+    if (sc >= cap && (barracks || range)) setTimeout(() => toast(`Soldier limit reached (${cap}): build more barracks or archery ranges`), 2500);
   }
   // 전직 이동: 해당 건물 앞까지 걸어가면 직업 변경. 진행 중이면 true
   function promoteStep(dt) {
@@ -3595,7 +3623,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', squad: n.squad ?? null, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -3649,7 +3677,7 @@
     for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
-      n.cls = d.cls || 'sword';
+      n.cls = d.cls || 'sword'; if (n.role !== 'citizen' && d.squad !== undefined && d.squad !== null) n.squad = d.squad;
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); } else if (n.role === 'melee') applyGear(n);
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
@@ -4085,7 +4113,7 @@
   }
 
   // ---------- 원정 출발 / 귀환 ----------
-  let escortN = 0;
+  let escortSquad = -1;                                                    // 원정에 데려갈 분대 (-1: 혼자)
   const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function powerOf() {                                       // 마을의 전투력: 병사 + 주인공
     const sold = npcs.filter(n => n.role !== 'citizen').reduce((a, n) => a + 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n), 0);
@@ -4117,10 +4145,10 @@
     fadeTo(() => {
       exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       buildZone(d);
-      const party = escortPool().sort((a, b) => (a.role === 'melee' ? 0 : 1) - (b.role === 'melee' ? 0 : 1)).slice(0, Math.min(escortN, CFG.ESCORT_MAX));     // 동행 병사: 근접 병사 먼저
+      const party = escortSquad >= 0 ? escortPool().filter(n => n.squad === escortSquad).slice(0, CFG.SQUAD.SIZE) : [];                // 선택한 분대의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
-        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 2.2, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 1.8, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
       exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
@@ -4208,15 +4236,20 @@
     { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
-    const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
-    const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
+    if (escortSquad >= 0 && !escortPool().some(n => n.squad === escortSquad)) escortSquad = -1;
+    const sqRows = []; for (let i = 0; i < CFG.SQUAD.MAX; i++) {
+      const mem = squadMembers(i); if (!mem.length) continue;
+      const ready = mem.filter(n => !n.down && !n.escort).length, on = escortSquad === i;
+      sqRows.push(`<div class="ex"><div class="info"><b style="color:${squadColor(i)}">&#9679; ${squadName(i)} squad (${mem.length}/${CFG.SQUAD.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-sq="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
+    }
+    const escHtml = `<div class="ex"><div class="info"><b>Squads</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick one squad to bring: it follows you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their squad.</small></div></div>` + (sqRows.length ? sqRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
       const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
-    const eb = document.getElementById('escBtn'); if (eb) eb.addEventListener('click', () => { escortN = (escortN + 1) % (Math.min(pool, CFG.ESCORT_MAX) + 1); renderJournal(); });
+    jEl.querySelectorAll('#jExp button[data-sq]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.sq; escortSquad = escortSquad === i ? -1 : i; renderJournal(); }));
   }
   function openJournal() { if (dead || exActive) return; renderJournal(); jEl.style.display = 'flex'; }
   function closeJournal() { jEl.style.display = 'none'; }
