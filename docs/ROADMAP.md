@@ -55,6 +55,37 @@ Today the game is "build a village, survive the night". The next level is **comm
 - Each holds castles on the war map. Taking one weakens that faction's raids on you.
 - Final goal: break the three strongholds to end the war (replaces or extends the current chapter goals).
 
+## How the war layer fits into the current game
+
+War is **not a separate game mode**. It is a new layer on the same village, save, hero and clock. Nothing existing is removed; each current system gets a bigger sibling.
+
+| Today | What it becomes |
+|---|---|
+| **Ages** (Camp, Wooden Town, Stone Fortress) | The army tech tiers. Age 1: patrols only (one warband). Age 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Age 3: the war map, a siege workshop and companies (several warbands). |
+| **Village Plan / town stages** | New plan steps: a drill ground (raises the soldier cap and veteran training), a siege workshop, stables later. They use the same outer ring and wall rules as the outer fields. |
+| **Journey (expeditions)** | Stays as the **patrol** level: same zones, chests, timer and escort, but you bring a warband. The chapter expeditions become the first nodes on the war map, so story progress and relics unlock nodes. |
+| **Night raid defense** | Unchanged at its core. Attacked factions send revenge raids; neglected defense invites bigger ones. Warbands you take away weaken the village, so the plan is to keep at least one warband home or rely on towers and walls. |
+| **Chapters / endless mode** | The six chapters stay. The late chapters become the campaign against the three rival strongholds. Endless mode becomes a never-ending series of generated fortresses to attack. |
+| **Hero level, skills, gear** | Same hero, same skill tree plus the Commander branch. You fight in the battle yourself, as today, while your warbands follow commands. |
+| **Resources, smith, farms** | Armies cost food while away and iron for gear and siege engines; captured places pay income. No new currency is needed at first. |
+
+### Time and the day/night loop
+- **Short operations (patrol, raid)** happen within a day like journeys now: leave after dawn, be home before dusk.
+- **Long wars (several days)** use a campaign mode: you march, the days pass, and the village is simulated in the background. Nightly raids at home are then resolved automatically from your remaining warbands, walls and towers (shown in a morning report), because you are not there to fight them.
+- The existing rule "time moves slowly while you are away" stays for short trips; the long march uses the war map clock instead.
+
+### Battles
+- A fortress assault is a playable level built from the same pieces as the village: the wall, gate and tower system, with the defender's garrison. It is the existing expedition-zone code with a fortress map.
+- Warbands outside your view, or whole battles you choose to auto-resolve, use an abstract strength-versus-strength roll so phones stay fast.
+
+### Gating, so early game does not change
+- War features appear from Age 2 (raids) and Age 3 (war map). Players who only want survival can keep playing the classic way.
+- A setting can turn the war layer off for players who prefer the original game (decision still open).
+
+### Save and balance
+- Everything is additive: new fields for warbands (already saved), war-map state, faction progress and captured places. Old saves load as before.
+- Expedition power requirements will move from "all soldiers" to "the party you bring" when the war layer lands, with the numbers retuned then.
+
 ## Technical notes (mobile first)
 - Cap simultaneous units (for example 60 total in view), reduce detail with distance, and share geometry. Already known: animations are cheap, skinned models are not (they stay off by default).
 - Use warband-level movement and simple formations (line, wedge, circle) instead of per-unit pathfinding for large armies.
