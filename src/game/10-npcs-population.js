@@ -28,6 +28,7 @@
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.brawl = n.role === 'citizen';
     n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
@@ -73,6 +74,7 @@
     applyCitizenLook(n); applyGear(n);
     scene.add(n);
     npcs.push(n);
+    assignWarband(n);
     return n;
   }
   for (let i = 0; i < NPC_COUNT; i++) {
@@ -81,17 +83,15 @@
   }
   let npc = npcs[0];                       // 현재 처리 중인 NPC
 
-  function setLabel(state) {
-    const text = `${state}|${npc.hp}|${npc.role}|${npc.name}`;
+  function setLabel(state) {                  // 머리 위에는 하는 일 대신 작은 체력 막대만 보여 준다
+    const hpv = Math.max(0, Math.ceil(npc.hp)), text = `${hpv}|${npc.maxHp}|${npc.warband}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
-    const lctx = npc.lctx;
+    const lctx = npc.lctx, r = Math.max(0, Math.min(1, npc.hp / (npc.maxHp || 1)));
     lctx.clearRect(0, 0, 256, 96);
-    lctx.fillStyle = 'rgba(10,10,30,.65)';
-    lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
-    lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
-    lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.name} · HP ${npc.hp}/${npc.maxHp}`, 128, 76);
+    if (isSoldier(npc)) { lctx.fillStyle = warbandColor(npc.warband); lctx.fillRect(44, 34, 168, 26); }          // 전투단 색 테두리
+    lctx.fillStyle = 'rgba(10,10,30,.8)'; lctx.fillRect(48, 38, 160, 18);
+    lctx.fillStyle = r > 0.5 ? '#5fd35f' : r > 0.25 ? '#e8c43c' : '#e0523c'; lctx.fillRect(51, 41, 154 * r, 12);
     npc.labelTex.needsUpdate = true;
   }
 
@@ -144,9 +144,7 @@
     for (const n of npcs.slice()) {
       npc = n; updateNpc(dt, hour, t); n.anim.update(dt); updateMood(n, dt);
       { const f = Math.min(1.7, Math.max(0.45, DIST / 11)); n.labelSprite.scale.set(2.6 * f, 0.98 * f, 1); n.labelSprite.position.y = 2.2 + 0.5 * f; }      // 카메라 거리에 맞춰 이름표 크기 조절
-      n.sickIcon.visible = n.sick > 0 && !n.down; if (n.sickIcon.visible) n.sickIcon.position.y = (n.hungerIcon.visible ? 4.2 : 3.4) + Math.sin(t * 4) * 0.07;
-      n.hungerIcon.visible = n.hungry && !n.down;
-      if (n.hungerIcon.visible) { n.hungerIcon.position.y = 3.4 + Math.sin(t * 5) * 0.09; const k = 0.95 + Math.sin(t * 9) * 0.05; n.hungerIcon.scale.set(k, k, 1); }
+      n.sickIcon.visible = false; n.hungerIcon.visible = false;                 // 배고픔·질병 말풍선은 머리 위에 띄우지 않는다 (상태는 카드와 아침 보고서에 나온다)
     }
   }
 
@@ -155,6 +153,7 @@
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
+    return;                                                           // 예전 막대 인형용 모자·투구·망토 장식은 새 다각형 캐릭터와 겹쳐 이상하게 보이므로 쓰지 않는다
     if (n.role !== 'citizen' || age < 2 || n.rig.skin) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
@@ -262,12 +261,14 @@
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
     { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
+    { const sb = document.getElementById('ncWarband'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.warband >= 0 ? `${warbandName(n.warband)} (${warbandMembers(n.warband).length}/${CFG.WARBAND.SIZE}) - tap to change` : 'No warband - tap to join one'; if (isSoldier(n) && n.warband >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${warbandColor(n.warband)}`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncWarband').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleWarband(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });

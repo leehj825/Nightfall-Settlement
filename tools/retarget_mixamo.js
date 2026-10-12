@@ -11,6 +11,11 @@ global.THREE = require(path.join(T, 'build/three.js')); global.window = global; 
 global.fflate = (() => { const m = { exports: {} }; new Function('module', 'exports', fs.readFileSync(path.join(T, 'examples/js/libs/fflate.min.js'), 'utf8') + '\n;return module.exports;')(m, m.exports); return m.exports; })();
 vm.runInThisContext(fs.readFileSync(path.join(T, 'examples/js/loaders/FBXLoader.js'), 'utf8'));
 const loader = new THREE.FBXLoader();
+vm.runInThisContext(fs.readFileSync(path.join(T, 'examples/js/loaders/GLTFLoader.js'), 'utf8'));
+// .glb 파일(예: 곡괭이·도끼 모션이 든 모델)도 읽는다. 'file.glb#N' 은 그 파일의 N번째 애니메이션. 파일은 main 이 시작되기 전에 미리 읽어 둔다
+const glbCache = {};
+THREE.TextureLoader.prototype.load = function (u, onLoad) { const t = new THREE.Texture(); if (onLoad) onLoad(t); return t; };       // 모션만 필요하므로 텍스처는 읽지 않는다
+const preloadGlb = (list) => Promise.all([...new Set(list)].map(spec => new Promise((res, rej) => { const b = fs.readFileSync(spec.replace(/#\d+$/, '')); new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', g => { glbCache[spec] = g; res(); }, rej); })));        // 클립마다 따로 읽어 기준 자세(T자세)가 섞이지 않게 한다
 const load = (f) => { const b = fs.readFileSync(f); return loader.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), ''); };
 // wanted clips: output name -> [file name (without .fbx), loop?]
 const WANT = {
@@ -35,35 +40,54 @@ const WANT = {
   gsAttack1: ['great sword attack', false], gsAttack2: ['great sword slash', false], gsAttack3: ['great sword slash (5)', false], gsAttack4: ['great sword high spin attack', false], gsBlock: ['great sword blocking', false],
   dieGs: ['two handed sword death', false],
   // 농사 (Farming Pack): 농부가 밭에서 일할 때 돌아가며 쓴다 (긴 동작이라 프레임을 더 쓴다)
+  // 맨손 격투 (Punching / Kicking 클립): 주먹과 발차기를 끊김 없이 이어 쓴다. 타격 순간은 주먹·발 중 가장 빠르게 움직이는 순간
+  brawlPunch: ['Punching', false], brawlPunch2: ['Punching_1', false], brawlHook: ['Hook_Punch', false], brawlKick: ['Kicking', false], brawlKick2: ['Kicking_1', false], brawlRound: ['Roundhouse_Kick', false],
+  // 점프·회피·막기·피격·죽음 변형 (Locomotion / 칼·방패 / 대검 / 롱보우 팩)
+  jump: ['jump', false], ssJump: ['sword and shield jump', false], gsJump: ['great sword jump', false],
+  bowDodgeF: ['standing dodge forward', false], bowDodgeB: ['standing dodge backward', false], bowDodgeP: ['standing dodge right', false], bowDodgeN: ['standing dodge left', false],
+  bowBlock: ['standing block', false], ssImpact: ['sword and shield impact', false], ssImpact2: ['sword and shield impact (2)', false], gsImpact: ['great sword impact', false], gsImpact2: ['great sword impact (4)', false],
+  bowReact: ['standing react small from front', false], bowReact2: ['standing react small from headshot', false],
+  die2: ['sword and shield death (2)', false], dieGs2: ['two handed sword death (2)', false], dieBow2: ['standing death forward 01', false],
+  // 곡괭이질·도끼질 (medieval knight 모델에 든 모션): 채집 때 쓴다
+  mineMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#1', true, 48, [0, 47, 6, 26]], chopMocap: [path.join(__dirname, 'anim_src', 'standing_melee_horizontal'), true, 48, [0, 45, 5, 19]],
   farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
+// LIB=1: retarget EVERY clip of every folder into one library (names '<folder>_<file>'), written to js/anims_lib.js as MIXAMO_LIB.
+// The game does not load it; copy a clip into js/anims.js (or add it to WANT above) when a new move is needed - no FBX needed again.
+const LIB = !!process.env.LIB, slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+if (LIB) {
+  for (const k of Object.keys(WANT)) delete WANT[k];
+  for (const d of dirs) for (const f of fs.readdirSync(d).filter(f => /\.fbx$/i.test(f)).sort()) { const base = f.replace(/\.fbx$/i, ''); WANT[slug(path.basename(d)) + '_' + slug(base)] = [path.join(d, base), /idle|walk|run|strafe|jog|loop|breath/i.test(base) && !/turn|jump|death|stand up/i.test(base), 120]; }
+}
 if (process.env.WANT_FILE) { for (const k of Object.keys(WANT)) delete WANT[k]; Object.assign(WANT, JSON.parse(fs.readFileSync(process.env.WANT_FILE, 'utf8'))); }       // 미리보기용: 필요한 클립만 따로 변환
 const MAXF = 48;
 const V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
-const byName = (o) => { const m = {}; o.traverse(x => { if (x.isBone) m[x.name.replace('mixamorig', '')] = x; }); return m; };
+const byName = (o) => { const m = {}; o.traverse(x => { if (x.isBone) m[x.name.replace(/^mixamorig:?/, '')] = x; }); return m; };
 // 좌우 반전: Mixamo 캐릭터는 오른손(-x)에 검을 쥔다. 이 게임은 검이 'R'(+x) 손에 있으므로 동작 전체를 x축 기준으로 뒤집는다.
 let MIRROR = true;
 const wq = (b) => { const q = b.getWorldQuaternion(new Q()); return MIRROR ? new Q(q.x, -q.y, -q.z, q.w) : q; }, wp = (b) => { const p = b.getWorldPosition(new V()); if (MIRROR) p.x = -p.x; return p; };
 const UP = new V(0, -1, 0);
 function solveLimb(parentW, dWorld) { const dl = dWorld.clone().applyQuaternion(parentW.clone().invert()); return new Q().setFromUnitVectors(UP, dl.normalize()); }
 const eul = (q) => { const e = new E().setFromQuaternion(q, 'XYZ'); return [+e.x.toFixed(3), +e.y.toFixed(3), +e.z.toFixed(3)]; };
+async function main() {
 const out = {};
-for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
-  let fp = null; for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
+for (const [name, [file, loop, maxf, win]] of Object.entries(WANT)) {
+  const isGlb = /\.glb(#\d+)?$/i.test(file);
+  let fp = null; if (isGlb) fp = file; else if (path.isAbsolute(file)) { if (fs.existsSync(file + '.fbx')) fp = file + '.fbx'; } else for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
   if (!fp) { console.warn('missing', file); continue; }
   const bow = /^bow/.test(name); MIRROR = true;           // 활 동작은 뒤집지 않고 Mixamo 오른팔(활을 뻗는 팔)이 게임의 L(활을 드는 왼손 쪽)을 움직이게 한다
-  const obj = load(fp), B = byName(obj), clip = obj.animations[0];
+  let obj, B, clip; try { if (isGlb) { const g = glbCache[fp]; obj = g.scene; clip = g.animations[+(fp.split('#')[1] || 0)]; } else { obj = load(fp); clip = obj.animations[0]; } B = byName(obj); if (!clip || !B.Hips) throw new Error('no clip'); } catch (e) { console.warn('skipped (unreadable)', file, e.message); continue; }
   obj.updateMatrixWorld(true);
   const rest = {}; for (const k of ['Hips', 'Spine1', 'Head', 'LeftHand', 'RightHand']) rest[k] = wq(B[k]);
-  const swordHand = B.RightHand, hv = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
+  const swordHand = B.RightHand, hv = [], brawl = /brawl/.test(name), effs = brawl ? [B.RightHand, B.LeftHand, B.RightFoot, B.LeftFoot] : [swordHand], lastE = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
   const hipsRest = wp(B.Hips), scale = 0.9 / hipsRest.y;
   // 캐릭터의 왼쪽(+x) = 이 게임의 'R' 뼈, 오른쪽(-x) = 'L' 뼈 (게임 리그는 +z를 보고 sx<0 가 'L')
   const side = { L: 'Left', R: 'Right' };          // 반전 후: 게임의 R(+x) = Mixamo 오른손(검), L(-x) = 왼손(방패)
   const mixer = new THREE.AnimationMixer(obj); mixer.clipAction(clip).play();
-  const n = Math.min(maxf || MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
+  let n = Math.min(maxf || MAXF, Math.max(10, Math.round(clip.duration * 24))), tr = { hips: [], spine: [], head: [], shoulderL: [], shoulderR: [], elbowL: [], elbowR: [], hipL: [], hipR: [], kneeL: [], kneeR: [], handL: [], handR: [], hipsY: [], hipsZ: [] };
   let z0 = null; const xStart = (mixer.setTime(0), obj.updateMatrixWorld(true), wp(B.Hips).x);
   for (let i = 0; i <= n; i++) {
-    mixer.setTime(clip.duration * i / n); obj.updateMatrixWorld(true);
+    mixer.setTime(loop ? clip.duration * i / n : Math.min(clip.duration * i / n, clip.duration - 0.002)); obj.updateMatrixWorld(true);       // 반복하지 않는 클립의 마지막 키가 처음 자세로 되감기지 않게 한다
     const Wh = wq(B.Hips).multiply(rest.Hips.clone().invert()), Ws = wq(B.Spine1).multiply(rest.Spine1.clone().invert()), Wd = wq(B.Head).multiply(rest.Head.clone().invert());
     tr.hips.push(eul(Wh)); const qs = Wh.clone().invert().multiply(Ws); tr.spine.push(eul(qs)); const Wsp = Wh.clone().multiply(qs);
     tr.head.push(eul(Wsp.clone().invert().multiply(Wd)));
@@ -78,19 +102,30 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
       const qh = solveLimb(Wh, K.clone().sub(U)); tr['hip' + s].push(eul(qh)); const Whp = Wh.clone().multiply(qh);
       tr['knee' + s].push(eul(solveLimb(Whp, Fo.clone().sub(K))));
     }
-    const hp = wp(B.Hips); if (z0 === null) z0 = hp.z; hv.push(wp(swordHand).sub(hp));                    // 루트 이동을 뺀 손의 위치
+    const hp = wp(B.Hips); if (z0 === null) z0 = hp.z; hv.push(brawl ? effs.map(e => wp(e).sub(hp)) : wp(swordHand).sub(hp));                    // 루트 이동을 뺀 손의 위치
     tr.hipsY.push(+(hp.y * scale).toFixed(3)); tr.hipsZ.push(0);                                   // 애니메이션 안의 위치 이동(루트 모션)은 무시한다: 이동은 게임이 맡는다
+  }
+  // 구간 자르기 win = [시작 프레임, 끝 프레임, 이음매 프레임 수, 타격 프레임]: 모션캡처 끝에 어중간한 자세가 남은 클립을 한 동작만 남기고, 끝 몇 프레임은 시작 자세로 부드럽게 섞어 반복해도 튀지 않게 한다
+  let nAll = n, dur = clip.duration, hitOverride = null;
+  if (win) {
+    const [i0, i1, K, hf] = win, mixv = (a, b, u) => Array.isArray(a) ? a.map((x, j) => x + (b[j] - x) * u) : a + (b - a) * u;
+    for (const k of Object.keys(tr)) { const arr = tr[k].slice(i0, i1 + 1), first = arr[0]; for (let j = 0; j < K; j++) { const u = (j + 1) / K, e = u * u * (3 - 2 * u); arr[arr.length - K + j] = mixv(arr[arr.length - K + j], first, e); } tr[k] = arr; }
+    dur = clip.duration * (i1 - i0) / nAll; n = i1 - i0; hitOverride = (hf - i0) / n;
   }
   // 반복 클립은 끝과 처음이 이어지도록 마지막 키를 첫 키로 맞춘다 (이음매의 튐 방지)
   if (loop) for (const k of Object.keys(tr)) tr[k][n] = tr[k][0];
-  let best = 0, bi = 0; for (let i = 1; i < Math.floor(hv.length * 0.92); i++) { const sp = hv[i].distanceTo(hv[i - 1]); if (sp > best) { best = sp; bi = i; } }
+  let best = 0, bi = 0; for (let i = 1; i < Math.floor(hv.length * 0.92); i++) { const sp = brawl ? Math.max(...hv[i].map((v, j) => v.distanceTo(hv[i - 1][j]))) : hv[i].distanceTo(hv[i - 1]); if (sp > best) { best = sp; bi = i; } }
   { const ys = tr.hipsY, mx = Math.max(...ys), mn = Math.min(...ys);               // 점프 공격: 타격 순간 = 공중에서 내려와 착지하는 때
     if (name.startsWith('ssAttack') && mx - mn > 0.6) { const p = ys.indexOf(mx); for (let i = p; i <= n; i++) if (ys[i] < mn + 0.25 * (mx - mn)) { bi = i; break; } } }
   if (name === 'bowDraw') bi = Math.round(n * 0.5);               // 화살을 뽑아 시위에 건 손이 앞에 닿는 순간 = 발사
   if (/^strafe/.test(name)) { const dx = wp(B.Hips).x - xStart; console.log('   strafe hips x travel (game space)', dx.toFixed(2)); }
-  const drift = Math.abs(tr.hipsZ[n]); out[name] = { d: +clip.duration.toFixed(3), n, loop, hit: +(bi / n).toFixed(3), t: tr };
+  if (hitOverride !== null) bi = hitOverride * n;
+  const drift = Math.abs(tr.hipsZ[n]); out[name] = { d: +dur.toFixed(3), n, loop, hit: +(bi / n).toFixed(3), t: tr };
   console.log(name.padEnd(10), file.padEnd(30), clip.duration.toFixed(2) + 's', n + 'f', 'hit@' + (bi / n).toFixed(2), 'hips Z drift (ignored)', drift.toFixed(2));
 }
-const js = '// Generated by tools/retarget_mixamo.js from Mixamo animation packs (Locomotion Pack, Lite Sword and Shield Pack). Do not edit by hand.\nconst MIXAMO_CLIPS = ' + JSON.stringify(out) + ';\n';
-fs.writeFileSync(process.env.OUT_FILE || path.join(__dirname, '..', 'js', 'anims.js'), js);
+const js = '// Generated by tools/retarget_mixamo.js from Mixamo animation packs (Locomotion Pack, Lite Sword and Shield Pack). Do not edit by hand.\nconst ' + (LIB ? 'MIXAMO_LIB' : 'MIXAMO_CLIPS') + ' = ' + JSON.stringify(out) + ';\n';
+fs.writeFileSync(process.env.OUT_FILE || path.join(__dirname, '..', 'js', LIB ? 'anims_lib.js' : 'anims.js'), js);
 console.log('wrote js/anims.js', (js.length / 1024).toFixed(0) + ' KB');
+}
+const glbFiles = Object.values(WANT).map(w => w[0]).filter(f => /\.glb(#\d+)?$/i.test(f));
+preloadGlb(glbFiles).then(main).catch(e => { console.error(e); process.exit(1); });

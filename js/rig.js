@@ -249,7 +249,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (enemy) part(RG.bracer, brute ? leatherMat : ragMat, el, 0, -0.2, 0, 0, 0, 0, brute ? 1.35 : 1, 1.1, brute ? 1.35 : 1);
       const hd = bone('hand' + n, el, 0, -0.3, 0); out['hand' + n] = hd;
       part(RG.palm, skin, hd, 0, -0.025, 0.0, 0, 0, 0, brute ? 1.3 : 1.1, 1.1, 0.8); part(RG.thumb, skin, hd, -sx * 0.05, -0.02, 0.035, 0, 0, 0, 1.3, 1.5, 1.3);
-      const hp = bone('hip' + n, hips, sx * 0.14 * Wb, -0.04, 0);
+      const hp = bone('hip' + n, hips, sx * 0.14 * Wb, -0.04, 0); out['hip' + n] = hp;
       part(RG.thigh, pants, hp, 0, -0.225, 0, 0, 0, 0, brute ? 1.15 : 1, 1, brute ? 1.15 : 1);
       const kn = bone('knee' + n, hp, 0, -0.45, 0);
       part(RG.knee, pants, kn, 0, 0, 0); part(RG.shin, pants, kn, 0, -0.225, 0);
@@ -583,7 +583,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (m.bow) m.bow.visible = w === 'bow' && !sh;
       if (m.spear) m.spear.visible = w === 'spear' && !sh;
       if (m.staff) m.staff.visible = w === 'staff';
-      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && !sh;
+      if (m.shield) m.shield.visible = w !== 'bow' && w !== 'pick' && w !== 'great' && w !== 'none' && !sh;
       if (!m.pick) { m.pick = makePickMesh('pick'); rig.handR.add(m.pick); }
       if (!m.axe) { m.axe = makePickMesh('axe'); rig.handR.add(m.axe); }
       m.pick.visible = w === 'pick' && rig.tool !== 'axe'; m.axe.visible = w === 'pick' && rig.tool === 'axe';
@@ -609,13 +609,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
   // ----- Anim: AnimationMixer + CrossFade 상태 머신 (base 상태 + 1회성 동작) -----
   const MIXAMO_FAST_DIE = typeof MIXAMO_CLIPS !== 'undefined' ? 1.8 : 1;
-  const AXE_ROLL = Math.PI / 2, FARM_CLIPS = ['farmPlant', 'farmWater', 'farmPull', 'farmPick'];
+  const BRAWL_SEQ = ['brawlPunch', 'brawlPunch2', 'brawlHook', 'brawlKick', 'brawlPunch2', 'brawlKick2', 'brawlHook', 'brawlRound'], AXE_ROLL = Math.PI / 2, FARM_CLIPS = ['farmPlant', 'farmWater', 'farmPull', 'farmPick'];
   class Anim {
     constructor(rig) {
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n); }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n) || /^(ss|gs)(Impact|Jump)/.test(n) || /^bow(Dodge|Block|React)/.test(n) || n === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n) || /Block/.test(n); }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
@@ -626,7 +626,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // moveDir: f 앞 / b 뒤 / p,n 옆걸음 (p: +x쪽, n: -x쪽, 정면 +z 기준)
     _res(name) {
       const rig = this.rig, md = this.moveDir || 'f';
-      if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
+      if (name === 'gather') { const k = rig.tool === 'axe' ? (this.acts.chopMocap ? 'chopMocap' : 'gatherAxe') : (this.acts.mineMocap ? 'mineMocap' : 'gatherPick'); if (this.acts[k]) return k; return name; }       // 모션캡처(곡괭이질·도끼질) 우선
       if (name === 'farm') { const k = FARM_CLIPS[(this.farmI || 0) % FARM_CLIPS.length]; if (this.acts[k]) return k; return this.acts.gatherPick ? 'gatherPick' : 'gather'; }
       const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
@@ -654,14 +654,23 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     base(name, speed = 0) {
       if (this.dead) return;
       const rs = this._res(name);
-      if (name !== this.baseName || rs !== this.resName) { if (name === 'farm' && this.baseName !== 'farm') this._ft = 0; this.baseName = name; this.resName = rs; if (!this.shot) this._play(name, 0.2); }
+      if (name !== this.baseName || rs !== this.resName) { if (name === 'farm' && this.baseName !== 'farm') this._ft = 0; this.baseName = name; this.resName = rs; if (!this.shot && !this.guarding) this._play(name, 0.2); }
       const a = this.acts[rs];
       if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
+      if (a && (rs === 'mineMocap' || rs === 'chopMocap')) a.timeScale = a.getClip().duration / 1.0;                 // 곡괭이질 0.9초, 도끼질 1초에 한 번
     }
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
+      if (!this.shot && performance.now() - (this._ce || 0) > 1000) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
+      if (name === 'attackSword' && this.rig.brawl && this.acts.brawlPunch) {                                                 // 맨손(주인공 무기 해제·일반 시민): 주먹과 발차기를 끊김 없이 이어 붙인다 (앞뒤의 느린 부분은 잘라 낸다)
+        const nm = BRAWL_SEQ[this.brI = ((this.brI || 0) % BRAWL_SEQ.length)]; this.brI++;
+        const act = this.acts[nm], cd = act.getClip().duration, meta = MIXAMO_CLIPS[nm], hit = meta ? meta.hit : 0.45, a0 = Math.max(0, hit - 0.28), a1 = Math.min(0.97, hit + 0.2);
+        const target = nm === 'brawlRound' ? 0.78 : /Punch/.test(nm) ? 0.46 : 0.62, sc = (a1 - a0) * cd / target;
+        this.heavy = nm === 'brawlRound'; this.variant = /Kick|Round/.test(nm) ? 'kick' : 'punch'; act.timeScale = sc;
+        this.shot = { t: 0, dur: target }; this.hitIn = (hit - a0) * cd / sc; this._play(nm, 0.07, true); act.time = a0 * cd; return;
+      }
       if (name === 'attackSpear' && this.acts.ssAttack1 && this.acts.spearStab) {                                                 // 창: 검처럼 쥐고 검 동작으로 찌르기(좁고 긴)와 휘두르기(넓은)를 번갈아
         this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'spearStab' : 'ssAttack1'; this.variant = stab ? 'stab' : 'slash';
         ts = this.acts[name].getClip().duration / (stab ? 1.1 : 0.7);
@@ -682,18 +691,49 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
-    die() { this.dead = true; this.shot = null; this.rig.aim(false); const dk = this.rig.style === 'bow' && this.acts.dieBow ? 'dieBow' : this.rig.style === 'gs' && this.acts.dieGs ? 'dieGs' : 'die'; this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE; }
+    die() {
+      this.dead = true; this.shot = null; this.guarding = false; this.rig.aim(false);
+      const set = this.rig.style === 'bow' ? ['dieBow', 'dieBow2'] : this.rig.style === 'gs' ? ['dieGs', 'dieGs2'] : ['die', 'die2'], ok = set.filter(k => this.acts[k]), dk = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 'die';
+      this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE;
+    }
+    // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
+    jump() {
+      if (this.dead || this.shot || this.guarding) return false;
+      const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
+      return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
+    }
+    // 회피(대시): 이동 방향(f 앞 / b 뒤 / p,n 옆)에 맞는 구르기·회피 동작
+    dodge(dir) {
+      if (this.dead || this.guarding) return false;
+      const k = { f: 'bowDodgeF', b: 'bowDodgeB', p: 'bowDodgeP', n: 'bowDodgeN' }[dir] || 'bowDodgeF'; if (!this.acts[k]) return false;
+      this.shot = null; return this._short(k, 0.5, 0.06);
+    }
+    // 피격 반응: 무기 팩의 맞는 동작을 짧게 (공격 중이거나 방금 반응했다면 건너뛴다)
+    flinch() {
+      const now = performance.now(); if (this.dead || this.shot || this.guarding || now - (this._fl || 0) < 700) return false;
+      const st = this.rig.style, v = Math.random() < 0.5 ? '' : '2', k = st === 'gs' ? 'gsImpact' + v : st === 'bow' ? 'bowReact' + v : 'ssImpact' + v; if (!this.acts[k]) return false;
+      this._fl = now; return this._short(k, 0.42, 0.06);
+    }
+    _short(k, dur, fade, a0 = 0, a1 = 1) { const a = this.acts[k], cd = a.getClip().duration; a.timeScale = (a1 - a0) * cd / dur; this.shot = { t: 0, dur }; this.hitIn = dur; this._play(k, fade, true); a.time = a0 * cd; return true; }
+    // 막기: 방패 / 대검 / 활 팩의 막기 자세를 잡고 있는다 (끝 자세에서 멈춘다). 풀면 원래 동작으로
+    guard(on) {
+      on = !!on; if (on === !!this.guarding || this.dead) return;
+      this.guarding = on;
+      if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
+      else this._play(this.baseName || 'idle', 0.15, true);
+    }
     revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.baseName === 'farm' && !this.shot && this.cur) {                 // 농사: 심기 → 물주기 → 뽑기 → 따기 동작을 한 번씩 돌아가며 한다
         this._ft = (this._ft || 0) + dt;
         if (this._ft > this.cur.getClip().duration) { this._ft = 0; this.farmI = ((this.farmI || 0) + 1) % FARM_CLIPS.length; this._play('farm', 0.4, true); }
       }
-      if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
+      if (this.guarding && this.cur && this.cur === this.acts.bowBlock && this.cur.time > 0.8) this.cur.timeScale = 0;        // 활 막기: 자세를 잡은 채 멈춰 있는다
+      if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this._ce = performance.now(); this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt);
-      this._spear(dt); this._tool(); this._gsArm(dt);
+      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt);
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세
@@ -718,7 +758,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       R.root.updateMatrixWorld(true);
       V.eu.set(0.12, 0, -0.1); V.qHang.setFromEuler(V.eu); V.eu.set(-0.3, 0, 0); V.qHangE.setFromEuler(V.eu);          // 걸어 다닐 때의 왼팔: 몸 옆으로 자연스럽게
       const sh = R.shoulderL, el = R.elbowL;
-      if (k <= 0.001) { sh.quaternion.copy(V.qHang); el.quaternion.copy(V.qHangE); return; }
+      if (k <= 0.001) return;                                                                      // 공격이 아닐 때는 모션캡처 팔을 그대로 쓴다
       const rq = R.root.getWorldQuaternion(V.qr);
       V.poleL.set(-0.55, -0.8, -0.25).applyQuaternion(rq); const poleR = V.poleR.set(0.55, -0.8, -0.25).applyQuaternion(rq);
       const wm = gm.children[0].children[0], hit = () => { V.T.set(0, -0.1, 0); wm.localToWorld(V.T); return V.T; };
@@ -734,6 +774,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         R.root.updateMatrixWorld(true); gm.updateMatrixWorld(true); hit();
       }
       this._ik2(sh, el, V.T, V.poleL, V.qHang, V.qHangE, k, V);
+    }
+    // 곡괭이·도끼: 모션캡처는 두 손으로 자루를 쥔다. 왼손은 캡처된 위치에서 가장 가까운 자루 위의 점을 잡도록 팔을 IK 로 맞춘다
+    _toolArm() {
+      const R = this.rig, m = R.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null);
+      if (!t || !(this.baseName === 'gather') || (this.resName !== 'mineMocap' && this.resName !== 'chopMocap') || !R.shoulderL || this.dead) return;
+      const V = this._tav || (this._tav = { S: new THREE.Vector3(), d: new THREE.Vector3(), p: new THREE.Vector3(), v: new THREE.Vector3(), O: new THREE.Vector3(), D: new THREE.Vector3(), H: new THREE.Vector3(), T: new THREE.Vector3(), pole: new THREE.Vector3(), q: new THREE.Quaternion(),
+        qa: new THREE.Quaternion(), qi: new THREE.Quaternion(), qe: new THREE.Quaternion(), E: new THREE.Vector3(), dn: new THREE.Vector3(0, -1, 0), b1: new THREE.Quaternion(), b2: new THREE.Quaternion() });
+      R.root.updateMatrixWorld(true);
+      t.getWorldPosition(V.O); V.D.set(0, 1, 0).applyQuaternion(t.getWorldQuaternion(V.q)).normalize();        // 자루 방향(손에서 머리 쪽)
+      R.handL.getWorldPosition(V.H);
+      const along = Math.max(0.12, Math.min(0.5, V.v.copy(V.H).sub(V.O).dot(V.D)));
+      V.T.copy(V.O).addScaledVector(V.D, along);
+      V.pole.set(-0.55, -0.8, -0.25).applyQuaternion(R.root.getWorldQuaternion(V.qa));
+      V.b1.copy(R.shoulderL.quaternion); V.b2.copy(R.elbowL.quaternion);
+      this._ik2(R.shoulderL, R.elbowL, V.T, V.pole, V.b1, V.b2, 1, V);
     }
     _tool() {                                   // 곡괭이·도끼: 자루는 어깨→손 방향을 따르고, 머리(날)의 방향은 휘두르는 면에 맞춘다
       const m = this.rig.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null); if (!t || !t.userData.inner) return;

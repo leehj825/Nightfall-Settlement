@@ -182,6 +182,7 @@
     sfxAt('hit', e.position.x, e.position.z);
     if (u.hp <= 0) { if (byPlayer && pl.st.leech) healPlayer(2 * pl.st.leech); killEnemy(e); return true; }
     burst(e.position, 4);
+    if (!u.boss && !u.siege && u.kind !== 'beast' && !(u.kbMul > 1.5)) u.anim.flinch();
     const dx = e.position.x - fromX, dz = e.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
     const dist = (kbDist ?? (strongKb ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK)) * u.kbMul;
     u.kbT = KB_TIME; u.kbVx = dx / d * dist / KB_TIME; u.kbVz = dz / d * dist / KB_TIME;
@@ -360,7 +361,7 @@
 
       const mvd = Math.hypot(e.position.x - u.px, e.position.z - u.pz) / Math.max(dt, 1e-4);      // 이동 속도에 맞춰 걷기/대기, 장애물·플레이어 앞에서는 공격 모션
       u.px = e.position.x; u.pz = e.position.z; u.atkAnimCd -= dt;
-      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : 'walk', mvd);
+      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : mvd > 4.6 ? 'run' : 'walk', mvd);
       if ((blocked || pd < PLAYER_R + er + 0.8) && u.atkAnimCd <= 0 && !(u.stunT > 0) && !u.siege) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
       // 베헤모스 지진 강타: 캐스팅(1.5초, 붉게 깜빡 + 예고 링) → 점프 → 내려찍기. 캐스팅 중 궁극기에 맞으면 취소되고 기절
       if (u.boss) {

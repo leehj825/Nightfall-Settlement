@@ -35,6 +35,8 @@
     }
     const SFX = {
       swing: v => noise(0.16, 0.3 * v, 'bandpass', 500, 2600),
+      punch: v => { noise(0.05, 0.22 * v, 'bandpass', 700, 1200); tone(150, 0.08, 'sine', 0.4 * v, 70); },
+      kick: v => { noise(0.07, 0.3 * v, 'lowpass', 1500, 250); tone(110, 0.12, 'sine', 0.5 * v, 50); },
       hit: v => { noise(0.09, 0.4 * v, 'lowpass', 1800, 200); tone(130, 0.1, 'sine', 0.35 * v, 60); },
       bow: v => { tone(240, 0.18, 'triangle', 0.3 * v, 110); noise(0.08, 0.15 * v, 'highpass', 3000, 6000); },
       anvil: v => { for (const [f, vv] of [[880, 0.3], [1320, 0.22], [1980, 0.15]]) tone(f, 0.7, 'sine', vv * v, f * 0.98); noise(0.05, 0.4 * v, 'highpass', 2000, 5000); tone(180, 0.12, 'square', 0.18 * v, 90); },

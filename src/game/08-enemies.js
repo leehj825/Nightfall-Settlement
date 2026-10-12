@@ -17,6 +17,7 @@
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
     rig.combat = true;                                                  // 적은 항상 전투 자세 이동
+    if (!beast) rig.style = archer ? 'bow' : healer ? '' : 'ss';        // 적도 같은 팩의 전투 이동·공격·피격·죽음 동작을 쓴다 (궁수는 활 팩, 나머지는 칼·방패 팩)
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
@@ -102,6 +103,7 @@
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
     { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'cleave', label: 'Great Sword Mastery', desc: 'Great sword: +18% damage and +6% reach' }, { id: 'whirl', label: 'Whirlwind', desc: 'Great sword spin slash: +25% damage and +8% radius' },
     { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
@@ -133,7 +135,7 @@
   }
   // ---------- 영웅 기술 트리: 세 갈래(전사 / 사냥꾼 / 전략가). 레벨업마다 한 칸에 포인트를 넣는다. 깊은 칸은 같은 갈래에 포인트가 쌓여야 열린다 ----------
   const TREE = [
-    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech'] },
+    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech', 'cleave', 'whirl'] },
     { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'dash', 'forage'] },
     { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'ult', 'regen', 'rally'] },
   ];
@@ -143,7 +145,7 @@
   function renderTree() {
     const cols = TREE.map(b => {
       const pts = branchPts(b), nodes = b.nodes.map((id, k) => {
-        const u = nodeInfo(id), rank = pl.st[id] || 0, need = k * 2, open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
+        const u = nodeInfo(id), rank = pl.st[id] || 0, need = [0, 2, 4, 6, 6, 8][k], open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
         return `<button class="tnode${can ? ' can' : ''}${!open ? ' lock' : ''}${hidden ? ' off' : ''}" data-id="${id}" ${can ? '' : 'disabled'}><b>${u.label}</b><small>${hidden ? 'Commander only' : u.desc}</small><span class="dots">${'●'.repeat(rank)}${'○'.repeat(5 - rank)}</span>${!open ? `<em>needs ${need} points in ${b.name}</em>` : ''}</button>`;
       }).join('<div class="tlink"></div>');
       return `<div class="tcol" style="--bc:${b.color}"><h4>${b.name} <small>${pts} pts</small></h4>${nodes}</div>`;

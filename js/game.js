@@ -313,6 +313,7 @@
   const keys = {};
   addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) dash(); }
+    if (e.code === 'KeyX' && !e.repeat) jump();
     if (e.code === 'KeyG' && !e.repeat) gather();
     if (e.code === 'KeyE' && !e.repeat) ultimate();
     if (e.code === 'KeyF' && !e.repeat) attack();
@@ -334,7 +335,7 @@
   let playerClass = null, order = 'guard', rallyT = 0;
   const perks = {};                                                  // 시대 -> 퍼크 id
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
-  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 } };
+  const pl = { lvl: 1, xp: 0, pend: 0, st: { hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 } };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
   let diff = 'normal', ngLevel = 0;
   try { const d0 = localStorage.getItem('nf_diff'); if (d0 && CFG.DIFFS[d0]) diff = d0; } catch (e) {}
@@ -352,12 +353,12 @@
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
   const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * (playerClass === 'commander' && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) < 15 ? 1.15 : 1) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
-  let weaponMode = 'sword';
+  let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
   const gearDef = (id) => CFG.GEAR[id];
   function applyPlayerGear() {
     const vis = weaponMode;
-    playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
+    playerRig.brawl = vis === 'none'; playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
     playerRig.setGear('great', { ...gearDef(playerGear.sword), great: true });
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
     playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
@@ -765,15 +766,36 @@
     }
     return best || { x: 7, z: -4 };
   }
+  // 둘째(바깥) 방어선이 계획되었고, 그 성벽 청사진이 하나도 남지 않았으면 완성
+  const homesBuilt = () => !blueprints.some(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house');       // 지을 집 청사진이 남아 있지 않다
+  const outerWallDone = () => designTier >= 2 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
+  // 바깥 구역(첫 목책~둘째 성벽 사이): 이미 지은 농장·사격장은 그대로 옮기고(레벨·일꾼 유지) 모자란 농장은 새로 짓는다
+  function planOuterFields(g) {
+    const out = [], free = g.farmSlots.slice(), moved = { farm: 0, range: 0 };
+    const relocate = (o, pos) => { clearArea(pos.x, pos.z, 3.2); o.position.x = pos.x; o.position.z = pos.z; dust(pos.x, pos.z); };
+    for (const o of obstacles) if (o.userData.type === 'building' && o.userData.kind === 'farm' && free.length && cheb(o.position.x, o.position.z) < 14) { relocate(o, free.shift()); moved.farm++; }
+    for (const b of blueprints) if (b.userData.type === 'blueprint' && b.userData.bkind === 'farm' && free.length && cheb(b.position.x, b.position.z) < 14) { clearArea(free[0].x, free[0].z, 3.2); const p = free.shift(); b.position.x = p.x; b.position.z = p.z; moved.farm++; }
+    let rangeDone = false;
+    for (const o of obstacles) if (o.userData.type === 'building' && o.userData.kind === 'range' && cheb(o.position.x, o.position.z) < 14) { relocate(o, g.rangeSlot); rangeDone = true; moved.range++; }
+    for (const b of blueprints) if (b.userData.type === 'blueprint' && b.userData.bkind === 'range' && cheb(b.position.x, b.position.z) < 14) { clearArea(g.rangeSlot.x, g.rangeSlot.z, 3.2); b.position.x = g.rangeSlot.x; b.position.z = g.rangeSlot.z; rangeDone = true; moved.range++; }
+    const have = obstacles.filter(o => o.userData.type === 'building' && o.userData.kind === 'farm').length + blueprints.filter(b => b.userData.bkind === 'farm').length;
+    for (let i = 0; i < Math.min(free.length, Math.max(0, g.farms - have)); i++) { clearArea(free[i].x, free[i].z, 3.2); addBuildingBlueprint('farm', free[i].x, free[i].z); out.push('Farm'); }
+    if (!rangeDone && !obstacles.some(o => o.userData.type === 'building' && o.userData.kind === 'range') && !blueprints.some(b => b.userData.bkind === 'range')) { clearArea(g.rangeSlot.x, g.rangeSlot.z, 3.2); addBuildingBlueprint('range', g.rangeSlot.x, g.rangeSlot.z); out.push('Archery Range'); }
+    if (moved.farm || moved.range) out.push(`moved ${moved.farm} farm(s)${moved.range ? ' and the archery range' : ''} outside`);
+    return out;
+  }
   function designTown() {
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
     if (age < g.age) return toast(`Available in Age ${g.age} (${CFG.AGES[g.age - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
+    if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
+    if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
     payCost(g.cost);
     townStage++;
     const names = [];
+    if (g.outer) names.push(...planOuterFields(g));
     for (const lot of g.lots) {
       const pos = lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
       clearArea(pos.x, pos.z, CFG.BUILDING[lot.kind].radius + 1.4);
@@ -788,17 +810,17 @@
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
   function planCandidates() {
-    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown };
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
     const m = settings.plan || 'balanced';
     const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
     return order.filter(Boolean);
   }
-  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
+  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
   function updatePlanBtn() {
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? `Waiting for Age ${planCandidates()[0].age}` : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Age ${planCandidates()[0].age}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -816,7 +838,7 @@
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
@@ -946,6 +968,10 @@
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
+  bindBtn('jumpBtn', jump);
+  { const bb = document.getElementById('blockBtn'), off = () => { blockBtn = false; bb.classList.remove('held'); };         // 막기: 누르고 있는 동안
+    bb.addEventListener('pointerdown', e => { e.preventDefault(); blockBtn = true; bb.classList.add('held'); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bb.addEventListener(ev, off); }
   bindBtn('ultBtn', ultimate);
   bindBtn('swapBtn', swapWeapon);
 
@@ -1078,6 +1104,7 @@
   function updateAgeUi() { ageEl.textContent = ageName(age); }
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
+    if (a >= 3) for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house' && (h.userData.level || 1) < 2) { h.userData.level = 2; setHouseModel(h); }       // 3시대: 텐트는 모두 나무집으로
     refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn();
     npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
@@ -1176,6 +1203,7 @@
   function damage(n) {
     if (invincibleT > 0) return;               // 대시 무적
     n = Math.max(1, Math.round(n * dm().dmg * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 난이도 + 방어구 + 성장 피해 감소
+    if (blocking) { n = Math.max(1, Math.round(n * 0.25)); Snd.play('hit', 0.6); } else if (hp - n > 0) playerAnim.flinch();        // 막는 중에는 피해 75% 감소, 아니면 맞는 동작
     hp = Math.max(0, hp - n);
     sinceHurt = 0;
     hpEl.textContent = Math.ceil(hp); Snd.play('hurt'); buzz(hp <= 0 ? 300 : 30);
@@ -1275,6 +1303,7 @@
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
     rig.combat = true;                                                  // 적은 항상 전투 자세 이동
+    if (!beast) rig.style = archer ? 'bow' : healer ? '' : 'ss';        // 적도 같은 팩의 전투 이동·공격·피격·죽음 동작을 쓴다 (궁수는 활 팩, 나머지는 칼·방패 팩)
     if (boss) {                                                                    // 보스: 뿔 + 가시 어깨 + 거대 몽둥이
       const hornM = gearMat('horn', 0xd8d0b8), padM = gearMat('bosspad', 0x2a2a30);
       for (const sx of [-1, 1]) {
@@ -1360,6 +1389,7 @@
     { id: 'dash', label: 'Quick Step', desc: 'Dash cooldown -12%' }, { id: 'ult', label: 'Focus', desc: 'Ultimate cooldown -12%' }, { id: 'leech', label: 'Bloodthirst', desc: 'Heal 2 HP for every kill you land' },
     { id: 'guard', label: 'Hardened', desc: 'Take 8% less damage' }, { id: 'rally', label: 'Rallying Voice', desc: 'Rally Cry lasts and reaches 20% more', cls: 'commander' },
     { id: 'spear', label: 'Spear Mastery', desc: 'Spear: +20% damage and +8% reach' }, { id: 'fletch', label: 'Fletching', desc: 'Bow: +20% arrow damage' },
+    { id: 'cleave', label: 'Great Sword Mastery', desc: 'Great sword: +18% damage and +6% reach' }, { id: 'whirl', label: 'Whirlwind', desc: 'Great sword spin slash: +25% damage and +8% radius' },
     { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
@@ -1391,7 +1421,7 @@
   }
   // ---------- 영웅 기술 트리: 세 갈래(전사 / 사냥꾼 / 전략가). 레벨업마다 한 칸에 포인트를 넣는다. 깊은 칸은 같은 갈래에 포인트가 쌓여야 열린다 ----------
   const TREE = [
-    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech'] },
+    { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech', 'cleave', 'whirl'] },
     { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'dash', 'forage'] },
     { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'ult', 'regen', 'rally'] },
   ];
@@ -1401,7 +1431,7 @@
   function renderTree() {
     const cols = TREE.map(b => {
       const pts = branchPts(b), nodes = b.nodes.map((id, k) => {
-        const u = nodeInfo(id), rank = pl.st[id] || 0, need = k * 2, open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
+        const u = nodeInfo(id), rank = pl.st[id] || 0, need = [0, 2, 4, 6, 6, 8][k], open = pts >= need, hidden = u.cls && u.cls !== playerClass, can = open && rank < 5 && pl.pend > 0 && !hidden;
         return `<button class="tnode${can ? ' can' : ''}${!open ? ' lock' : ''}${hidden ? ' off' : ''}" data-id="${id}" ${can ? '' : 'disabled'}><b>${u.label}</b><small>${hidden ? 'Commander only' : u.desc}</small><span class="dots">${'●'.repeat(rank)}${'○'.repeat(5 - rank)}</span>${!open ? `<em>needs ${need} points in ${b.name}</em>` : ''}</button>`;
       }).join('<div class="tlink"></div>');
       return `<div class="tcol" style="--bc:${b.color}"><h4>${b.name} <small>${pts} pts</small></h4>${nodes}</div>`;
@@ -1656,6 +1686,7 @@
     sfxAt('hit', e.position.x, e.position.z);
     if (u.hp <= 0) { if (byPlayer && pl.st.leech) healPlayer(2 * pl.st.leech); killEnemy(e); return true; }
     burst(e.position, 4);
+    if (!u.boss && !u.siege && u.kind !== 'beast' && !(u.kbMul > 1.5)) u.anim.flinch();
     const dx = e.position.x - fromX, dz = e.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
     const dist = (kbDist ?? (strongKb ? CFG.KNOCKBACK_UPGRADED : CFG.KNOCKBACK)) * u.kbMul;
     u.kbT = KB_TIME; u.kbVx = dx / d * dist / KB_TIME; u.kbVz = dz / d * dist / KB_TIME;
@@ -1834,7 +1865,7 @@
 
       const mvd = Math.hypot(e.position.x - u.px, e.position.z - u.pz) / Math.max(dt, 1e-4);      // 이동 속도에 맞춰 걷기/대기, 장애물·플레이어 앞에서는 공격 모션
       u.px = e.position.x; u.pz = e.position.z; u.atkAnimCd -= dt;
-      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : 'walk', mvd);
+      u.anim.base(u.kbT > 0 || mvd < 0.3 ? 'idle' : mvd > 4.6 ? 'run' : 'walk', mvd);
       if ((blocked || pd < PLAYER_R + er + 0.8) && u.atkAnimCd <= 0 && !(u.stunT > 0) && !u.siege) { u.atkAnimCd = 0.9; u.anim.once('attackSword'); }
       // 베헤모스 지진 강타: 캐스팅(1.5초, 붉게 깜빡 + 예고 링) → 점프 → 내려찍기. 캐스팅 중 궁극기에 맞으면 취소되고 기절
       if (u.boss) {
@@ -1927,6 +1958,7 @@
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
     if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
+    n.rig.brawl = n.role === 'citizen';
     n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
     n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
@@ -1972,6 +2004,7 @@
     applyCitizenLook(n); applyGear(n);
     scene.add(n);
     npcs.push(n);
+    assignWarband(n);
     return n;
   }
   for (let i = 0; i < NPC_COUNT; i++) {
@@ -1980,17 +2013,15 @@
   }
   let npc = npcs[0];                       // 현재 처리 중인 NPC
 
-  function setLabel(state) {
-    const text = `${state}|${npc.hp}|${npc.role}|${npc.name}`;
+  function setLabel(state) {                  // 머리 위에는 하는 일 대신 작은 체력 막대만 보여 준다
+    const hpv = Math.max(0, Math.ceil(npc.hp)), text = `${hpv}|${npc.maxHp}|${npc.warband}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
-    const lctx = npc.lctx;
+    const lctx = npc.lctx, r = Math.max(0, Math.min(1, npc.hp / (npc.maxHp || 1)));
     lctx.clearRect(0, 0, 256, 96);
-    lctx.fillStyle = 'rgba(10,10,30,.65)';
-    lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
-    lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
-    lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.name} · HP ${npc.hp}/${npc.maxHp}`, 128, 76);
+    if (isSoldier(npc)) { lctx.fillStyle = warbandColor(npc.warband); lctx.fillRect(44, 34, 168, 26); }          // 전투단 색 테두리
+    lctx.fillStyle = 'rgba(10,10,30,.8)'; lctx.fillRect(48, 38, 160, 18);
+    lctx.fillStyle = r > 0.5 ? '#5fd35f' : r > 0.25 ? '#e8c43c' : '#e0523c'; lctx.fillRect(51, 41, 154 * r, 12);
     npc.labelTex.needsUpdate = true;
   }
 
@@ -2043,9 +2074,7 @@
     for (const n of npcs.slice()) {
       npc = n; updateNpc(dt, hour, t); n.anim.update(dt); updateMood(n, dt);
       { const f = Math.min(1.7, Math.max(0.45, DIST / 11)); n.labelSprite.scale.set(2.6 * f, 0.98 * f, 1); n.labelSprite.position.y = 2.2 + 0.5 * f; }      // 카메라 거리에 맞춰 이름표 크기 조절
-      n.sickIcon.visible = n.sick > 0 && !n.down; if (n.sickIcon.visible) n.sickIcon.position.y = (n.hungerIcon.visible ? 4.2 : 3.4) + Math.sin(t * 4) * 0.07;
-      n.hungerIcon.visible = n.hungry && !n.down;
-      if (n.hungerIcon.visible) { n.hungerIcon.position.y = 3.4 + Math.sin(t * 5) * 0.09; const k = 0.95 + Math.sin(t * 9) * 0.05; n.hungerIcon.scale.set(k, k, 1); }
+      n.sickIcon.visible = false; n.hungerIcon.visible = false;                 // 배고픔·질병 말풍선은 머리 위에 띄우지 않는다 (상태는 카드와 아침 보고서에 나온다)
     }
   }
 
@@ -2054,6 +2083,7 @@
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
+    return;                                                           // 예전 막대 인형용 모자·투구·망토 장식은 새 다각형 캐릭터와 겹쳐 이상하게 보이므로 쓰지 않는다
     if (n.role !== 'citizen' || age < 2 || n.rig.skin) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
@@ -2161,12 +2191,14 @@
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
     { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
+    { const sb = document.getElementById('ncWarband'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.warband >= 0 ? `${warbandName(n.warband)} (${warbandMembers(n.warband).length}/${CFG.WARBAND.SIZE}) - tap to change` : 'No warband - tap to join one'; if (isSoldier(n) && n.warband >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${warbandColor(n.warband)}`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
   document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
   document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  document.getElementById('ncWarband').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleWarband(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
   ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
@@ -2177,6 +2209,75 @@
     res.food -= 10; res.iron += gain; updateHud(); report.traded = (report.traded || 0) + 1;
     floatText(`Market: Food→Iron +${gain}`, m.position.x, 3.2, m.position.z);
   }
+  // ---------- 전투단 (Warband, 군대 확장 1단계): 병사를 최대 6명씩 묶는다. 전투단이 원정에 함께 나가는 단위다 ----------
+  // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
+  function isSoldier(n) { return n.role !== 'citizen'; }
+  function warbandMembers(i) { return npcs.filter(n => isSoldier(n) && n.warband === i); }
+  function warbandName(i) { return wbi(i).name; }
+  function warbandColor(i) { return i >= 0 ? wbi(i).color : '#9aa0aa'; }
+  function assignWarband(n) {                                   // 자리가 있는 첫 전투단로 (모두 찼으면 전투단 없음 -1)
+    if (!isSoldier(n)) { n.warband = null; return; }
+    n.warband = -1;
+    for (let i = 0; i < CFG.WARBAND.MAX; i++) if (warbandMembers(i).length < CFG.WARBAND.SIZE) { n.warband = i; break; }
+  }
+  function cycleWarband(n) {                                    // 카드에서 눌러 다음 전투단로 옮긴다 (꽉 찬 전투단는 건너뜀)
+    const cur = n.warband >= 0 ? n.warband : -1, M = CFG.WARBAND.MAX;
+    for (let k = 1; k <= M; k++) {
+      const i = (cur + k + M) % M;
+      if (i !== cur && warbandMembers(i).length < CFG.WARBAND.SIZE) { n.warband = i; return true; }
+    }
+    return false;
+  }
+  // 병사 수 상한: 기본 6명 + 병영 1채당 6명 + 사격장 1채당 3명
+  function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length; }
+  function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length; }
+
+  // ---------- 전투단 이름·색(플레이어가 바꿀 수 있음)과 화면 아래 띠, 전투단 창 ----------
+  let warbandInfo = null;                                       // [{ name, color }] - 저장됨. 처음 쓸 때 기본값으로 만든다
+  const WB_COLORS = ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a', '#d8dce4', '#4a4f5a'];       // 고를 수 있는 깃발 색
+  function wbi(i) {
+    if (!warbandInfo) warbandInfo = CFG.WARBAND.NAMES.map((n, k) => ({ name: `${n} Warband`, color: CFG.WARBAND.COLORS[k] }));
+    return warbandInfo[i] || { name: `Band ${i + 1} Warband`, color: '#9aa0aa' };
+  }
+  const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
+  let wbOpen = -1, wbBarHtml = '';
+  function renderWbBar() {
+    const show = !dead && !exActive && !uiPause;
+    let html = '';
+    if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
+      const m = warbandMembers(i); if (!m.length) continue;
+      const hurt = m.filter(n => n.down).length, sel = escortWarband === i;
+      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}</button>`;
+    }
+    if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
+  }
+  wbBar.addEventListener('pointerdown', e => { const b = e.target.closest('.wbchip'); if (!b) return; e.preventDefault(); e.stopPropagation(); openWbPanel(+b.dataset.wb); });
+  function renderWbPanel() {
+    const i = wbOpen; if (i < 0) return;
+    const m = warbandMembers(i), info = wbi(i);
+    if (!m.length) { closeWbPanel(); return; }
+    const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
+    const rows = m.map((n, k) => `<li data-n="${npcs.indexOf(n)}"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></li>`).join('');
+    wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
+      <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
+      <button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>
+      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. Tap a soldier to open their card and move them to another warband.</small><button id="wbClose">Close</button>`;
+  }
+  function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
+  function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }
+  wbPanel.addEventListener('pointerdown', e => {
+    if (e.target === wbPanel) { closeWbPanel(); return; }
+    const t = e.target, i = wbOpen; if (i < 0) return;
+    if (t.id === 'wbClose') { closeWbPanel(); }
+    else if (t.id === 'wbBring') { escortWarband = escortWarband === i ? -1 : i; renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
+    else if (t.id === 'wbRename') {
+      let v = null; try { v = window.prompt('Name this warband', wbi(i).name); } catch (er) {}
+      if (v !== null) { v = v.trim().slice(0, 22); const def = `${CFG.WARBAND.NAMES[i]} Warband`; wbi(i).name = v || def; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
+    } else if (t.dataset && t.dataset.color) { wbi(i).color = t.dataset.color; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
+    else { const li = t.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) openNpcCard(n); } }
+    e.stopPropagation();
+  });
+  setInterval(renderWbBar, 600);
   // ---------- 아침 이벤트: 선택에 따라 득실이 갈리는 짧은 사건 (창이 열려 있는 동안 시간이 멈춘다) ----------
   let eventOpen = false, pendingRaiders = 0; const eventQueue = [];
   const evEl = document.getElementById('eventPanel'), evBtns = document.getElementById('evBtns');
@@ -2458,7 +2559,7 @@
     n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = npcMaxHp(role, n.trait); n.hp = n.maxHp;
     n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
     if (n.work) { n.work.userData.worker = null; n.work = null; }          // 전직하면 일터를 떠난다
-    applyCitizenLook(n);
+    applyCitizenLook(n); assignWarband(n);
     n.home = homeSlot(npcs.filter(x => x.role !== 'citizen').length);
     n.labelText = ''; n.hungry = false;          // 병사는 배급 대상이 아니므로 굶주림 해제
     applyGear(n);
@@ -2478,8 +2579,10 @@
     if (fresh.length) toast(`${fresh.length} new citizen${fresh.length > 1 ? 's' : ''} arrived in the village`);
     const pool = fresh.concat(npcs.filter(n => n.role === 'citizen' && !fresh.includes(n) && !n.promote));
     const barracks = builtBuildings('barracks')[0], range = builtBuildings('range')[0];
-    if (barracks && pool.length) pool.shift().promote = { to: 'melee', target: barracks };
-    if (range && pool.length) pool.shift().promote = { to: 'archer', target: range };
+    let sc = soldierCount(); const cap = soldierCap();                         // 병사 수 상한: 병영·사격장이 많을수록 늘어난다
+    if (barracks && pool.length && sc < cap) { pool.shift().promote = { to: 'melee', target: barracks }; sc++; }
+    if (range && pool.length && sc < cap) { pool.shift().promote = { to: 'archer', target: range }; sc++; }
+    if (sc >= cap && (barracks || range)) setTimeout(() => toast(`Soldier limit reached (${cap}): build more barracks or archery ranges`), 2500);
   }
   // 전직 이동: 해당 건물 앞까지 걸어가면 직업 변경. 진행 중이면 true
   function promoteStep(dt) {
@@ -2884,6 +2987,19 @@
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
   const strikeRange = () => npc.cls === 'spear' ? 3.3 : npc.cls === 'greatsword' ? 2.6 : 1.7;               // 창병은 멀리서 찌른다
+  function citizenFight(dt) {                                               // 시민도 가까이 온 적은 맨손(주먹·발차기 연타)으로 막는다
+    let foe = null, bd = 2.2;
+    for (const e of enemies) { const u = e.userData; if (u.ex || u.sinking || u.dying > 0) continue; const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z); if (d < bd) { bd = d; foe = e; } }
+    if (!foe) return false;
+    npc.face = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z); npc.rotation.y = npc.face;
+    if (npc.atkCd <= 0) {
+      npc.anim.once('attackSword');
+      const n = npc, dur = n.anim.shot ? n.anim.shot.dur : 0.5, hitIn = n.anim.hitIn ?? 0.25, kick = n.anim.variant === 'kick', base = gearDef('sword_basic');
+      n.atkCd = dur * 0.95; n.atkLock = dur * 0.9;
+      later(hitIn, () => { if (!npcs.includes(n) || n.down) return; const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y; impactFx(n.position.x, n.position.z, ang, kick ? 'kick' : 'punch'); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * (kick ? 0.32 : 0.22), half: Math.PI / 3, rangeMul: 0.7 }); });
+    }
+    return true;
+  }
   function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
     const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic', great = n.cls === 'greatsword';
     n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
@@ -2997,6 +3113,7 @@
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
     let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
     if (order === 'follow' && !exActive && npc.role !== 'citizen') { state = followStep(dt); busy = true; }       // 지휘 명령: 플레이어를 따른다
+    if (!busy && npc.role === 'citizen' && !npc.hidden && citizenFight(dt)) { busy = true; state = 'Fighting back'; }
     if (!busy && isDay && gearFetchStep(dt)) { busy = true; state = 'Fetching gear'; }       // 병사: 대장간에서 새 장비 수령
     if (!busy && isDay && npc.role === 'citizen') { const rs = routineStep(dt, hour); if (rs) { busy = true; state = rs; } }
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
@@ -3118,7 +3235,7 @@
   let atkLock = 0;                                                       // 근접 공격 동안 제자리에 서 있는다
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: tap anywhere on the screen to attack'), 600); }
-    if (dead || atkCd > 0 || dashT > 0) return;
+    if (dead || atkCd > 0 || dashT > 0 || blocking) return;
     gathering = null;
     if (weaponMode === 'bow') {
       playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
@@ -3145,35 +3262,41 @@
     }
     const great = weaponMode === 'great';                                 // 대검: 느리지만 묵직하고 사거리가 길다, 네 번째는 제자리 회전 베기
     playerAnim.once('attackSword'); const dur = playerAnim.shot.dur, heavy = playerAnim.heavy;
-    atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; Snd.play('swing');
+    atkCd = Math.max(great ? ATK_CD * 1.3 : ATK_CD, dur * 0.92); atkLock = dur * 0.92; if (weaponMode !== 'none') Snd.play('swing');
     later(playerAnim.hitIn, () => {                                      // 칼이 휘둘러지는 순간에 베기 판정
       if (dead) return;
-      const base = gearDef(playerGear.sword), mulDps = great ? 1.7 : playerAnim.rig.style === 'ss' ? 1.4 : 1;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
+      const base = gearDef(playerGear.sword), mulDps = (great ? 1.7 * (1 + 0.18 * pl.st.cleave) : playerAnim.rig.style === 'ss' ? 1.4 : weaponMode === 'none' ? (playerAnim.variant === 'kick' ? 0.6 : 0.45) : 1), gr = 1 + 0.06 * pl.st.cleave;           // 모션이 길어 공격 간격이 늘었으므로 한 방을 키워 초당 피해를 맞춘다
       atkT = SLASH_LIFE; shake = heavy ? 0.7 : 0.3;
       if (heavy) {                                                                                           // 점프 내려찍기: 착지 지점 주위 전방위
-        spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
-        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 : 2.3), half: Math.PI, rangeMul: great ? 1.55 : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
-        floatText(hits ? `${great ? 'SPIN' : 'SLAM'} x${hits}!` : great ? 'SPIN!' : 'SLAM!', player.position.x, 2.8, player.position.z); return;
+        if (weaponMode === 'none') impactFx(player.position.x, player.position.z, facing, 'round'); else spawnSlash(player.position.x, player.position.z, facing, { ...base, slash: great ? 1.8 : 1.5 }); Snd.play('boom', 0.6);
+        const hits = sectorHit(player.position.x, player.position.z, facing, true, { ...base, dmg: base.dmg * pDmg() * (great ? 2.4 * (1 + 0.25 * pl.st.whirl) : weaponMode === 'none' ? 1.2 : 2.3), half: Math.PI, rangeMul: great ? 1.55 * gr * (1 + 0.08 * pl.st.whirl) : 1.35, slash: great ? 1.8 : 1.4, tier: 1 });
+        const nm = weaponMode === 'none' ? 'KICK' : great ? 'SPIN' : 'SLAM'; floatText(hits ? `${nm} x${hits}!` : `${nm}!`, player.position.x, 2.8, player.position.z); return;
       }
-      spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
-      const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
+      if (weaponMode === 'none') impactFx(player.position.x, player.position.z, facing, playerAnim.variant); else spawnSlash(player.position.x, player.position.z, facing, great ? { ...base, slash: 1.5 } : undefined);
+      const hits = sectorHit(player.position.x, player.position.z, facing, true, great ? { ...base, dmg: base.dmg * pDmg() * mulDps, half: Math.PI / 2.3, rangeMul: 1.45 * gr, slash: 1.5 } : { ...base, dmg: base.dmg * pDmg() * mulDps });
       if (hits >= 2) { shake = Math.min(0.7, 0.3 + hits * 0.06); floatText(`CLEAVE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2); }
     });
   }
 
+  // 맨손 타격 효과: 칼의 베기 궤적 대신, 주먹·발이 닿는 앞쪽 지점에서 작은 충격 먼지가 튄다 (돌려차기는 몸 둘레로 퍼진다)
+  function impactFx(x, z, ang, kind) {
+    sfxAt(kind === 'punch' ? 'punch' : 'kick', x, z);
+    if (kind === 'round') { burst({ x, z }, 4); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + ang; burst({ x: x + Math.sin(a) * 1.3, z: z + Math.cos(a) * 1.3 }, 2); } return; }
+    burst({ x: x + Math.sin(ang) * (kind === 'kick' ? 1.5 : 1.2), z: z + Math.cos(ang) * (kind === 'kick' ? 1.5 : 1.2) }, kind === 'kick' ? 5 : 3);
+  }
   // 창 찌르기 궤적: 앞으로 쭉 뻗는 가늘고 긴 빛줄기
   const thrustGeo = new THREE.PlaneGeometry(0.34, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5);
   function spawnThrust(x, z, ang, len) {
     const g = new THREE.Group(), m = new THREE.Mesh(thrustGeo, new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
     m.scale.z = len; g.add(m); g.position.set(x, 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
   }
-  const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear' };
+  const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear', none: 'Unarmed' };
   function swapWeapon() {
     if (dead) return;
-    weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : 'sword';
-    playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
+    weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : weaponMode === 'spear' ? 'none' : 'sword';
+    playerRig.brawl = weaponMode === 'none'; playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
-    toast(weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
+    toast(weaponMode === 'none' ? 'Unarmed (normal movement, weak punches)' : weaponMode === 'great' ? 'Great sword equipped (two-handed, long reach, slow heavy cleaves and a spinning slash)' : weaponMode === 'bow' ? 'Bow equipped (ranged)' : weaponMode === 'spear' ? 'Spear equipped (long thrust, slower)' : 'Sword equipped (wide sweep)');
   }
   // 화살은 아군 구조물(obstacles)과 충돌 검사를 하지 않으므로 목책/성벽을 그대로 통과한다 (one-way wall).
   const arrows = [];
@@ -3321,9 +3444,14 @@
 
   // ---------- 대시 (무적 포함) ----------
   let dashT = 0, dashCd = 0, invincibleT = 0, dashDX = 0, dashDZ = 0;
+  function jump() {                                                         // 점프: 제자리 뛰기 동작 (공격·채집 중에는 못 한다)
+    if (dead || blocking || dashT > 0 || gathering || atkLock > 0) return;
+    if (playerAnim.jump()) { atkCd = Math.max(atkCd, 0.25); Snd.play('dash', 0.4); }
+  }
   function dash() {
     if (dead || dashCd > 0 || dashT > 0) return;
     if (performance.now() - lastMT < 350) { dashDX = lastMX; dashDZ = lastMZ; } else { dashDX = Math.sin(facing); dashDZ = Math.cos(facing); }          // 입력 방향으로 (입력이 없으면 정면)
+    { const fx = Math.sin(facing), fz = Math.cos(facing), f = dashDX * fx + dashDZ * fz, sd = dashDX * fz - dashDZ * fx; playerAnim.dodge(f > 0.5 ? 'f' : f < -0.5 ? 'b' : sd > 0 ? 'p' : 'n'); }       // 이동 방향에 맞는 회피 동작
     atkLock = 0; dashT = CFG.DASH_TIME; dashCd = CFG.DASH_CD * dashMul(); invincibleT = CFG.DASH_INVULN; Snd.play('dash');
     dust(player.position.x, player.position.z);
   }
@@ -3531,7 +3659,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -3542,7 +3670,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -3577,7 +3705,7 @@
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
     Object.assign(story, { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
-    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
+    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
@@ -3594,9 +3722,10 @@
     for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
+    if (sn.wbInfo) warbandInfo = sn.wbInfo.map(x => ({ ...x }));
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
-      n.cls = d.cls || 'sword';
+      n.cls = d.cls || 'sword'; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); } else if (n.role === 'melee') applyGear(n);
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
@@ -3635,13 +3764,14 @@
     setAge(3);                                                // 디버그: 3시대(석조 요새)로
     if (!playerClass) setClass('warrior');
     for (const a of [1, 2, 3]) if (!perks[a]) choosePerk(a, CFG.PERKS[a][0].id);
-    while (townStage < CFG.TOWN_GROUPS.length) designTown();
-    while (CFG.DESIGN[designTier]) designDefense();
-    for (const b of blueprints.slice()) {                     // 도면을 즉시 완성
+    const finishAll = () => { for (const b of blueprints.slice()) {                // 도면을 즉시 완성
       blueprints.splice(blueprints.indexOf(b), 1); scene.remove(b);
       if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
       else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
-    }
+    } };
+    while (CFG.DESIGN[designTier]) designDefense();
+    finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
+    for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown(); finishAll(); }          // 둘째 주택 묶음은 첫 묶음이 지어진 뒤에 계획된다
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
     for (const c of npcs.filter(n => n.promote)) setRole(c, c.promote.to);
     const sm = smiths()[0];                                   // 디버그: 대장간 선반에 장비를 채워 병사들이 수령하게 한다
@@ -3672,7 +3802,7 @@
       if (t.userData.shootCd > 0) continue;
       let foe = null, bd = CFG.TOWER_RANGE * (hasPerk('engineer') ? 1.25 : 1);
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
+        if (e.userData.sinking || e.userData.prowl) continue;
         const d = Math.hypot(e.position.x - t.position.x, e.position.z - t.position.z);
         if (d < bd) { bd = d; foe = e; }
       }
@@ -4031,12 +4161,14 @@
   }
 
   // ---------- 원정 출발 / 귀환 ----------
-  let escortN = 0;
+  let escortWarband = -1;                                                    // 원정에 데려갈 전투단 (-1: 혼자)
   const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function powerOf() {                                       // 마을의 전투력: 병사 + 주인공
-    const sold = npcs.filter(n => n.role !== 'citizen').reduce((a, n) => a + 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n), 0);
+    const val = (n) => 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
+    const all = npcs.filter(n => n.role !== 'citizen'), going = escortWarband >= 0 ? all.filter(n => n.warband === escortWarband) : [];
+    const brought = going.reduce((a, n) => a + val(n), 0), home = all.filter(n => !going.includes(n)).reduce((a, n) => a + val(n), 0) * 0.35;      // 데려가는 전투단은 전부, 마을에 남는 병사는 35%만 (예비대)
     const me = 3 * pl.lvl + 3 * gearDef(playerGear.sword).tier + 2 * gearDef(playerGear.armor).tier;
-    return { sold: Math.round(sold), me: Math.round(me), total: Math.round(sold + me) };
+    return { sold: Math.round(brought + home), brought: Math.round(brought), home: Math.round(home), me: Math.round(me), total: Math.round(brought + home + me) };
   }
   const needOf = (d) => CFG.EXP_NEED[d.id] || 0;
   const nightExpWhy = () => {                                   // 밤 원정이 닫혀 있는 이유 (열려 있으면 '')
@@ -4063,10 +4195,10 @@
     fadeTo(() => {
       exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       buildZone(d);
-      const party = escortPool().sort((a, b) => (a.role === 'melee' ? 0 : 1) - (b.role === 'melee' ? 0 : 1)).slice(0, Math.min(escortN, CFG.ESCORT_MAX));     // 동행 병사: 근접 병사 먼저
+      const party = escortWarband >= 0 ? escortPool().filter(n => n.warband === escortWarband).slice(0, CFG.WARBAND.SIZE) : [];                // 선택한 전투단의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
-        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 2.2, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+        n.escort = true; n.position.set(EXC.x + (i - (party.length - 1) / 2) * 1.8, 0, EXC.z - 31); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
       exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
@@ -4151,18 +4283,23 @@
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
       (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') + (story.road ? '<div class="q done"><span>★</span><span>The Wide Road: carry the light to Ashford, Reedhaven and Stonegate</span></div>' : '') + (story.wide ? '<div class="q done"><span>★</span><span>The road is lit from end to end</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
-    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
+    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (warband you bring ${pw.brought} · reserves at home ${pw.home} · you ${pw.me}) - the warband you bring counts fully, soldiers left home only a third. Stronger gear, more soldiers and levels open harder expeditions`; }
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
-    const pool = escortPool().length; escortN = Math.min(escortN, pool, CFG.ESCORT_MAX);
-    const escHtml = `<div class="ex"><div class="info"><b>Escort</b><small>Soldiers who come along follow you and fight (they are carried home if they fall). They are away from the village while you are gone.</small></div><button id="escBtn" ${pool ? '' : 'disabled'}>${escortN ? escortN + ' soldier' + (escortN > 1 ? 's' : '') : pool ? 'None' : 'No soldiers'}</button></div>`;
+    if (escortWarband >= 0 && !escortPool().some(n => n.warband === escortWarband)) escortWarband = -1;
+    const wbRows = []; for (let i = 0; i < CFG.WARBAND.MAX; i++) {
+      const mem = warbandMembers(i); if (!mem.length) continue;
+      const ready = mem.filter(n => !n.down && !n.escort).length, on = escortWarband === i;
+      wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
+    }
+    const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick one warband to bring: it follows you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their warband.</small></div></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
     document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
       const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : 'Depart'}</button></div>`;
     }).join('');
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
-    const eb = document.getElementById('escBtn'); if (eb) eb.addEventListener('click', () => { escortN = (escortN + 1) % (Math.min(pool, CFG.ESCORT_MAX) + 1); renderJournal(); });
+    jEl.querySelectorAll('#jExp button[data-wb]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.wb; escortWarband = escortWarband === i ? -1 : i; renderJournal(); }));
   }
   function openJournal() { if (dead || exActive) return; renderJournal(); jEl.style.display = 'flex'; }
   function closeJournal() { jEl.style.display = 'none'; }
@@ -4344,8 +4481,9 @@
       const ml = Math.hypot(mx, mz); mx /= ml; mz /= ml;
 
       const ts = terrSpd(player.position.x, player.position.z);
-      player.position.x += mx * SPEED * spdMul() * ts * mag * dt;
-      player.position.z += mz * SPEED * spdMul() * ts * mag * dt;
+      const bk = blocking ? 0.45 : 1;                                       // 막는 중에는 느리게
+      player.position.x += mx * SPEED * spdMul() * ts * mag * bk * dt;
+      player.position.z += mz * SPEED * spdMul() * ts * mag * bk * dt;
 
       lastMX = mx; lastMZ = mz; lastMT = performance.now();
       { const fx = Math.sin(facing), fz = Math.cos(facing), f = mx * fx + mz * fz, sd = mx * fz - mz * fx;       // 바라보는 방향 기준 앞/뒤/옆걸음
@@ -4359,6 +4497,7 @@
       let diff = yaw + Math.PI - facing; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       facing += diff * Math.min(1, dt * 18); player.rotation.y = facing;
     }
+    { const wantB = !!(keys.ShiftLeft || keys.ShiftRight || blockBtn) && !dead && dashT <= 0 && !gathering && !uiPause; if (wantB !== blocking) { blocking = wantB; playerAnim.guard(blocking); } }
     playerRig.combat = !!exActive || enemyWithin(player.position.x, player.position.z, 26);        // 적이 가깝거나 원정 중이면 전투 자세 이동
     playerAnim.moveDir = dashT > 0 || gathering ? 'f' : moveDir;
     playerRig.tool = gathering && gathering.target.userData.type === 'wood' ? 'axe' : 'pick';
@@ -4644,7 +4783,7 @@
       const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
       document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
       document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
-      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0 }, carry.st || {}); updateLvlUi(); begin(); });
+      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 }, carry.st || {}); updateLvlUi(); begin(); });
       return;
     }
     saveReady = true;

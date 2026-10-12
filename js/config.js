@@ -29,6 +29,13 @@
       { age: 3, label: 'Plan Towers & Market', cost: { wood: 40, stone: 60 }, lots: [
         { kind: 'market', auto: 'town' },
         { kind: 'tower', x: -12.3, z: -12.3 }, { kind: 'tower', x: 12.3, z: -12.3 }, { kind: 'tower', x: -12.3, z: 12.3 }, { kind: 'tower', x: 12.3, z: 12.3 }] },
+      // 두 번째(돌) 성벽이 완성되면: 첫 목책과 둘째 성벽 사이 바깥 구역에 농장·사격장을 옮겨 짓고(마을 안쪽이 넓어진다), 바깥 모서리에 방어탑을 더 세운다
+      { age: 3, needsOuterWall: true, outer: true, label: 'Plan Outer Fields & Towers', cost: { wood: 60, stone: 60 },
+        farmSlots: [{ x: 20, z: -9.5 }, { x: 20, z: 9.5 }, { x: -20, z: -9.5 }, { x: -20, z: 9.5 }], rangeSlot: { x: -9.5, z: 20 }, farms: 4,
+        lots: [{ kind: 'tower', x: -22.3, z: -22.3 }, { kind: 'tower', x: 22.3, z: -22.3 }, { kind: 'tower', x: -22.3, z: 22.3 }, { kind: 'tower', x: 22.3, z: 22.3 }] },
+      // 바깥 구역 주택: 6채를 두 번에 나누어 계획한다 (둘째 묶음은 첫 묶음이 다 지어진 뒤). 집 1채 = 최대 인구 +1
+      { age: 3, needsOuterWall: true, label: 'Plan Outer Homes (1/2)', cost: { wood: 60 }, lots: [{ kind: 'house', x: -13, z: -20 }, { kind: 'house', x: -7, z: -20 }, { kind: 'house', x: 7, z: -20 }] },
+      { age: 3, needsOuterWall: true, needsHomesBuilt: true, label: 'Plan Outer Homes (2/2)', cost: { wood: 80 }, lots: [{ kind: 'house', x: 13, z: -20 }, { kind: 'house', x: 7, z: 20 }, { kind: 'house', x: 13, z: 20 }] },
     ],
     BUILDING: {
       house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 },
@@ -184,6 +191,8 @@
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
     QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
+    WARBAND: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3,        // 전투단(warband) 최대 인원 / 전투단 수 / 병사 수 상한(기본 + 병영·사격장당)
+      NAMES: ['Lion', 'Wolf', 'Stag', 'Eagle', 'Raven', 'Boar'], COLORS: ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a'] },
     BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수
     // 공성 투척병 (Day 4~): 초장거리에서 곡사로 폭발 바위를 던져 구조물을 광역 파괴. 궁수(30)가 닿지 않는 거리에 멈춘다
     SIEGE_FROM_DAY: 4, SIEGE_HP: 4, SIEGE_STANDOFF: 42, SIEGE_INTERVAL: 4.5,

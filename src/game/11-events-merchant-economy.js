@@ -279,7 +279,7 @@
     n.role = role; n.archer = role === 'archer'; n.baseColor = ROLE[role].color; n.maxHp = npcMaxHp(role, n.trait); n.hp = n.maxHp;
     n.mat.color.set(n.baseColor); n.promote = null; n.born = 'citizen';
     if (n.work) { n.work.userData.worker = null; n.work = null; }          // 전직하면 일터를 떠난다
-    applyCitizenLook(n);
+    applyCitizenLook(n); assignWarband(n);
     n.home = homeSlot(npcs.filter(x => x.role !== 'citizen').length);
     n.labelText = ''; n.hungry = false;          // 병사는 배급 대상이 아니므로 굶주림 해제
     applyGear(n);
@@ -299,8 +299,10 @@
     if (fresh.length) toast(`${fresh.length} new citizen${fresh.length > 1 ? 's' : ''} arrived in the village`);
     const pool = fresh.concat(npcs.filter(n => n.role === 'citizen' && !fresh.includes(n) && !n.promote));
     const barracks = builtBuildings('barracks')[0], range = builtBuildings('range')[0];
-    if (barracks && pool.length) pool.shift().promote = { to: 'melee', target: barracks };
-    if (range && pool.length) pool.shift().promote = { to: 'archer', target: range };
+    let sc = soldierCount(); const cap = soldierCap();                         // 병사 수 상한: 병영·사격장이 많을수록 늘어난다
+    if (barracks && pool.length && sc < cap) { pool.shift().promote = { to: 'melee', target: barracks }; sc++; }
+    if (range && pool.length && sc < cap) { pool.shift().promote = { to: 'archer', target: range }; sc++; }
+    if (sc >= cap && (barracks || range)) setTimeout(() => toast(`Soldier limit reached (${cap}): build more barracks or archery ranges`), 2500);
   }
   // 전직 이동: 해당 건물 앞까지 걸어가면 직업 변경. 진행 중이면 true
   function promoteStep(dt) {

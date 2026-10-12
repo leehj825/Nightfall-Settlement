@@ -213,6 +213,19 @@
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
   const strikeRange = () => npc.cls === 'spear' ? 3.3 : npc.cls === 'greatsword' ? 2.6 : 1.7;               // 창병은 멀리서 찌른다
+  function citizenFight(dt) {                                               // 시민도 가까이 온 적은 맨손(주먹·발차기 연타)으로 막는다
+    let foe = null, bd = 2.2;
+    for (const e of enemies) { const u = e.userData; if (u.ex || u.sinking || u.dying > 0) continue; const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z); if (d < bd) { bd = d; foe = e; } }
+    if (!foe) return false;
+    npc.face = Math.atan2(foe.position.x - npc.position.x, foe.position.z - npc.position.z); npc.rotation.y = npc.face;
+    if (npc.atkCd <= 0) {
+      npc.anim.once('attackSword');
+      const n = npc, dur = n.anim.shot ? n.anim.shot.dur : 0.5, hitIn = n.anim.hitIn ?? 0.25, kick = n.anim.variant === 'kick', base = gearDef('sword_basic');
+      n.atkCd = dur * 0.95; n.atkLock = dur * 0.9;
+      later(hitIn, () => { if (!npcs.includes(n) || n.down) return; const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y; impactFx(n.position.x, n.position.z, ang, kick ? 'kick' : 'punch'); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * (kick ? 0.32 : 0.22), half: Math.PI / 3, rangeMul: 0.7 }); });
+    }
+    return true;
+  }
   function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
     const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic', great = n.cls === 'greatsword';
     n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
@@ -326,6 +339,7 @@
     if (isDay && npc.hidden) { npc.hidden = false; }                       // 아침: 웅크림 해제
     let busy = isDay && npc.promote ? (state = 'Training', promoteStep(dt)) : false;
     if (order === 'follow' && !exActive && npc.role !== 'citizen') { state = followStep(dt); busy = true; }       // 지휘 명령: 플레이어를 따른다
+    if (!busy && npc.role === 'citizen' && !npc.hidden && citizenFight(dt)) { busy = true; state = 'Fighting back'; }
     if (!busy && isDay && gearFetchStep(dt)) { busy = true; state = 'Fetching gear'; }       // 병사: 대장간에서 새 장비 수령
     if (!busy && isDay && npc.role === 'citizen') { const rs = routineStep(dt, hour); if (rs) { busy = true; state = rs; } }
     if (!busy && isDay && npc.role === 'citizen' && workStep(dt)) { busy = true; state = npc.stateLabel; bob = npc.bobAmt; }      // 경제 건물에 정착한 시민
