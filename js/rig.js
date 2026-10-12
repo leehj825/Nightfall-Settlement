@@ -656,8 +656,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const rs = this._res(name);
       if (name !== this.baseName || rs !== this.resName) { if (name === 'farm' && this.baseName !== 'farm') this._ft = 0; this.baseName = name; this.resName = rs; if (!this.shot && !this.guarding) this._play(name, 0.2); }
       const a = this.acts[rs];
-      if (a && (rs === 'mineMocap' || rs === 'chopMocap')) a.timeScale = a.getClip().duration / (rs === 'mineMocap' ? 0.9 : 1.0);                 // 곡괭이질 0.9초, 도끼질 1초에 한 번
       if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
+      if (a && (rs === 'mineMocap' || rs === 'chopMocap')) a.timeScale = a.getClip().duration / (rs === 'mineMocap' ? 0.9 : 1.0);                 // 곡괭이질 0.9초, 도끼질 1초에 한 번
     }
     once(name) {
       if (this.dead || !this.acts[name]) return;
