@@ -304,6 +304,7 @@
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
       if (d < bd) { bd = d; foe = e; }
     }
+    if (markedFoe && !markedFoe.userData.ex && !markedFoe.userData.siege && !markedFoe.userData.prowl && Math.hypot(markedFoe.position.x - npc.position.x, markedFoe.position.z - npc.position.z) < CFG.ARCHER_AGGRO * 1.25) foe = markedFoe;       // 표시된 적을 먼저 쏜다
     if (!foe) {
       if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { if (rs) faceTo(rs.fx, rs.fz); else faceFire(); return trainTick(dt) ? 'Training' : 'Resting'; }
       return 'Idle';
@@ -415,6 +416,10 @@
         if (e.userData.sinking || e.userData.siege || e.userData.prowl || ord === 'withdraw') continue;
         const d = post0 ? Math.hypot(e.position.x - post0.x, e.position.z - post0.z) : Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
         if (d < bd) { bd = d; foe = e; }
+      }
+      if (markedFoe && !markedFoe.userData.ex && ord !== 'withdraw') {                         // 표시된 적이 있으면 그 적을 먼저 노린다 (Stand firm 은 초소 근처일 때만)
+        const md = post0 ? Math.hypot(markedFoe.position.x - post0.x, markedFoe.position.z - post0.z) : Math.hypot(markedFoe.position.x - npc.position.x, markedFoe.position.z - npc.position.z);
+        if (ord !== 'stand' || md < 14) { foe = markedFoe; bd = md; }
       }
       if (npc.returning || !foe) {
         const post = sentryPost(npc), rs = peaceful && !post ? restSpot(npc, 'night') : null, tgt = post || rs || npc.home;

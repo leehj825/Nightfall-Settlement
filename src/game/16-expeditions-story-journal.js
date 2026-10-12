@@ -134,6 +134,10 @@
       const o0 = n.hold || n.position, d = Math.hypot(e.position.x - o0.x, e.position.z - o0.z);
       if (d < bd) { bd = d; foe = e; }
     }
+    if (markedFoe && markedFoe.userData.ex && !(ord === 'withdraw' && n.role === 'melee')) {            // 표시된 적을 먼저 노린다 (Stand firm 은 지키는 자리 근처일 때만)
+      const o1 = n.hold || n.position, md = Math.hypot(markedFoe.position.x - o1.x, markedFoe.position.z - o1.z);
+      if (ord !== 'stand' || md < 9) { foe = markedFoe; bd = md; }
+    }
     if (foe && n.hold) bd = Math.hypot(foe.position.x - n.position.x, foe.position.z - n.position.z);
     let state = ord === 'withdraw' ? 'Falling back' : 'Escorting';
     if (foe) {

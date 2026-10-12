@@ -147,6 +147,8 @@ The warband window now has four **order buttons**: Forward (as before), Stand fi
 
 Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand button column, above **Weapon** (both shortened to one word) so it is no longer pressed by mistake, and the three shortcut buttons above the stick sit higher, leaving free space around the stick. The **warband bar now shows during journeys** (only the warbands that came along) so you can give orders there, and the journey class can be changed there too. Each soldier row in the warband window has **At home**, **Journey** class buttons and **Move band**, so no soldier card is needed; tapping a soldier's name still opens the card, and closing the card returns to the warband window. In portrait the warband bar sits above the sound and settings buttons instead of on top of them.
 
+**Mark the foe** (nf-v70): the **Mark** button at the end of the warband bar (key **Y**) marks the closest enemy, preferring the one in front of you (within 45); a red ring and arrow follow it. Every warband then goes for it first: at night at home (melee and archers; archers skip siege throwers) and on journeys. Withdraw ignores the mark; Stand firm only follows it when the foe is near their post or spot. Press Mark again to clear; the mark also clears when the foe dies. Not saved. Marking a siege thrower lets your melee men rush it. Only tested headless.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
