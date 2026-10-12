@@ -7818,9 +7818,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const n of npcs.slice()) {
       npc = n; updateNpc(dt, hour, t); n.anim.update(dt); updateMood(n, dt);
       { const f = Math.min(1.7, Math.max(0.45, DIST / 11)); n.labelSprite.scale.set(2.6 * f, 0.98 * f, 1); n.labelSprite.position.y = 2.2 + 0.5 * f; }      // 카메라 거리에 맞춰 이름표 크기 조절
-      n.sickIcon.visible = n.sick > 0 && !n.down; if (n.sickIcon.visible) n.sickIcon.position.y = (n.hungerIcon.visible ? 4.2 : 3.4) + Math.sin(t * 4) * 0.07;
-      n.hungerIcon.visible = n.hungry && !n.down;
-      if (n.hungerIcon.visible) { n.hungerIcon.position.y = 3.4 + Math.sin(t * 5) * 0.09; const k = 0.95 + Math.sin(t * 9) * 0.05; n.hungerIcon.scale.set(k, k, 1); }
+      n.sickIcon.visible = false; n.hungerIcon.visible = false;                 // 배고픔·질병 말풍선은 머리 위에 띄우지 않는다 (상태는 카드와 아침 보고서에 나온다)
     }
   }
 
