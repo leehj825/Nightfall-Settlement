@@ -33,6 +33,9 @@
       { age: 3, needsOuterWall: true, outer: true, label: 'Plan Outer Fields & Towers', cost: { wood: 60, stone: 60 },
         farmSlots: [{ x: 20, z: -9.5 }, { x: 20, z: 9.5 }, { x: -20, z: -9.5 }, { x: -20, z: 9.5 }], rangeSlot: { x: -9.5, z: 20 }, farms: 4,
         lots: [{ kind: 'tower', x: -22.3, z: -22.3 }, { kind: 'tower', x: 22.3, z: -22.3 }, { kind: 'tower', x: -22.3, z: 22.3 }, { kind: 'tower', x: 22.3, z: 22.3 }] },
+      // 바깥 구역 주택: 6채를 두 번에 나누어 계획한다 (둘째 묶음은 첫 묶음이 다 지어진 뒤). 집 1채 = 최대 인구 +1
+      { age: 3, needsOuterWall: true, label: 'Plan Outer Homes (1/2)', cost: { wood: 60 }, lots: [{ kind: 'house', x: -13, z: -20 }, { kind: 'house', x: -7, z: -20 }, { kind: 'house', x: 7, z: -20 }] },
+      { age: 3, needsOuterWall: true, needsHomesBuilt: true, label: 'Plan Outer Homes (2/2)', cost: { wood: 80 }, lots: [{ kind: 'house', x: 13, z: -20 }, { kind: 'house', x: 7, z: 20 }, { kind: 'house', x: 13, z: 20 }] },
     ],
     BUILDING: {
       house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 },

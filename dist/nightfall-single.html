@@ -4563,6 +4563,9 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
       { age: 3, needsOuterWall: true, outer: true, label: 'Plan Outer Fields & Towers', cost: { wood: 60, stone: 60 },
         farmSlots: [{ x: 20, z: -9.5 }, { x: 20, z: 9.5 }, { x: -20, z: -9.5 }, { x: -20, z: 9.5 }], rangeSlot: { x: -9.5, z: 20 }, farms: 4,
         lots: [{ kind: 'tower', x: -22.3, z: -22.3 }, { kind: 'tower', x: 22.3, z: -22.3 }, { kind: 'tower', x: -22.3, z: 22.3 }, { kind: 'tower', x: 22.3, z: 22.3 }] },
+      // 바깥 구역 주택: 6채를 두 번에 나누어 계획한다 (둘째 묶음은 첫 묶음이 다 지어진 뒤). 집 1채 = 최대 인구 +1
+      { age: 3, needsOuterWall: true, label: 'Plan Outer Homes (1/2)', cost: { wood: 60 }, lots: [{ kind: 'house', x: -13, z: -20 }, { kind: 'house', x: -7, z: -20 }, { kind: 'house', x: 7, z: -20 }] },
+      { age: 3, needsOuterWall: true, needsHomesBuilt: true, label: 'Plan Outer Homes (2/2)', cost: { wood: 80 }, lots: [{ kind: 'house', x: 13, z: -20 }, { kind: 'house', x: 7, z: 20 }, { kind: 'house', x: 13, z: 20 }] },
     ],
     BUILDING: {
       house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 },
@@ -6510,6 +6513,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return best || { x: 7, z: -4 };
   }
   // 둘째(바깥) 방어선이 계획되었고, 그 성벽 청사진이 하나도 남지 않았으면 완성
+  const homesBuilt = () => !blueprints.some(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house');       // 지을 집 청사진이 남아 있지 않다
   const outerWallDone = () => designTier >= 2 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   // 바깥 구역(첫 목책~둘째 성벽 사이): 이미 지은 농장·사격장은 그대로 옮기고(레벨·일꾼 유지) 모자란 농장은 새로 짓는다
   function planOuterFields(g) {
@@ -6533,6 +6537,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (age < g.age) return toast(`Available in Age ${g.age} (${CFG.AGES[g.age - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
+    if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
     payCost(g.cost);
     townStage++;
     const names = [];
@@ -6551,7 +6556,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
   function planCandidates() {
-    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown, ok: () => !T.needsOuterWall || outerWallDone() };
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
     const m = settings.plan || 'balanced';
     const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
     return order.filter(Boolean);
@@ -6561,7 +6566,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for the second wall' : `Waiting for Age ${planCandidates()[0].age}`) : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Age ${planCandidates()[0].age}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -6579,7 +6584,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
@@ -7753,17 +7758,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   let npc = npcs[0];                       // 현재 처리 중인 NPC
 
-  function setLabel(state) {
-    const text = `${state}|${npc.hp}|${npc.role}|${npc.name}`;
+  function setLabel(state) {                  // 머리 위에는 하는 일 대신 작은 체력 막대만 보여 준다
+    const hpv = Math.max(0, Math.ceil(npc.hp)), text = `${hpv}|${npc.maxHp}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
-    const lctx = npc.lctx;
+    const lctx = npc.lctx, r = Math.max(0, Math.min(1, npc.hp / (npc.maxHp || 1)));
     lctx.clearRect(0, 0, 256, 96);
-    lctx.fillStyle = 'rgba(10,10,30,.65)';
-    lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
-    lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
-    lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.name} · HP ${npc.hp}/${npc.maxHp}`, 128, 76);
+    lctx.fillStyle = 'rgba(10,10,30,.7)'; lctx.fillRect(48, 38, 160, 18);
+    lctx.fillStyle = r > 0.5 ? '#5fd35f' : r > 0.25 ? '#e8c43c' : '#e0523c'; lctx.fillRect(51, 41, 154 * r, 12);
     npc.labelTex.needsUpdate = true;
   }
 
@@ -9441,8 +9443,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     } };
     while (CFG.DESIGN[designTier]) designDefense();
     finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
-    for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown();
-    finishAll();
+    for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown(); finishAll(); }          // 둘째 주택 묶음은 첫 묶음이 지어진 뒤에 계획된다
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
     for (const c of npcs.filter(n => n.promote)) setRole(c, c.promote.to);
     const sm = smiths()[0];                                   // 디버그: 대장간 선반에 장비를 채워 병사들이 수령하게 한다
@@ -9473,7 +9474,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (t.userData.shootCd > 0) continue;
       let foe = null, bd = CFG.TOWER_RANGE * (hasPerk('engineer') ? 1.25 : 1);
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
+        if (e.userData.sinking || e.userData.prowl) continue;
         const d = Math.hypot(e.position.x - t.position.x, e.position.z - t.position.z);
         if (d < bd) { bd = d; foe = e; }
       }

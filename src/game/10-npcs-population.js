@@ -82,17 +82,14 @@
   }
   let npc = npcs[0];                       // 현재 처리 중인 NPC
 
-  function setLabel(state) {
-    const text = `${state}|${npc.hp}|${npc.role}|${npc.name}`;
+  function setLabel(state) {                  // 머리 위에는 하는 일 대신 작은 체력 막대만 보여 준다
+    const hpv = Math.max(0, Math.ceil(npc.hp)), text = `${hpv}|${npc.maxHp}`;
     if (npc.labelText === text) return;
     npc.labelText = text;
-    const lctx = npc.lctx;
+    const lctx = npc.lctx, r = Math.max(0, Math.min(1, npc.hp / (npc.maxHp || 1)));
     lctx.clearRect(0, 0, 256, 96);
-    lctx.fillStyle = 'rgba(10,10,30,.65)';
-    lctx.beginPath(); lctx.roundRect ? lctx.roundRect(8, 8, 240, 80, 16) : lctx.rect(8, 8, 240, 80); lctx.fill();
-    lctx.textAlign = 'center'; lctx.fillStyle = '#fff';
-    lctx.font = 'bold 34px sans-serif'; lctx.fillText(state, 128, 46);
-    lctx.font = '22px sans-serif'; lctx.fillStyle = '#9fd0ff'; lctx.fillText(`${npc.name} · HP ${npc.hp}/${npc.maxHp}`, 128, 76);
+    lctx.fillStyle = 'rgba(10,10,30,.7)'; lctx.fillRect(48, 38, 160, 18);
+    lctx.fillStyle = r > 0.5 ? '#5fd35f' : r > 0.25 ? '#e8c43c' : '#e0523c'; lctx.fillRect(51, 41, 154 * r, 12);
     npc.labelTex.needsUpdate = true;
   }
 
