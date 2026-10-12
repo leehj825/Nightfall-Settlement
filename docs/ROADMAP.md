@@ -20,13 +20,17 @@
 | war map | **Campaign map** | map of realms, holds and castles |
 
 ## Status (nf-v63)
-**Done:** the warband stage is finished: a bar of warband chips on screen, a warband window to rename, recolour and pick which one goes on a journey, and journey power counted from the warband you bring (soldiers left home count one third). Before that: warbands (up to 6 soldiers each, six heraldic names and banner colours, saved with the game), a soldier limit (6, plus 6 per barracks and 3 per archery range), and bringing one warband on a journey from the Journal. The soldier card has a button to change a soldier's warband. Outer fields, outer homes and outer towers exist in the village plan.
-**Not done:** everything else in this file (banners and the host, orders, campaign map, sieges, realms, provisions).
+See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
+
+**Done (war layer phase 1, warbands):** soldiers belong to warbands of up to 6 (six heraldic names, banner colours, saved), a soldier cap from barracks and archery ranges, a warband bar on screen, a warband window to rename and recolour and choose the one that goes on your next journey, and journey power counted from the warband you bring (soldiers left home count one third).
+**Village growth done alongside:** tents become houses at Age 3; farms and the archery range move to the outer ring once the second wall stands; six outer homes in two batches; four outer corner towers; towers also shoot siege units.
+**Not done:** orders and the leader's standard, raids with several warbands, the campaign map, sieges, realms, provisions, banners and the host.
 
 **Next steps, in order**
-1. Orders: Forward, Stand firm, Withdraw, Mark the foe, Charge, plus the leader's standard (nearby men fight better).
+1. **Orders and the leader's standard**: Forward, Stand firm, Withdraw, Mark the foe, Charge; men near the leader fight better.
 2. Raids on bandit camps with two to three warbands (Age 2), then the campaign map and sieges (Age 3).
 3. Realms, provisions, banners and the host, and the final campaign.
+4. Tuning after phone testing (see "Known gaps" in the handoff), custom models later.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 
@@ -36,15 +40,15 @@ Today the game is "build a village, survive the night". The next level is **comm
 
 ### What already exists and can be reused
 - Soldier classes (swordsman, great swordsman, spearman, medic) and archers, with veteran levels.
-- Expeditions with an escort (`CFG.ESCORT_MAX` = 3 soldiers who follow and fight).
+- Journeys (expeditions) where one warband of up to 6 soldiers follows and fights, and returns fallen soldiers home.
 - Rally Cry, hero skill tree, combat animation sets per weapon, hit reactions, block and dodge.
 - Wall, tower and gate systems; enemies with siege units and a boss.
 - Stronghold economy: farms, quarry, lumber, smith (gear), barracks, population cap by houses.
 
-### Pillar 1 - Army size and warbands
-- Barracks capacity limits the number of soldiers. More barracks, a larger training yard and houses raise it.
-- Soldiers are grouped into **warbands** (for example 4 to 8 units of one class). A warband is the unit you command.
-- The expedition screen lets you pick warbands to bring instead of a number. Escort stays as the "quick small party".
+### Pillar 1 - Army size and warbands (built)
+- The soldier cap is 6 plus 6 per barracks and 3 per archery range. A training yard and more houses will raise it later.
+- Soldiers are grouped into **warbands** of up to 6. A warband is the unit you command.
+- You pick the warband to bring from the bar or the Journal. Later, two or three warbands go on raids.
 - Warbands you leave behind keep guarding the village at night; warbands you bring are away (the village is weaker).
 
 ### Pillar 2 - Expeditions at three scales
