@@ -49,7 +49,7 @@ const WANT = {
   bowReact: ['standing react small from front', false], bowReact2: ['standing react small from headshot', false],
   die2: ['sword and shield death (2)', false], dieGs2: ['two handed sword death (2)', false], dieBow2: ['standing death forward 01', false],
   // 곡괭이질·도끼질 (medieval knight 모델에 든 모션): 채집 때 쓴다
-  mineMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#1', true], chopMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#0', true],
+  mineMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#1', true], chopMocap: [path.join(__dirname, 'anim_src', 'knight_chop.glb') + '#0', true],
   farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
 // LIB=1: retarget EVERY clip of every folder into one library (names '<folder>_<file>'), written to js/anims_lib.js as MIXAMO_LIB.
