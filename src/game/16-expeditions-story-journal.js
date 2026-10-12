@@ -239,9 +239,11 @@
   let escortWarband = -1;                                                    // 원정에 데려갈 전투단 (-1: 혼자)
   const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function powerOf() {                                       // 마을의 전투력: 병사 + 주인공
-    const sold = npcs.filter(n => n.role !== 'citizen').reduce((a, n) => a + 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n), 0);
+    const val = (n) => 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
+    const all = npcs.filter(n => n.role !== 'citizen'), going = escortWarband >= 0 ? all.filter(n => n.warband === escortWarband) : [];
+    const brought = going.reduce((a, n) => a + val(n), 0), home = all.filter(n => !going.includes(n)).reduce((a, n) => a + val(n), 0) * 0.35;      // 데려가는 전투단은 전부, 마을에 남는 병사는 35%만 (예비대)
     const me = 3 * pl.lvl + 3 * gearDef(playerGear.sword).tier + 2 * gearDef(playerGear.armor).tier;
-    return { sold: Math.round(sold), me: Math.round(me), total: Math.round(sold + me) };
+    return { sold: Math.round(brought + home), brought: Math.round(brought), home: Math.round(home), me: Math.round(me), total: Math.round(brought + home + me) };
   }
   const needOf = (d) => CFG.EXP_NEED[d.id] || 0;
   const nightExpWhy = () => {                                   // 밤 원정이 닫혀 있는 이유 (열려 있으면 '')
@@ -356,7 +358,7 @@
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
       (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') + (story.road ? '<div class="q done"><span>★</span><span>The Wide Road: carry the light to Ashford, Reedhaven and Stonegate</span></div>' : '') + (story.wide ? '<div class="q done"><span>★</span><span>The road is lit from end to end</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
-    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
+    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (warband you bring ${pw.brought} · reserves at home ${pw.home} · you ${pw.me}) - the warband you bring counts fully, soldiers left home only a third. Stronger gear, more soldiers and levels open harder expeditions`; }
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
     if (escortWarband >= 0 && !escortPool().some(n => n.warband === escortWarband)) escortWarband = -1;

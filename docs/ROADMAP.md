@@ -19,15 +19,14 @@
 | drill ground | **Training yard** | building that trains veterans |
 | war map | **Campaign map** | map of realms, holds and castles |
 
-## Status (nf-v62)
-**Done:** warbands (up to 6 soldiers each, six heraldic names and banner colours, saved with the game), a soldier limit (6, plus 6 per barracks and 3 per archery range), and bringing one warband on a journey from the Journal. The soldier card has a button to change a soldier's warband. Outer fields, outer homes and outer towers exist in the village plan.
+## Status (nf-v63)
+**Done:** the warband stage is finished: a bar of warband chips on screen, a warband window to rename, recolour and pick which one goes on a journey, and journey power counted from the warband you bring (soldiers left home count one third). Before that: warbands (up to 6 soldiers each, six heraldic names and banner colours, saved with the game), a soldier limit (6, plus 6 per barracks and 3 per archery range), and bringing one warband on a journey from the Journal. The soldier card has a button to change a soldier's warband. Outer fields, outer homes and outer towers exist in the village plan.
 **Not done:** everything else in this file (banners and the host, orders, campaign map, sieges, realms, provisions).
 
 **Next steps, in order**
-1. Finish the warband stage: a small on-screen bar showing your warbands (tap to select), names and colours you can choose, and journey power counted from the warband you bring instead of all soldiers.
-2. Orders: Forward, Stand firm, Withdraw, Mark the foe, Charge, plus the leader's standard (nearby men fight better).
-3. Raids on bandit camps with two to three warbands (Age 2), then the campaign map and sieges (Age 3).
-4. Realms, provisions, banners and the host, and the final campaign.
+1. Orders: Forward, Stand firm, Withdraw, Mark the foe, Charge, plus the leader's standard (nearby men fight better).
+2. Raids on bandit camps with two to three warbands (Age 2), then the campaign map and sieges (Age 3).
+3. Realms, provisions, banners and the host, and the final campaign.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 

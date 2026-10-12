@@ -2,8 +2,8 @@
   // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
   function isSoldier(n) { return n.role !== 'citizen'; }
   function warbandMembers(i) { return npcs.filter(n => isSoldier(n) && n.warband === i); }
-  function warbandName(i) { return `${CFG.WARBAND.NAMES[i] || 'Band ' + (i + 1)} Warband`; }
-  function warbandColor(i) { return (i >= 0 && CFG.WARBAND.COLORS[i]) || '#9aa0aa'; }
+  function warbandName(i) { return wbi(i).name; }
+  function warbandColor(i) { return i >= 0 ? wbi(i).color : '#9aa0aa'; }
   function assignWarband(n) {                                   // 자리가 있는 첫 전투단로 (모두 찼으면 전투단 없음 -1)
     if (!isSoldier(n)) { n.warband = null; return; }
     n.warband = -1;
@@ -20,3 +20,50 @@
   // 병사 수 상한: 기본 6명 + 병영 1채당 6명 + 사격장 1채당 3명
   function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length; }
   function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length; }
+
+  // ---------- 전투단 이름·색(플레이어가 바꿀 수 있음)과 화면 아래 띠, 전투단 창 ----------
+  let warbandInfo = null;                                       // [{ name, color }] - 저장됨. 처음 쓸 때 기본값으로 만든다
+  const WB_COLORS = ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a', '#d8dce4', '#4a4f5a'];       // 고를 수 있는 깃발 색
+  function wbi(i) {
+    if (!warbandInfo) warbandInfo = CFG.WARBAND.NAMES.map((n, k) => ({ name: `${n} Warband`, color: CFG.WARBAND.COLORS[k] }));
+    return warbandInfo[i] || { name: `Band ${i + 1} Warband`, color: '#9aa0aa' };
+  }
+  const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
+  let wbOpen = -1, wbBarHtml = '';
+  function renderWbBar() {
+    const show = !dead && !exActive && !uiPause;
+    let html = '';
+    if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
+      const m = warbandMembers(i); if (!m.length) continue;
+      const hurt = m.filter(n => n.down).length, sel = escortWarband === i;
+      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}</button>`;
+    }
+    if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
+  }
+  wbBar.addEventListener('pointerdown', e => { const b = e.target.closest('.wbchip'); if (!b) return; e.preventDefault(); e.stopPropagation(); openWbPanel(+b.dataset.wb); });
+  function renderWbPanel() {
+    const i = wbOpen; if (i < 0) return;
+    const m = warbandMembers(i), info = wbi(i);
+    if (!m.length) { closeWbPanel(); return; }
+    const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
+    const rows = m.map((n, k) => `<li data-n="${npcs.indexOf(n)}"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></li>`).join('');
+    wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
+      <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
+      <button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>
+      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. Tap a soldier to open their card and move them to another warband.</small><button id="wbClose">Close</button>`;
+  }
+  function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
+  function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }
+  wbPanel.addEventListener('pointerdown', e => {
+    if (e.target === wbPanel) { closeWbPanel(); return; }
+    const t = e.target, i = wbOpen; if (i < 0) return;
+    if (t.id === 'wbClose') { closeWbPanel(); }
+    else if (t.id === 'wbBring') { escortWarband = escortWarband === i ? -1 : i; renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
+    else if (t.id === 'wbRename') {
+      let v = null; try { v = window.prompt('Name this warband', wbi(i).name); } catch (er) {}
+      if (v !== null) { v = v.trim().slice(0, 22); const def = `${CFG.WARBAND.NAMES[i]} Warband`; wbi(i).name = v || def; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
+    } else if (t.dataset && t.dataset.color) { wbi(i).color = t.dataset.color; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
+    else { const li = t.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) openNpcCard(n); } }
+    e.stopPropagation();
+  });
+  setInterval(renderWbBar, 600);

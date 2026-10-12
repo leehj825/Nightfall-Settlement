@@ -2213,8 +2213,8 @@
   // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
   function isSoldier(n) { return n.role !== 'citizen'; }
   function warbandMembers(i) { return npcs.filter(n => isSoldier(n) && n.warband === i); }
-  function warbandName(i) { return `${CFG.WARBAND.NAMES[i] || 'Band ' + (i + 1)} Warband`; }
-  function warbandColor(i) { return (i >= 0 && CFG.WARBAND.COLORS[i]) || '#9aa0aa'; }
+  function warbandName(i) { return wbi(i).name; }
+  function warbandColor(i) { return i >= 0 ? wbi(i).color : '#9aa0aa'; }
   function assignWarband(n) {                                   // 자리가 있는 첫 전투단로 (모두 찼으면 전투단 없음 -1)
     if (!isSoldier(n)) { n.warband = null; return; }
     n.warband = -1;
@@ -2231,6 +2231,53 @@
   // 병사 수 상한: 기본 6명 + 병영 1채당 6명 + 사격장 1채당 3명
   function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length; }
   function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length; }
+
+  // ---------- 전투단 이름·색(플레이어가 바꿀 수 있음)과 화면 아래 띠, 전투단 창 ----------
+  let warbandInfo = null;                                       // [{ name, color }] - 저장됨. 처음 쓸 때 기본값으로 만든다
+  const WB_COLORS = ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a', '#d8dce4', '#4a4f5a'];       // 고를 수 있는 깃발 색
+  function wbi(i) {
+    if (!warbandInfo) warbandInfo = CFG.WARBAND.NAMES.map((n, k) => ({ name: `${n} Warband`, color: CFG.WARBAND.COLORS[k] }));
+    return warbandInfo[i] || { name: `Band ${i + 1} Warband`, color: '#9aa0aa' };
+  }
+  const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
+  let wbOpen = -1, wbBarHtml = '';
+  function renderWbBar() {
+    const show = !dead && !exActive && !uiPause;
+    let html = '';
+    if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
+      const m = warbandMembers(i); if (!m.length) continue;
+      const hurt = m.filter(n => n.down).length, sel = escortWarband === i;
+      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}</button>`;
+    }
+    if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
+  }
+  wbBar.addEventListener('pointerdown', e => { const b = e.target.closest('.wbchip'); if (!b) return; e.preventDefault(); e.stopPropagation(); openWbPanel(+b.dataset.wb); });
+  function renderWbPanel() {
+    const i = wbOpen; if (i < 0) return;
+    const m = warbandMembers(i), info = wbi(i);
+    if (!m.length) { closeWbPanel(); return; }
+    const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
+    const rows = m.map((n, k) => `<li data-n="${npcs.indexOf(n)}"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></li>`).join('');
+    wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
+      <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
+      <button id="wbBring" class="${escortWarband === i ? 'on' : ''}">${escortWarband === i ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>
+      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. Tap a soldier to open their card and move them to another warband.</small><button id="wbClose">Close</button>`;
+  }
+  function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
+  function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }
+  wbPanel.addEventListener('pointerdown', e => {
+    if (e.target === wbPanel) { closeWbPanel(); return; }
+    const t = e.target, i = wbOpen; if (i < 0) return;
+    if (t.id === 'wbClose') { closeWbPanel(); }
+    else if (t.id === 'wbBring') { escortWarband = escortWarband === i ? -1 : i; renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
+    else if (t.id === 'wbRename') {
+      let v = null; try { v = window.prompt('Name this warband', wbi(i).name); } catch (er) {}
+      if (v !== null) { v = v.trim().slice(0, 22); const def = `${CFG.WARBAND.NAMES[i]} Warband`; wbi(i).name = v || def; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
+    } else if (t.dataset && t.dataset.color) { wbi(i).color = t.dataset.color; renderWbPanel(); wbBarHtml = ''; renderWbBar(); for (const n of warbandMembers(i)) n.labelText = ''; }
+    else { const li = t.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) openNpcCard(n); } }
+    e.stopPropagation();
+  });
+  setInterval(renderWbBar, 600);
   // ---------- 아침 이벤트: 선택에 따라 득실이 갈리는 짧은 사건 (창이 열려 있는 동안 시간이 멈춘다) ----------
   let eventOpen = false, pendingRaiders = 0; const eventQueue = [];
   const evEl = document.getElementById('eventPanel'), evBtns = document.getElementById('evBtns');
@@ -3612,7 +3659,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -3675,6 +3722,7 @@
     for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
+    if (sn.wbInfo) warbandInfo = sn.wbInfo.map(x => ({ ...x }));
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
       n.cls = d.cls || 'sword'; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
@@ -4116,9 +4164,11 @@
   let escortWarband = -1;                                                    // 원정에 데려갈 전투단 (-1: 혼자)
   const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function powerOf() {                                       // 마을의 전투력: 병사 + 주인공
-    const sold = npcs.filter(n => n.role !== 'citizen').reduce((a, n) => a + 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n), 0);
+    const val = (n) => 2 + 2 * gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
+    const all = npcs.filter(n => n.role !== 'citizen'), going = escortWarband >= 0 ? all.filter(n => n.warband === escortWarband) : [];
+    const brought = going.reduce((a, n) => a + val(n), 0), home = all.filter(n => !going.includes(n)).reduce((a, n) => a + val(n), 0) * 0.35;      // 데려가는 전투단은 전부, 마을에 남는 병사는 35%만 (예비대)
     const me = 3 * pl.lvl + 3 * gearDef(playerGear.sword).tier + 2 * gearDef(playerGear.armor).tier;
-    return { sold: Math.round(sold), me: Math.round(me), total: Math.round(sold + me) };
+    return { sold: Math.round(brought + home), brought: Math.round(brought), home: Math.round(home), me: Math.round(me), total: Math.round(brought + home + me) };
   }
   const needOf = (d) => CFG.EXP_NEED[d.id] || 0;
   const nightExpWhy = () => {                                   // 밤 원정이 닫혀 있는 이유 (열려 있으면 '')
@@ -4233,7 +4283,7 @@
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
       (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') + (story.road ? '<div class="q done"><span>★</span><span>The Wide Road: carry the light to Ashford, Reedhaven and Stonegate</span></div>' : '') + (story.wide ? '<div class="q done"><span>★</span><span>The road is lit from end to end</span></div>' : '') +
       story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
-    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (soldiers ${pw.sold} · you ${pw.me}) - stronger gear, more soldiers and levels open harder expeditions`; }
+    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (warband you bring ${pw.brought} · reserves at home ${pw.home} · you ${pw.me}) - the warband you bring counts fully, soldiers left home only a third. Stronger gear, more soldiers and levels open harder expeditions`; }
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
     document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
     if (escortWarband >= 0 && !escortPool().some(n => n.warband === escortWarband)) escortWarband = -1;

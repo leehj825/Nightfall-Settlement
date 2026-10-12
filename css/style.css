@@ -301,3 +301,17 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 
 #xhair { position: fixed; left: 0; top: 0; width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none; z-index: 4; display: none; opacity: .72; will-change: transform; } #xhair.lock { opacity: .95; filter: drop-shadow(0 0 3px #ff3a2a) hue-rotate(-30deg) saturate(3); } #xhair.lock path { stroke: #ff6a5a; }
 .btn.held { transform: translateY(3px); box-shadow: 0 1px 0 #a8480f; filter: brightness(1.15); }
+
+/* 전투단 띠(화면 아래)와 전투단 창 */
+#wbBar { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); display: none; gap: 6px; z-index: 9; max-width: 56vw; flex-wrap: wrap; justify-content: center; }
+.wbchip { position: relative; display: flex; align-items: center; gap: 5px; padding: 5px 9px 5px 6px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25); background: rgba(24,18,12,.82); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.wbchip i { width: 14px; height: 18px; background: var(--c); border-radius: 2px 2px 8px 8px; box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+.wbchip.sel { border-color: var(--c); box-shadow: 0 0 8px var(--c); }
+.wbchip em { font-style: normal; color: var(--c); font-size: 15px; margin-left: 1px; }
+#wbPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.35); z-index: 17; padding: 14px; }
+#wbPanel .wcard { background: rgba(28,22,16,.96); border: 2px solid #c8923a; border-radius: 16px; padding: 14px 18px; width: min(380px, 100%); max-height: 92vh; overflow: auto; color: #fff; text-align: center; }
+#wbPanel .whead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; } #wbPanel .whead i { width: 18px; height: 24px; border-radius: 3px 3px 10px 10px; box-shadow: 0 0 0 1px rgba(0,0,0,.5); } #wbPanel .whead b { flex: 1; text-align: left; font-size: 19px; color: #ffe7a8; }
+#wbPanel button { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: 10px; border: 0; cursor: pointer; color: #3a1408; background: linear-gradient(#ffd27a, #ff9a3c); box-shadow: 0 2px 0 #a8480f; margin: 6px 3px 0; }
+#wbPanel .wsw { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; } #wbPanel button.wbsw { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); margin: 0; box-shadow: none; } #wbPanel button.wbsw.on { border-color: #fff; box-shadow: 0 0 8px #fff; }
+#wbPanel .wlist { list-style: none; margin: 4px 0; padding: 0; text-align: left; font-size: 13px; } #wbPanel .wlist li { padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.07); margin: 3px 0; cursor: pointer; } #wbPanel .wlist li span { float: right; color: #9fd0ff; }
+#wbPanel #wbBring.on { background: linear-gradient(#a6e6a0, #5fc060); box-shadow: 0 2px 0 #2c7a30; } #wbPanel small { display: block; margin-top: 8px; color: #cfc7b8; font-size: 12px; }

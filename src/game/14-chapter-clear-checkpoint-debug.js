@@ -43,7 +43,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -106,6 +106,7 @@
     for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
     for (const b of sn.bps) { if (b.bkind) addBuildingBlueprint(b.bkind, b.x, b.z); else addBlueprint(b.res, b.x, b.z, b.rot); }
     for (const g of sn.gates) { addGate(g.x, g.z, g.r, g.nx, g.nz); if (g.lv > 1) setGateLevel(gateWaypoints[gateWaypoints.length - 1], g.lv); }
+    if (sn.wbInfo) warbandInfo = sn.wbInfo.map(x => ({ ...x }));
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
       n.cls = d.cls || 'sword'; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
