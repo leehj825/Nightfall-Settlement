@@ -11,6 +11,11 @@ global.THREE = require(path.join(T, 'build/three.js')); global.window = global; 
 global.fflate = (() => { const m = { exports: {} }; new Function('module', 'exports', fs.readFileSync(path.join(T, 'examples/js/libs/fflate.min.js'), 'utf8') + '\n;return module.exports;')(m, m.exports); return m.exports; })();
 vm.runInThisContext(fs.readFileSync(path.join(T, 'examples/js/loaders/FBXLoader.js'), 'utf8'));
 const loader = new THREE.FBXLoader();
+vm.runInThisContext(fs.readFileSync(path.join(T, 'examples/js/loaders/GLTFLoader.js'), 'utf8'));
+// .glb 파일(예: 곡괭이·도끼 모션이 든 모델)도 읽는다. 'file.glb#N' 은 그 파일의 N번째 애니메이션. 파일은 main 이 시작되기 전에 미리 읽어 둔다
+const glbCache = {};
+THREE.TextureLoader.prototype.load = function (u, onLoad) { const t = new THREE.Texture(); if (onLoad) onLoad(t); return t; };       // 모션만 필요하므로 텍스처는 읽지 않는다
+const preloadGlb = (list) => Promise.all([...new Set(list)].map(spec => new Promise((res, rej) => { const b = fs.readFileSync(spec.replace(/#\d+$/, '')); new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', g => { glbCache[spec] = g; res(); }, rej); })));        // 클립마다 따로 읽어 기준 자세(T자세)가 섞이지 않게 한다
 const load = (f) => { const b = fs.readFileSync(f); return loader.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), ''); };
 // wanted clips: output name -> [file name (without .fbx), loop?]
 const WANT = {
@@ -43,6 +48,8 @@ const WANT = {
   bowBlock: ['standing block', false], ssImpact: ['sword and shield impact', false], ssImpact2: ['sword and shield impact (2)', false], gsImpact: ['great sword impact', false], gsImpact2: ['great sword impact (4)', false],
   bowReact: ['standing react small from front', false], bowReact2: ['standing react small from headshot', false],
   die2: ['sword and shield death (2)', false], dieGs2: ['two handed sword death (2)', false], dieBow2: ['standing death forward 01', false],
+  // 곡괭이질·도끼질 (medieval knight 모델에 든 모션): 채집 때 쓴다
+  mineMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#1', true], chopMocap: [path.join(__dirname, 'anim_src', 'knight_tools.glb') + '#0', true],
   farmPlant: ['plant a plant', true, 84], farmPull: ['pull plant', true, 64], farmWater: ['watering', true, 72], farmPick: ['pick fruit', true, 90],
 };
 // LIB=1: retarget EVERY clip of every folder into one library (names '<folder>_<file>'), written to js/anims_lib.js as MIXAMO_LIB.
@@ -55,19 +62,21 @@ if (LIB) {
 if (process.env.WANT_FILE) { for (const k of Object.keys(WANT)) delete WANT[k]; Object.assign(WANT, JSON.parse(fs.readFileSync(process.env.WANT_FILE, 'utf8'))); }       // 미리보기용: 필요한 클립만 따로 변환
 const MAXF = 48;
 const V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
-const byName = (o) => { const m = {}; o.traverse(x => { if (x.isBone) m[x.name.replace('mixamorig', '')] = x; }); return m; };
+const byName = (o) => { const m = {}; o.traverse(x => { if (x.isBone) m[x.name.replace(/^mixamorig:?/, '')] = x; }); return m; };
 // 좌우 반전: Mixamo 캐릭터는 오른손(-x)에 검을 쥔다. 이 게임은 검이 'R'(+x) 손에 있으므로 동작 전체를 x축 기준으로 뒤집는다.
 let MIRROR = true;
 const wq = (b) => { const q = b.getWorldQuaternion(new Q()); return MIRROR ? new Q(q.x, -q.y, -q.z, q.w) : q; }, wp = (b) => { const p = b.getWorldPosition(new V()); if (MIRROR) p.x = -p.x; return p; };
 const UP = new V(0, -1, 0);
 function solveLimb(parentW, dWorld) { const dl = dWorld.clone().applyQuaternion(parentW.clone().invert()); return new Q().setFromUnitVectors(UP, dl.normalize()); }
 const eul = (q) => { const e = new E().setFromQuaternion(q, 'XYZ'); return [+e.x.toFixed(3), +e.y.toFixed(3), +e.z.toFixed(3)]; };
+async function main() {
 const out = {};
 for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
-  let fp = null; if (path.isAbsolute(file)) { if (fs.existsSync(file + '.fbx')) fp = file + '.fbx'; } else for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
+  const isGlb = /\.glb(#\d+)?$/i.test(file);
+  let fp = null; if (isGlb) fp = file; else if (path.isAbsolute(file)) { if (fs.existsSync(file + '.fbx')) fp = file + '.fbx'; } else for (const d of dirs) { const p = path.join(d, file + '.fbx'); if (fs.existsSync(p)) fp = p; }
   if (!fp) { console.warn('missing', file); continue; }
   const bow = /^bow/.test(name); MIRROR = true;           // 활 동작은 뒤집지 않고 Mixamo 오른팔(활을 뻗는 팔)이 게임의 L(활을 드는 왼손 쪽)을 움직이게 한다
-  let obj, B, clip; try { obj = load(fp); B = byName(obj); clip = obj.animations[0]; if (!clip || !B.Hips) throw new Error('no clip'); } catch (e) { console.warn('skipped (unreadable)', file, e.message); continue; }
+  let obj, B, clip; try { if (isGlb) { const g = glbCache[fp]; obj = g.scene; clip = g.animations[+(fp.split('#')[1] || 0)]; } else { obj = load(fp); clip = obj.animations[0]; } B = byName(obj); if (!clip || !B.Hips) throw new Error('no clip'); } catch (e) { console.warn('skipped (unreadable)', file, e.message); continue; }
   obj.updateMatrixWorld(true);
   const rest = {}; for (const k of ['Hips', 'Spine1', 'Head', 'LeftHand', 'RightHand']) rest[k] = wq(B[k]);
   const swordHand = B.RightHand, hv = [], brawl = /brawl/.test(name), effs = brawl ? [B.RightHand, B.LeftHand, B.RightFoot, B.LeftFoot] : [swordHand], lastE = [];             // 검 손(Mixamo 오른손)의 속도가 가장 큰 순간 = 타격 순간
@@ -109,3 +118,6 @@ for (const [name, [file, loop, maxf]] of Object.entries(WANT)) {
 const js = '// Generated by tools/retarget_mixamo.js from Mixamo animation packs (Locomotion Pack, Lite Sword and Shield Pack). Do not edit by hand.\nconst ' + (LIB ? 'MIXAMO_LIB' : 'MIXAMO_CLIPS') + ' = ' + JSON.stringify(out) + ';\n';
 fs.writeFileSync(process.env.OUT_FILE || path.join(__dirname, '..', 'js', LIB ? 'anims_lib.js' : 'anims.js'), js);
 console.log('wrote js/anims.js', (js.length / 1024).toFixed(0) + ' KB');
+}
+const glbFiles = Object.values(WANT).map(w => w[0]).filter(f => /\.glb(#\d+)?$/i.test(f));
+preloadGlb(glbFiles).then(main).catch(e => { console.error(e); process.exit(1); });

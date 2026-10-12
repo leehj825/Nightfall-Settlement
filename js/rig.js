@@ -626,7 +626,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // moveDir: f 앞 / b 뒤 / p,n 옆걸음 (p: +x쪽, n: -x쪽, 정면 +z 기준)
     _res(name) {
       const rig = this.rig, md = this.moveDir || 'f';
-      if (name === 'gather') { const k = rig.tool === 'axe' ? 'gatherAxe' : 'gatherPick'; if (this.acts[k]) return k; return name; }
+      if (name === 'gather') { const k = rig.tool === 'axe' ? (this.acts.chopMocap ? 'chopMocap' : 'gatherAxe') : (this.acts.mineMocap ? 'mineMocap' : 'gatherPick'); if (this.acts[k]) return k; return name; }       // 모션캡처(곡괭이질·도끼질) 우선
       if (name === 'farm') { const k = FARM_CLIPS[(this.farmI || 0) % FARM_CLIPS.length]; if (this.acts[k]) return k; return this.acts.gatherPick ? 'gatherPick' : 'gather'; }
       const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
@@ -732,7 +732,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt);
-      this._spear(dt); this._tool(); this._gsArm(dt);
+      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt);
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세
@@ -773,6 +773,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         R.root.updateMatrixWorld(true); gm.updateMatrixWorld(true); hit();
       }
       this._ik2(sh, el, V.T, V.poleL, V.qHang, V.qHangE, k, V);
+    }
+    // 곡괭이·도끼: 모션캡처는 두 손으로 자루를 쥔다. 왼손은 캡처된 위치에서 가장 가까운 자루 위의 점을 잡도록 팔을 IK 로 맞춘다
+    _toolArm() {
+      const R = this.rig, m = R.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null);
+      if (!t || !(this.baseName === 'gather') || (this.resName !== 'mineMocap' && this.resName !== 'chopMocap') || !R.shoulderL || this.dead) return;
+      const V = this._tav || (this._tav = { S: new THREE.Vector3(), d: new THREE.Vector3(), p: new THREE.Vector3(), v: new THREE.Vector3(), O: new THREE.Vector3(), D: new THREE.Vector3(), H: new THREE.Vector3(), T: new THREE.Vector3(), pole: new THREE.Vector3(), q: new THREE.Quaternion(),
+        qa: new THREE.Quaternion(), qi: new THREE.Quaternion(), qe: new THREE.Quaternion(), E: new THREE.Vector3(), dn: new THREE.Vector3(0, -1, 0), b1: new THREE.Quaternion(), b2: new THREE.Quaternion() });
+      R.root.updateMatrixWorld(true);
+      t.getWorldPosition(V.O); V.D.set(0, 1, 0).applyQuaternion(t.getWorldQuaternion(V.q)).normalize();        // 자루 방향(손에서 머리 쪽)
+      R.handL.getWorldPosition(V.H);
+      const along = Math.max(0.12, Math.min(0.5, V.v.copy(V.H).sub(V.O).dot(V.D)));
+      V.T.copy(V.O).addScaledVector(V.D, along);
+      V.pole.set(-0.55, -0.8, -0.25).applyQuaternion(R.root.getWorldQuaternion(V.qa));
+      V.b1.copy(R.shoulderL.quaternion); V.b2.copy(R.elbowL.quaternion);
+      this._ik2(R.shoulderL, R.elbowL, V.T, V.pole, V.b1, V.b2, 1, V);
     }
     _tool() {                                   // 곡괭이·도끼: 자루는 어깨→손 방향을 따르고, 머리(날)의 방향은 휘두르는 면에 맞춘다
       const m = this.rig.meshes, t = m && (m.pick && m.pick.visible ? m.pick : m.axe && m.axe.visible ? m.axe : null); if (!t || !t.userData.inner) return;
