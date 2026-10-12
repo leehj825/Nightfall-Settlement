@@ -328,3 +328,4 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #wbPanel .wbact { font-size: 11.5px; padding: 5px 8px; margin: 2px 0 0; border-radius: 8px; box-shadow: 0 2px 0 #a8480f; }
 #swapBtn { min-width: 62px; min-height: 32px; padding: 3px 8px; }
 .wbmark { display: flex; align-items: center; padding: 5px 10px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25); background: rgba(60,16,12,.85); color: #ffb0a0; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; } .wbmark.on { border-color: #ff3a2a; color: #fff; box-shadow: 0 0 8px #ff3a2a; }
+  #smithPanel .shead { margin: 12px 2px 2px; font-size: 13px; font-weight: 700; color: #ffd27a; border-bottom: 1px solid rgba(255,210,122,.3); }

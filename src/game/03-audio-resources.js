@@ -29,13 +29,21 @@
   const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword', blocking = false, blockBtn = false;
-  const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' };
+  const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' };
   const gearDef = (id) => CFG.GEAR[id];
+  // 영웅의 무기: 대검과 창은 대장간에서 각자의 장비를 따로 키운다 (옛 저장은 칼과 같은 등급으로 이어받는다)
+  const weaponDef = (m) => gearDef(m === 'great' ? (playerGear.great || 'great_basic') : m === 'spear' ? (playerGear.spear || 'spear_basic') : playerGear.sword);
+  function gearAtTier(slot, tier) { let best = null; for (const id in CFG.GEAR) { const d = CFG.GEAR[id]; if (d.slot === slot && d.tier <= tier && (!best || d.tier > best.tier)) best = d; } return best ? best.id : null; }
+  const bestPlayerTier = () => Math.max(gearDef(playerGear.sword).tier, weaponDef('great').tier, weaponDef('spear').tier);
+  function soldierWeaponDef(n) {                               // 병사: 직업에 맞는 장비와 칼 중 더 좋은 것
+    const slot = n.cls === 'greatsword' ? 'great' : n.cls === 'spear' ? 'spear' : 'sword', a = gearDef(n.gear.sword), b = slot !== 'sword' && n.gear[slot] ? gearDef(n.gear[slot]) : null;
+    return b && b.tier > a.tier ? b : a;
+  }
   function applyPlayerGear() {
     const vis = weaponMode;
     playerRig.brawl = vis === 'none'; playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
-    playerRig.setGear('great', { ...gearDef(playerGear.sword), great: true });
-    playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = gearDef(playerGear.sword); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
+    playerRig.setGear('great', { ...weaponDef('great'), slot: 'sword', great: true });
+    playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = weaponDef('spear'); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(gearDef(playerGear.armor));
     playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
     playerRig.hold(vis);
   }

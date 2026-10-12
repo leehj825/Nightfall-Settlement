@@ -138,10 +138,11 @@
     let i = 0;
     for (const id in sm.userData.stock) {
       for (let k = 0; k < Math.min(4, sm.userData.stock[id]); k++, i++) {
-        const d = gearDef(id), m = d.slot === 'sword' ? makeSwordMesh(d) : d.slot === 'bow' ? makeBowMesh(d) : makeArmorIcon(d);
+        const d = gearDef(id), m = d.slot === 'sword' ? makeSwordMesh(d) : d.slot === 'great' ? makeSwordMesh({ ...d, slot: 'sword', great: true }) : d.slot === 'spear' ? makeSpearMesh({ ...d, id: 'spear_' + id }) : d.slot === 'bow' ? makeBowMesh(d) : makeArmorIcon(d);
         m.scale.setScalar(0.8); m.position.set(0.12, 1.25, -1.0 + (i % 5) * 0.5);
         if (d.slot === 'armor') { m.position.y = 1.0; m.rotation.y = Math.PI / 2; }
-        else if (d.slot === 'sword') { m.rotation.set(Math.PI / 2, 0, 0); m.position.y = 1.4; }       // 칼날이 아래로 걸리도록
+        else if (d.slot === 'sword' || d.slot === 'great') { m.rotation.set(Math.PI / 2, 0, 0); m.position.y = 1.4; }
+        else if (d.slot === 'spear') { m.rotation.set(Math.PI / 2, 0, 0); m.position.y = 1.55; m.scale.setScalar(0.6); }       // 칼날이 아래로 걸리도록
         else { m.rotation.y = Math.PI / 2; m.position.y = 0.85; }                                // 활은 세워서 (불룩한 쪽이 바깥)
         grp.add(m);
       }

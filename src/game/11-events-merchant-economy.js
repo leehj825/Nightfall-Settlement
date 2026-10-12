@@ -456,7 +456,7 @@
     return d < 1.0 ? 'At home' : 'Heading home';
   }
   // 병사: 대장간 선반에 완성된 상위 장비가 있으면 걸어가서 직접 수령(Equip)한다
-  function returnGear(n) { if (n.carryGear) { const sm = builtBuildings('smith')[0]; if (sm) { sm.userData.stock[n.carryGear]++; refreshRack(sm); } n.carryGear = null; } }
+  function returnGear(n) { if (n.carryGear) { const sm = builtBuildings('smith')[0]; if (sm) { sm.userData.stock[n.carryGear] = (sm.userData.stock[n.carryGear] || 0) + 1; refreshRack(sm); } n.carryGear = null; } }
   function gearFetchStep(dt) {
     if (npc.role === 'citizen') return false;
     const sm = builtBuildings('smith')[0];
@@ -464,8 +464,9 @@
     if (!npc.carryGear) {
       let best = null, bt = -1;
       for (const id in sm.userData.stock) {
-        const d = gearDef(id), slotOk = d.slot === 'armor' || d.slot === (npc.role === 'melee' ? 'sword' : 'bow');
-        if (sm.userData.stock[id] > 0 && slotOk && d.tier > gearDef(npc.gear[d.slot]).tier && d.tier > bt) { best = id; bt = d.tier; }
+        const d = gearDef(id), cs = npc.cls === 'greatsword' ? 'great' : npc.cls === 'spear' ? 'spear' : 'sword', slotOk = d.slot === 'armor' || (npc.role === 'melee' ? (d.slot === 'sword' || d.slot === cs) : d.slot === 'bow');
+        const have = d.slot === 'armor' ? gearDef(npc.gear.armor).tier : npc.role === 'melee' ? soldierWeaponDef(npc).tier : gearDef(npc.gear.bow).tier;
+        if (sm.userData.stock[id] > 0 && slotOk && d.tier > have && d.tier > bt) { best = id; bt = d.tier; }
       }
       if (!best) return false;
       sm.userData.stock[best]--; npc.carryGear = best; refreshRack(sm);          // 수령 예약 (다른 병사와 중복 방지)
