@@ -706,7 +706,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       if (name === 'attackSpear' && this.acts.spearSlash1 && this.acts.spearStab) {                                              // 창: 찌르기 → 휘두르기(검 동작) → 온몸을 실은 돌진 찌르기
         this.spI = ((this.spI || 0) % 3) + 1; const v = ['stab', 'stab', 'lunge'][this.spI - 1]; this.variant = v; this.heavy = v === 'lunge';
-        name = v === 'stab' ? 'spearStab' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : 1.1);
+        name = v === 'stab' ? 'spearStab' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : 0.6);
       }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
