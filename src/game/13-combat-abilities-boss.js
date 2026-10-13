@@ -16,7 +16,7 @@
       return;
     }
     if (weaponMode === 'spear') {                                      // 창: 좁은 부채꼴, 긴 사거리, 느린 연타. 줄지어 선 적을 한꺼번에 꿰뚫는다
-      playerAnim.once('attackSpear'); const dur = playerAnim.shot.dur, slash = playerAnim.variant === 'slash'; atkCd = Math.max(ATK_CD * 1.25, dur * 0.9); atkLock = dur * 0.9; Snd.play('swing');
+      playerAnim.once('attackSpear'); const dur = playerAnim.shot.dur, slash = playerAnim.variant === 'slash', lunge = playerAnim.variant === 'lunge'; atkCd = Math.max(ATK_CD * 1.25, dur * 0.9); atkLock = dur * 0.9; Snd.play('swing');
       later(playerAnim.hitIn, () => {
         if (dead) return; const base = weaponDef('spear'), reach = 1 + 0.08 * pl.st.spear + 0.1 * pl.st.lunge, dm = base.dmg * pDmg() * (1 + 0.2 * pl.st.spear);
         atkT = SLASH_LIFE;
@@ -26,9 +26,10 @@
           if (hits >= 2) floatText(`SWEEP x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
           return;
         }
-        const sd = { ...base, dmg: dm * 1.25 * (1 + 0.12 * pl.st.lunge), half: Math.PI / 10 * (1 + 0.12 * pl.st.impale), stun: 0.25 * pl.st.impale, rangeMul: 1.9 * reach, slash: (base.slash || 1) * 1.6 };          // 찌르기: 좁고 아주 긴 사거리
+        const sd = lunge ? { ...base, dmg: dm * 2.3 * (1 + 0.12 * pl.st.lunge), half: Math.PI / 8 * (1 + 0.12 * pl.st.impale), stun: 0.6 + 0.25 * pl.st.impale, rangeMul: 2.3 * reach, slash: (base.slash || 1) * 2.0, tier: 1 }       // 마지막 돌진 찌르기: 온몸을 실어 더 아프고 더 멀리, 기절까지
+          : { ...base, dmg: dm * 1.25 * (1 + 0.12 * pl.st.lunge), half: Math.PI / 10 * (1 + 0.12 * pl.st.impale), stun: 0.25 * pl.st.impale, rangeMul: 1.9 * reach, slash: (base.slash || 1) * 1.6 };          // 찌르기: 좁고 아주 긴 사거리
         const sa = playerAnim.spearAim(), ang = sa === null ? facing : sa;       // 찌르기 판정은 보이는 창끝이 가리키는 방향으로
-        shake = 0.2; spawnThrust(player.position.x, player.position.z, ang, ATK_RANGE * sd.rangeMul);
+        shake = lunge ? 0.55 : 0.2; spawnThrust(player.position.x, player.position.z, ang, ATK_RANGE * sd.rangeMul);
         const hits = sectorHit(player.position.x, player.position.z, ang, true, sd);
         if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       });
