@@ -54,11 +54,13 @@
     for (let k = 0; k < C.towers; k++) {                            // 감시탑: 네 모서리 (망루 위 궁수 배치는 다음 단계)
       const a = Math.PI / 4 + k * (Math.PI * 2 / C.towers), g = new THREE.Group();
       for (const [lx, lz] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 5.2, 6), campWood); leg.position.set(lx, 2.6, lz); g.add(leg); }
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.25, 2.6), campWood); deck.position.y = 5.2;
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 2.6), campDark); rail.position.y = 5.6; rail.scale.set(1, 1, 1);
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.3, 4), campTent[1]); roof.position.y = 7; roof.rotation.y = Math.PI / 4;
-      g.add(deck, rail, roof); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
-      g.position.set(cx + Math.cos(a) * (R - 0.2), 0, cz + Math.sin(a) * (R - 0.2)); g.userData = { type: 'campTower', radius: 1.7 }; exAdd(g, true); towers.push(g); solids.push(g);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.25, 3.4), campWood); deck.position.y = 5.2;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(2.9, 1.4, 4), campTent[1]); roof.position.y = 8.5; roof.rotation.y = Math.PI / 4;
+      g.add(deck, roof);
+      for (const [lx, lz] of [[-1.55, -1.55], [1.55, -1.55], [-1.55, 1.55], [1.55, 1.55]]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3, 5), campWood); post.position.set(lx, 6.7, lz); g.add(post); }      // 지붕 기둥 (난간은 낮게: 궁수가 보이고 쏜다)
+      for (const [bx, bz, sx, sz] of [[0, -1.65, 3.4, 0.1], [0, 1.65, 3.4, 0.1], [-1.65, 0, 0.1, 3.4], [1.65, 0, 0.1, 3.4]]) { const rl = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.4, sz), campDark); rl.position.set(bx, 5.55, bz); g.add(rl); }
+      g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      g.position.set(cx + Math.cos(a) * (R - 0.2), 0, cz + Math.sin(a) * (R - 0.2)); g.userData = { type: 'campTower', radius: 2.1 }; exAdd(g, true); towers.push(g); solids.push(g);
       inner.push({ x: g.position.x, z: g.position.z, r: 3 });
     }
     for (let k = 0; k < C.tents; k++) {                             // 천막: 안쪽 둘레에 빙 둘러
@@ -125,7 +127,7 @@
     for (const kind of foeList) { const inside = exCamp && fi++ % 4 !== 3, p = inside ? innerSpot(1.4) : spot(2.5); spawnEnemy(kind, p); if (inside) { enemies[enemies.length - 1].userData.camp = true; enemies[enemies.length - 1].userData.home = { x: p.x, z: p.z }; } if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); addGlow(enemies[enemies.length - 1], FOE_GLOW[d.faction] || 0xff6a4a, 1.7, 1.2); }
     if (exCamp && d.camp.towerArchers) for (let k = 0; k < d.camp.towerArchers; k++) {          // 망루 위 궁수: 마주 보는 탑 둘에 올라간다
       const t = exCamp.towers[Math.floor(k * exCamp.towers.length / d.camp.towerArchers) % exCamp.towers.length]; spawnEnemy('archer', { x: t.position.x, z: t.position.z });
-      const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 5.4; e.position.y = 5.4; u.speed = 0;
+      const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 5.33; e.position.y = 5.33; u.speed = 0;
     }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
       const p = exCamp ? { x: exCamp.cx - 2, z: exCamp.cz + exCamp.R * 0.3 } : spot(4); spawnEnemy(d.guardian.kind, p);

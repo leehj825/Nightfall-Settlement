@@ -181,13 +181,14 @@
     later(e.userData.anim.hitIn ?? 0.3, () => {
       if (e.userData.sinking || !enemies.includes(e)) return;
       const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
-      m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
-      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 }); sfxAt('bow', sx, sz);
+      const sy = e.position.y + 0.9, td = Math.hypot(tx - sx, tz - sz), vy = sy > 2.5 ? (0.9 - sy) / Math.max(0.3, td / 11) : 0;       // 탑 위 궁수: 화살이 표적 높이로 내려온다
+      m.rotation.set(Math.PI / 2 + Math.atan2(-vy, 11), a, 0, 'YXZ'); m.position.set(sx, sy, sz); scene.add(m);
+      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, vy, life: 1.6 }); sfxAt('bow', sx, sz);
     });
   }
   function updateEnemyArrows(dt) {
     for (let i = enemyArrows.length - 1; i >= 0; i--) {
-      const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; a.life -= dt;
+      const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; if (a.vy) p.y = Math.max(0.1, p.y + a.vy * dt); a.life -= dt;
       let hit = false;
       if (!dead && invincibleT <= 0 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < 0.75) { damage(CFG.ENEMY_CONTACT_DMG * 0.8); hurtCd = Math.max(hurtCd, 0.3); hit = true; }
       if (!hit) for (const n of npcs) if (!n.down && Math.hypot(n.position.x - p.x, n.position.z - p.z) < 0.7) { if (n.escort) damageEscort(n, CFG.ENEMY_CONTACT_DMG * 0.8); else damageNpc(n, CFG.ENEMY_CONTACT_DMG * 0.8); hit = true; break; }

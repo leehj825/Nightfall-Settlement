@@ -79,7 +79,7 @@
   const arrows = [];
   const arrowGeo = new THREE.CylinderGeometry(0.045, 0.045, 1.6, 6), arrowTipGeo = new THREE.ConeGeometry(0.1, 0.28, 5), arrowTipMat = new THREE.MeshBasicMaterial({ color: 0xd8dde6 });
   const arrowMat = new THREE.MeshBasicMaterial({ color: 0x8a5a2b });
-  function fireArrow(x, z, ang, byPlayer = false, dmg = null, y = 1.0) {
+  function fireArrow(x, z, ang, byPlayer = false, dmg = null, y = 1.0, tdist = 0) {
     const g = new THREE.Group();
     const m = new THREE.Mesh(arrowGeo, arrowMat);
     m.rotation.x = Math.PI / 2;                     // 원기둥 축을 진행(+Z) 방향으로 눕힘
@@ -89,6 +89,7 @@
     g.position.set(x + sx * 0.7, y, z + sz * 0.7);
     g.rotation.y = ang;
     g.userData = { vx: sx * CFG.ARROW_SPEED, vz: sz * CFG.ARROW_SPEED, dist: 0, byPlayer, dmg };
+    if (tdist > 0 && y > 2) { const vy = (0.9 - y) / Math.max(0.2, tdist / CFG.ARROW_SPEED); g.userData.vy = vy; g.rotation.order = 'YXZ'; g.rotation.x = Math.atan2(-vy, CFG.ARROW_SPEED); }       // 높은 곳(탑)에서 쏜 화살은 표적을 향해 내려꽂힌다
     scene.add(g);
     arrows.push(g);
   }
@@ -141,7 +142,7 @@
         scene.remove(a); arrows.splice(arrows.indexOf(a), 1);
         continue;
       }
-      a.position.x += dx; a.position.z += dz;
+      a.position.x += dx; a.position.z += dz; if (u.vy) { a.position.y += u.vy * dt; if (a.position.y < 0.05) { scene.remove(a); arrows.splice(arrows.indexOf(a), 1); continue; } }
       u.dist += len;
       if (u.dist >= CFG.ARROW_RANGE) { scene.remove(a); arrows.splice(arrows.indexOf(a), 1); }   // 사거리 초과 시 소멸
     }

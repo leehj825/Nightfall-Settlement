@@ -6,7 +6,7 @@
   function homeThreat(day) {                                              // 그날 밤 마을을 덮칠 적의 수 (startWave 와 같은 식, 무리 크기만)
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     if (isRaid(day)) return Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n);
-    let n = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
+    let n = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 3 + Math.floor(day / 2));
     const tp = nightTypeOf(day);
     if (tp === 'calm') n = Math.max(1, Math.floor(n * 0.5)); else if (tp === 'plunder') n = Math.ceil(n * 1.5) + 1; else if (tp === 'hunt') n = Math.ceil(n * 1.6) + 1; else if (tp === 'storm') n = Math.ceil(n * 1.2);
     return Math.ceil(n * threat * dm().n);

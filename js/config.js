@@ -219,11 +219,11 @@
    
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
     // 난이도: 적 체력 / 적 수 / 받는 피해(플레이어·병사·구조물). 보통은 예전보다 훨씬 거칠어졌다. NG+ 한 번마다 체력 +40%, 수 +25%, 피해 +20%
-    DIFFS: { easy: { label: 'Easy', desc: 'Weaker, fewer raiders. For a relaxed build.', hp: 0.8, n: 0.8, dmg: 0.8 }, normal: { label: 'Normal', desc: 'Raiders hit hard and come in numbers. Gear and walls matter.', hp: 1.6, n: 1.35, dmg: 1.4 },
-      hard: { label: 'Hard', desc: 'Tough raiders, big waves. You will lose walls and soldiers.', hp: 2.4, n: 1.8, dmg: 1.9 }, nightmare: { label: 'Nightmare', desc: 'Everything wants you dead. Plan every night.', hp: 3.5, n: 2.5, dmg: 2.6 } },
+    DIFFS: { easy: { label: 'Easy', desc: 'Weaker, fewer raiders. For a relaxed build.', hp: 0.8, n: 0.8, dmg: 0.8 }, normal: { label: 'Normal', desc: 'Raiders hit hard and come in numbers. Gear and walls matter.', hp: 1.8, n: 1.5, dmg: 1.5 },
+      hard: { label: 'Hard', desc: 'Tough raiders, big waves. You will lose walls and soldiers.', hp: 2.7, n: 2.1, dmg: 2.0 }, nightmare: { label: 'Nightmare', desc: 'Everything wants you dead. Plan every night.', hp: 3.5, n: 2.5, dmg: 2.6 } },
     NIGHT_SPEED: 1.8, REST_SPEED: 8,         // 밤에는 시계가 1.8배 빠르게 흐르고, '새벽까지 쉬기' 중에는 8배 빠르다
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
-    QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
+    QUIET_BASE: 2, QUIET_MAX: 9, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
     STANDARD: { RADIUS: 12, DMG: 0.15, GUARD: 0.15, RANK_RADIUS: 0.2, RANK_DMG: 0.04, RANK_GUARD: 0.03 },      // 지휘관의 깃발: 곁의 병사가 더 세게 치고 덜 맞는다 (기본값은 추정, 기술로 강해진다)
     EXP_NEED_SCALE: 0.8,      // EXP_NEED 는 원래 병사 전원(전부 100%) 기준이었다. 이제 데려가는 전투단 100% + 남은 병사 35% 이므로 0.8배 (추정값, 폰 테스트 후 조정)
@@ -263,7 +263,7 @@
     STRUCT_DPS: { normal: { wood: 10, stone: 10 }, brute: { wood: 20, stone: 35 }, boss: { wood: 80, stone: 80 } },
     RESPAWN_HOUR: 6,                           // 매일 이 시각에 부족한 자원 리스폰
     // 웨이브 / 난이도: 밤마다 총 마릿수 = WAVE_BASE + Day * WAVE_PER_DAY
-    WAVE_BASE: 3, WAVE_PER_DAY: 2,
+    WAVE_BASE: 4, WAVE_PER_DAY: 3,
     SPAWN_INTERVAL_BASE: 6, SPAWN_RATE_GROWTH: 0.3, MIN_SPAWN_INTERVAL: 0.6,   // 간격 = BASE / (1 + GROWTH*(Day-1))
     MAX_ALIVE: 30,                             // 동시에 존재할 수 있는 적 수
     // 브루트 (Day 2부터, 웨이브 마지막에 등장)
