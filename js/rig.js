@@ -376,12 +376,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       return { shoulderR: [-0.7 * wind - 1.55 * thr, 0.25 * wind], elbowR: [-1.7 * wind - 0.08 * thr], shoulderL: [-0.6 * wind - 1.2 * thr], elbowL: [-0.5 * wind - 0.25 * thr],
         spine: [0.18 * thr, -0.35 * wind + 0.3 * thr], head: [-0.05 * thr], hipL: [-0.55 * thr + 0.2 * wind], hipR: [0.35 * thr - 0.1 * wind], kneeL: [0.3 * thr], hipsY: 0.9 - 0.06 * thr, hipsZ: 0.12 * thr };
     }, false);
-    make('spearSwing', 0.6, 14, (ph, u) => {   // 창 휘두르기: 몸통을 오른쪽으로 틀어 창을 옆으로 젖힘 → 허리부터 돌며 수평으로 크게 휘두름 → 거둠
-      const w = kf(u, [[0, 0], [0.3, -1], [0.38, -1], [0.55, 1], [0.72, 0.9], [1, 0]]), t = (1 - w) / 2, bend = 0.3;
-      return { spine: [0.08, -0.85 * w, 0], hips: [0, -0.3 * w, 0], head: [0, 0.3 * w], shoulderR: [-1.35, 0.2 - 0.3 * w, -0.3], shoulderL: [-1.2, -0.1 - 0.3 * w, 0.3],
-        elbowR: [-0.3 - 0.5 * Math.max(0, -w)], elbowL: [-0.4 - 0.4 * Math.max(0, -w)], hipL: [-bend * 0.5 - 0.15 * Math.max(0, w), 0, 0.1 * w], hipR: [-bend * 0.5 + 0.1 * Math.max(0, w), 0, 0.1 * w],
-        kneeL: [bend + 0.08 * t], kneeR: [bend + 0.08 * t], hipsY: 0.86 - 0.02 * t };
-    }, false);
     make('spearLunge', 0.85, 16, (ph, u) => {  // 창 돌진 찌르기: 몸을 크게 뒤로 젖혀 모음 → 뒷발로 박차고 온몸을 실어 한 걸음 깊이 내디디며 찌름 → 천천히 일어섬
       const wind = kf(u, [[0, 0], [0.4, 1], [0.5, 1], [0.62, 0], [1, 0]]), thr = kf(u, [[0, 0], [0.48, 0], [0.62, 1], [0.78, 1], [1, 0]]);
       return { shoulderR: [-0.5 * wind - 1.6 * thr, 0.3 * wind], elbowR: [-1.9 * wind - 0.05 * thr], shoulderL: [-0.5 * wind - 1.35 * thr], elbowL: [-0.7 * wind - 0.15 * thr],
@@ -486,6 +480,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     return { root, bodyMat, head, spine: null, handR: head, handL: head, baseScale: opts.scale ?? 1.5, clips: BEAST_CLIPS };
   }
+
+  // 창 공격 동작의 좌우를 바꾼다: 몸통·머리·다리의 쪽(비틀기와 디딤발)을 거울상으로 뒤집는다 (팔은 그대로: 창은 오른손에 있다). 검·방패의 공격(ssAttack1)은 창 전용 복사본을 쓴다
+  (() => {
+    const swapLR = (n) => n.replace(/(hip|knee)([LR])\./, (m, a, b) => a + (b === 'L' ? 'R' : 'L') + '.');
+    const mirror = (src, name) => {
+      const tr = src.tracks.map(t => {
+        if (!/^(hips|spine|head|hipL|hipR|kneeL|kneeR)\.quaternion$/.test(t.name)) return t.clone();
+        const v = t.values.slice(); for (let i = 0; i < v.length; i += 4) { v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
+        return new THREE.QuaternionKeyframeTrack(swapLR(t.name), t.times.slice(), v);
+      });
+      return new THREE.AnimationClip(name, src.duration, tr);
+    };
+    if (STICK_CLIPS.ssAttack1) STICK_CLIPS.spearSlash1 = STICK_CLIPS.ssAttack1;
+    for (const n of ['spearStab', 'spearSlash1', 'spearFinal', 'spearLunge']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n);
+  })();
 
   // ----- 장비 메쉬 (손 뼈에 붙는다): 칼날이 팔 방향(+Z)으로 향하도록 inner.rotation.x = π/2 -----
   const gearMatCache = {};
@@ -638,7 +647,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash|Swing|Lunge|Final)/.test(n) || /^(ss|gs)(Impact|Jump)/.test(n) || /^bow(Dodge|Block|React)/.test(n) || n === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n) || /Block/.test(n); }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash|Lunge|Final)/.test(n) || /^(ss|gs)(Impact|Jump)/.test(n) || /^bow(Dodge|Block|React)/.test(n) || n === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n) || /Block/.test(n); }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
@@ -695,9 +704,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         this.heavy = nm === 'brawlRound'; this.variant = /Kick|Round/.test(nm) ? 'kick' : 'punch'; act.timeScale = sc;
         this.shot = { t: 0, dur: target }; this.hitIn = (hit - a0) * cd / sc; this._play(nm, 0.07, true); act.time = a0 * cd; return;
       }
-      if (name === 'attackSpear' && this.acts.spearSwing && this.acts.spearLunge) {                                              // 창: 찌르기 → 휘두르기 → 온몸을 실은 돌진 찌르기
+      if (name === 'attackSpear' && this.acts.spearSlash1 && this.acts.spearStab) {                                              // 창: 찌르기 → 휘두르기(검 동작) → 온몸을 실은 돌진 찌르기
         this.spI = ((this.spI || 0) % 3) + 1; const v = ['stab', 'slash', 'lunge'][this.spI - 1]; this.variant = v; this.heavy = v === 'lunge';
-        name = v === 'stab' ? 'attackSpear' : v === 'slash' ? 'spearSwing' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : v === 'slash' ? 0.62 : 0.5);
+        name = v === 'stab' ? 'spearStab' : v === 'slash' ? 'spearSlash1' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : v === 'slash' ? 0.7 : 1.1);
       }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
@@ -709,9 +718,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 0.9);
       }
       const act = this.acts[name]; act.timeScale = ts;
-      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name];
+      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name === 'spearSlash1' ? 'ssAttack1' : name];
       this.shot = { t: 0, dur };
-      this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : name === 'spearSwing' ? 0.5 : name === 'spearLunge' ? 0.66 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
+      this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : name === 'spearLunge' ? 0.66 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
@@ -839,7 +848,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
-      const stab = !!this.shot && /^(stab|slash|lunge)$/.test(this.variant), swing = !!this.shot && this.variant === 'slash', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
+      const stab = !!this.shot && /^(stab|lunge)$/.test(this.variant), idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
       const tgt = stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
       const k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (stab ? dt / 0.1 : -dt / 0.12)));
       if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
@@ -848,7 +857,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
       const fw = (this._fw || (this._fw = new THREE.Vector3())).set(0, 0.06, 1).applyQuaternion(R.root.getWorldQuaternion(this._qr || (this._qr = new THREE.Quaternion())));       // 창끝은 팔 방향보다 적을 향해(캐릭터 정면, 수평) 길게 뻗는다
-      d.normalize().multiplyScalar(swing ? 0.8 : 0.15).addScaledVector(fw.normalize(), swing ? 0.2 : 0.85).normalize();
+      d.normalize().multiplyScalar(0.15).addScaledVector(fw.normalize(), 0.85).normalize();
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
       d.applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);
