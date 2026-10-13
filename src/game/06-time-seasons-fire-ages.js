@@ -97,14 +97,13 @@
   function buildHall() {
     while (hallGroup.children.length) hallGroup.remove(hallGroup.children[0]);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; hallGroup.add(o); return o; };
-    campDecor.visible = age === 1;
+    campDecor.visible = age === 1; flame.visible = age === 1;
     if (age === 1) { flame.position.y = 0; fireLight.position.y = 1.4; hallHint.position.y = 2.6; }
     else if (age === 2) {                                              // 나무 마을 회관 (큰 목조 건물)
       add(new THREE.BoxGeometry(4.6, 2.6, 4.6), hallWood, 0, 1.3, 0);
       add(new THREE.ConeGeometry(3.9, 1.9, 4), hallRoof, 0, 3.55, 0).rotation.y = Math.PI / 4;
       add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
       add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
-      add(new THREE.CylinderGeometry(0.35, 0.45, 0.5, 8), hallDark, 0, 4.15, 0);                // 지붕 위 화덕
       flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
     } else {                                                           // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
       add(new THREE.BoxGeometry(6.2, 3.2, 6.2), keepStone, 0, 1.6, 0);
@@ -181,6 +180,7 @@
 
   function animateFire(t) {
     if (!fireAlive) return;
+    flame.visible = age === 1;                              // 회관·성채 위에는 불꽃을 보이지 않는다 (불빛만 남는다)
     const f = 1 + Math.sin(t * 9) * 0.12 + Math.sin(t * 23) * 0.06;
     const hpR = Math.max(0.35, fireHp / fireMax());         // 모닥불 체력이 줄면 불꽃도 작아진다
     flame.scale.set((2 - f) * hpR, f * hpR, (2 - f) * hpR);

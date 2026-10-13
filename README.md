@@ -191,6 +191,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **Closer walls** (nf-v93): the defense lines are now planned with their pieces almost touching: the wooden fence spacing went from 3.0 to 2.5 (the fence piece is 2.4 wide) and the stone wall from 3.57 to 3.13 (the piece is 3.0 wide), so there are about 20% and 14% more pieces on each line (the first line 48 pieces, the second 64) and they need a bit more wood and stone to build or upgrade; the gates are a little narrower (about 2.6 for the first line). This only applies to lines you plan from now on: walls already built or planned in an existing save keep their old spacing. Only tested headless (in a fresh debug village the nearest pieces were 2.5 and 3.13 apart).
 
+**No fire on top of the hall and castle** (nf-v94): the flame no longer burns on the roof of the wooden hall (Age 2) or on the stone castle (Age 3), and the little chimney-like hearth on the Age 2 roof is gone. The campfire still burns at Age 1. The warm light around the middle of the village stays, so nights are not darker; it just has no visible flame. Only tested headless.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
