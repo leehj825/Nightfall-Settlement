@@ -127,7 +127,7 @@
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (bird && e.pointerType === 'mouse' && e.button === 2) { panId = e.pointerId; panMid = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); return; }
     if (e.pointerType === 'touch' && ptrs.size === 2) { look.id = null; pinchD = pinchDist(); tapStart = null; panMid = null; return; }
-    const ok = e.pointerType === 'mouse' ? e.button === 0 : (settings.hand === 'l' ? e.clientX < innerWidth * 0.6 : e.clientX > innerWidth * 0.4);
+    const ok = e.pointerType === 'mouse' ? e.button === 0 : true;       // 버튼과 조이스틱이 아닌 화면 어디서든 끌어서 카메라를 돌린다
     if (!ok || look.id !== null) return;
     look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
     canvas.setPointerCapture(e.pointerId);

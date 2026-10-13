@@ -193,6 +193,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **No fire on top of the hall and castle** (nf-v94): the flame no longer burns on the roof of the wooden hall (Age 2) or on the stone castle (Age 3), and the little chimney-like hearth on the Age 2 roof is gone. The campfire still burns at Age 1. The warm light around the middle of the village stays, so nights are not darker; it just has no visible flame. Only tested headless.
 
+**Orders button and camera drag** (nf-v95): the **Orders** button (and Rest / Smithy) could not be tapped because the invisible box around the Jump / Weapon button column covered them; only the buttons themselves take taps now (found by checking what sits on top of the button; after the fix the Orders button switches Follow and Guard). Dragging to turn the camera used to work only on the half of the screen away from the stick (the right 60% for right-handed play); it now works anywhere that is not a button or the stick, in both hand settings. Pinch to zoom is unchanged. Only tested headless (a simulated drag turned the camera by the same amount from the left and the right side).
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
