@@ -153,6 +153,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **Blacksmith: great swords and spears** (nf-v72): the smithy now lists swords, great swords, spears, bows and armor in sections, and the great sword and spear have their own gear: Iron (damage 4), Steel (6, Age 3) and Beacon (9, after the Dawn Gate), each with its own cost (more iron for the great sword; wood and iron for the spear). The hero uses the gear of the weapon in hand; old saves start with the great sword and spear at the same level as the sword. Soldiers of the great sword and spear classes fetch gear for their class from the rack, and use the better of that and their sword. Journey power counts the best of the three weapons. Racks show the new weapons. Only tested headless; the prices are guesses.
 
+**Several warbands on one journey** (nf-v73): you can now bring up to 1 warband at Age 1, 2 at Age 2 and 3 at Age 3 (tap Bring in the warband window or the Journal; tap again to leave one home). Everyone who goes follows you in rows of six. When you return, the soldiers who went stand where you came back and walk to their own duties; fallen soldiers are carried home to recover. A message lists each warband that came back and how many are on their feet. If every soldier comes along, a warning says the village has no guard. Journey power counts all the warbands you bring in full. Only tested headless.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
