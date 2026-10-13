@@ -4649,6 +4649,8 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
         foes: ['normal', 'normal', 'normal', 'shield', 'archer', 'normal'], guardian: { kind: 'normal', hpMul: 5, scale: 1.4, name: 'Raider Captain' } },
       { id: 'banditcamp', name: 'Bandit Camp', raid: true, bands: 2, age: 2, tint: 0x7a6a48, risk: 'High', reward: 'Loot chests, iron, supplies', desc: 'RAID: a walled camp of raiders with watchtowers and a Bandit Chief. Bring at least two warbands, break in through the gate, then burn the banner or take down the chief.', trees: 5, rocks: 3, ore: 0, chests: 1, camp: { radius: 15, towers: 4, tents: 6, chests: 3, towerArchers: 2 },
         foes: ['normal', 'normal', 'normal', 'shield', 'shield', 'archer', 'normal', 'normal', 'brute', 'normal', 'normal', 'shield'], guardian: { kind: 'brute', hpMul: 6, scale: 1.6, name: 'Bandit Chief' } },
+      { id: 'banditfort', name: 'Bandit Stronghold', raid: true, bands: 3, age: 3, tint: 0x6a5a40, risk: 'Very high', reward: 'Rich loot, iron, stone, supplies', desc: 'RAID: the raiders\' great fortress: a wide palisade, six watchtowers with archers, nine tents and a Bandit Warlord. Bring three warbands, break in through the gate, then burn the banner or take down the warlord.', trees: 4, rocks: 4, ore: 4, chests: 2, camp: { radius: 20, towers: 6, tents: 9, chests: 5, towerArchers: 4 },
+        foes: ['normal', 'normal', 'normal', 'normal', 'normal', 'shield', 'shield', 'shield', 'shield', 'archer', 'archer', 'brute', 'brute', 'brute', 'normal', 'normal', 'shield', 'normal'], guardian: { kind: 'brute', hpMul: 9, scale: 1.8, name: 'Bandit Warlord' } },
       { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
       { id: 'mine', name: 'Iron Mine', age: 2, tint: 0x4a4048, risk: 'Medium', reward: 'Lots of iron, Iron Heart', desc: 'Rich veins of iron deep in the hill. The tunnels are crowded with guards.', trees: 0, rocks: 4, ore: 14, chests: 2, relic: 'Iron Heart', ruins: 4, foes: ['normal', 'shield', 'shield', 'brute', 'normal'] },
       { id: 'citadel', name: 'Fallen Citadel', age: 3, tint: 0x55485a, risk: 'High', reward: 'Rich loot, Beacon Core', desc: 'The old fortress. Its guardians will not give up the last relic without a fight.', trees: 0, rocks: 6, ore: 6, chests: 4, relic: 'Beacon Core', ruins: 12, foes: ['brute', 'brute', 'shield', 'shield', 'normal', 'normal', 'normal'] },
@@ -4680,12 +4682,12 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
         foes: ['brute', 'brute', 'brute', 'brute', 'brute', 'brute', 'shield', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal', 'beast', 'beast'], guardian: { kind: 'brute', hpMul: 28, scale: 2.4, name: 'The Eclipse Queen' } },
     ],
     // 10단계: 원정지를 모두 정리(상자 전부 + 적 전부)하면 야영지를 세울 수 있다. 야영지는 매일 아침 자원을 가져다준다 (겨울에는 60%)
-    CAMPS: { raiderpost: { iron: 2, food: 2 }, banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
+    CAMPS: { banditfort: { iron: 6, food: 4, stone: 4 }, raiderpost: { iron: 2, food: 2 }, banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
     CAMP_COST: { 1: { wood: 35, stone: 25 }, 2: { wood: 50, stone: 40 }, 3: { wood: 65, stone: 55, iron: 4 } },
     ESCORT_MAX: 3,
     EXP_NIGHT_LATEST: 2, EXP_NIGHT_FORCE: 4.5,        // 밤 원정: 그날 밤 습격을 정리한 뒤 20시~02시에 출발, 새벽 4시 30분에 자동 귀환
     // 원정이 열리는 전투력: 병사(기본 2 + 무기 등급×2 + 방어구 등급×1.5)의 합 + 주인공(레벨×3 + 무기 등급×3 + 방어구 등급×2). 장비와 레벨을 키워야 다음 원정이 열린다
-    EXP_NEED: { raiderpost: 28, banditcamp: 62, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
+    EXP_NEED: { banditfort: 120, raiderpost: 28, banditcamp: 62, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
     // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
     STORY3: [
       { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
@@ -4750,7 +4752,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 2.4,       // 타워는 궁수(1.5초)보다 느리게 쏜다
-    CAMP_RELIEF: { raiderpost: { pct: 0.10, days: 5 }, banditcamp: { pct: 0.20, days: 7 } }, CAMP_RELIEF_MAX: 0.35,       // 야영지를 무너뜨리면 며칠 동안 마을을 덮치는 적이 줄어든다 (여러 곳이면 합산, 최대 35%)
+    CAMP_RELIEF: { raiderpost: { pct: 0.10, days: 5 }, banditcamp: { pct: 0.20, days: 7 }, banditfort: { pct: 0.25, days: 8 } }, CAMP_RELIEF_MAX: 0.35,       // 야영지를 무너뜨리면 며칠 동안 마을을 덮치는 적이 줄어든다 (여러 곳이면 합산, 최대 35%)
    
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
     // 난이도: 적 체력 / 적 수 / 받는 피해(플레이어·병사·구조물). 보통은 예전보다 훨씬 거칠어졌다. NG+ 한 번마다 체력 +40%, 수 +25%, 피해 +20%
@@ -9918,7 +9920,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       inner.push({ x: g.position.x, z: g.position.z, r: 3 });
     }
     for (let k = 0; k < C.tents; k++) {                             // 천막: 안쪽 둘레에 빙 둘러
-      const a = k * (Math.PI * 2 / C.tents) + 0.4, rr = R * 0.62, g = new THREE.Group(), t = new THREE.Mesh(new THREE.ConeGeometry(1.9, 2.5, 6), campTent[k % 3]);
+      const a = k * (Math.PI * 2 / C.tents) + 0.4; if (Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2))) < 0.5) continue;       // 우두머리 천막 자리는 비운다
+      const rr = R * 0.62, g = new THREE.Group(), t = new THREE.Mesh(new THREE.ConeGeometry(1.9, 2.5, 6), campTent[k % 3]);
       t.position.y = 1.25; g.add(t); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
       g.position.set(cx + Math.cos(a) * rr, 0, cz + Math.sin(a) * rr); g.rotation.y = rand(0, 6); g.userData = { type: 'tent', radius: 1.8 }; exAdd(g, true); solids.push(g);
       inner.push({ x: g.position.x, z: g.position.z, r: 2.4 });
@@ -9979,7 +9982,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     let fi = 0;
     for (const kind of foeList) { const inside = exCamp && fi++ % 4 !== 3, p = inside ? innerSpot(1.4) : spot(2.5); spawnEnemy(kind, p); if (inside) { enemies[enemies.length - 1].userData.camp = true; enemies[enemies.length - 1].userData.home = { x: p.x, z: p.z }; } if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); addGlow(enemies[enemies.length - 1], FOE_GLOW[d.faction] || 0xff6a4a, 1.7, 1.2); }
     if (exCamp && d.camp.towerArchers) for (let k = 0; k < d.camp.towerArchers; k++) {          // 망루 위 궁수: 마주 보는 탑 둘에 올라간다
-      const t = exCamp.towers[(k * 2) % exCamp.towers.length]; spawnEnemy('archer', { x: t.position.x, z: t.position.z });
+      const t = exCamp.towers[Math.floor(k * exCamp.towers.length / d.camp.towerArchers) % exCamp.towers.length]; spawnEnemy('archer', { x: t.position.x, z: t.position.z });
       const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 5.4; e.position.y = 5.4; u.speed = 0;
     }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
