@@ -82,6 +82,8 @@
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
       { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
+      { id: 'banditcamp', name: 'Bandit Camp', raid: true, bands: 2, age: 2, tint: 0x7a6a48, risk: 'High', reward: 'Loot chests, iron, supplies', desc: 'RAID: a walled camp of raiders with watchtowers and a Bandit Chief. Bring at least two warbands, break in through the gate and take down the chief.', trees: 5, rocks: 3, ore: 0, chests: 1, camp: { radius: 15, towers: 4, tents: 6, chests: 3 },
+        foes: ['normal', 'normal', 'normal', 'shield', 'shield', 'archer', 'archer', 'normal', 'brute', 'normal', 'archer', 'shield'], guardian: { kind: 'brute', hpMul: 6, scale: 1.6, name: 'Bandit Chief' } },
       { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
       { id: 'mine', name: 'Iron Mine', age: 2, tint: 0x4a4048, risk: 'Medium', reward: 'Lots of iron, Iron Heart', desc: 'Rich veins of iron deep in the hill. The tunnels are crowded with guards.', trees: 0, rocks: 4, ore: 14, chests: 2, relic: 'Iron Heart', ruins: 4, foes: ['normal', 'shield', 'shield', 'brute', 'normal'] },
       { id: 'citadel', name: 'Fallen Citadel', age: 3, tint: 0x55485a, risk: 'High', reward: 'Rich loot, Beacon Core', desc: 'The old fortress. Its guardians will not give up the last relic without a fight.', trees: 0, rocks: 6, ore: 6, chests: 4, relic: 'Beacon Core', ruins: 12, foes: ['brute', 'brute', 'shield', 'shield', 'normal', 'normal', 'normal'] },
@@ -118,7 +120,7 @@
     ESCORT_MAX: 3,
     EXP_NIGHT_LATEST: 2, EXP_NIGHT_FORCE: 4.5,        // 밤 원정: 그날 밤 습격을 정리한 뒤 20시~02시에 출발, 새벽 4시 30분에 자동 귀환
     // 원정이 열리는 전투력: 병사(기본 2 + 무기 등급×2 + 방어구 등급×1.5)의 합 + 주인공(레벨×3 + 무기 등급×3 + 방어구 등급×2). 장비와 레벨을 키워야 다음 원정이 열린다
-    EXP_NEED: { quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
+    EXP_NEED: { banditcamp: 70, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
     // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
     STORY3: [
       { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
