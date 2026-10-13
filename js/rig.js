@@ -156,7 +156,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     partH(RG.headV, skin, head, 0, 0.17, 0, 0, 0, 0, female ? 0.9 : 1, 1, 1);
     for (const sx of [-1, 1]) {
       partH(RG.ear, skin, head, sx * 0.172, 0.16, 0, 0, 0, 0, 0.5, 1, 0.8);
-      partH(RG.cheek, skin, head, sx * 0.1, 0.12, 0.13, 0, 0, 0, 1, 0.8, 0.6);
       if (enemy) partH(RG.eyeBox, eyeMat, head, sx * 0.067, 0.195, 0.168, 0, 0, 0, 1.15, 0.8, 1);
       else { partH(RG.eyeBox, eyeWhite, head, sx * 0.067, 0.195, 0.168); partH(RG.irisBox, eyeDark, head, sx * 0.067, 0.195, 0.175); }
       partH(RG.brow, enemy ? ragMat : hair, head, sx * 0.067, isPlayer ? 0.236 : 0.232, 0.174, 0, 0, -sx * (enemy ? 0.4 : isPlayer ? 0.3 : 0.14), enemy ? 1.3 : isPlayer ? 1.55 : 1.1, isPlayer ? 2.0 : 1.3, 1);

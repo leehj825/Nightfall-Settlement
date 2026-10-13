@@ -167,6 +167,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **New face for the leader** (nf-v80): the hero's polygon head was reshaped toward a reference picture (stylised bearded man with swept-back brown hair): warm peach skin, reddish-brown hair swept back from the forehead with volume over the temples and a longer back, thick angled brows, a fuller beard that joins long sideburns and a drooping moustache; the coat is now a darker russet leather (it was bright orange-red). Only the hero changed. It is an approximation in the game's blocky low-poly style, not a copy of the picture.
 
+**Face and armor tweaks** (nf-v81): the round cheek bumps were removed from every character's face. The leader no longer shows a helmet or breastplate when you upgrade armor: armor still reduces damage as before, but the leader's look stays the same (soldiers still show their armor). The leader's shield also keeps its basic look.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
