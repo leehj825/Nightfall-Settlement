@@ -6178,7 +6178,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     playerRig.brawl = vis === 'none'; playerRig.main = vis; playerRig.style = vis === 'sword' ? 'ss' : vis === 'great' ? 'gs' : vis === 'bow' ? 'bow' : '';
     playerRig.setGear('great', { ...weaponDef('great'), slot: 'sword', great: true });
     playerRig.setGear('sword', gearDef(playerGear.sword)); playerRig.setGear('bow', gearDef(playerGear.bow)); { const sd = weaponDef('spear'); playerRig.setGear('spear', { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color }); } playerRig.setArmor(null);       // 지휘관은 방어구를 올려도 겉모습(흉갑·투구)이 바뀌지 않는다 (피해 감소만 적용)
-    playerRig.setShield({ tier: 0 });
+    playerRig.setShield({ tier: gearDef(playerGear.armor).tier || 0 });
     playerRig.hold(vis);
   }
   const woodEl = document.getElementById('woodN'), stoneEl = document.getElementById('stoneN'), ironEl = document.getElementById('ironN');
