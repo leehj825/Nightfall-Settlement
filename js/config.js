@@ -186,7 +186,9 @@
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
-    TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 1.3,
+    TOWER_DMG: 2, TOWER_RANGE: 22, TOWER_INTERVAL: 2.4,       // 타워는 궁수(1.5초)보다 느리게 쏜다
+    CAMP_RELIEF: { raiderpost: { pct: 0.10, days: 5 }, banditcamp: { pct: 0.20, days: 7 } }, CAMP_RELIEF_MAX: 0.35,       // 야영지를 무너뜨리면 며칠 동안 마을을 덮치는 적이 줄어든다 (여러 곳이면 합산, 최대 35%)
+   
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
     // 난이도: 적 체력 / 적 수 / 받는 피해(플레이어·병사·구조물). 보통은 예전보다 훨씬 거칠어졌다. NG+ 한 번마다 체력 +40%, 수 +25%, 피해 +20%
     DIFFS: { easy: { label: 'Easy', desc: 'Weaker, fewer raiders. For a relaxed build.', hp: 0.8, n: 0.8, dmg: 0.8 }, normal: { label: 'Normal', desc: 'Raiders hit hard and come in numbers. Gear and walls matter.', hp: 1.6, n: 1.35, dmg: 1.4 },

@@ -163,6 +163,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **One-warband raid and a Raids tab** (nf-v78): the Journal now has two tabs, **Journeys** and **Raids**, so camps no longer sit among the ordinary journeys (the warband list shows on both). The Raids tab has two entries: **Raider Outpost** (Age 1, needs only 1 warband, power 24: a small palisaded outpost with one watchtower archer, three tents, two loot chests and a Raider Captain) and the **Bandit Camp** (Age 2, 2 warbands, power 56). Both use the same camp behaviour and both can become supply camps once cleared (outpost +2 iron, +2 food; camp +4 iron, +3 food). Only tested headless.
 
+**Broken camps weaken raids; towers shoot wanderers** (nf-v79): breaking a camp now lowers the size of the nightly waves on your village for a while: the Raider Outpost by 10% for 5 days, the Bandit Camp by 20% for 7 days. Effects from different camps add up (at most 35%), raiding the same camp again refreshes its timer, and it works for quiet nights, Blood Moon raids and the forecast. The Raids tab shows the active effect and the defence summary mentions it. Town towers now also shoot the wandering night prowlers and roaming day creatures (before, only the ordinary raiders), make a bow sound when they shoot, and fire slower than archers: every 2.4 seconds instead of 1.3 (archers fire every 1.5). The effect timer is saved with the game story. Only tested headless.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
