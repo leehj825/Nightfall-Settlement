@@ -492,7 +492,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       });
       return new THREE.AnimationClip(name, src.duration, tr);
     };
-    if (STICK_CLIPS.ssAttack1) STICK_CLIPS.spearSlash1 = STICK_CLIPS.ssAttack1;
+    if (STICK_CLIPS.ssAttack1) STICK_CLIPS.spearSlash1 = STICK_CLIPS.ssAttack2;
     for (const n of ['spearFinal', 'spearLunge']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n, false);
   })();
 
@@ -705,20 +705,20 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         this.shot = { t: 0, dur: target }; this.hitIn = (hit - a0) * cd / sc; this._play(nm, 0.07, true); act.time = a0 * cd; return;
       }
       if (name === 'attackSpear' && this.acts.spearSlash1 && this.acts.spearStab) {                                              // 창: 찌르기 → 휘두르기(검 동작) → 온몸을 실은 돌진 찌르기
-        this.spI = ((this.spI || 0) % 3) + 1; const v = ['stab', 'stab', 'lunge'][this.spI - 1]; this.variant = v; this.heavy = v === 'lunge';
-        name = v === 'stab' ? 'spearStab' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : 0.6);
+        this.spI = ((this.spI || 0) % 3) + 1; const v = ['stab', 'slash', 'lunge'][this.spI - 1]; this.variant = v; this.heavy = v === 'lunge';
+        name = v === 'stab' ? 'spearStab' : v === 'slash' ? 'spearSlash1' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : v === 'slash' ? 0.65 : 0.6);
       }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
-        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; this.heavy = this.atkI === 4;
+        this.atkI = ((this.atkI || 0) % 3) + 1; name = ['ssAttack1', 'ssAttack2', 'ssAttack4'][this.atkI - 1]; this.heavy = this.atkI === 3;
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.15 : 0.65);
       }
       if (name === 'attackSword' && this.rig.style === 'gs' && this.acts.gsAttack1) {                 // 대검: 세 번은 크게 베기, 네 번째는 제자리 회전 베기 (범위가 넓다)
-        this.atkI = ((this.atkI || 0) % 4) + 1; name = this.atkI === 4 ? 'gsAttack4' : ['gsAttack2', 'gsAttack3', 'gsAttack2'][this.atkI - 1]; this.heavy = this.atkI === 4;       // 첫 동작(gsAttack1)은 칼자루로 치는 듯해서 뺐다: 빠르게 휘두르는 베기 둘을 번갈아 쓴다
+        this.atkI = ((this.atkI || 0) % 3) + 1; name = ['gsAttack2', 'gsAttack3', 'gsAttack4'][this.atkI - 1]; this.heavy = this.atkI === 3;       // 첫 동작(gsAttack1)은 칼자루로 치는 듯해서 뺐다: 빠르게 휘두르는 베기 둘을 번갈아 쓴다
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 0.9);
       }
       const act = this.acts[name]; act.timeScale = ts;
-      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name === 'spearSlash1' ? 'ssAttack1' : name];
+      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name === 'spearSlash1' ? 'ssAttack2' : name];
       this.shot = { t: 0, dur };
       this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : name === 'spearLunge' ? 0.66 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
       if (wasBow) this.rig.aim(true);
