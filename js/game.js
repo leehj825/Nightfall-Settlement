@@ -2158,11 +2158,8 @@
     if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
     if (r.ill.length) rows.push(`Fell ill: ${r.ill.join(', ')}${builtBuildings('well').length ? '' : ' - a well would help'}`);
     if (r.healed.length) rows.push(`Recovered: ${r.healed.join(', ')}`);
-    if (r.traded) rows.push('Market: sold surplus food for iron');
     if (r.left.length) rows.push(`Left the village: ${r.left.join(', ')}`);
     { const un = npcs.filter(n => n.mood < CFG.MOOD_UNHAPPY).length; rows.push(`Mood: ${moodLabel(moodAvg)} ${Math.round(moodAvg)}${un ? ` · ${un} unhappy` : ''}`); }
-    if (prosScore > 40) rows.push(`Wealth draws raiders: +${Math.round((prosScore - 40) / 1.2)}% tonight`);
-    if (r.equipped || r.forged) rows.push(`Gear: ${r.forged} forged · ${r.equipped} equipped`);
     const dr = [['wood', 'Wood'], ['stone', 'Stone'], ['iron', 'Iron'], ['food', 'Food']].map(([k, n]) => [n, Math.floor(d(k))]).filter(x => x[1] !== 0).map(([n, v]) => `${n} ${v > 0 ? '+' : ''}${v}`);
     if (dr.length) rows.push(`Stockpile: ${dr.join(' · ')}`);
     const dp = prosScore - r.pros;
@@ -2267,7 +2264,7 @@
     if (bringing(i)) { escortBands = escortBands.filter(x => x !== i); return true; }
     const mx = bandMax();
     if (mx === 1) { escortBands = [i]; return true; }
-    if (escortBands.length >= mx) { toast(`You can bring ${mx} warbands at this age${age < 3 ? ' (more in the next age)' : ''}`); return false; }
+    if (escortBands.length >= mx) { toast(`Max ${mx} warband${mx > 1 ? 's' : ''} at this age`); return false; }
     escortBands.push(i); return true;
   }
   function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length + holdCount(); }
@@ -2284,7 +2281,7 @@
   function warbandOrder(i) { const o = i >= 0 && warbandInfo && warbandInfo[i] ? warbandInfo[i].order : null; return WB_ORDERS.includes(o) ? o : 'forward'; }
   function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; for (const n of warbandMembers(i)) n.hold = null; return true; }
   const WB_ORDER_LABEL = { forward: 'Forward', stand: 'Stand firm', withdraw: 'Withdraw', charge: 'Charge' };
-  const WB_ORDER_HINT = { forward: 'Fight as usual: take on foes near the village or follow you.', stand: 'Hold the ground: fight only foes that come close, do not chase.', withdraw: 'Fall back: melee men do not engage; on a journey they stay by your side.', charge: 'Rush the foe: notice enemies from further away and chase them harder.' };
+  const WB_ORDER_HINT = { forward: 'Fight as usual.', stand: 'Hold ground, no chasing.', withdraw: 'Fall back, no melee.', charge: 'Rush the foe.' };
   const orderOf = (n) => n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
   // ---------- 지휘관의 깃발 (Leader's standard): 주인공(지휘관)의 곁에 있는 병사는 더 세게 치고 덜 맞는다. 지휘관이 쓰러지면 사라진다 ----------
   function standardRadius() { const S = CFG.STANDARD; return S.RADIUS * (1 + S.RANK_RADIUS * pl.st.standard) * (playerClass === 'commander' ? 1.25 : 1); }
@@ -2326,7 +2323,7 @@
     const t = pickMarkTarget();
     if (!t) { if (markedFoe) { markedFoe = null; toast('Mark cleared'); } else toast('No foe in sight to mark'); }
     else if (t === markedFoe) { markedFoe = null; toast('Mark cleared'); }
-    else { markedFoe = t; toast(`Foe marked: ${FOE_NAME[t.userData.kind] || 'Foe'} - your warbands focus it`); Snd.play('click'); }
+    else { markedFoe = t; toast(`Marked: ${FOE_NAME[t.userData.kind] || 'Foe'}`); Snd.play('click'); }
     wbBarHtml = ''; renderWbBar();
   }
   function updateMark(t) {
@@ -2369,8 +2366,7 @@
       <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
       ${exActive ? '' : `<button id="wbBring" class="${bringing(i) ? 'on' : ''}">${bringing(i) ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>`}
       <div class="word">${WB_ORDERS.map(o => `<button class="wbord${o === warbandOrder(i) ? ' on' : ''}" data-ord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div><small>${WB_ORDER_HINT[warbandOrder(i)]}</small>
-      <small>Your standard: soldiers within ${Math.round(standardRadius())} paces of you deal +${Math.round((standardMods({ role: 'melee', position: player.position }).dmg - 1) * 100)}% damage and take ${Math.round((1 - standardMods({ role: 'melee', position: player.position }).guard) * 100)}% less.</small>
-      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. At home sets the class in town; Journey sets the class on journeys. Tap a soldier's name to open their card; the card's Close button brings you back here.</small><button id="wbClose">Close</button>`;
+      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers</small><button id="wbClose">Close</button>`;
   }
   function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
   function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }
@@ -4253,9 +4249,9 @@
       if (d < m && d > 1e-4) { e.position.x = o.position.x + dx / d * m; e.position.z = o.position.z + dz / d * m; }
     }
   }
-  function campAlarm() { const C = exCamp; if (!C || C.alarm || C.broken) return; C.alarm = true; toast('The camp sounds the alarm!'); Snd.play('horn'); }
+  function campAlarm() { const C = exCamp; if (!C || C.alarm || C.broken) return; C.alarm = true; toast('Alarm!'); Snd.play('horn'); }
   function campRelief() { const fx = story.campFx || [], d = dayNow(), held = story.holds || {}, ids = new Set(fx.filter(x => d <= x.until).map(x => x.id).concat(Object.keys(held))); return Math.min(CFG.CAMP_RELIEF_MAX, [...ids].reduce((a, id) => a + (CFG.CAMP_RELIEF[id] ? CFG.CAMP_RELIEF[id].pct : 0), 0)); }       // 점령지는 기한 없이 계속
-  function campReliefTxt(id) { if (holdOf(id)) return ''; const x = (story.campFx || []).find(f => f.id === id), r = CFG.CAMP_RELIEF[id]; return x && r && dayNow() <= x.until ? ` · Camp broken: raids on the village ${Math.round(r.pct * 100)}% smaller until day ${x.until}` : ''; }
+  function campReliefTxt(id) { if (holdOf(id)) return ''; const x = (story.campFx || []).find(f => f.id === id), r = CFG.CAMP_RELIEF[id]; return x && r && dayNow() <= x.until ? ` · raids -${Math.round(r.pct * 100)}% to day ${x.until}` : ''; }
   function burnBanner(o) {                                                  // 산적 깃발을 불태우면 야영지가 사기를 잃는다 (우두머리를 쓰러뜨리는 것의 다른 길)
     const f = new THREE.Group(); addGlow(f, 0xff7a2a, 6, 3.5); f.position.set(o.position.x, 0, o.position.z); exAdd(f, false); campBroken(o, 'banner');
   }
@@ -4264,7 +4260,7 @@
     const fi = how === 'banner' ? 4 : 8, fo = how === 'banner' ? 3 : 6; res.iron += fi; res.food += fo; updateHud(); giveXp(how === 'banner' ? 40 : 60);
     const id = exActive && exActive.dest.id, rf = CFG.CAMP_RELIEF[id];
     if (rf) { story.campFx = (story.campFx || []).filter(x => x.id !== id).concat({ id, until: dayNow() + rf.days }); }
-    toast(`${how === 'banner' ? 'The banner burns - the camp loses heart!' : 'The chief has fallen - the camp is broken!'} +${fi} Iron, +${fo} Food${rf ? `. Raids on your village will be ${Math.round(Math.min(CFG.CAMP_RELIEF_MAX, campRelief()) * 100)}% smaller for ${rf.days} days` : ''}`); Snd.play('victory'); shake = Math.max(shake, 0.6);
+    toast(`Camp broken! +${fi} iron +${fo} food${rf ? ` · raids -${Math.round(Math.min(CFG.CAMP_RELIEF_MAX, campRelief()) * 100)}%` : ''}`); Snd.play('victory'); shake = Math.max(shake, 0.6);
     floatText('CAMP BROKEN!', e.position.x, 3.6, e.position.z);
   }
   function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
@@ -4436,14 +4432,14 @@
     if (d.ch === 6 && !story.eclipse) return toast('Light the Wide Road first');
     if (d.ch === 5 && !story.road) return toast('Swear the Keeper\'s Oath first');
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('Recover the earlier relics first: this place stays hidden until you carry them');
-    if (d.bands && escortBands.filter(i => escortPool().some(n => n.warband === i)).length < d.bands) return toast(`A raid needs ${d.bands} warbands: pick them with Bring in the warband window or the Journal${bandMax() < d.bands ? ` (you can bring ${bandMax()} at this age)` : ''}`);
+    if (d.bands && escortBands.filter(i => escortPool().some(n => n.warband === i)).length < d.bands) return toast(`Needs ${d.bands} warbands${bandMax() < d.bands ? ` (you can bring ${bandMax()})` : ''}`);
     if (d.march) {                                                          // 먼 곳: 식량과 확인 (한 번 더 누르면 출발)
       const cost = marchFood(d);
-      if (res.food < cost) return toast(`The march needs ${cost} food for the soldiers (you have ${Math.floor(res.food)}).`);
-      if (marchArm !== d.id || performance.now() - marchArmT > 5000) { marchArm = d.id; marchArmT = performance.now(); return toast(`March ${d.march} day${d.march > 1 ? 's' : ''} each way: ${cost} food. ${homeOdds(d)}. Press Depart again to march.`); }
+      if (res.food < cost) return toast(`Need ${cost} food (have ${Math.floor(res.food)})`);
+      if (marchArm !== d.id || performance.now() - marchArmT > 5000) { marchArm = d.id; marchArmT = performance.now(); return toast(`${d.march}d march, ${cost} food. ${homeOdds(d)}. Tap Depart again.`); }
       marchArm = '';
     }
-    if (powerFor(d) < needOf(d)) return toast(`Too dangerous for now: needs power ${needOf(d)} (you have ${powerFor(d)}${d.raid ? ', counting only the warbands you bring' : ''}). Upgrade gear, train soldiers, level up.`);
+    if (powerFor(d) < needOf(d)) return toast(`Too strong: power ${needOf(d)} needed, you have ${powerFor(d)}`);
     if (d.night) { const why = nightExpWhy(); if (why) return toast(why); }
     else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
     closeJournal(); exEnding = true; gathering = null;
@@ -4457,10 +4453,10 @@
         n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);                    // 원정 직업으로 바꾼다 (마을 직업은 clsHome 에 남는다)
         n.escort = true; n.hold = null; n.position.set(EXC.x + ((i % 6) - 2.5) * 1.8, 0, EXC.z - 31 - Math.floor(i / 6) * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
-      exActive.party = party.length; if (d.march) { const ml = marchOut(d); exActive.marchLines = ml; setTimeout(() => showTripReport(`${d.march} day${d.march > 1 ? 's' : ''} on the march`, ml.concat(`Provisions eaten on the road: ${marchCost} food. The warbands you took are with you; the village fights alone.`)), 1800); } if (party.length && !npcs.some(n => n.role !== 'citizen' && !party.includes(n)) && (story.guardWarn = (story.guardWarn || 0) + 1) <= 3) setTimeout(() => toast('Every soldier came with you - the village has no guard until you return'), 3200);       // 처음 세 번만 알린다
+      exActive.party = party.length; if (d.march) { const ml = marchOut(d); exActive.marchLines = ml; setTimeout(() => showTripReport(`${d.march}d march`, ml.concat(`Provisions: ${marchCost} food`)), 1800); } if (party.length && !npcs.some(n => n.role !== 'citizen' && !party.includes(n)) && (story.guardWarn = (story.guardWarn || 0) + 1) <= 3) setTimeout(() => toast('No soldiers left at home'), 3200);       // 처음 세 번만 알린다
       player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
-      exEnding = false; updateExUi(); toast(`${d.name}: find the chests - you have a few minutes before dusk`); Snd.play('horn');
+      exEnding = false; updateExUi(); toast(d.raid ? `${d.name}: break the camp` : `${d.name}: find the chests`); Snd.play('horn');
     });
   }
   function endExpedition(forced) {
@@ -4471,7 +4467,7 @@
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       const left = exObjs.filter(o => o.userData.type === 'chest').length + enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
       const cleared = exCamp ? (exCamp.broken && exObjs.filter(o => o.userData.type === 'chest').length === 0) : left === 0;
-      const backMen = npcs.filter(x => x.escort), report0 = [...new Set(backMen.map(x => x.warband))].map(i => `${warbandName(i)} (${backMen.filter(x => x.warband === i && !x.down).length}/${backMen.filter(x => x.warband === i).length} on their feet)`);
+      const backMen = npcs.filter(x => x.escort), report0 = [...new Set(backMen.map(x => x.warband))].map(i => `${warbandName(i).replace(' Warband', '')} ${backMen.filter(x => x.warband === i && !x.down).length}/${backMen.filter(x => x.warband === i).length}`);
       backMen.forEach((n, k) => {                                              // 동행 병사 귀환: 돌아온 자리에서 걸어서 각자의 일과 초소로 간다 (쓰러진 병사는 회복)
         n.escort = false; n.hold = null; n.cls = homeCls(n); applyGear(n);       // 마을로 돌아오면 마을 직업으로
         const a = k * 2.4, rr = 2 + (k % 3) * 0.9;
@@ -4479,13 +4475,13 @@
         else n.position.set(ex.ret.x + Math.sin(a) * rr, 0, ex.ret.z + Math.cos(a) * rr);
         n.px = n.position.x; n.pz = n.position.z; n.atkCd = 0;
       });
-      if (backLines) setTimeout(() => showTripReport(`Home again after ${ex.dest.march * 2} days`, backLines.concat(report0.length ? `Back from the journey, returning to duty: ${report0.join(', ')}` : [])), 2600);
-      if (report0.length && !backLines) setTimeout(() => toast(`Back from the journey, returning to duty: ${report0.join(', ')}`), 2200);
+      if (backLines) setTimeout(() => showTripReport(`Home again`, backLines.concat(report0.length ? `Back: ${report0.join(' · ')}` : [])), 2600);
+      if (report0.length && !backLines) setTimeout(() => toast(`Back home: ${report0.join(' · ')}`), 2200);
       cleanupZone(); exActive = null;
       if (ex.party > 0) unlockAch('escort');
       if (cleared) unlockAch('clear');
       if (cleared && ex.dest.raid) { (story.clearedDay = story.clearedDay || {})[ex.dest.id] = dayNow(); }
-      if (cleared && !story.cleared[ex.dest.id]) { story.cleared[ex.dest.id] = true; setTimeout(() => toast(`${ex.dest.name} is cleared - build a camp from the Journal for daily supplies`), 2200); }
+      if (cleared && !story.cleared[ex.dest.id]) { story.cleared[ex.dest.id] = true; setTimeout(() => toast(`${ex.dest.name} cleared`), 2200); }
       player.position.set(ex.ret.x, 0, ex.ret.z); camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       story.exps++; exEnding = false; updateExUi(); updateHud(); saveGame();
       toast(`${forced ? (ex.night ? 'You rushed home as dawn broke. ' : 'You rushed home as dusk fell. ') : 'Back home. '}${gain ? 'Brought back: ' + gain : 'You found nothing this time'}`);
@@ -4529,8 +4525,8 @@
   function requestReturn() {                       // 상자·적이 남아 있으면 실수로 돌아가지 않도록 한 번 더 누르게 한다
     if (!exActive || exEnding) return;
     const chests = exObjs.filter(o => o.userData.type === 'chest').length, foes = enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
-    if (exCamp && !exCamp.broken && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast(`The camp still stands - burn its banner (G) or defeat the chief. Press again to go home`); return; }
-    if ((chests || foes) && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast(`${chests} chest${chests === 1 ? '' : 's'} and ${foes} foe${foes === 1 ? '' : 's'} left - press again to go home`); return; }
+    if (exCamp && !exCamp.broken && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast('Camp still stands. Press again to leave'); return; }
+    if ((chests || foes) && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast(`${chests} chests, ${foes} foes left. Press again to leave`); return; }
     endExpedition(false);
   }
   document.getElementById('expBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); exActive ? requestReturn() : toggleJournal(); });
@@ -4548,26 +4544,24 @@
   let jTab = 'map', jMapSel = 'quarry', jFocus = true;                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
   function renderJournal() {
     const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
-    document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
-      (story.beacon ? '<div class="q done"><span>★</span><span>The Beacon is lit! Chapter 2: gather the three shards</span></div>' : '') + (story.dawn ? '<div class="q done"><span>★</span><span>The Dawn Gate is open - Beacon gear can be forged</span></div>' : '') + (story.crown ? '<div class="q done"><span>★</span><span>The Winter Crown shines on the Beacon - Chapter 4: the Hollow Court</span></div>' : '') + (story.finale ? '<div class="q done"><span>★</span><span>The Keeper\'s Oath is sworn - the Hollow Court is at peace</span></div>' : '') + (story.road ? '<div class="q done"><span>★</span><span>The Wide Road: carry the light to Ashford, Reedhaven and Stonegate</span></div>' : '') + (story.wide ? '<div class="q done"><span>★</span><span>The road is lit from end to end</span></div>' : '') +
-      story.log.slice(-2).map(t => `<div class="log">${t}</div>`).join('') : '<div class="q">Your story begins at the next dawn...</div>');
-    { const pw = powerOf(); document.getElementById('jPower').textContent = `Your power: ${pw.total} (warband you bring ${pw.brought} · reserves at home ${pw.home} · you ${pw.me}) - the warband you bring counts fully, soldiers left home only a third. Stronger gear, more soldiers and levels open harder expeditions`; }
+    { const cur = chain[first >= 0 ? first : chain.length - 1]; document.getElementById('jStory').innerHTML = story.intro && cur ? `<div class="q now"><span>&#10148;</span><span>${cur.goal}</span></div>` : '<div class="q">Your story begins at the next dawn...</div>'; }
+    { const pw = powerOf(); document.getElementById('jPower').textContent = `Power ${pw.total} (bring ${pw.brought} · home ${pw.home} · you ${pw.me})`; }
     const fewBands = (d) => d.bands && escortBands.filter(i => escortPool().some(n => n.warband === i)).length < d.bands;
     const late = nowHour < 6 || nowHour >= CFG.EXP_LATEST, nightWhy = nightExpWhy(), lateFor = (d) => d.night ? !!nightWhy : late;
-    document.getElementById('jHint').textContent = `Set out between 06:00 and ${fmtH(CFG.EXP_LATEST)}. Time moves slowly while you are away, but you are called home at ${fmtH(CFG.EXP_FORCE)} (a countdown shows at the top). The village keeps working meanwhile. Moonlit sites open at night (20:00 - 02:00) once the night's raiders are dealt with, and give double XP.`;
+    document.getElementById('jHint').textContent = `Depart ${fmtH(6)}-${fmtH(CFG.EXP_LATEST)} · called home ${fmtH(CFG.EXP_FORCE)} · night sites 20:00-02:00`;
     escortBands = escortBands.filter(i => escortPool().some(n => n.warband === i));
     const wbRows = []; for (let i = 0; i < CFG.WARBAND.MAX; i++) {
       const mem = warbandMembers(i); if (!mem.length) continue;
       const ready = mem.filter(n => !n.down && !n.escort).length, on = bringing(i);
-      wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
+      wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${ready}/${mem.length} ready</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
-    const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick up to ${bandMax()} warband${bandMax() > 1 ? 's' : ''} to bring (more at higher ages): they follow you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their warband.</small></div></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
+    const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()}</small></div></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
     const jtabs = `<div class="jtabs"><button data-jtab="map" class="${jTab === 'map' ? 'on' : ''}">Map</button><button data-jtab="journey" class="${jTab === 'journey' ? 'on' : ''}">Journeys</button><button data-jtab="raid" class="${jTab === 'raid' ? 'on' : ''}">Raids</button></div>`;
     const chLocked = (d) => (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse);
     const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
       const weak = powerFor(d) < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk}${d.raid ? ` · ⚔ Raid: ${d.bands} warband${d.bands > 1 ? 's' : ''}` : ''}${d.march ? ` · March ${d.march} day${d.march > 1 ? 's' : ''} each way (${marchFood(d)} food for the soldiers you bring)` : ''} · Power ${needOf(d)}${d.raid ? ` (you: ${powerFor(d)}, warbands you bring + you)` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''}` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
     };
     const mapHtml = () => {                                                  // 지도 화면: 마디(원정)와 길. 고르면 아래에 같은 카드가 나온다
       const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id)), near = vis.filter(d => !N[d.id].far), far = vis.filter(d => N[d.id].far);
@@ -4580,7 +4574,7 @@
         dots += `<g data-node="${d.id}" class="${locked ? 'lk' : ''}"><circle class="hit" cx="${n.x}" cy="${n.y}" r="5"/><circle cx="${n.x}" cy="${n.y}" r="3.2" fill="${col}" stroke="${sel ? '#fff' : story.cleared[d.id] ? '#8fd49a' : '#2a2118'}" stroke-width="${sel || story.cleared[d.id] ? 1 : 0.5}"/><text x="${n.x}" y="${n.y + 1.1}">${sym}</text>${holdOf(d.id) ? `<text class="flag" x="${n.x + 3.8}" y="${n.y - 2.2}">&#9873;</text>` : story.cleared[d.id] ? `<text class="ok" x="${n.x + 3.6}" y="${n.y - 2.6}">&#10003;</text>` : ''}${sel ? `<text class="nm" x="${n.x}" y="${n.y + 7.2}">${d.name}</text>` : ''}</g>`;
       }
       const sd = CFG.EXPEDITIONS.find(d => d.id === jMapSel);
-      return `<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid &nbsp; &#9790; night &nbsp; &#9733; story site &nbsp; dim = locked or too strong &nbsp; &#10003; cleared</small>` + (far.length ? `<div class="jfar"><b>Far lands</b> (march days)<br>${far.map(d => `<button data-node="${d.id}" class="farchip${d.id === jMapSel ? ' on' : ''}${lockOf(d) ? ' lk' : ''}">${holdOf(d.id) ? '&#9873; ' : ''}${d.name} · ${d.march} day${d.march > 1 ? 's' : ''}</button>`).join('')}</div>` : '') + (sd ? rowOf(sd) : '') + escHtml;
+      return `<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid &nbsp; &#9790; night &nbsp; &#9733; story &nbsp; dim = locked</small>` + (far.length ? `<div class="jfar"><b>Far lands</b> (march days)<br>${far.map(d => `<button data-node="${d.id}" class="farchip${d.id === jMapSel ? ' on' : ''}${lockOf(d) ? ' lk' : ''}">${holdOf(d.id) ? '&#9873; ' : ''}${d.name} · ${d.march} day${d.march > 1 ? 's' : ''}</button>`).join('')}</div>` : '') + (sd ? rowOf(sd) : '') + escHtml;
     };
     const expList = jTab === 'map' ? mapHtml() : CFG.EXPEDITIONS.filter(d => !!d.raid === (jTab === 'raid')).map(rowOf).join('');
     document.getElementById('jExp').innerHTML = jtabs + (jTab === 'map' ? '' : escHtml) + expList;       // 지도 탭: 지도와 카드가 먼저, 전투단 목록은 그 아래
@@ -4653,7 +4647,7 @@
   function homeOdds(d) {                                                  // 출발 전 안내: 자리를 비우는 동안의 밤들 가운데 가장 위험한 밤
     const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());
     let worst = 9; for (let i = 0; i < d.march * 2; i++) worst = Math.min(worst, nightRatio(dayNow() + i, party));
-    return worst >= 1.2 ? 'The village should hold' : worst >= 0.6 ? 'Some wall damage is likely' : worst >= 0.3 ? 'Serious losses are likely' : 'The village may be sacked - leave a warband home';
+    return worst >= 1.2 ? 'Village should hold' : worst >= 0.6 ? 'Walls may be hit' : worst >= 0.3 ? 'Heavy losses likely' : 'Village may fall: keep a warband home';
   }
   function resolveHomeNight(day) {                                        // 마을의 밤 하나를 숫자로 치르고, 아침 보고서에 쓸 한 줄을 돌려준다
     const n = homeThreat(day), r = nightRatio(day), fences = obstacles.filter(o => o.userData.type === 'fence');
@@ -4661,9 +4655,9 @@
     const lose = (f) => { for (const k of ['wood', 'stone', 'food', 'iron']) res[k] = Math.floor(res[k] * (1 - f)); };
     const loseCitizen = () => { const c = npcs.filter(x => x.role === 'citizen'); if (c.length > 1) { const v = c[Math.floor(Math.random() * c.length)]; removeNpc(v); return true; } return false; };
     let msg;
-    if (r >= 1.2) msg = `Night ${day}: about ${n} raiders were driven off at the gates.`;
-    else if (r >= 0.6) { hurt(0.25, 0.35); msg = `Night ${day}: about ${n} raiders were driven off, but some walls were damaged.`; }
-    else if (r >= 0.3) { hurt(0.5, 0.6); lose(0.1); const c = Math.random() < 0.35 && loseCitizen(); msg = `Night ${day}: about ${n} raiders broke through the walls. Walls and stores were hit${c ? ' and a villager was lost' : ''}.`; }
+    if (r >= 1.2) msg = `Night ${day}: ~${n} raiders repelled.`;
+    else if (r >= 0.6) { hurt(0.25, 0.35); msg = `Night ${day}: ~${n} raiders repelled, walls hit.`; }
+    else if (r >= 0.3) { hurt(0.5, 0.6); lose(0.1); const c = Math.random() < 0.35 && loseCitizen(); msg = `Night ${day}: ~${n} raiders broke through${c ? ', a villager lost' : ''}.`; }
     else { hurt(0.7, 1.2); lose(0.25); let c = 0; for (let i = 0; i < 2; i++) if (Math.random() < 0.6 && loseCitizen()) c++; msg = `Night ${day}: about ${n} raiders overran the village! Walls fell, a quarter of the stores were taken${c ? ` and ${c} villager${c > 1 ? 's' : ''} lost` : ''}.`; }
     updateHud();
     return msg;
@@ -4709,11 +4703,11 @@
   function garrisonIt(id) {
     const d = CFG.EXPEDITIONS.find(x => x.id === id); if (!d || !d.raid || !story.cleared[id]) return;
     story.holds = story.holds || {}; const h = story.holds[id];
-    if (h && h.n >= HOLD_MAX) return toast(`${d.name} already has the largest garrison (${HOLD_MAX})`);
-    const s = pickGarrison(); if (!s) return toast('No soldier at home to send (soldiers on a journey cannot be garrisoned)');
+    if (h && h.n >= HOLD_MAX) return toast('Garrison is full');
+    const s = pickGarrison(); if (!s) return toast('No free soldier');
     const name = s.name; garrisonOut(s);
     if (h) h.n++; else { story.holds[id] = { n: 1, since: dayNow() }; story.camps[id] = true; rebuildCamps(); }
-    toast(`${name} garrisons ${d.name}. It now pays its supplies and keeps raids smaller while it holds.`); Snd.play('chime'); updateHud(); renderJournal();
+    toast(`${name} garrisons ${d.name}`); Snd.play('chime'); updateHud(); renderJournal();
   }
   function holdsMorning() {                                                // 매일 아침: 주둔 병사의 식량, 되찾으러 오는 적, 방치된 곳의 복귀
     const hs = story.holds || {}, day = dayNow(), lines = [];
@@ -4722,23 +4716,23 @@
       res.food = Math.max(0, res.food - h.n);                              // 주둔 병사는 하루에 식량 1씩
       const r = holdRisk(id);
       if (Math.random() < r.chance) {
-        if (Math.random() < r.win) lines.push(`Raiders tried to retake ${d.name}, but the garrison held.`);
-        else { delete hs[id]; story.camps[id] = false; story.cleared[id] = false; rebuildCamps(); lines.push(`${d.name} has fallen: the garrison of ${h.n} was lost and the raiders are back. Raid it again to retake it.`); }
+        if (Math.random() < r.win) lines.push(`${d.name} held.`);
+        else { delete hs[id]; story.camps[id] = false; story.cleared[id] = false; rebuildCamps(); lines.push(`${d.name} fell. Garrison lost.`); }
       }
     }
     const cd = story.clearedDay || {};
     for (const id of Object.keys(story.cleared || {})) {                    // 지키는 병사가 없는 야영지는 열흘 뒤 산적이 다시 차지한다
       const d = CFG.EXPEDITIONS.find(x => x.id === id);
-      if (d && d.raid && story.cleared[id] && !hs[id] && cd[id] !== undefined && day - cd[id] >= HOLD_REVERT_DAYS) { story.cleared[id] = false; story.camps[id] = false; rebuildCamps(); lines.push(`Bandits reoccupied ${d.name} because nobody held it.`); }
+      if (d && d.raid && story.cleared[id] && !hs[id] && cd[id] !== undefined && day - cd[id] >= HOLD_REVERT_DAYS) { story.cleared[id] = false; story.camps[id] = false; rebuildCamps(); lines.push(`Bandits retook ${d.name}.`); }
     }
     if (lines.length) setTimeout(() => toast(lines.join(' ')), 2400);
   }
-  function holdHtml(d) {                                                   // 일지 카드: 습격 장소의 점령 상태와 버튼
+  function holdHtml(d) {                                                   // 일지 카드: 점령 상태와 버튼 (글은 짧게)
     if (!d.raid) return '';
-    const h = holdOf(d.id);
-    if (h) { const r = holdRisk(d.id); return `<small>&#9873; Held: garrison ${h.n}/${HOLD_MAX} (eats ${h.n} food a day) · ${Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning · raids on the village stay smaller · retake risk about ${Math.round(r.chance * 100)}% a day, ${Math.round(r.win * 100)}% to hold<br><button class="holdBtn" data-hold="${d.id}" ${h.n >= HOLD_MAX ? 'disabled' : ''}>Reinforce (+1 soldier)</button></small>`; }
-    if (story.camps[d.id]) return `<small>Camp &#10003; ${Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning (built, not garrisoned)</small>`;
-    if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id], left = cd === undefined ? '' : ` (bandits return in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))} days if nobody holds it)`; return `<small>Camp broken${left}.<br><button class="holdBtn" data-hold="${d.id}">Garrison it (1 soldier)</button> A garrison keeps the camp, its supplies and the smaller raids, but eats food and bandits may try to retake it.</small>`; }
+    const h = holdOf(d.id), inc = Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(' ');
+    if (h) { const r = holdRisk(d.id); return `<small>&#9873; Held ${h.n}/${HOLD_MAX} · ${inc}/day · retake ${Math.round(r.chance * 100)}%/day, hold ${Math.round(r.win * 100)}%<br><button class="holdBtn" data-hold="${d.id}" ${h.n >= HOLD_MAX ? 'disabled' : ''}>+1 soldier</button></small>`; }
+    if (story.camps[d.id]) return `<small>&#10003; Camp ${inc}/day</small>`;
+    if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id]; return `<small>Broken${cd === undefined ? '' : ` · lost in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))}d`}<br><button class="holdBtn" data-hold="${d.id}">Garrison (1 soldier)</button></small>`; }
     return '';
   }
   // ---------- 메인 루프 ----------
@@ -5022,12 +5016,12 @@
   setInterval(() => {
     if (settings.gfx === 'lo' && !settings.auto2 && saveReady && !uiPause && !eventOpen && !document.hidden && window.__nfFps) {          // 낮음에서도 느리면 한 단계 더: 가장 낮음
       fpsLo.push(window.__nfFps); if (fpsLo.length > 10) fpsLo.shift();
-      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics set to Lowest for old phones (change it in Settings)'); }
+      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics: Lowest (Settings)'); }
     }
     if (settings.auto || settings.gfx === 'lo' || settings.gfx === 'min' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
     fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
     if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
-      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
+      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics: Low (Settings)');
     }
   }, 1000);
   function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
@@ -5062,19 +5056,19 @@
   // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
   const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
   const TUT = [
-    { text: 'Gather wood: the village plan sets up a fence by itself and soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Gather wood for the fence', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
-    { text: 'Defeat raiders to level up, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
-    { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
+    { text: 'Defeat raiders, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
+    { text: 'Gather more to build the town', done: () => townStage > 0 },
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
   // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
   const COACH = [
-    { sel: '#joy', text: 'Drag the stick to move. Press the red Attack button to attack.' },
-    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather to collect wood and stone. Your villagers gather too.' },
-    { sel: '#planBtn', text: 'The Village Plan builds fences and houses by itself once you have the resources. Tap it to change what comes first.' },
-    { sel: '#hudBar', text: 'Your health, level and resources are up here. Tap it for the full stats.' },
-    { sel: null, text: 'Raiders come at night - stay near the fire with your soldiers. A big raid is announced a day ahead. Good luck, Keeper!' },
+    { sel: '#joy', text: 'Drag to move. The red button attacks.' },
+    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather.' },
+    { sel: '#planBtn', text: 'The Village Plan builds for you. Tap to change what comes first.' },
+    { sel: '#hudBar', text: 'Health, level, resources. Tap for stats.' },
+    { sel: null, text: 'Raiders come at night. Stay near the fire. Good luck, Keeper!' },
   ];
   let coachStep = -1, coachSeen = false; try { coachSeen = !!localStorage.getItem('nf_coach'); } catch (e) {}
   const coachEl = document.createElement('div'); coachEl.id = 'coach'; coachEl.innerHTML = '<p id="coachTxt"></p><div class="tbtns"><button id="coachNext">Next</button><button id="coachSkip">Skip</button></div>'; document.body.appendChild(coachEl);

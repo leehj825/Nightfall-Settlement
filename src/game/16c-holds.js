@@ -18,11 +18,11 @@
   function garrisonIt(id) {
     const d = CFG.EXPEDITIONS.find(x => x.id === id); if (!d || !d.raid || !story.cleared[id]) return;
     story.holds = story.holds || {}; const h = story.holds[id];
-    if (h && h.n >= HOLD_MAX) return toast(`${d.name} already has the largest garrison (${HOLD_MAX})`);
-    const s = pickGarrison(); if (!s) return toast('No soldier at home to send (soldiers on a journey cannot be garrisoned)');
+    if (h && h.n >= HOLD_MAX) return toast('Garrison is full');
+    const s = pickGarrison(); if (!s) return toast('No free soldier');
     const name = s.name; garrisonOut(s);
     if (h) h.n++; else { story.holds[id] = { n: 1, since: dayNow() }; story.camps[id] = true; rebuildCamps(); }
-    toast(`${name} garrisons ${d.name}. It now pays its supplies and keeps raids smaller while it holds.`); Snd.play('chime'); updateHud(); renderJournal();
+    toast(`${name} garrisons ${d.name}`); Snd.play('chime'); updateHud(); renderJournal();
   }
   function holdsMorning() {                                                // 매일 아침: 주둔 병사의 식량, 되찾으러 오는 적, 방치된 곳의 복귀
     const hs = story.holds || {}, day = dayNow(), lines = [];
@@ -31,22 +31,22 @@
       res.food = Math.max(0, res.food - h.n);                              // 주둔 병사는 하루에 식량 1씩
       const r = holdRisk(id);
       if (Math.random() < r.chance) {
-        if (Math.random() < r.win) lines.push(`Raiders tried to retake ${d.name}, but the garrison held.`);
-        else { delete hs[id]; story.camps[id] = false; story.cleared[id] = false; rebuildCamps(); lines.push(`${d.name} has fallen: the garrison of ${h.n} was lost and the raiders are back. Raid it again to retake it.`); }
+        if (Math.random() < r.win) lines.push(`${d.name} held.`);
+        else { delete hs[id]; story.camps[id] = false; story.cleared[id] = false; rebuildCamps(); lines.push(`${d.name} fell. Garrison lost.`); }
       }
     }
     const cd = story.clearedDay || {};
     for (const id of Object.keys(story.cleared || {})) {                    // 지키는 병사가 없는 야영지는 열흘 뒤 산적이 다시 차지한다
       const d = CFG.EXPEDITIONS.find(x => x.id === id);
-      if (d && d.raid && story.cleared[id] && !hs[id] && cd[id] !== undefined && day - cd[id] >= HOLD_REVERT_DAYS) { story.cleared[id] = false; story.camps[id] = false; rebuildCamps(); lines.push(`Bandits reoccupied ${d.name} because nobody held it.`); }
+      if (d && d.raid && story.cleared[id] && !hs[id] && cd[id] !== undefined && day - cd[id] >= HOLD_REVERT_DAYS) { story.cleared[id] = false; story.camps[id] = false; rebuildCamps(); lines.push(`Bandits retook ${d.name}.`); }
     }
     if (lines.length) setTimeout(() => toast(lines.join(' ')), 2400);
   }
-  function holdHtml(d) {                                                   // 일지 카드: 습격 장소의 점령 상태와 버튼
+  function holdHtml(d) {                                                   // 일지 카드: 점령 상태와 버튼 (글은 짧게)
     if (!d.raid) return '';
-    const h = holdOf(d.id);
-    if (h) { const r = holdRisk(d.id); return `<small>&#9873; Held: garrison ${h.n}/${HOLD_MAX} (eats ${h.n} food a day) · ${Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning · raids on the village stay smaller · retake risk about ${Math.round(r.chance * 100)}% a day, ${Math.round(r.win * 100)}% to hold<br><button class="holdBtn" data-hold="${d.id}" ${h.n >= HOLD_MAX ? 'disabled' : ''}>Reinforce (+1 soldier)</button></small>`; }
-    if (story.camps[d.id]) return `<small>Camp &#10003; ${Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning (built, not garrisoned)</small>`;
-    if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id], left = cd === undefined ? '' : ` (bandits return in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))} days if nobody holds it)`; return `<small>Camp broken${left}.<br><button class="holdBtn" data-hold="${d.id}">Garrison it (1 soldier)</button> A garrison keeps the camp, its supplies and the smaller raids, but eats food and bandits may try to retake it.</small>`; }
+    const h = holdOf(d.id), inc = Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(' ');
+    if (h) { const r = holdRisk(d.id); return `<small>&#9873; Held ${h.n}/${HOLD_MAX} · ${inc}/day · retake ${Math.round(r.chance * 100)}%/day, hold ${Math.round(r.win * 100)}%<br><button class="holdBtn" data-hold="${d.id}" ${h.n >= HOLD_MAX ? 'disabled' : ''}>+1 soldier</button></small>`; }
+    if (story.camps[d.id]) return `<small>&#10003; Camp ${inc}/day</small>`;
+    if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id]; return `<small>Broken${cd === undefined ? '' : ` · lost in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))}d`}<br><button class="holdBtn" data-hold="${d.id}">Garrison (1 soldier)</button></small>`; }
     return '';
   }

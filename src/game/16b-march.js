@@ -21,7 +21,7 @@
   function homeOdds(d) {                                                  // 출발 전 안내: 자리를 비우는 동안의 밤들 가운데 가장 위험한 밤
     const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());
     let worst = 9; for (let i = 0; i < d.march * 2; i++) worst = Math.min(worst, nightRatio(dayNow() + i, party));
-    return worst >= 1.2 ? 'The village should hold' : worst >= 0.6 ? 'Some wall damage is likely' : worst >= 0.3 ? 'Serious losses are likely' : 'The village may be sacked - leave a warband home';
+    return worst >= 1.2 ? 'Village should hold' : worst >= 0.6 ? 'Walls may be hit' : worst >= 0.3 ? 'Heavy losses likely' : 'Village may fall: keep a warband home';
   }
   function resolveHomeNight(day) {                                        // 마을의 밤 하나를 숫자로 치르고, 아침 보고서에 쓸 한 줄을 돌려준다
     const n = homeThreat(day), r = nightRatio(day), fences = obstacles.filter(o => o.userData.type === 'fence');
@@ -29,9 +29,9 @@
     const lose = (f) => { for (const k of ['wood', 'stone', 'food', 'iron']) res[k] = Math.floor(res[k] * (1 - f)); };
     const loseCitizen = () => { const c = npcs.filter(x => x.role === 'citizen'); if (c.length > 1) { const v = c[Math.floor(Math.random() * c.length)]; removeNpc(v); return true; } return false; };
     let msg;
-    if (r >= 1.2) msg = `Night ${day}: about ${n} raiders were driven off at the gates.`;
-    else if (r >= 0.6) { hurt(0.25, 0.35); msg = `Night ${day}: about ${n} raiders were driven off, but some walls were damaged.`; }
-    else if (r >= 0.3) { hurt(0.5, 0.6); lose(0.1); const c = Math.random() < 0.35 && loseCitizen(); msg = `Night ${day}: about ${n} raiders broke through the walls. Walls and stores were hit${c ? ' and a villager was lost' : ''}.`; }
+    if (r >= 1.2) msg = `Night ${day}: ~${n} raiders repelled.`;
+    else if (r >= 0.6) { hurt(0.25, 0.35); msg = `Night ${day}: ~${n} raiders repelled, walls hit.`; }
+    else if (r >= 0.3) { hurt(0.5, 0.6); lose(0.1); const c = Math.random() < 0.35 && loseCitizen(); msg = `Night ${day}: ~${n} raiders broke through${c ? ', a villager lost' : ''}.`; }
     else { hurt(0.7, 1.2); lose(0.25); let c = 0; for (let i = 0; i < 2; i++) if (Math.random() < 0.6 && loseCitizen()) c++; msg = `Night ${day}: about ${n} raiders overran the village! Walls fell, a quarter of the stores were taken${c ? ` and ${c} villager${c > 1 ? 's' : ''} lost` : ''}.`; }
     updateHud();
     return msg;

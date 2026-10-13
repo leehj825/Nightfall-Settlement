@@ -210,11 +210,8 @@
     if (r.newCit) rows.push(`New citizens: ${r.newCit}`);
     if (r.ill.length) rows.push(`Fell ill: ${r.ill.join(', ')}${builtBuildings('well').length ? '' : ' - a well would help'}`);
     if (r.healed.length) rows.push(`Recovered: ${r.healed.join(', ')}`);
-    if (r.traded) rows.push('Market: sold surplus food for iron');
     if (r.left.length) rows.push(`Left the village: ${r.left.join(', ')}`);
     { const un = npcs.filter(n => n.mood < CFG.MOOD_UNHAPPY).length; rows.push(`Mood: ${moodLabel(moodAvg)} ${Math.round(moodAvg)}${un ? ` · ${un} unhappy` : ''}`); }
-    if (prosScore > 40) rows.push(`Wealth draws raiders: +${Math.round((prosScore - 40) / 1.2)}% tonight`);
-    if (r.equipped || r.forged) rows.push(`Gear: ${r.forged} forged · ${r.equipped} equipped`);
     const dr = [['wood', 'Wood'], ['stone', 'Stone'], ['iron', 'Iron'], ['food', 'Food']].map(([k, n]) => [n, Math.floor(d(k))]).filter(x => x[1] !== 0).map(([n, v]) => `${n} ${v > 0 ? '+' : ''}${v}`);
     if (dr.length) rows.push(`Stockpile: ${dr.join(' · ')}`);
     const dp = prosScore - r.pros;

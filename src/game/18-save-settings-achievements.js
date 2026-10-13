@@ -41,12 +41,12 @@
   setInterval(() => {
     if (settings.gfx === 'lo' && !settings.auto2 && saveReady && !uiPause && !eventOpen && !document.hidden && window.__nfFps) {          // 낮음에서도 느리면 한 단계 더: 가장 낮음
       fpsLo.push(window.__nfFps); if (fpsLo.length > 10) fpsLo.shift();
-      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics set to Lowest for old phones (change it in Settings)'); }
+      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics: Lowest (Settings)'); }
     }
     if (settings.auto || settings.gfx === 'lo' || settings.gfx === 'min' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
     fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
     if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
-      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
+      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics: Low (Settings)');
     }
   }, 1000);
   function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
@@ -81,19 +81,19 @@
   // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
   const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
   const TUT = [
-    { text: 'Gather wood: the village plan sets up a fence by itself and soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Gather wood for the fence', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
-    { text: 'Defeat raiders to level up, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
-    { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
+    { text: 'Defeat raiders, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
+    { text: 'Gather more to build the town', done: () => townStage > 0 },
     { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
   ];
   // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
   const COACH = [
-    { sel: '#joy', text: 'Drag the stick to move. Press the red Attack button to attack.' },
-    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather to collect wood and stone. Your villagers gather too.' },
-    { sel: '#planBtn', text: 'The Village Plan builds fences and houses by itself once you have the resources. Tap it to change what comes first.' },
-    { sel: '#hudBar', text: 'Your health, level and resources are up here. Tap it for the full stats.' },
-    { sel: null, text: 'Raiders come at night - stay near the fire with your soldiers. A big raid is announced a day ahead. Good luck, Keeper!' },
+    { sel: '#joy', text: 'Drag to move. The red button attacks.' },
+    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather.' },
+    { sel: '#planBtn', text: 'The Village Plan builds for you. Tap to change what comes first.' },
+    { sel: '#hudBar', text: 'Health, level, resources. Tap for stats.' },
+    { sel: null, text: 'Raiders come at night. Stay near the fire. Good luck, Keeper!' },
   ];
   let coachStep = -1, coachSeen = false; try { coachSeen = !!localStorage.getItem('nf_coach'); } catch (e) {}
   const coachEl = document.createElement('div'); coachEl.id = 'coach'; coachEl.innerHTML = '<p id="coachTxt"></p><div class="tbtns"><button id="coachNext">Next</button><button id="coachSkip">Skip</button></div>'; document.body.appendChild(coachEl);
