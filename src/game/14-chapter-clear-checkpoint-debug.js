@@ -54,7 +54,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: n.cls || 'sword', warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -89,18 +89,18 @@
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
     Object.assign(story, { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
-    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0 }, (sn.pl && sn.pl.st) || {}); updateLvlUi();
+    rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign(ST0(), (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
     if (sn.playerClass) { const keep = sn.hp; setClass(sn.playerClass); } else { playerClass = null; setTimeout(openDifficultyChoice, 700); }
-    order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `R · ${order === 'follow' ? 'Follow' : 'Guard'}`;
-    Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none' }, sn.playerGear || {}); weaponMode = sn.weaponMode; applyPlayerGear();
+    order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `O · ${order === 'follow' ? 'Follow' : 'Guard'}`;
+    Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' }, sn.playerGear || {}); if (!(sn.playerGear && sn.playerGear.great)) playerGear.great = gearAtTier('great', gearDef(playerGear.sword).tier); if (!(sn.playerGear && sn.playerGear.spear)) playerGear.spear = gearAtTier('spear', gearDef(playerGear.sword).tier); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
     designTier = sn.designTier; townStage = sn.townStage || 0; age = sn.age || 1; chapterCleared = sn.chapterCleared;
     buildHall(); updateAgeUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
     dead = false; fireAlive = true; flame.visible = true; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
-    dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
+    dashBonusT = dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
     for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
     for (const b of sn.buildings) { const o = createBuilding(b.kind, b.x, b.z); if (b.level) { if (b.kind === 'house') { o.userData.level = b.level; setHouseModel(o); } else setBuildingLevel(o, b.level); } if (b.stock) { Object.assign(o.userData.stock, b.stock); refreshRack(o); } }
@@ -109,7 +109,7 @@
     if (sn.wbInfo) warbandInfo = sn.wbInfo.map(x => ({ ...x }));
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
-      n.cls = d.cls || 'sword'; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
+      n.cls = d.cls || 'sword'; n.clsHome = n.cls; n.clsTrip = d.clsTrip || null; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); } else if (n.role === 'melee') applyGear(n);
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };
@@ -160,7 +160,7 @@
     for (const c of npcs.filter(n => n.promote)) setRole(c, c.promote.to);
     const sm = smiths()[0];                                   // 디버그: 대장간 선반에 장비를 채워 병사들이 수령하게 한다
     if (sm) { sm.userData.stock.iron_sword += 3; sm.userData.stock.strong_bow += 2; sm.userData.stock.iron_armor += 4; sm.userData.stock.steel_sword += 1; refreshRack(sm); }
-    playerGear.sword = 'iron_sword'; applyPlayerGear();
+    playerGear.sword = 'iron_sword'; playerGear.great = 'iron_great'; playerGear.spear = 'iron_spear'; applyPlayerGear();
     for (const e of enemies.slice()) removeEnemy(e);
     for (const r of rocks.slice()) { scene.remove(r); scene.remove(r.userData.mark); rocks.splice(rocks.indexOf(r), 1); }
     healPlayer(pMaxHp()); fireHp = fireMax();

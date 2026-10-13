@@ -227,7 +227,7 @@
     return true;
   }
   function soldierStrike(foe) {                                             // 애니메이션을 시작하고, 칼이 휘둘러지는 순간에 피해를 준다. 휘두르는 동안은 제자리에 선다
-    const n = npc, base = gearDef(n.gear.sword), spear = n.cls === 'spear', medic = n.cls === 'medic', great = n.cls === 'greatsword';
+    const n = npc, base = soldierWeaponDef(n), spear = n.cls === 'spear', medic = n.cls === 'medic', great = n.cls === 'greatsword';
     n.anim.once(spear ? 'attackSpear' : 'attackSword'); sfxAt('swing', n.position.x, n.position.z);
     const dur = n.anim.shot ? n.anim.shot.dur : 0.6, heavy = !spear && n.anim.heavy, hitIn = n.anim.hitIn ?? 0.25;
     n.atkCd = Math.max(spear ? 1.0 : medic ? 0.9 : great ? 1.1 : 0.6, dur * 0.95); n.atkLock = dur * 0.9;
@@ -298,12 +298,13 @@
   function archerDefend(dt) {
     const rs = peaceful ? restSpot(npc, 'night') : null, hx = rs ? rs.x : npc.home.x, hz = rs ? rs.z : npc.home.z;
     if (Math.hypot(npc.position.x - hx, npc.position.z - hz) > 1.0) npcMove(hx, hz, 4.5, dt);
-    let foe = null, bd = CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
+    let foe = null, bd = (orderOf(npc) === 'charge' ? 1.25 : 1) * CFG.ARCHER_AGGRO * (fogNight ? 0.65 : 1) * (1 - 0.15 * rainNow());
     for (const e of enemies) {
       if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;      // 공성 투척병은 궁수가 노릴 수 없다
       const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
       if (d < bd) { bd = d; foe = e; }
     }
+    if (markedFoe && !markedFoe.userData.ex && !markedFoe.userData.siege && !markedFoe.userData.prowl && Math.hypot(markedFoe.position.x - npc.position.x, markedFoe.position.z - npc.position.z) < CFG.ARCHER_AGGRO * 1.25) foe = markedFoe;       // 표시된 적을 먼저 쏜다
     if (!foe) {
       if (peaceful && Math.hypot(npc.position.x - hx, npc.position.z - hz) < 1.0) { if (rs) faceTo(rs.fx, rs.fz); else faceFire(); return trainTick(dt) ? 'Training' : 'Resting'; }
       return 'Idle';
@@ -409,11 +410,16 @@
           if (workStep(dt)) { state = npc.stateLabel; bob = npc.bobAmt; } else state = citizenRest(dt);
         } else state = peaceful ? citizenRest(dt) : citizenHide(dt);
       } else if (npc.archer) state = archerDefend(dt); else {
-      let foe = null, bd = CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
+      const ord = orderOf(npc), post0 = ord === 'stand' ? (sentryPost(npc) || npc.home) : null;       // 명령: Stand firm 은 초소 근처의 적만, Charge 는 더 멀리서, Withdraw 는 싸우러 나가지 않는다
+      let foe = null, bd = ord === 'charge' ? CFG.MELEE_AGGRO * 1.3 : ord === 'stand' ? 14 : CFG.MELEE_AGGRO;      // 성벽 밖까지 인식 → npcMove의 출입구 경유 길찾기로 밖에 나가 싸우고, 끝나면 문으로 복귀
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.siege || e.userData.prowl) continue;
-        const d = Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
+        if (e.userData.sinking || e.userData.siege || e.userData.prowl || ord === 'withdraw') continue;
+        const d = post0 ? Math.hypot(e.position.x - post0.x, e.position.z - post0.z) : Math.hypot(e.position.x - npc.position.x, e.position.z - npc.position.z);
         if (d < bd) { bd = d; foe = e; }
+      }
+      if (markedFoe && !markedFoe.userData.ex && ord !== 'withdraw') {                         // 표시된 적이 있으면 그 적을 먼저 노린다 (Stand firm 은 초소 근처일 때만)
+        const md = post0 ? Math.hypot(markedFoe.position.x - post0.x, markedFoe.position.z - post0.z) : Math.hypot(markedFoe.position.x - npc.position.x, markedFoe.position.z - npc.position.z);
+        if (ord !== 'stand' || md < 14) { foe = markedFoe; bd = md; }
       }
       if (npc.returning || !foe) {
         const post = sentryPost(npc), rs = peaceful && !post ? restSpot(npc, 'night') : null, tgt = post || rs || npc.home;

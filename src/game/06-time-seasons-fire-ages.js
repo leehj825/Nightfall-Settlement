@@ -176,7 +176,7 @@
     const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);      // 건물 주변을 눌러도 열리도록 지면 좌표로도 판정
     if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) nightMerchantMenu();
     else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) openSmith();
-    else if (!dead && !uiPause && !eventOpen) attack();                    // 빈 곳을 탭하면 기본 공격
+    else if (e.pointerType === 'mouse' && !dead && !uiPause && !eventOpen) attack();                    // 마우스 클릭만 기본 공격 (터치는 공격 버튼으로: 병사를 잘못 누르지 않게)
   });
 
   function animateFire(t) {

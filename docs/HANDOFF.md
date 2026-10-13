@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v63`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v76`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement`, dev branch `ccr-9e4a8ed7-fh7jhu` (push there; no pull requests unless the owner asks). The owner writes Korean or English; the game UI is English only. No Play Store work. A medieval setting: avoid modern words (see the terms table in the roadmap).
@@ -42,12 +42,15 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - Guessed numbers worth tuning: great sword skill bonuses, unarmed and citizen punch damage, block strength (75% less), soldier-left-home power factor (one third), soldier cap values.
 - Chopping axe blade direction and the left-hand grip on tools are checked only in still frames.
 - Citizens fighting back and the roaming day enemies are lightly tested.
-- Journey power requirements (`CFG.EXP_NEED`) were not retuned after power became warband-based.
+- Journey power requirements are scaled by `CFG.EXP_NEED_SCALE` (0.8, a guess) since power became warband-based; check on a real run.
 - Custom skinned character models are disabled; houses, gates, towers, wolves, great sword, staff, armor have no custom model.
 
+- **Gear slots**: `sword`, `great`, `spear`, `bow`, `armor` (`CFG.GEAR`); hero helpers `weaponDef(mode)`, `gearAtTier`; soldiers use `soldierWeaponDef(n)` (best of class slot and sword).
+- **Two classes per soldier**: `n.clsHome` (town) and `n.clsTrip` (journey, optional); `n.cls` is the active one, swapped on departure/return in `16-expeditions-story-journal.js`. Helpers `homeCls`, `tripCls`, `setClassFor` in `10b-warbands.js`.
+
 ## Next steps (also in the roadmap)
-1. **Orders and the leader's standard** (war layer phase 2): Forward, Stand firm, Withdraw, Mark the foe, Charge; nearby men fight better near the leader. Needs: a small order set on the warband bar, soldier behaviour states for the selected warband, saved settings.
-2. Raids on bandit camps with two or three warbands (Age 2), then the campaign map and sieges (Age 3).
+1. **Orders (buttons and soldier behaviour done in nf-v66, only UI-tested headless; fights not watched)**, Mark the foe is done (nf-v70, `toggleMark` / `markedFoe` in `10b-warbands.js`); leader's standard done (nf-v71, `standardMods` in `10b-warbands.js`, tuned by `CFG.STANDARD` and the Standard Bearer skill); next the Marshal extras (war layer phase 2; the saved per-warband `order` field exists in `10b-warbands.js` with `warbandOrder` / `setWarbandOrder`, nothing uses it yet; next: buttons, soldier behaviour, Mark the foe, standard): Forward, Stand firm, Withdraw, Mark the foe, Charge; nearby men fight better near the leader. Needs: a small order set on the warband bar, soldier behaviour states for the selected warband, saved settings.
+2. Raids: camp layout done (nf-v75: `banditcamp` in `CFG.EXPEDITIONS`, `buildBanditCamp` in `16-expeditions-story-journal.js`; note the old `buildCamp(id)` is the supply camp). Next: guards stay inside / archers on towers / palisade blocks raiders, chief or banner objective, loot and lasting effect, power retune. Multi-warband journeys are done (nf-v73: `escortBands`, `bandMax`, `toggleBring`). Next: raids on bandit camps with two or three warbands (Age 2), then the campaign map and sieges (Age 3).
 3. Realms, provisions, banners and the host, the final campaign.
 4. Later: custom models, tuning pass after phone testing.
 

@@ -56,7 +56,7 @@
       for (const b of exBeams) { const d = Math.hypot(b.parent.position.x - player.position.x, b.parent.position.z - player.position.z); b.material.opacity = (0.1 + 0.2 * nf) * Math.min(1, d / 9); }       // 가까이 가면 기둥이 옅어진다
     }
     if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
-    weatherStep(dt, night, hour);
+    weatherStep(dt, night, hour); updateMark(t); updateStandard(t);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
@@ -123,14 +123,14 @@
     const ky = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
     if (dead) { ix = iy = 0; }
     else if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
-    atkLock -= dt; const locked = atkLock > 0 && dashT <= 0;
+    dashBonusT -= dt; atkLock -= dt; const locked = atkLock > 0 && dashT <= 0;
     if (locked) { ix = iy = 0; }                                       // 공격 모션 중에는 움직이지 않는다
     const mag = Math.min(1, Math.hypot(ix, iy));
 
     if (dashT > 0) {                       // 대시 중: 입력 이동 대신 바라보는 방향으로 질주
       const sd = Math.min(dt, dashT);
-      player.position.x += dashDX * (CFG.DASH_DIST / CFG.DASH_TIME) * sd;
-      player.position.z += dashDZ * (CFG.DASH_DIST / CFG.DASH_TIME) * sd;
+      player.position.x += dashDX * (dashDist() / CFG.DASH_TIME) * sd;
+      player.position.z += dashDZ * (dashDist() / CFG.DASH_TIME) * sd;
       dashT -= dt;
     } else if (mag > 0.08) {
       // 현재 카메라가 바라보는 방향(수평) 기준으로 전진/우측 벡터 계산

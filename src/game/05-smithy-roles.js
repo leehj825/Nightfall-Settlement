@@ -17,8 +17,11 @@
     if (!sm || !obstacles.includes(sm)) return closeSmith();
     document.getElementById('smithRes').textContent = `You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron${res.shard || story.beacon ? ` · ${res.shard} Shards` : ''}  (Iron drops from rocks)`;
     smithList.innerHTML = '';
+    const SLOT_HEAD = { sword: 'Swords', great: 'Great Swords', spear: 'Spears', bow: 'Bows', armor: 'Armor' };
+    for (const slot of Object.keys(SLOT_HEAD)) {
+      const h = document.createElement('div'); h.className = 'shead'; h.textContent = `${SLOT_HEAD[slot]} - you use: ${gearDef(playerGear[slot] || 'armor_none').name}`; smithList.appendChild(h);
     for (const [id, d] of Object.entries(CFG.GEAR)) {
-      if (!d.cost) continue;
+      if (!d.cost || d.slot !== slot) continue;
       const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age || (d.req && !story[d.req]);
       const row = document.createElement('div'); row.className = 'srow';
       row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
@@ -26,6 +29,7 @@
       bc.disabled = locked || !canPay(gearCost(d)); be.disabled = stock <= 0 || equipped;
       bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
       smithList.appendChild(row);
+    }
     }
   }
   function forgeEffect(sm) {                  // 모루 위 불꽃 + 화덕이 확 밝아진다 + 쾅 소리
@@ -35,7 +39,7 @@
   function craftGear(id) {
     const sm = smithOpenFor, d = gearDef(id);
     if (!sm || !canPay(gearCost(d))) return;
-    payCost(gearCost(d)); sm.userData.stock[id]++; refreshRack(sm); updateHud(); report.forged++;
+    payCost(gearCost(d)); sm.userData.stock[id] = (sm.userData.stock[id] || 0) + 1; refreshRack(sm); updateHud(); report.forged++;
     forgeEffect(sm);
     toast(`Forged: ${d.name}! Soldiers will come to pick it up`);
     renderSmith();
@@ -64,12 +68,12 @@
   function toggleFront() {                                          // 영웅의 앞모습 ↔ 뒷모습 카메라
     if (bird) return toast('Leave the map view first');
     camFront = !camFront;
-    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = camFront ? 'Back View' : 'Front View';
+    const b = document.getElementById('viewBtn'); b.classList.toggle('on', camFront); b.firstChild.textContent = 'View';
   }
   function toggleOrder() {
     if (dead || playerClass !== 'commander') return;
     order = order === 'guard' ? 'follow' : 'guard';
-    document.getElementById('ordSub').textContent = `R · ${order === 'follow' ? 'Follow' : 'Guard'}`;
+    document.getElementById('ordSub').textContent = `O · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     toast(order === 'follow' ? 'Order: Follow me - soldiers gather at your side' : 'Order: Guard - soldiers return to their duties');
     Snd.play('horn');
   }
@@ -93,7 +97,7 @@
     openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
-  addEventListener('keydown', e => { if (e.code === 'KeyR' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); });
+  addEventListener('keydown', e => { if (e.code === 'KeyO' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); if (e.code === 'KeyY' && !e.repeat) toggleMark(); });
   const bindBtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
   bindBtn('actBtn', gather);
   bindBtn('buildBtn', upgradeFence);

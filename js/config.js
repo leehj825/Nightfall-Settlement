@@ -82,6 +82,8 @@
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
       { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
+      { id: 'banditcamp', name: 'Bandit Camp', raid: true, bands: 2, age: 2, tint: 0x7a6a48, risk: 'High', reward: 'Loot chests, iron, supplies', desc: 'RAID: a walled camp of raiders with watchtowers and a Bandit Chief. Bring at least two warbands, break in through the gate and take down the chief.', trees: 5, rocks: 3, ore: 0, chests: 1, camp: { radius: 15, towers: 4, tents: 6, chests: 3 },
+        foes: ['normal', 'normal', 'normal', 'shield', 'shield', 'archer', 'archer', 'normal', 'brute', 'normal', 'archer', 'shield'], guardian: { kind: 'brute', hpMul: 6, scale: 1.6, name: 'Bandit Chief' } },
       { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
       { id: 'mine', name: 'Iron Mine', age: 2, tint: 0x4a4048, risk: 'Medium', reward: 'Lots of iron, Iron Heart', desc: 'Rich veins of iron deep in the hill. The tunnels are crowded with guards.', trees: 0, rocks: 4, ore: 14, chests: 2, relic: 'Iron Heart', ruins: 4, foes: ['normal', 'shield', 'shield', 'brute', 'normal'] },
       { id: 'citadel', name: 'Fallen Citadel', age: 3, tint: 0x55485a, risk: 'High', reward: 'Rich loot, Beacon Core', desc: 'The old fortress. Its guardians will not give up the last relic without a fight.', trees: 0, rocks: 6, ore: 6, chests: 4, relic: 'Beacon Core', ruins: 12, foes: ['brute', 'brute', 'shield', 'shield', 'normal', 'normal', 'normal'] },
@@ -113,12 +115,12 @@
         foes: ['brute', 'brute', 'brute', 'brute', 'brute', 'brute', 'shield', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal', 'beast', 'beast'], guardian: { kind: 'brute', hpMul: 28, scale: 2.4, name: 'The Eclipse Queen' } },
     ],
     // 10단계: 원정지를 모두 정리(상자 전부 + 적 전부)하면 야영지를 세울 수 있다. 야영지는 매일 아침 자원을 가져다준다 (겨울에는 60%)
-    CAMPS: { cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
+    CAMPS: { banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
     CAMP_COST: { 1: { wood: 35, stone: 25 }, 2: { wood: 50, stone: 40 }, 3: { wood: 65, stone: 55, iron: 4 } },
     ESCORT_MAX: 3,
     EXP_NIGHT_LATEST: 2, EXP_NIGHT_FORCE: 4.5,        // 밤 원정: 그날 밤 습격을 정리한 뒤 20시~02시에 출발, 새벽 4시 30분에 자동 귀환
     // 원정이 열리는 전투력: 병사(기본 2 + 무기 등급×2 + 방어구 등급×1.5)의 합 + 주인공(레벨×3 + 무기 등급×3 + 방어구 등급×2). 장비와 레벨을 키워야 다음 원정이 열린다
-    EXP_NEED: { quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
+    EXP_NEED: { banditcamp: 70, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
     // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
     STORY3: [
       { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
@@ -191,6 +193,8 @@
     RAID_GAPS: [4, 3, 4, 3, 5],            // 큰 습격의 날 간격: 3일차, 7일차(보스), 10, 14, 17, 22 ... (하루 전 아침에 경고가 뜬다)
     QUIET_BASE: 1, QUIET_MAX: 6, BEAST_HP: 1,
     BUILD_TIME_BUILDING: 3,
+    STANDARD: { RADIUS: 12, DMG: 0.15, GUARD: 0.15, RANK_RADIUS: 0.2, RANK_DMG: 0.04, RANK_GUARD: 0.03 },      // 지휘관의 깃발: 곁의 병사가 더 세게 치고 덜 맞는다 (기본값은 추정, 기술로 강해진다)
+    EXP_NEED_SCALE: 0.8,      // EXP_NEED 는 원래 병사 전원(전부 100%) 기준이었다. 이제 데려가는 전투단 100% + 남은 병사 35% 이므로 0.8배 (추정값, 폰 테스트 후 조정)
     WARBAND: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3,        // 전투단(warband) 최대 인원 / 전투단 수 / 병사 수 상한(기본 + 병영·사격장당)
       NAMES: ['Lion', 'Wolf', 'Stag', 'Eagle', 'Raven', 'Boar'], COLORS: ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a'] },
     BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수
@@ -241,6 +245,14 @@
       sword_basic: { slot: 'sword', name: 'Sword', short: 'Sword', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
       iron_sword: { slot: 'sword', name: 'Iron Sword', short: 'Iron Sword', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { stone: 10, iron: 5 }, desc: 'Damage 4 · Wider slash · Stronger knockback' },
       steel_sword: { slot: 'sword', name: 'Steel Sword', short: 'Steel Sword', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { stone: 20, iron: 12 }, desc: 'Damage 6 · Huge slash · Age 3' },
+      great_basic: { slot: 'great', name: 'Great Sword', short: 'Great Sword', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
+      iron_great: { slot: 'great', name: 'Iron Great Sword', short: 'Iron Great', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { stone: 14, iron: 8 }, desc: 'Great sword damage 4 · Wider cleave' },
+      steel_great: { slot: 'great', name: 'Steel Great Sword', short: 'Steel Great', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { stone: 28, iron: 18 }, desc: 'Great sword damage 6 · Huge cleave · Age 3' },
+      beacon_great: { slot: 'great', name: 'Beacon Great Sword', short: 'Beacon Great', dmg: 9, tier: 3, age: 3, req: 'dawn', color: 0xfff0b0, slash: 2.1, slashColor: 0xffd54a, cost: { iron: 28, shard: 4 }, desc: 'Great sword damage 9 · Golden cleave · After the Dawn Gate' },
+      spear_basic: { slot: 'spear', name: 'Spear', short: 'Spear', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
+      iron_spear: { slot: 'spear', name: 'Iron Spear', short: 'Iron Spear', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { wood: 8, iron: 5 }, desc: 'Spear damage 4 · Iron head' },
+      steel_spear: { slot: 'spear', name: 'Steel Spear', short: 'Steel Spear', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { wood: 14, iron: 12 }, desc: 'Spear damage 6 · Long steel head · Age 3' },
+      beacon_spear: { slot: 'spear', name: 'Beacon Spear', short: 'Beacon Spear', dmg: 9, tier: 3, age: 3, req: 'dawn', color: 0xfff0b0, slash: 2.1, slashColor: 0xffd54a, cost: { wood: 16, iron: 18, shard: 3 }, desc: 'Spear damage 9 · Golden head · After the Dawn Gate' },
       bow_basic: { slot: 'bow', name: 'Bow', short: 'Bow', dmg: 1, tier: 0, color: 0x8a5a2b },
       strong_bow: { slot: 'bow', name: 'Reinforced Bow', short: 'Bow+', dmg: 2, tier: 1, color: 0x5a3a1a, cost: { wood: 12, iron: 4 }, desc: 'Arrow damage 2 · Iron-tipped limbs' },
       steel_bow: { slot: 'bow', name: 'Steel Bow', short: 'Steel Bow', dmg: 3, tier: 2, age: 3, color: 0xb9c4d6, cost: { wood: 25, iron: 10 }, desc: 'Arrow damage 3 · Age 3' },

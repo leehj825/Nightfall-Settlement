@@ -31,8 +31,8 @@
     n.rig.brawl = n.role === 'citizen';
     n.rig.style = cls === 'sword' ? 'ss' : cls === 'greatsword' ? 'gs' : n.role === 'archer' ? 'bow' : '';
     n.rig.main = cls === 'spear' ? 'spear' : cls === 'medic' ? 'staff' : n.role === 'melee' ? 'sword' : n.role === 'archer' ? 'bow' : null;
-    n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...gearDef(n.gear.sword), great: true } : gearDef(n.gear.sword)) : null);
-    { const sd = gearDef(n.gear.sword); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
+    n.rig.setGear('sword', n.role === 'melee' ? (cls === 'greatsword' ? { ...soldierWeaponDef(n), slot: 'sword', great: true } : { ...soldierWeaponDef(n), slot: 'sword' }) : null);
+    { const sd = soldierWeaponDef(n); n.rig.setGear('spear', cls === 'spear' ? { id: 'spear_' + sd.id, slot: 'spear', tier: sd.tier, color: sd.color } : null); }
     n.rig.setGear('staff', cls === 'medic' ? {} : null);
     n.rig.setGear('bow', n.role === 'archer' ? gearDef(n.gear.bow) : null);
     n.rig.setArmor(n.role === 'citizen' ? null : gearDef(n.gear.armor));
@@ -123,7 +123,7 @@
   }
   function damageNpc(target, n) {
     npc = target; n = n * dm().dmg;
-    if (target.role !== 'citizen') n = Math.max(1, Math.round(n * (1 - gearDef(target.gear.armor).reduce)));      // 병사 방어구
+    if (target.role !== 'citizen') n = Math.max(1, Math.round(n * (1 - gearDef(target.gear.armor).reduce) * standardMods(target).guard));      // 병사 방어구 + 지휘관의 깃발
     if (TR(target).dmg) n = Math.max(1, Math.round(n * TR(target).dmg));                                         // 용감한 성격
     npc.hp = Math.max(0, npc.hp - n);
     if (npc.hp <= 0 && !npc.down) {
@@ -176,7 +176,7 @@
     const housing = houses.length ? houses.reduce((a, h) => a + (h.userData.level || 1), 0) / (houses.length * 3) : 0;
     const fences = obstacles.filter(o => o.userData.type === 'fence');
     const wall = designTier > 0 ? 0.5 + 0.5 * (fences.length ? fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length : 0) : 0.1;
-    const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? gearDef(n.gear.sword).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
+    const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? soldierWeaponDef(n).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
     const amen = Math.min(1, (builtBuildings('well').length ? 0.5 : 0) + (builtBuildings('market').length ? 0.5 : 0));
     moodAvg = npcs.length ? npcs.reduce((a, n) => a + n.mood, 0) / npcs.length : 60;
     return Math.min(100, (hasPerk('steward') ? 10 : 0) + (story.beacon ? 5 : 0) + Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100))));
@@ -237,7 +237,7 @@
     if (report.left.length) setTimeout(() => toast(`${report.left.join(', ')} left the village - keep your people fed and safe`), 2400);
   }
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
-  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0;
+  const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0, cardBackWb = -1;       // cardBackWb: 전투단 창에서 열었으면 닫을 때 그 창으로 돌아간다
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
   const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
   const clsTitle = (n) => n.role === 'melee' ? { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
@@ -253,7 +253,7 @@
     if (n.hungry) rows.push('Hungry: speed and work at half');
     if (n.sick > 0) rows.push('Sick: slower and gloomy until it passes');
     if (n.role !== 'citizen' && vetLv(n)) rows.push(`Veteran rank ${vetLv(n)} (${n.vxp} drills): +${6 * vetLv(n)}% damage`);
-    if (n.role !== 'citizen') rows.push(`Gear: ${gearDef(n.role === 'melee' ? n.gear.sword : n.gear.bow).name}${n.gear.armor !== 'armor_none' ? ' · ' + gearDef(n.gear.armor).name : ''}`);
+    if (n.role !== 'citizen') rows.push(`Gear: ${(n.role === 'melee' ? soldierWeaponDef(n) : gearDef(n.gear.bow)).name}${n.gear.armor !== 'armor_none' ? ' · ' + gearDef(n.gear.armor).name : ''}`);
     else {
       rows.push(`Job: ${jobTitle(n)}`);
       if (n.work) rows.push(`Works at: ${BUILDING_NAME[n.work.userData.kind] || 'the village'}`);
@@ -265,13 +265,14 @@
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
-  function openNpcCard(n) { cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
-  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { cardNpc.cls = CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
-  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { cardNpc.cls = c; applyGear(cardNpc); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}`); } });
+  function openNpcCard(n) { cardBackWb = -1; cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
+  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
+  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, c); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
   document.getElementById('ncWarband').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleWarband(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
-  document.getElementById('ncClose').addEventListener('click', () => { cardNpc = null; ncEl.style.display = 'none'; });
-  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) { cardNpc = null; ncEl.style.display = 'none'; } });
+  function closeNpcCard() { cardNpc = null; ncEl.style.display = 'none'; if (cardBackWb >= 0) { const i = cardBackWb; cardBackWb = -1; openWbPanel(i); } }
+  document.getElementById('ncClose').addEventListener('click', closeNpcCard);
+  ncEl.addEventListener('pointerdown', e => { if (e.target === ncEl) closeNpcCard(); });
   // 시장: 매일 아침 남는 식량을 팔아 철을 산다 (식량 30 이상이면 10 → 철 3)
   function marketTrade() {
     if (!builtBuildings('market').length || res.food < 30) return;

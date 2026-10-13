@@ -199,7 +199,7 @@
       const dx = e.position.x - x, dz = e.position.z - z;
       const d = Math.hypot(dx, dz);
       if (d > range + e.userData.r) continue;
-      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; }
+      if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; if (def.stun && !e.userData.boss && enemies.includes(e)) e.userData.stunT = Math.max(e.userData.stunT || 0, def.stun); }
     }
     return n;
   }
