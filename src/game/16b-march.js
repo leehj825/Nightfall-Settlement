@@ -4,7 +4,7 @@
   function marchPartySize() { return escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax()).length; }
   function marchFood(d) { return d.march ? Math.ceil(marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) : 0; }
   function homeThreat(day) {                                              // 그날 밤 마을을 덮칠 적의 수 (startWave 와 같은 식, 무리 크기만)
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief());
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     if (isRaid(day)) return Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n);
     let n = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
     const tp = nightTypeOf(day);

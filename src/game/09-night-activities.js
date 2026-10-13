@@ -223,24 +223,25 @@
   let nightEase = false;
   // 습격 예보: 다가오는 큰 습격의 규모를 미리 알려 준다 (startWave와 같은 식으로 어림한 값)
   function forecast(day) {
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief());
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     const boss = day === CFG.BOSS_DAY && !chapterCleared;
     let n = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n); if (boss) n = Math.ceil(n / 2);
     const brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0, siege = day >= CFG.SIEGE_FROM_DAY ? 1 : 0;
-    return `about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
+    const rn = realmOfNight(day);
+    return `${rn ? realmDef(rn).short + ': ' : ''}about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
   }
   function defenseSummary() {
     const fences = obstacles.filter(o => o.userData.type === 'fence'), wallPct = fences.length ? Math.round(100 * fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length) : 0;
     const weak = fences.filter(f => f.userData.hp / f.userData.maxHp < 0.5).length;
-    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}${campRelief() > 0 ? ` · Raids ${Math.round(campRelief() * 100)}% smaller (camp broken)` : ''}`;
+    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}${campRelief(dayNow()) > 0 ? ` · Raids -${Math.round(campRelief(dayNow()) * 100)}%` : ''}`;
   }
   function startWave(day) {
     wave.day = day;
     wave.quiet = !isRaid(day);
-    wave.type = nightTypeOf(day);
+    wave.type = nightTypeOf(day); wave.realm = realmOfNight(day);
     const extraRaiders = pendingRaiders; pendingRaiders = 0;
     const ease = nightEase ? 0.75 : 1; nightEase = false;                  // 정찰병의 경고에 대비했다면 오늘 밤 적이 25% 줄어든다               // 아침 이벤트 선택의 대가
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief());                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'calm') wave.remaining = Math.max(1, Math.floor(wave.remaining * 0.5));            // 평범한 밤은 정말 조용하다
@@ -300,7 +301,7 @@
         } else {
           const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
-            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : specialKind(waveDay));
+            : (wave.realm === 'clan' && Math.random() < 0.3 && enemies.filter(x => x.userData.kind === 'archer' && !x.userData.sinking).length < 6 ? 'archer' : waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE * (wave.realm === 'legion' ? 1.8 : 1) ? 'shield' : specialKind(waveDay));
           spawnEnemy(kind);
           wave.remaining--;
         }

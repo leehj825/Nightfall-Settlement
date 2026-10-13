@@ -1,6 +1,6 @@
 # Campaign map - plan
 
-Status: **phases 1 to 3 built (`nf-v86` to `nf-v88`)**; the rest is still plan. The owner approved the defaults in section 9. It turns the roadmap's "campaign map and marching" step into small shippable updates. Terms follow the roadmap table (warband, banner, host, realm, foray, raid, campaign, provisions).
+Status: **phases 1 to 4 built (`nf-v86` to `nf-v91`)**; the rest is still plan. The owner approved the defaults in section 9. It turns the roadmap's "campaign map and marching" step into small shippable updates. Terms follow the roadmap table (warband, banner, host, realm, foray, raid, campaign, provisions).
 
 ## 1. What exists today that the map builds on
 - **Sites**: `CFG.EXPEDITIONS` has 26 entries: forays (quarry, forest, tower, mine, citadel...), chapter sites (ch 2 to 6, unlocked by relics/story), night sites, and three **raids** (Raider Outpost 1 band, Bandit Camp 2, Bandit Stronghold 3). Each is a playable zone built by `buildZone` in `src/game/16-expeditions-story-journal.js`.
@@ -49,7 +49,7 @@ A new `CFG.MAP` list of **nodes**; the existing expeditions become nodes (so not
 1. **Map view (option A) - DONE in nf-v86 (`CFG.MAP`, `mapHtml` in `renderJournal`)**: `CFG.MAP` from existing sites, node-map screen replacing the two Journal lists for choosing a site, same behaviour as now. Save `story.map`. *Risk: low.*
 2. **Distances and march time - DONE in nf-v87 (`src/game/16b-march.js`, far raids `hillclan` and `legionfort`, `CFG.MAP_RULES`; far sites are listed under the map as chips rather than drawn on it)**: add far nodes, march screen, days passing, provisions cost, auto-resolved home nights and the morning report. *Risk: medium (time handling and the night loop).*
 3. **Garrisons and holds - DONE in nf-v88 (`src/game/16c-holds.js`; garrison size does not change the zone yet)**: outposts and villages as nodes you can capture (no walls): garrison size decides which camp zone is built (reuse the camp builder with other sizes), captured nodes become held (income, a banner on the map, a small garrison needed). *Risk: medium.*
-4. **Realms**: three rival forces tint nodes and flavour garrisons (bandit lords, iron legion, hill clan); breaking a realm's node weakens that realm's raids on you (extend `campRelief` per realm). *Risk: low to medium.*
+4. **Realms - DONE in nf-v91 (`src/game/16d-realms.js`, `CFG.REALMS`)**: three rival forces tint nodes and flavour garrisons (bandit lords, iron legion, hill clan); breaking a realm's node weakens that realm's raids on you (extend `campRelief` per realm). *Risk: low to medium.*
 5. **Siege nodes**: castles and fortresses with walls, gates and siege gear (roadmap phase 4). Separate plan.
 6. **Wounds, levies, banners and the host**: later.
 

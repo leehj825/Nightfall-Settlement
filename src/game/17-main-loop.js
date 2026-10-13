@@ -73,7 +73,7 @@
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
       if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('WARNING: A massive threat approaches!'); bossShakeT = 3; }
-      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid! Prepare your defenses!` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
+      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid: ${realmDef(realmOfNight(dayNo)).short}` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림

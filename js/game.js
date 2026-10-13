@@ -1744,24 +1744,25 @@
   let nightEase = false;
   // 습격 예보: 다가오는 큰 습격의 규모를 미리 알려 준다 (startWave와 같은 식으로 어림한 값)
   function forecast(day) {
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief());
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     const boss = day === CFG.BOSS_DAY && !chapterCleared;
     let n = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n); if (boss) n = Math.ceil(n / 2);
     const brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0, siege = day >= CFG.SIEGE_FROM_DAY ? 1 : 0;
-    return `about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
+    const rn = realmOfNight(day);
+    return `${rn ? realmDef(rn).short + ': ' : ''}about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
   }
   function defenseSummary() {
     const fences = obstacles.filter(o => o.userData.type === 'fence'), wallPct = fences.length ? Math.round(100 * fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length) : 0;
     const weak = fences.filter(f => f.userData.hp / f.userData.maxHp < 0.5).length;
-    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}${campRelief() > 0 ? ` · Raids ${Math.round(campRelief() * 100)}% smaller (camp broken)` : ''}`;
+    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}${campRelief(dayNow()) > 0 ? ` · Raids -${Math.round(campRelief(dayNow()) * 100)}%` : ''}`;
   }
   function startWave(day) {
     wave.day = day;
     wave.quiet = !isRaid(day);
-    wave.type = nightTypeOf(day);
+    wave.type = nightTypeOf(day); wave.realm = realmOfNight(day);
     const extraRaiders = pendingRaiders; pendingRaiders = 0;
     const ease = nightEase ? 0.75 : 1; nightEase = false;                  // 정찰병의 경고에 대비했다면 오늘 밤 적이 25% 줄어든다               // 아침 이벤트 선택의 대가
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief());                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
       wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
       if (wave.type === 'calm') wave.remaining = Math.max(1, Math.floor(wave.remaining * 0.5));            // 평범한 밤은 정말 조용하다
@@ -1821,7 +1822,7 @@
         } else {
           const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
-            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : specialKind(waveDay));
+            : (wave.realm === 'clan' && Math.random() < 0.3 && enemies.filter(x => x.userData.kind === 'archer' && !x.userData.sinking).length < 6 ? 'archer' : waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE * (wave.realm === 'legion' ? 1.8 : 1) ? 'shield' : specialKind(waveDay));
           spawnEnemy(kind);
           wave.remaining--;
         }
@@ -3977,7 +3978,7 @@
       }
       const t = `${exActive.dest.name} · home in ${mm}:${ss} · 🎁${chests.length}${arrow} · ☠${foes.length}${exCamp ? (exCamp.broken ? ' · camp broken ✔' : exCamp.alarm ? ' · ALARM' : ' · chief alive') : ''}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
-      if (isRaid(nd)) { text = '🌑 Blood Moon raid in progress!'; cls = 'blood'; }
+      if (isRaid(nd)) { text = `🌑 Blood Moon raid: ${realmDef(realmOfNight(nd)).short}`; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
     } else if (isRaid(dayNo)) { text = '⚠ Blood Moon raid tonight!'; cls = 'blood'; }
     else { const left = nextRaidFrom(dayNo) - dayNo, tp = nightTypeOf(dayNo); text = `${left} day${left > 1 ? 's' : ''} until the next big raid` + (tp !== 'calm' ? ` · Tonight: ${NIGHT_INFO[tp][0]}` : ''); cls = left <= 1 ? 'soon' : ''; }
@@ -4250,7 +4251,6 @@
     }
   }
   function campAlarm() { const C = exCamp; if (!C || C.alarm || C.broken) return; C.alarm = true; toast('Alarm!'); Snd.play('horn'); }
-  function campRelief() { const fx = story.campFx || [], d = dayNow(), held = story.holds || {}, ids = new Set(fx.filter(x => d <= x.until).map(x => x.id).concat(Object.keys(held))); return Math.min(CFG.CAMP_RELIEF_MAX, [...ids].reduce((a, id) => a + (CFG.CAMP_RELIEF[id] ? CFG.CAMP_RELIEF[id].pct : 0), 0)); }       // 점령지는 기한 없이 계속
   function campReliefTxt(id) { if (holdOf(id)) return ''; const x = (story.campFx || []).find(f => f.id === id), r = CFG.CAMP_RELIEF[id]; return x && r && dayNow() <= x.until ? ` · raids -${Math.round(r.pct * 100)}% to day ${x.until}` : ''; }
   function burnBanner(o) {                                                  // 산적 깃발을 불태우면 야영지가 사기를 잃는다 (우두머리를 쓰러뜨리는 것의 다른 길)
     const f = new THREE.Group(); addGlow(f, 0xff7a2a, 6, 3.5); f.position.set(o.position.x, 0, o.position.z); exAdd(f, false); campBroken(o, 'banner');
@@ -4260,7 +4260,7 @@
     const fi = how === 'banner' ? 4 : 8, fo = how === 'banner' ? 3 : 6; res.iron += fi; res.food += fo; updateHud(); giveXp(how === 'banner' ? 40 : 60);
     const id = exActive && exActive.dest.id, rf = CFG.CAMP_RELIEF[id];
     if (rf) { story.campFx = (story.campFx || []).filter(x => x.id !== id).concat({ id, until: dayNow() + rf.days }); }
-    toast(`Camp broken! +${fi} iron +${fo} food${rf ? ` · raids -${Math.round(Math.min(CFG.CAMP_RELIEF_MAX, campRelief()) * 100)}%` : ''}`); Snd.play('victory'); shake = Math.max(shake, 0.6);
+    const rl = exActive && exActive.dest.realm; toast(`Camp broken! +${fi} iron +${fo} food${rl ? ` · ${realmDef(rl).short} raids -${Math.round(realmRelief(rl) * 100)}%` : ''}`); Snd.play('victory'); shake = Math.max(shake, 0.6);
     floatText('CAMP BROKEN!', e.position.x, 3.6, e.position.z);
   }
   function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
@@ -4560,7 +4560,7 @@
     const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
       const weak = powerFor(d) < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''}` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''} · <span style="color:${realmDef(d.realm).color}">${realmDef(d.realm).short}</span>` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
     };
     const mapHtml = () => {                                                  // 지도 화면: 마디(원정)와 길. 고르면 아래에 같은 카드가 나온다
       const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id)), near = vis.filter(d => !N[d.id].far), far = vis.filter(d => N[d.id].far);
@@ -4569,11 +4569,11 @@
       let lines = '', dots = '';
       for (const d of near) { const n = N[d.id]; if (n.from !== 'village' && !ids.has(n.from)) continue; const p = posOf(n.from); lines += `<line x1="${p.x}" y1="${p.y}" x2="${n.x}" y2="${n.y}"/>`; }
       for (const d of near) {
-        const n = N[d.id], locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? '#e0604a' : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
+        const n = N[d.id], locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? realmDef(d.realm).color : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
         dots += `<g data-node="${d.id}" class="${locked ? 'lk' : ''}"><circle class="hit" cx="${n.x}" cy="${n.y}" r="5"/><circle cx="${n.x}" cy="${n.y}" r="3.2" fill="${col}" stroke="${sel ? '#fff' : story.cleared[d.id] ? '#8fd49a' : '#2a2118'}" stroke-width="${sel || story.cleared[d.id] ? 1 : 0.5}"/><text x="${n.x}" y="${n.y + 1.1}">${sym}</text>${holdOf(d.id) ? `<text class="flag" x="${n.x + 3.8}" y="${n.y - 2.2}">&#9873;</text>` : story.cleared[d.id] ? `<text class="ok" x="${n.x + 3.6}" y="${n.y - 2.6}">&#10003;</text>` : ''}${sel ? `<text class="nm" x="${n.x}" y="${n.y + 7.2}">${d.name}</text>` : ''}</g>`;
       }
       const sd = CFG.EXPEDITIONS.find(d => d.id === jMapSel);
-      return `<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid &nbsp; &#9790; night &nbsp; &#9733; story &nbsp; dim = locked</small>` + (far.length ? `<div class="jfar"><b>Far lands</b> (march days)<br>${far.map(d => `<button data-node="${d.id}" class="farchip${d.id === jMapSel ? ' on' : ''}${lockOf(d) ? ' lk' : ''}">${holdOf(d.id) ? '&#9873; ' : ''}${d.name} · ${d.march} day${d.march > 1 ? 's' : ''}</button>`).join('')}</div>` : '') + (sd ? rowOf(sd) : '') + escHtml;
+      return `<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid (realm colour) &nbsp; &#9790; night &nbsp; &#9733; story</small>${realmBar()}` + (far.length ? `<div class="jfar"><b>Far lands</b> (march days)<br>${far.map(d => `<button data-node="${d.id}" class="farchip${d.id === jMapSel ? ' on' : ''}${lockOf(d) ? ' lk' : ''}" style="border-left: 4px solid ${realmDef(d.realm).color}">${holdOf(d.id) ? '&#9873; ' : ''}${d.name} · ${d.march} day${d.march > 1 ? 's' : ''}</button>`).join('')}</div>` : '') + (sd ? rowOf(sd) : '') + escHtml;
     };
     const expList = mapHtml();
     document.getElementById('jExp').innerHTML = expList;       // 지도와 카드가 먼저, 전투단 목록은 그 아래
@@ -4628,7 +4628,7 @@
   function marchPartySize() { return escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax()).length; }
   function marchFood(d) { return d.march ? Math.ceil(marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) : 0; }
   function homeThreat(day) {                                              // 그날 밤 마을을 덮칠 적의 수 (startWave 와 같은 식, 무리 크기만)
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief());
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     if (isRaid(day)) return Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n);
     let n = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
     const tp = nightTypeOf(day);
@@ -4683,11 +4683,11 @@
   }
   // ---------- 점령지 (원정 지도 3단계): 무너뜨린 야영지에 병사를 남겨 지키면 '점령지'가 된다. 수입과 습격 감소가 계속되지만 적이 되찾으러 올 수 있다 ----------
   // (이 파일의 것은 모두 function 선언이다) story.holds[id] = { n: 주둔 병사 수, since: 날 }, story.clearedDay[id] = 마지막으로 무너뜨린 날
-  const HOLD_MAX = 3, HOLD_REVERT_DAYS = 10, HOLD_RANK = { raiderpost: 1, banditcamp: 1.4, hillclan: 1.4, banditfort: 2, legionfort: 2.4 };
+  const HOLD_MAX = 3, HOLD_REVERT_DAYS = 10, HOLD_RANK = { clanwatch: 1.2, legionpost: 1.4, clanhold: 2.2, legionkeep: 2, raiderpost: 1, banditcamp: 1.4, hillclan: 1.4, banditfort: 2, legionfort: 2.4 };
   const holdOf = (id) => (story.holds || {})[id] || null;
   const holdCount = () => Object.values(story.holds || {}).reduce((a, h) => a + h.n, 0);
   function holdRisk(id) {                                                  // 하루에 되찾으러 올 확률과, 왔을 때 지킬 확률
-    const h = holdOf(id), rank = HOLD_RANK[id] || 1, n = h ? h.n : 1, chance = Math.min(0.5, 0.06 * rank / n), atk = 6 * rank + dayNow() * 0.4, ratio = (n * 9) / atk;
+    const h = holdOf(id), d0 = CFG.EXPEDITIONS.find(x => x.id === id), rank = (HOLD_RANK[id] || 1) * (d0 && d0.realm ? realmStrength(d0.realm) : 1), n = h ? h.n : 1, chance = Math.min(0.5, 0.06 * rank / n), atk = 6 * rank + dayNow() * 0.4, ratio = (n * 9) / atk;
     return { chance, win: Math.min(1, ratio) };
   }
   function pickGarrison() {                                                // 마을에 남은 병사 가운데 가장 약한 병사
@@ -4705,7 +4705,7 @@
     const s = pickGarrison(); if (!s) return toast('No free soldier');
     const name = s.name; garrisonOut(s);
     if (h) h.n++; else { story.holds[id] = { n: 1, since: dayNow() }; story.camps[id] = true; rebuildCamps(); }
-    toast(`${name} garrisons ${d.name}`); Snd.play('chime'); updateHud(); renderJournal();
+    toast(`${name} garrisons ${d.name}`); Snd.play('chime'); updateHud(); realmCheck(); renderJournal();
   }
   function holdsMorning() {                                                // 매일 아침: 주둔 병사의 식량, 되찾으러 오는 적, 방치된 곳의 복귀
     const hs = story.holds || {}, day = dayNow(), lines = [];
@@ -4732,6 +4732,32 @@
     if (story.camps[d.id]) return `<small>&#10003; Camp ${inc}/day</small>`;
     if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id]; return `<small>Broken${cd === undefined ? '' : ` · lost in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))}d`}<br><button class="holdBtn" data-hold="${d.id}">Garrison (1 soldier)</button></small>`; }
     return '';
+  }
+  // ---------- 세력 (원정 지도 4단계): 산적 영주 / 언덕 부족 / 강철 군단. 큰 습격은 한 세력이 보낸다. 그 세력의 야영지를 점령할수록 그 세력의 습격이 약해진다 ----------
+  // (이 파일의 것은 모두 function 선언이다)
+  const realmDef = (id) => CFG.REALMS.find(r => r.id === id) || CFG.REALMS[0];
+  const realmSites = (id) => CFG.EXPEDITIONS.filter(d => d.realm === id);
+  const realmHeld = (id) => realmSites(id).filter(d => holdOf(d.id)).length;
+  const realmOfNight = (day) => isRaid(day) ? CFG.REALMS[(day * 5 + 1) % CFG.REALMS.length].id : null;       // 큰 습격이 오는 밤마다 정해진 세력
+  function realmRelief(id) {                                              // 그 세력의 습격이 줄어드는 정도: 기한 중인 효과 + 점령지 (모두 점령하면 크게 꺾인다)
+    const fx = story.campFx || [], d = dayNow(), held = story.holds || {};
+    const ids = new Set(fx.filter(x => d <= x.until).map(x => x.id).concat(Object.keys(held)));
+    let r = 0; for (const s of realmSites(id)) if (ids.has(s.id) && CFG.CAMP_RELIEF[s.id]) r += CFG.CAMP_RELIEF[s.id].pct;
+    r = Math.min(CFG.REALM_RELIEF_MAX, r);
+    return realmHeld(id) >= realmSites(id).length ? Math.max(r, CFG.REALM_BROKEN) : r;
+  }
+  function campRelief(day) {                                              // 그날 밤의 습격 감소율 (큰 습격: 그 세력 것, 조용한 밤: 세 세력의 평균)
+    if (day === undefined) return Math.max(...CFG.REALMS.map(r => realmRelief(r.id)));
+    const rn = realmOfNight(day);
+    return rn ? realmRelief(rn) : CFG.REALMS.reduce((a, r) => a + realmRelief(r.id), 0) / CFG.REALMS.length;
+  }
+  const realmStrength = (id) => Math.max(0.4, 1 - 0.2 * realmHeld(id));      // 점령지가 많을수록 그 세력이 되찾으러 오는 힘도 약해진다
+  function realmBar() {                                                    // 일지: 세력별 점령 현황 한 줄
+    return `<div class="jrealm">${CFG.REALMS.map(r => `<span style="color:${r.color}">&#9679; ${r.short} ${realmHeld(r.id)}/${realmSites(r.id).length}</span>`).join('')}</div>`;
+  }
+  function realmCheck() {                                                  // 한 세력을 모두 점령하면 한 번 알린다
+    story.realmDone = story.realmDone || {};
+    for (const r of CFG.REALMS) if (realmHeld(r.id) >= realmSites(r.id).length && !story.realmDone[r.id]) { story.realmDone[r.id] = true; toast(`${r.name} broken!`); Snd.play('victory'); }
   }
   // ---------- 메인 루프 ----------
   const SPEED = 6;
@@ -4808,7 +4834,7 @@
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
       if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('WARNING: A massive threat approaches!'); bossShakeT = 3; }
-      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid! Prepare your defenses!` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
+      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid: ${realmDef(realmOfNight(dayNo)).short}` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
@@ -5186,6 +5212,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
