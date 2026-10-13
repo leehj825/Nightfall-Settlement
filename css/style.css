@@ -331,3 +331,4 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
   #smithPanel .shead { margin: 12px 2px 2px; font-size: 13px; font-weight: 700; color: #ffd27a; border-bottom: 1px solid rgba(255,210,122,.3); }
 #actions #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; width: 70px; height: 70px; font-size: 14px; margin-top: 6px; }
 @media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #actions #atkBtn { width: 60px; height: 60px; font-size: 12px; } }
+#jExp .jtabs { display: flex; gap: 6px; margin: 4px 0 6px; } #jExp .jtabs button { flex: 1; background: rgba(255,255,255,.1); color: #d8cfbc; box-shadow: none; } #jExp .jtabs button.on { background: linear-gradient(#ffd27a, #ff9a3c); color: #3a1408; box-shadow: 0 2px 0 #a8480f; }

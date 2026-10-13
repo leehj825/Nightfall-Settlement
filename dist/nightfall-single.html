@@ -344,6 +344,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
   #smithPanel .shead { margin: 12px 2px 2px; font-size: 13px; font-weight: 700; color: #ffd27a; border-bottom: 1px solid rgba(255,210,122,.3); }
 #actions #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; width: 70px; height: 70px; font-size: 14px; margin-top: 6px; }
 @media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #actions #atkBtn { width: 60px; height: 60px; font-size: 12px; } }
+#jExp .jtabs { display: flex; gap: 6px; margin: 4px 0 6px; } #jExp .jtabs button { flex: 1; background: rgba(255,255,255,.1); color: #d8cfbc; box-shadow: none; } #jExp .jtabs button.on { background: linear-gradient(#ffd27a, #ff9a3c); color: #3a1408; box-shadow: 0 2px 0 #a8480f; }
 </style>
 </head>
 <body>
@@ -4644,6 +4645,8 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
       { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },
+      { id: 'raiderpost', name: 'Raider Outpost', raid: true, bands: 1, age: 1, tint: 0x7d7048, risk: 'Medium', reward: 'Loot chests, iron', desc: 'RAID: a small palisaded outpost with one watchtower and a Raider Captain. One warband is enough: go in through the gate and take down the captain.', trees: 4, rocks: 2, ore: 0, chests: 1, camp: { radius: 10, towers: 2, tents: 3, chests: 2, towerArchers: 1 },
+        foes: ['normal', 'normal', 'normal', 'shield', 'archer', 'normal'], guardian: { kind: 'normal', hpMul: 5, scale: 1.4, name: 'Raider Captain' } },
       { id: 'banditcamp', name: 'Bandit Camp', raid: true, bands: 2, age: 2, tint: 0x7a6a48, risk: 'High', reward: 'Loot chests, iron, supplies', desc: 'RAID: a walled camp of raiders with watchtowers and a Bandit Chief. Bring at least two warbands, break in through the gate and take down the chief.', trees: 5, rocks: 3, ore: 0, chests: 1, camp: { radius: 15, towers: 4, tents: 6, chests: 3, towerArchers: 2 },
         foes: ['normal', 'normal', 'normal', 'shield', 'shield', 'archer', 'normal', 'normal', 'brute', 'normal', 'normal', 'shield'], guardian: { kind: 'brute', hpMul: 6, scale: 1.6, name: 'Bandit Chief' } },
       { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
@@ -4677,12 +4680,12 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
         foes: ['brute', 'brute', 'brute', 'brute', 'brute', 'brute', 'shield', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal', 'beast', 'beast'], guardian: { kind: 'brute', hpMul: 28, scale: 2.4, name: 'The Eclipse Queen' } },
     ],
     // 10단계: 원정지를 모두 정리(상자 전부 + 적 전부)하면 야영지를 세울 수 있다. 야영지는 매일 아침 자원을 가져다준다 (겨울에는 60%)
-    CAMPS: { banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
+    CAMPS: { raiderpost: { iron: 2, food: 2 }, banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
     CAMP_COST: { 1: { wood: 35, stone: 25 }, 2: { wood: 50, stone: 40 }, 3: { wood: 65, stone: 55, iron: 4 } },
     ESCORT_MAX: 3,
     EXP_NIGHT_LATEST: 2, EXP_NIGHT_FORCE: 4.5,        // 밤 원정: 그날 밤 습격을 정리한 뒤 20시~02시에 출발, 새벽 4시 30분에 자동 귀환
     // 원정이 열리는 전투력: 병사(기본 2 + 무기 등급×2 + 방어구 등급×1.5)의 합 + 주인공(레벨×3 + 무기 등급×3 + 방어구 등급×2). 장비와 레벨을 키워야 다음 원정이 열린다
-    EXP_NEED: { banditcamp: 70, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
+    EXP_NEED: { raiderpost: 30, banditcamp: 70, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
     // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
     STORY3: [
       { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
@@ -9965,7 +9968,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 5.4; e.position.y = 5.4; u.speed = 0;
     }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
-      const p = exCamp ? { x: exCamp.cx + 1.5, z: exCamp.cz + exCamp.R * 0.3 } : spot(4); spawnEnemy(d.guardian.kind, p);
+      const p = exCamp ? { x: exCamp.cx - 2, z: exCamp.cz + exCamp.R * 0.3 } : spot(4); spawnEnemy(d.guardian.kind, p);
       const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale; if (exCamp) { u.camp = true; u.home = { x: p.x, z: p.z }; }
       u.hp *= d.guardian.hpMul; u.maxHp = u.hp; u.guardian = true; u.contact *= 1.3; u.r *= s; u.baseY *= s;
       e.scale.multiplyScalar(s); e.position.y = u.baseY;
@@ -10314,6 +10317,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const cost = CFG.CAMP_COST[d.age];
     return `<small><button class="campBtn" data-camp="${d.id}" ${canPay(cost) ? '' : 'disabled'}>Build camp (${costText(cost)})</button> ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
   }
+  let jTab = 'journey';                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
   function renderJournal() {
     const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
@@ -10330,10 +10334,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
     const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick up to ${bandMax()} warband${bandMax() > 1 ? 's' : ''} to bring (more at higher ages): they follow you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their warband.</small></div></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
-    document.getElementById('jExp').innerHTML = escHtml + CFG.EXPEDITIONS.map(d => {
+    const jtabs = `<div class="jtabs"><button data-jtab="journey" class="${jTab === 'journey' ? 'on' : ''}">Journeys</button><button data-jtab="raid" class="${jTab === 'raid' ? 'on' : ''}">Raids</button></div>`;
+    document.getElementById('jExp').innerHTML = jtabs + escHtml + CFG.EXPEDITIONS.filter(d => !!d.raid === (jTab === 'raid')).map(d => {
       const weak = powerOf().total < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk}${d.raid ? ` · ⚔ Raid: ${d.bands} warbands` : ''} · Power ${needOf(d)}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
     }).join('');
+    jEl.querySelectorAll('#jExp button[data-jtab]').forEach(b => b.addEventListener('click', () => { jTab = b.dataset.jtab; renderJournal(); }));
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
     jEl.querySelectorAll('#jExp button[data-wb]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.wb; toggleBring(i); renderJournal(); }));
