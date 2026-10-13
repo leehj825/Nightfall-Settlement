@@ -21,18 +21,27 @@
 
 > The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md).
 
-## Status (nf-v64)
+## Status (nf-v108)
 See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
 
-**Done (war layer phase 1, warbands):** soldiers belong to warbands of up to 6 (six heraldic names, banner colours, saved), a soldier cap from barracks and archery ranges, a warband bar on screen, a warband window to rename and recolour and choose the one that goes on your next journey, and journey power counted from the warband you bring (soldiers left home count one third).
-**Village growth done alongside:** tents become houses at Age 3; farms and the archery range move to the outer ring once the second wall stands; six outer homes in two batches; four outer corner towers; towers also shoot siege units.
-**Not done:** orders and the leader's standard, raids with several warbands, the campaign map, sieges, realms, provisions, banners and the host.
+**Done**
+- **Warbands (phase 1):** soldiers in warbands of up to 6 (heraldic names, banner colours, saved), soldier cap from barracks and archery ranges, warband bar and window, journey power from the warbands brought, home class vs journey class per soldier.
+- **Commands:** Forward, Stand firm, Withdraw, Charge, Mark the foe, Follow/Guard orders (O key), the leader's standard aura.
+- **Raids:** Raider Outpost (1 warband), Bandit Camp (2), Bandit Stronghold (3), far raids (Hill Clan, Iron Legion, Clan Stronghold, Legion Keep); camp behaviour (alarm, gates, tower archers, burn the banner or kill the chief); lasting relief when a camp is broken.
+- **Campaign map:** phase 1 map tab, phase 2 march days, provisions and auto-resolved home nights with a morning report, phase 3 garrisons and holds, phase 4 three realms (Bandit Lords, Hill Clan, Iron Legion) with per-realm relief. The Journeys and Raids tabs were removed (the map replaces them).
+- **Hero:** advanced movement and spear skills, great sword and spear blacksmith gear, spear combo (stab, stab, full-force lunge), three-hit sword and great sword combos with a combo reset window, a red Attack button, camera drag anywhere, leader face from a reference picture.
+- **Village:** tents become houses at Age 3, outer ring farms and archery range, outer homes and corner towers, closer walls, towers shoot hostile creatures, night lighting follows the hero.
+- **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
+
+**Not done**
+- Sieges (map phase 5), banners and the host, levies and wounds, courage, the final campaign, extra unit types, audio, a battle report screen, formations.
+- Tuning after phone testing, and custom models.
 
 **Next steps, in order**
-1. **Orders and the leader's standard**: Forward, Stand firm, Withdraw, Mark the foe, Charge; men near the leader fight better.
-2. Raids on bandit camps with two to three warbands (Age 2), then the campaign map and sieges (Age 3).
-3. Realms, provisions, banners and the host, and the final campaign.
-4. Tuning after phone testing (see "Known gaps" in the handoff), custom models later.
+1. **Siege plan, then sieges:** write a plan first, then castle and fortress nodes with walls, gates, ladders and rams, and a defender garrison.
+2. **Banners, the host, levies, wounds and courage.**
+3. **Final campaign and endgame:** a last assault on a realm's castle; captured outposts that pay income.
+4. **Polish:** battle report screen, cavalry and siege crews, audio, formations; balance and phone testing; custom models.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 
@@ -126,11 +135,11 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 - Save format must store warbands, war-map state and realm progress.
 
 ## Suggested phases
-1. **Warbands** (done in `nf-v61`, first version): soldiers grouped into warbands of up to 6, soldier cap from barracks/ranges, foray expeditions with a chosen warband. Bar, names/colours and party-based power are done too.
-2. **Commands**: advance / hold / fall back / focus / charge, leader standard, army rally.
-3. **Campaign map and raids**: node map, garrison sizes, march time and food, an enemy outpost to attack.
+1. **Warbands** (done): soldiers grouped into warbands of up to 6, soldier cap from barracks/ranges, foray expeditions with a chosen warband. Bar, names/colours and party-based power are done too.
+2. **Commands** (done, army rally not built): advance / hold / fall back / focus / charge, leader standard.
+3. **Campaign map and raids** (done, nf-v86 to nf-v91): node map, garrison sizes, march time and food, an enemy outpost to attack.
 4. **Siege**: ladders and rams, breakable gates, defender garrison, capturing a fortress.
-5. **Realms and endgame**: rival forces, castles, final campaign, captured outposts that produce income.
+5. **Realms and endgame**: rival forces (done), castles and the final campaign (not done), captured outposts that produce income (holds done).
 6. Polish: balance, battle report screen, more unit types (cavalry, siege crews), audio.
 
 ## Open questions
