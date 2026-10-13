@@ -4999,6 +4999,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 사람마다 피부색·머리색·머리 모양·체형·옷 장식이 다르고(seed), 역할별 복장(병사: 사슬 + 튜닉 + 견갑 + 투구 / 궁수: 후드 + 화살통 + 가죽 조끼 / 시민: 튜닉 + 모자 / 주인공: 망토 + 머리띠 / 적: 두건 + 복면 + 누더기)이 붙는다.
   const skinMat = mat(0xf1c9a0), darkMat = mat(0x3a2a22), eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3a1a }), visorMat = mat(0x2a2a30);
   const sm = (c, rough = 0.88, metal = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal });
+  const PLAYER_SKIN = (() => { const m = sm(0xe7ae88, 0.8); m.flatShading = true; return m; })(), PLAYER_HAIR = sm(0x5a2d1e, 0.65);       // 지휘관: 따뜻한 살구빛 피부와 붉은 밤색 머리
   const SKINS = [0xf1c9a0, 0xe3b48a, 0xc88b63, 0x8d5a3b, 0xf4d6b8].map(c => { const m = sm(c, 0.8); m.flatShading = true; return m; }), HAIRS = [0x2a1a10, 0x5a3a1e, 0x8a5a2b, 0xc9a23a, 0x9a9a9a, 0x151515, 0x7a2a1a].map(c => sm(c, 0.7));
   const bootMat = sm(0x2b1d14), beltMat = sm(0x4a3320), buckleMat = sm(0xc9a23a, 0.5, 0.3), steelMat = sm(0x9ca2ad, 0.55, 0.25), mailMat = sm(0x626874, 0.65, 0.2), eyeDark = new THREE.MeshBasicMaterial({ color: 0x1a1210 }), eyeWhite = new THREE.MeshBasicMaterial({ color: 0xf2eee6 });
   mailMat.map = (() => {                                       // 사슬 갑옷: 회색 바탕에 격자무늬
@@ -5055,7 +5056,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const makeRG = () => ({
     pelvis: cyl(0.2, 0.215, 0.22, 14), waist: cyl(0.2, 0.17, 0.28, 14), chest: cyl(0.275, 0.2, 0.38, 16), yoke: sph(0.16, 12, 8), belt: cyl(0.208, 0.208, 0.06, 14), buckle: new THREE.BoxGeometry(0.07, 0.06, 0.02),
     neck: cyl(0.068, 0.082, 0.14, 8), head: sph(0.19, 18, 14), headV: faceHeadGeo(11, 9), noseW: new THREE.ConeGeometry(0.028, 0.09, 4), browRidge: new THREE.BoxGeometry(0.17, 0.028, 0.05), cheek: sph(0.04, 6, 5), eyeBox: new THREE.BoxGeometry(0.042, 0.022, 0.012), irisBox: new THREE.BoxGeometry(0.022, 0.02, 0.012), beardJaw: new THREE.ConeGeometry(0.115, 0.17, 6), sideburn: new THREE.BoxGeometry(0.03, 0.1, 0.035), fringe: new THREE.BoxGeometry(0.2, 0.05, 0.07), finger: cyl(0.014, 0.012, 0.075, 5), pauldronBig: sph(0.17, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), helmCheek: new THREE.BoxGeometry(0.035, 0.15, 0.11), fur: cyl(0.3, 0.33, 0.1, 10), furBump: sph(0.07, 6, 5), kerchief: sph(0.205, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), dressSkirt: cyl(0.22, 0.36, 0.66, 12), tab: new THREE.BoxGeometry(0.09, 0.2, 0.015), robe: cyl(0.24, 0.36, 0.9, 12), cloakLong: new THREE.BoxGeometry(0.5, 0.95, 0.04), scarfRing: new THREE.TorusGeometry(0.12, 0.04, 6, 10), toe: sph(0.075, 8, 6), jaw: sph(0.13, 14, 10), ear: sph(0.035, 8, 6), eyeW: sph(0.033, 10, 8), pupil: sph(0.019, 8, 6), brow: new THREE.BoxGeometry(0.075, 0.016, 0.022), nose: sph(0.026, 8, 6), mouth: new THREE.BoxGeometry(0.07, 0.013, 0.01),
-    hairCap: sph(0.18, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairShell: hairShellGeo(), hairLong: cyl(0.16, 0.115, 0.42, 12), ball: sph(0.08, 10, 8), curl: sph(0.085, 8, 6), tail: new THREE.ConeGeometry(0.05, 0.32, 8), beard: sph(0.1, 10, 8), stache: new THREE.BoxGeometry(0.1, 0.022, 0.03),
+    hairCap: sph(0.18, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairShell: hairShellGeo(), hairLong: cyl(0.16, 0.115, 0.42, 12), ball: sph(0.08, 10, 8), curl: sph(0.085, 8, 6), quiff: sph(0.15, 12, 8), tail: new THREE.ConeGeometry(0.05, 0.32, 8), beard: sph(0.1, 10, 8), stache: new THREE.BoxGeometry(0.1, 0.022, 0.03),
     hood: sph(0.235, 20, 12, Math.PI / 2 + 0.8, Math.PI * 2 - 1.6, 0, Math.PI * 0.72), cowl: cyl(0.2, 0.29, 0.15, 14), mask: new THREE.BoxGeometry(0.2, 0.1, 0.06),
     shoulder: sph(0.08, 18, 12), pauldron: sph(0.145, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), spike: new THREE.ConeGeometry(0.04, 0.16, 6),
     upper: cyl(0.072, 0.058, 0.3, 10), elbow: sph(0.06, 14, 10), lower: cyl(0.056, 0.044, 0.3, 10), cuff: cyl(0.062, 0.062, 0.05, 10), bracer: cyl(0.065, 0.055, 0.15, 10), palm: sph(0.055, 12, 10), thumb: sph(0.022, 6, 5),
@@ -5089,7 +5090,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const kind = opts.kind || 'citizen', enemy = !!opts.enemy, seed = opts.seed ?? 0, bodyMat = opts.bodyMat || mat(color), root = new THREE.Group(), RG = enemy ? RG_LO : RG_HI;
     const R = (k) => ((Math.imul((seed | 0) ^ Math.imul(k + 1, 0x9e3779b1), 2654435761) >>> 0) % 1000) / 1000;            // 사람마다 고정된 0~1 난수
     if (!enemy) { bodyMat.flatShading = false; bodyMat.roughness = 0.88; bodyMat.needsUpdate = true; }
-    const skin = enemy ? sm(0xb59a84, 0.8) : SKINS[Math.floor(R(1) * SKINS.length)], hair = HAIRS[Math.floor(R(2) * HAIRS.length)], hstyle = Math.floor(R(3) * 6);
+    const skin = enemy ? sm(0xb59a84, 0.8) : kind === 'player' ? PLAYER_SKIN : SKINS[Math.floor(R(1) * SKINS.length)], hair = kind === 'player' ? PLAYER_HAIR : HAIRS[Math.floor(R(2) * HAIRS.length)], hstyle = Math.floor(R(3) * 6);
     const pants = PANTS[enemy ? 'enemy' : kind] || PANTS.citizen;
     const cloth2 = sm(bodyMat.color.clone().multiplyScalar(0.72), 0.9);        // 옷의 보조 색(칼라·소매 끝·모자)
     const W = enemy ? 1.05 : 0.93 + 0.14 * R(8), isPlayer = kind === 'player';          // 체형(어깨 너비)
@@ -5125,7 +5126,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       partH(RG.cheek, skin, head, sx * 0.1, 0.12, 0.13, 0, 0, 0, 1, 0.8, 0.6);
       if (enemy) partH(RG.eyeBox, eyeMat, head, sx * 0.067, 0.195, 0.168, 0, 0, 0, 1.15, 0.8, 1);
       else { partH(RG.eyeBox, eyeWhite, head, sx * 0.067, 0.195, 0.168); partH(RG.irisBox, eyeDark, head, sx * 0.067, 0.195, 0.175); }
-      partH(RG.brow, enemy ? ragMat : hair, head, sx * 0.067, 0.232, 0.174, 0, 0, -sx * (enemy ? 0.4 : 0.14), enemy ? 1.3 : 1.1, 1.3, 1);
+      partH(RG.brow, enemy ? ragMat : hair, head, sx * 0.067, isPlayer ? 0.236 : 0.232, 0.174, 0, 0, -sx * (enemy ? 0.4 : isPlayer ? 0.3 : 0.14), enemy ? 1.3 : isPlayer ? 1.55 : 1.1, isPlayer ? 2.0 : 1.3, 1);
     }
     partH(RG.browRidge, skin, head, 0, 0.225, 0.158); partH(RG.noseW, skin, head, 0, 0.145, 0.19, Math.PI / 2 + 0.25, 0, 0, 0.95, 1, 1.15);
     if (!enemy) partH(RG.mouth, mouthMat, head, 0, 0.082, 0.19, 0, 0, 0, female ? 0.8 : 1);
@@ -5143,6 +5144,17 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       partH(RG.hairLong, hair, head, 0, 0.0, -0.13, 0, 0, 0, 0.85, 0.5, 0.5);
     } else if (kind === 'citizen' && female) {
       partH(RG.hairShell, hair, head, 0, 0.17, -0.005); partH(RG.hairLong, hair, head, 0, 0.0, -0.12, 0, 0, 0, 0.9, 1, 0.6); partH(RG.kerchief, R(6) < 0.5 ? cottonMat : cloth2, head, 0, 0.2, -0.02, -0.28, 0, 0, 1, 1, 1.05); partH(RG.ball, cottonMat, head, 0, 0.2, -0.22, 0, 0, 0, 0.7, 0.7, 0.7);
+    } else if (isPlayer) {                                                  // 지휘관: 뒤로 쓸어 넘긴 풍성한 머리, 옆으로 흐르는 머리, 어깨 가까이 닿는 뒷머리, 턱까지 이어지는 수염
+      partH(RG.hairShell, hair, head, 0, 0.175, -0.01, 0, 0, 0, 1.03, 1.04, 1.05);
+      partH(RG.quiff, hair, head, 0, 0.3, 0.07, -0.75, 0, 0, 0.95, 0.5, 1.0); partH(RG.quiff, hair, head, 0, 0.3, -0.03, -0.35, 0, 0, 1.0, 0.55, 1.2);
+      for (const sx of [-1, 1]) {
+        partH(RG.quiff, hair, head, sx * 0.14, 0.24, 0.0, 0, 0, sx * 0.35, 0.4, 0.6, 0.95);
+        partH(RG.sideburn, hair, head, sx * 0.158, 0.1, 0.055, 0, 0, 0, 0.9, 1.7, 1.1);
+        partH(RG.beard, hair, head, sx * 0.095, 0.065, 0.075, 0, 0, sx * 0.3, 0.42, 0.9, 0.7);
+        partH(RG.stache, hair, head, sx * 0.055, 0.098, 0.195, 0, 0, sx * -0.5, 0.6, 1.3, 1);
+      }
+      partH(RG.beard, hair, head, 0, -0.02, 0.15, 0.3, 0, 0, 0.55, 0.5, 0.7);
+      partH(RG.hairLong, hair, head, 0, 0.1, -0.13, 0, 0, 0, 0.9, 0.55, 0.55);
     } else if (ev === 4 || (enemy && ev === 2)) {
       partH(RG.hairShell, hair, head, 0, 0.17, -0.005); partH(RG.fringe, hair, head, 0.03, 0.272, 0.12, -0.35, 0, 0.12); 
     } else {
@@ -5997,7 +6009,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const R = 0.45, H = 0.7;
   // ---------- 플레이어 ----------
   const player = new THREE.Group();
-  const playerRig = makeRig('player', 0xe8553c, { seed: 11 });
+  const playerRig = makeRig('player', 0xa4492f, { seed: 11 });
   const bodyMat = playerRig.bodyMat;
   const playerAnim = new Anim(playerRig);
   player.add(playerRig.root);
@@ -10842,7 +10854,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 

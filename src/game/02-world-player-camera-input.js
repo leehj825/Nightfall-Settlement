@@ -75,7 +75,7 @@
   const R = 0.45, H = 0.7;
   // ---------- 플레이어 ----------
   const player = new THREE.Group();
-  const playerRig = makeRig('player', 0xe8553c, { seed: 11 });
+  const playerRig = makeRig('player', 0xa4492f, { seed: 11 });
   const bodyMat = playerRig.bodyMat;
   const playerAnim = new Anim(playerRig);
   player.add(playerRig.root);

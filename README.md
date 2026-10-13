@@ -165,6 +165,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **Broken camps weaken raids; towers shoot wanderers** (nf-v79): breaking a camp now lowers the size of the nightly waves on your village for a while: the Raider Outpost by 10% for 5 days, the Bandit Camp by 20% for 7 days. Effects from different camps add up (at most 35%), raiding the same camp again refreshes its timer, and it works for quiet nights, Blood Moon raids and the forecast. The Raids tab shows the active effect and the defence summary mentions it. Town towers now also shoot the wandering night prowlers and roaming day creatures (before, only the ordinary raiders), make a bow sound when they shoot, and fire slower than archers: every 2.4 seconds instead of 1.3 (archers fire every 1.5). The effect timer is saved with the game story. Only tested headless.
 
+**New face for the leader** (nf-v80): the hero's polygon head was reshaped toward a reference picture (stylised bearded man with swept-back brown hair): warm peach skin, reddish-brown hair swept back from the forehead with volume over the temples and a longer back, thick angled brows, a fuller beard that joins long sideburns and a drooping moustache; the coat is now a darker russet leather (it was bright orange-red). Only the hero changed. It is an approximation in the game's blocky low-poly style, not a copy of the picture.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
