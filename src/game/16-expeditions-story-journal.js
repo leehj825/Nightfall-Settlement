@@ -36,7 +36,7 @@
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
   function buildBanditCamp(d, cx, cz, inner) {
     const C = d.camp, R = C.radius, gateA = -Math.PI / 2, segs = Math.round(2 * Math.PI * R / 2.6), step = Math.PI * 2 / segs;
-    const stake = new THREE.ConeGeometry(0.3, 0.8, 4), plank = new THREE.BoxGeometry(2.7, 2.2, 0.45);
+    const solids = [], stake = new THREE.ConeGeometry(0.3, 0.8, 4), plank = new THREE.BoxGeometry(2.7, 2.2, 0.45);
     for (let i = 0; i < segs; i++) {                                // 목책: 남쪽(입구 쪽)에 문 틈을 남기고 빙 둘러 세운다
       const a = i * step; let ad = a - (gateA + Math.PI * 2); ad = Math.atan2(Math.sin(ad), Math.cos(ad));
       if (Math.abs(ad) < step * 1.6) continue;
@@ -44,7 +44,7 @@
       for (const o of [-0.95, 0, 0.95]) { const s = new THREE.Mesh(stake, campDark); s.position.set(o, 2.6, 0); g.add(s); }
       g.add(body); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
       g.position.set(cx + Math.cos(a) * R, 0, cz + Math.sin(a) * R); g.rotation.y = -a - Math.PI / 2; g.userData = { type: 'palisade', radius: 1.45, wall: true };
-      exAdd(g, true);
+      exAdd(g, true); solids.push(g);
     }
     for (const s of [-1, 1]) {                                      // 문기둥: 높은 기둥 두 개와 붉은 천
       const a = gateA + s * step * 1.9, g = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 5, 7), campDark), cloth = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.06), campRed);
@@ -58,13 +58,13 @@
       const rail = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 2.6), campDark); rail.position.y = 5.6; rail.scale.set(1, 1, 1);
       const roof = new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.3, 4), campTent[1]); roof.position.y = 7; roof.rotation.y = Math.PI / 4;
       g.add(deck, rail, roof); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
-      g.position.set(cx + Math.cos(a) * (R - 0.2), 0, cz + Math.sin(a) * (R - 0.2)); g.userData = { type: 'campTower', radius: 1.7 }; exAdd(g, true); towers.push(g);
+      g.position.set(cx + Math.cos(a) * (R - 0.2), 0, cz + Math.sin(a) * (R - 0.2)); g.userData = { type: 'campTower', radius: 1.7 }; exAdd(g, true); towers.push(g); solids.push(g);
       inner.push({ x: g.position.x, z: g.position.z, r: 3 });
     }
     for (let k = 0; k < C.tents; k++) {                             // 천막: 안쪽 둘레에 빙 둘러
       const a = k * (Math.PI * 2 / C.tents) + 0.4, rr = R * 0.62, g = new THREE.Group(), t = new THREE.Mesh(new THREE.ConeGeometry(1.9, 2.5, 6), campTent[k % 3]);
       t.position.y = 1.25; g.add(t); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
-      g.position.set(cx + Math.cos(a) * rr, 0, cz + Math.sin(a) * rr); g.rotation.y = rand(0, 6); g.userData = { type: 'tent', radius: 1.8 }; exAdd(g, true);
+      g.position.set(cx + Math.cos(a) * rr, 0, cz + Math.sin(a) * rr); g.rotation.y = rand(0, 6); g.userData = { type: 'tent', radius: 1.8 }; exAdd(g, true); solids.push(g);
       inner.push({ x: g.position.x, z: g.position.z, r: 2.4 });
     }
     { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.ConeGeometry(2.9, 3.4, 7), campRed);     // 우두머리 천막: 더 크고 붉다
@@ -75,7 +75,7 @@
     const banner = new THREE.Group(), bp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 5.5, 6), campDark), bc = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.06), campRed);   // 산적 깃발 (다음 단계의 목표물)
     bp.position.y = 2.75; bc.position.set(0.85, 4.8, 0); banner.add(bp, bc); banner.position.set(cx + 3.2, 0, cz - 1.5); banner.userData = { type: 'banditBanner', radius: 0.5 }; exAdd(banner, true); inner.push({ x: cx + 3.2, z: cz - 1.5, r: 1.5 });
     for (let k = 0; k < C.chests; k++) { const a = k * 2.1 + 1.0, p = { x: cx + Math.cos(a) * R * 0.34, z: cz + Math.sin(a) * R * 0.34 }; makeChest(p.x, p.z, false); inner.push({ x: p.x, z: p.z, r: 1.6 }); }
-    return { cx, cz, R, towers, banner, fire };
+    return { cx, cz, R, towers, banner, fire, solids, alarm: false, broken: false };
   }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
@@ -121,10 +121,14 @@
     for (let i = 0; i < d.chests; i++) { const p = spot(2.2); makeChest(p.x, p.z, !!d.relic && i === d.chests - 1); }
     const foeList = d.foes.slice(); for (let i = Math.round(d.foes.length * (dm().n - 1)); i > 0; i--) foeList.push(d.foes[Math.floor(Math.random() * d.foes.length)]);
     let fi = 0;
-    for (const kind of foeList) { const p = exCamp && fi++ % 4 !== 3 ? innerSpot(1.4) : spot(2.5); spawnEnemy(kind, p); if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); addGlow(enemies[enemies.length - 1], FOE_GLOW[d.faction] || 0xff6a4a, 1.7, 1.2); }
+    for (const kind of foeList) { const inside = exCamp && fi++ % 4 !== 3, p = inside ? innerSpot(1.4) : spot(2.5); spawnEnemy(kind, p); if (inside) { enemies[enemies.length - 1].userData.camp = true; enemies[enemies.length - 1].userData.home = { x: p.x, z: p.z }; } if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); addGlow(enemies[enemies.length - 1], FOE_GLOW[d.faction] || 0xff6a4a, 1.7, 1.2); }
+    if (exCamp && d.camp.towerArchers) for (let k = 0; k < d.camp.towerArchers; k++) {          // 망루 위 궁수: 마주 보는 탑 둘에 올라간다
+      const t = exCamp.towers[(k * 2) % exCamp.towers.length]; spawnEnemy('archer', { x: t.position.x, z: t.position.z });
+      const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 5.4; e.position.y = 5.4; u.speed = 0;
+    }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
       const p = exCamp ? { x: exCamp.cx + 1.5, z: exCamp.cz + exCamp.R * 0.3 } : spot(4); spawnEnemy(d.guardian.kind, p);
-      const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale;
+      const e = enemies[enemies.length - 1], u = e.userData, s = d.guardian.scale; if (exCamp) { u.camp = true; u.home = { x: p.x, z: p.z }; }
       u.hp *= d.guardian.hpMul; u.maxHp = u.hp; u.guardian = true; u.contact *= 1.3; u.r *= s; u.baseY *= s;
       e.scale.multiplyScalar(s); e.position.y = u.baseY;
       if (d.faction) frostTint(e, d.faction);
@@ -145,10 +149,30 @@
       if (d < near) near = d;
       if (d < td - 1.5 && d < 10) { td = d; tx = n.position.x; tz = n.position.z; tn = n; }
     }
-    u.aggro = exActive ? (u.aggro ? near < 24 : near < 13) : false;
+    const C = exCamp;
+    if (u.tower) {                                                            // 망루 궁수: 제자리에서 사거리 안의 상대를 쏜다
+      u.atkAnimCd -= dt; u.anim.base('idle', 0);
+      if (near < 22 && !(C && C.broken) && !(u.stunT > 0)) { e.lookAt(tx, e.position.y, tz); u.range = 20; archerStep(e, u, dt); }
+      return;
+    }
+    if (C && u.camp && u.hp < (u.hpPrev ?? u.hp)) campAlarm();                // 맞으면 경보
+    u.hpPrev = u.hp;
+    if (C && u.camp) {                                                        // 야영지 병사: 가까이 오거나 경보가 울리면 달려들고, 아니면 자리를 지킨다
+      const was = u.aggro;
+      u.aggro = C.broken ? false : (u.aggro ? near < 26 : near < (C.alarm ? 32 : 12));
+      if (u.aggro && !was) campAlarm();
+    } else u.aggro = exActive ? (u.aggro ? near < 24 : near < 13) : false;
     let moving = false; u.escortCd = (u.escortCd || 0) - dt;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
-    else if (u.aggro && td > 0.9 && !(u.stunT > 0)) { e.position.x += (tx - e.position.x) / td * u.speed * dt; e.position.z += (tz - e.position.z) / td * u.speed * dt; e.lookAt(tx, e.position.y, tz); moving = true; }
+    else if (u.aggro && td > 0.9 && !(u.stunT > 0)) {
+      const r = campRoute(e.position.x, e.position.z, tx, tz), rd = Math.max(0.01, Math.hypot(r.x - e.position.x, r.z - e.position.z));
+      e.position.x += (r.x - e.position.x) / rd * u.speed * dt; e.position.z += (r.z - e.position.z) / rd * u.speed * dt; e.lookAt(r.x, e.position.y, r.z); moving = true;
+    } else if (C && u.camp && u.home && !u.aggro && !(u.stunT > 0)) {         // 자리로 돌아간다 (문을 거쳐서)
+      const r = campRoute(e.position.x, e.position.z, u.home.x, u.home.z), hd = Math.hypot(u.home.x - e.position.x, u.home.z - e.position.z);
+      if (hd > 1.0) { const rd = Math.max(0.01, Math.hypot(r.x - e.position.x, r.z - e.position.z)); e.position.x += (r.x - e.position.x) / rd * u.speed * 0.8 * dt; e.position.z += (r.z - e.position.z) / rd * u.speed * 0.8 * dt; e.lookAt(r.x, e.position.y, r.z); moving = true; }
+    }
+    if (C) exPush(e, u.r);
+    if (u.archer && u.aggro) { u.range = 14; archerStep(e, u, dt); }
     const dx = e.position.x - EXC.x, dz = e.position.z - EXC.z, dd = Math.hypot(dx, dz);
     if (dd > 42) { e.position.x = EXC.x + dx / dd * 42; e.position.z = EXC.z + dz / dd * 42; }
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
@@ -164,7 +188,31 @@
     n.hp = Math.max(0, n.hp - Math.max(1, Math.round(dmg * dm().dmg * (1 - gearDef(n.gear.armor).reduce) * standardMods(n).guard * (TR(n).dmg || 1))));
     if (n.hp <= 0) { n.down = true; n.mat.color.set(0x777777); n.anim.die(); grieve(); toast(`${n.name} is down - they will be carried home`); }
   }
+  // ---------- 야영지 행동: 목책 때문에 안팎을 오갈 때는 남쪽 문을 거친다 / 목책·탑·천막은 적도 뚫지 못한다 / 경보 / 우두머리를 쓰러뜨리면 야영지가 무너진다 ----------
+  function campRoute(x, z, tx, tz) {
+    const C = exCamp; if (!C) return { x: tx, z: tz };
+    const inA = Math.hypot(x - C.cx, z - C.cz) < C.R - 0.5, inB = Math.hypot(tx - C.cx, tz - C.cz) < C.R - 0.5;
+    if (inA === inB) return { x: tx, z: tz };
+    const gx = C.cx, gz = C.cz - C.R;
+    if (Math.hypot(gx - x, gz - z) < 1.8) return inA ? { x: gx, z: gz - 5 } : { x: gx, z: gz + 5 };       // 문을 지나는 중이면 그 너머를 향한다
+    return { x: gx, z: gz };
+  }
+  function exPush(e, r) {
+    const C = exCamp; if (!C) return;
+    for (const o of C.solids) {
+      const dx = e.position.x - o.position.x, dz = e.position.z - o.position.z, m = o.userData.radius + r * 0.7, d = Math.hypot(dx, dz);
+      if (d < m && d > 1e-4) { e.position.x = o.position.x + dx / d * m; e.position.z = o.position.z + dz / d * m; }
+    }
+  }
+  function campAlarm() { const C = exCamp; if (!C || C.alarm || C.broken) return; C.alarm = true; toast('The camp sounds the alarm!'); Snd.play('horn'); }
+  function campBroken(e) {
+    const C = exCamp; if (!C || C.broken) return; C.broken = true;
+    res.iron += 8; res.food += 6; updateHud(); giveXp(60);
+    toast('The Bandit Chief has fallen - the camp is broken! +8 Iron, +6 Food'); Snd.play('victory'); shake = Math.max(shake, 0.6);
+    floatText('CAMP BROKEN!', e.position.x, 3.6, e.position.z);
+  }
   function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
+    if (exCamp) { const r = campRoute(n.position.x, n.position.z, tx, tz); tx = r.x; tz = r.z; }
     const dx = tx - n.position.x, dz = tz - n.position.z, d = Math.hypot(dx, dz);
     if (d < 0.05) return d;
     const st = Math.min(d, speed * moveMul(n) * dt);
@@ -356,7 +404,7 @@
     fadeTo(() => {
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       const left = exObjs.filter(o => o.userData.type === 'chest').length + enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
-      const cleared = left === 0;
+      const cleared = exCamp ? (exCamp.broken && exObjs.filter(o => o.userData.type === 'chest').length === 0) : left === 0;
       const backMen = npcs.filter(x => x.escort), report0 = [...new Set(backMen.map(x => x.warband))].map(i => `${warbandName(i)} (${backMen.filter(x => x.warband === i && !x.down).length}/${backMen.filter(x => x.warband === i).length} on their feet)`);
       backMen.forEach((n, k) => {                                              // 동행 병사 귀환: 돌아온 자리에서 걸어서 각자의 일과 초소로 간다 (쓰러진 병사는 회복)
         n.escort = false; n.hold = null; n.cls = homeCls(n); applyGear(n);       // 마을로 돌아오면 마을 직업으로
@@ -413,6 +461,7 @@
   function requestReturn() {                       // 상자·적이 남아 있으면 실수로 돌아가지 않도록 한 번 더 누르게 한다
     if (!exActive || exEnding) return;
     const chests = exObjs.filter(o => o.userData.type === 'chest').length, foes = enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
+    if (exCamp && !exCamp.broken && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast(`The Bandit Chief still stands - press again to go home`); return; }
     if ((chests || foes) && performance.now() - returnArm > 3500) { returnArm = performance.now(); toast(`${chests} chest${chests === 1 ? '' : 's'} and ${foes} foe${foes === 1 ? '' : 's'} left - press again to go home`); return; }
     endExpedition(false);
   }

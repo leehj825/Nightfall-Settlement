@@ -190,14 +190,14 @@
       const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; a.life -= dt;
       let hit = false;
       if (!dead && invincibleT <= 0 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < 0.75) { damage(CFG.ENEMY_CONTACT_DMG * 0.8); hurtCd = Math.max(hurtCd, 0.3); hit = true; }
-      if (!hit) for (const n of npcs) if (!n.down && Math.hypot(n.position.x - p.x, n.position.z - p.z) < 0.7) { damageNpc(n, CFG.ENEMY_CONTACT_DMG * 0.8); hit = true; break; }
+      if (!hit) for (const n of npcs) if (!n.down && Math.hypot(n.position.x - p.x, n.position.z - p.z) < 0.7) { if (n.escort) damageEscort(n, CFG.ENEMY_CONTACT_DMG * 0.8); else damageNpc(n, CFG.ENEMY_CONTACT_DMG * 0.8); hit = true; break; }
       if (!hit) for (const o of obstacles) if (o.userData.type === 'fence' && Math.hypot(o.position.x - p.x, o.position.z - p.z) < o.userData.radius) { damageStructure(o, 4); hit = true; break; }
       if (hit || a.life <= 0) { scene.remove(a.m); enemyArrows.splice(i, 1); }
     }
   }
   function archerStep(e, u, dt) {                      // 사거리 안에 표적(플레이어 > 병사 > 모닥불)이 있으면 쏜다
     u.shootCd -= dt; if (u.shootCd > 0 || u.stunT > 0) return;
-    let tx = null, tz = null, bd = 13;
+    let tx = null, tz = null, bd = u.range || 13;
     const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
     if (pd < bd && !dead) { tx = player.position.x; tz = player.position.z; bd = pd; }
     for (const n of npcs) { if (n.down) continue; const d = Math.hypot(n.position.x - e.position.x, n.position.z - e.position.z); if (d < bd - 1.5) { bd = d; tx = n.position.x; tz = n.position.z; } }
