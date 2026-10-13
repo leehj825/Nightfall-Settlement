@@ -79,6 +79,7 @@
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
     EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
    
+    MAP_RULES: { FOOD_PER_SOLDIER_DAY: 1, RAIDER_STRENGTH: 3.2 },       // 행군: 병사 1명이 하루에 먹는 식량 / 마을의 밤을 치를 때 적 1명의 힘 (추정값)
     // 원정 지도 (1단계: 지도 화면): 0~100 x 0~70 판 위의 마디. from = 길이 이어진 앞 마디(마을에서 시작). 규칙은 목록과 같고 모양만 지도다
     MAP: { START: { x: 6, y: 35 }, NODES: {
       quarry: { x: 24, y: 15, from: 'village' }, forest: { x: 24, y: 55, from: 'village' }, raiderpost: { x: 26, y: 35, from: 'village' },
@@ -87,6 +88,7 @@
       pass: { x: 74, y: 8, from: 'citadel' }, temple: { x: 76, y: 22, from: 'citadel' }, forge: { x: 74, y: 36, from: 'citadel' }, frostmarch: { x: 90, y: 12, from: 'pass' },
       barrow: { x: 88, y: 26, from: 'temple' }, chapel: { x: 90, y: 40, from: 'forge' }, spire: { x: 92, y: 54, from: 'chapel' },
       ashford: { x: 74, y: 52, from: 'banditfort' }, reedhaven: { x: 82, y: 62, from: 'ashford' }, stonegate: { x: 94, y: 64, from: 'reedhaven' },
+      hillclan: { far: true }, legionfort: { far: true },
       cinder: { x: 62, y: 34, from: 'mine' }, archive: { x: 66, y: 62, from: 'mausoleum' }, eclipse: { x: 84, y: 48, from: 'archive' } } },
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
@@ -95,6 +97,10 @@
         foes: ['normal', 'normal', 'normal', 'shield', 'archer', 'normal'], guardian: { kind: 'normal', hpMul: 5, scale: 1.4, name: 'Raider Captain' } },
       { id: 'banditcamp', name: 'Bandit Camp', raid: true, bands: 2, age: 2, tint: 0x7a6a48, risk: 'High', reward: 'Loot chests, iron, supplies', desc: 'RAID: a walled camp of raiders with watchtowers and a Bandit Chief. Bring at least two warbands, break in through the gate, then burn the banner or take down the chief.', trees: 5, rocks: 3, ore: 0, chests: 1, camp: { radius: 15, towers: 4, tents: 6, chests: 3, towerArchers: 2 },
         foes: ['normal', 'normal', 'normal', 'shield', 'shield', 'archer', 'normal', 'normal', 'brute', 'normal', 'normal', 'shield'], guardian: { kind: 'brute', hpMul: 6, scale: 1.6, name: 'Bandit Chief' } },
+      { id: 'hillclan', name: 'Hill Clan Camp', raid: true, bands: 2, age: 2, march: 1, tint: 0x5f6e4a, risk: 'High', reward: 'Iron and stone loot, supplies', desc: 'RAID, a day\'s march away: the hill clan\'s mountain camp, full of archers and spearmen under a Hill Chief. Your village fights its nights without the warbands you take.', trees: 6, rocks: 6, ore: 6, chests: 1, camp: { radius: 13, towers: 3, tents: 5, chests: 4, towerArchers: 2 },
+        foes: ['normal', 'normal', 'shield', 'archer', 'archer', 'normal', 'normal', 'archer', 'shield', 'normal'], guardian: { kind: 'brute', hpMul: 6, scale: 1.6, name: 'Hill Chief' } },
+      { id: 'legionfort', name: 'Iron Legion Fort', raid: true, bands: 3, age: 3, march: 2, tint: 0x56585f, risk: 'Very high', reward: 'Rich loot, iron, stone, supplies', desc: 'RAID, two days\' march away: the iron legion\'s fort with shield lines, six towers and a Legion Captain. Four nights of your village alone: leave a warband home or expect losses.', trees: 2, rocks: 6, ore: 8, chests: 2, camp: { radius: 22, towers: 6, tents: 8, chests: 6, towerArchers: 4 },
+        foes: ['shield', 'shield', 'shield', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal', 'normal', 'archer', 'archer', 'brute', 'brute', 'brute', 'shield', 'normal', 'normal'], guardian: { kind: 'shield', hpMul: 11, scale: 1.8, name: 'Legion Captain' } },
       { id: 'banditfort', name: 'Bandit Stronghold', raid: true, bands: 3, age: 3, tint: 0x6a5a40, risk: 'Very high', reward: 'Rich loot, iron, stone, supplies', desc: 'RAID: the raiders\' great fortress: a wide palisade, six watchtowers with archers, nine tents and a Bandit Warlord. Bring three warbands, break in through the gate, then burn the banner or take down the warlord.', trees: 4, rocks: 4, ore: 4, chests: 2, camp: { radius: 20, towers: 6, tents: 9, chests: 5, towerArchers: 4 },
         foes: ['normal', 'normal', 'normal', 'normal', 'normal', 'shield', 'shield', 'shield', 'shield', 'archer', 'archer', 'brute', 'brute', 'brute', 'normal', 'normal', 'shield', 'normal'], guardian: { kind: 'brute', hpMul: 9, scale: 1.8, name: 'Bandit Warlord' } },
       { id: 'tower', name: 'Ruined Watchtower', age: 2, tint: 0x6a6a70, risk: 'Medium', reward: 'Iron, Beacon Lens', desc: 'A toppled tower still held by raiders. One of its chests holds a Beacon relic.', trees: 3, rocks: 5, ore: 0, chests: 3, relic: 'Beacon Lens', ruins: 8, foes: ['normal', 'normal', 'shield', 'normal', 'brute'] },
@@ -128,12 +134,12 @@
         foes: ['brute', 'brute', 'brute', 'brute', 'brute', 'brute', 'shield', 'shield', 'shield', 'shield', 'normal', 'normal', 'normal', 'beast', 'beast'], guardian: { kind: 'brute', hpMul: 28, scale: 2.4, name: 'The Eclipse Queen' } },
     ],
     // 10단계: 원정지를 모두 정리(상자 전부 + 적 전부)하면 야영지를 세울 수 있다. 야영지는 매일 아침 자원을 가져다준다 (겨울에는 60%)
-    CAMPS: { banditfort: { iron: 6, food: 4, stone: 4 }, raiderpost: { iron: 2, food: 2 }, banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
+    CAMPS: { hillclan: { iron: 5, stone: 5 }, legionfort: { iron: 8, stone: 6, food: 3 }, banditfort: { iron: 6, food: 4, stone: 4 }, raiderpost: { iron: 2, food: 2 }, banditcamp: { iron: 4, food: 3 }, cinder: { iron: 6, stone: 4 }, archive: { food: 4, iron: 3 }, eclipse: { iron: 8, stone: 6, wood: 4 }, quarry: { stone: 6, iron: 1 }, forest: { wood: 8, food: 3 }, tower: { iron: 2, stone: 4 }, mine: { iron: 4 }, citadel: { stone: 6, iron: 3, wood: 6 }, pass: { iron: 3, food: 4 }, temple: { food: 6, wood: 5 }, forge: { iron: 5, stone: 4 }, frostmarch: { iron: 6, food: 6, stone: 6 }, ashford: { food: 8, wood: 8, stone: 6 }, reedhaven: { food: 8, iron: 5, wood: 4 }, stonegate: { iron: 12, stone: 10, food: 6 }, crypt: { iron: 3, food: 3 }, marsh: { food: 6, wood: 4, iron: 2 }, mausoleum: { iron: 6, stone: 4, food: 4 }, barrow: { iron: 6, stone: 8 }, chapel: { food: 8, wood: 8, iron: 4 }, spire: { iron: 10, stone: 8, food: 6 } },
     CAMP_COST: { 1: { wood: 35, stone: 25 }, 2: { wood: 50, stone: 40 }, 3: { wood: 65, stone: 55, iron: 4 } },
     ESCORT_MAX: 3,
     EXP_NIGHT_LATEST: 2, EXP_NIGHT_FORCE: 4.5,        // 밤 원정: 그날 밤 습격을 정리한 뒤 20시~02시에 출발, 새벽 4시 30분에 자동 귀환
     // 원정이 열리는 전투력: 병사(기본 2 + 무기 등급×2 + 방어구 등급×1.5)의 합 + 주인공(레벨×3 + 무기 등급×3 + 방어구 등급×2). 장비와 레벨을 키워야 다음 원정이 열린다
-    EXP_NEED: { banditfort: 120, raiderpost: 28, banditcamp: 62, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
+    EXP_NEED: { hillclan: 66, legionfort: 130, banditfort: 120, raiderpost: 28, banditcamp: 62, quarry: 0, forest: 0, tower: 20, mine: 28, citadel: 45, pass: 60, temple: 64, forge: 68, frostmarch: 85, barrow: 95, chapel: 100, spire: 110, ashford: 120, reedhaven: 128, stonegate: 145, cinder: 150, archive: 158, eclipse: 175, crypt: 26, marsh: 52, mausoleum: 88 },
     // 이야기 3장 (새벽의 문을 연 뒤): 서리 행군의 수호자를 쓰러뜨린다
     STORY3: [
       { id: 'frostmarch', goal: 'Take the Winter Crown from the Frost Warden in the Frostmarch', title: 'The Winter Crown', text: 'The Warden falls in a ringing of ice. The crown in its hands is cold, but it lights up when it meets the Beacon. Whatever marches in the dark has lost its leader.', reward: { iron: 20, shard: 2 } },
@@ -198,7 +204,7 @@
     RATION: 2, HUNGER_MULT: 0.5, IRON_CHANCE: 0.5,                    // 매일 아침 시민 1명당 식량 1개 / 굶주린 시민의 이동·작업 배율 / 바위 채집 시 철 획득 확률
     FOOD_MEAL: 5, FOOD_HEAL: 40, FOOD_AUTO_BELOW: 0.5,               // 식량 5개 = 체력 40 회복, 체력이 50% 미만이면 자동 식사
     TOWER_DMG: 3, TOWER_RANGE: 22, TOWER_INTERVAL: 2.4,       // 타워는 궁수(1.5초)보다 느리게 쏜다
-    CAMP_RELIEF: { raiderpost: { pct: 0.10, days: 5 }, banditcamp: { pct: 0.20, days: 7 }, banditfort: { pct: 0.25, days: 8 } }, CAMP_RELIEF_MAX: 0.35,       // 야영지를 무너뜨리면 며칠 동안 마을을 덮치는 적이 줄어든다 (여러 곳이면 합산, 최대 35%)
+    CAMP_RELIEF: { raiderpost: { pct: 0.10, days: 5 }, banditcamp: { pct: 0.20, days: 7 }, banditfort: { pct: 0.25, days: 8 }, hillclan: { pct: 0.15, days: 7 }, legionfort: { pct: 0.30, days: 9 } }, CAMP_RELIEF_MAX: 0.35,       // 야영지를 무너뜨리면 며칠 동안 마을을 덮치는 적이 줄어든다 (여러 곳이면 합산, 최대 35%)
    
     // ----- 습격의 날(Raid Day): RAID_EVERY일마다 붉은 달 대규모 습격, 나머지 밤은 조용한 밤(짐승 / 소수) -----
     // 난이도: 적 체력 / 적 수 / 받는 피해(플레이어·병사·구조물). 보통은 예전보다 훨씬 거칠어졌다. NG+ 한 번마다 체력 +40%, 수 +25%, 피해 +20%
