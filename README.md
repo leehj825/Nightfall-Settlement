@@ -81,7 +81,7 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 `js/game.js` is generated from `src/game/*.js` (numbered parts) by `python3 tools/build_game.py`; edit the parts, rebuild, commit both. See `src/game/README.md`.
 
 ## Controls (simplified)
-- Tap an empty spot on the screen to attack (or press `F`). Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
+- Press the red Attack button (or `F`) to attack; tapping the screen no longer attacks on touch devices. Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
 - Settings: left-handed layout, button size (small / normal / large), text size, vibration, volumes.
 
 - Stone walls are no longer built by hand: from Age 3 your workers and soldiers replace wooden fences with stone on their own (5 stone each, taken from your stock), after repairs and building plans. The Stone Wall button and `U` key are gone.
@@ -156,6 +156,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 **Several warbands on one journey** (nf-v73): you can now bring up to 1 warband at Age 1, 2 at Age 2 and 3 at Age 3 (tap Bring in the warband window or the Journal; tap again to leave one home). Everyone who goes follows you in rows of six. When you return, the soldiers who went stand where you came back and walk to their own duties; fallen soldiers are carried home to recover. A message lists each warband that came back and how many are on their feet. If every soldier comes along, a warning says the village has no guard. Journey power counts all the warbands you bring in full. Only tested headless.
 
 **Bandit Camp raid (first step, nf-v75)**: a new Age 2 Journal entry, **Bandit Camp**, marked as a raid that needs at least 2 warbands (the button says "Bring 2 warbands" until you pick them; the camp needs power 56 for now). The camp is a walled ring with a gate in the south facing your arrival point, four watchtowers on the corners, six tents, a campfire with three loot chests nearby, a red chief's tent, a bandit banner, and a big Bandit Chief guard. About three in four of its guards stand inside the walls, the rest roam outside. This step is only the layout: the palisade blocks you and your soldiers but not the raiders yet, towers have no archers on them, and the camp is cleared like any other site (there is no chief or banner objective, no lasting effect and no tuned power yet). Only tested headless.
+
+**Fixes (nf-v76)**: after clearing the Bandit Camp the Journal would not open (the camp had no supply-camp entry, so the list crashed); fixed, and a cleared Bandit Camp can now become a supply camp (+4 iron, +3 food each morning). The gold standard banner on the hero's back now only shows while soldiers fight beside you, not in town. Attack is now a big red **Attack** button at the bottom of the right-hand column; tapping empty ground on a touch screen no longer attacks, so you cannot hit a soldier by mistake (mouse clicks still attack on a computer; F still works).
 
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
