@@ -38,7 +38,7 @@
   }
   function marchMorningLite() {                                           // 지나가는 아침마다: 시민 식사 (조용히)와 야영지 수입
     for (const c of npcs.filter(x => x.role === 'citizen')) { const need = rationOf(c); if (res.food >= need) { res.food -= need; c.hungry = false; } else c.hungry = true; }
-    campIncome();
+    campIncome(); holdsMorning();
   }
   function marchOut(d) {                                                  // 출발: 같은 시각에 도착하도록 며칠을 넘긴다
     const lines = [], D = dayNow();
