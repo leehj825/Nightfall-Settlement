@@ -79,6 +79,15 @@
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
     EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
    
+    // 원정 지도 (1단계: 지도 화면): 0~100 x 0~70 판 위의 마디. from = 길이 이어진 앞 마디(마을에서 시작). 규칙은 목록과 같고 모양만 지도다
+    MAP: { START: { x: 6, y: 35 }, NODES: {
+      quarry: { x: 24, y: 15, from: 'village' }, forest: { x: 24, y: 55, from: 'village' }, raiderpost: { x: 26, y: 35, from: 'village' },
+      crypt: { x: 38, y: 6, from: 'quarry' }, tower: { x: 42, y: 18, from: 'quarry' }, mine: { x: 44, y: 34, from: 'raiderpost' }, banditcamp: { x: 42, y: 50, from: 'forest' }, marsh: { x: 38, y: 64, from: 'forest' },
+      citadel: { x: 60, y: 20, from: 'tower' }, banditfort: { x: 60, y: 48, from: 'banditcamp' }, mausoleum: { x: 56, y: 64, from: 'marsh' },
+      pass: { x: 74, y: 8, from: 'citadel' }, temple: { x: 76, y: 22, from: 'citadel' }, forge: { x: 74, y: 36, from: 'citadel' }, frostmarch: { x: 90, y: 12, from: 'pass' },
+      barrow: { x: 88, y: 26, from: 'temple' }, chapel: { x: 90, y: 40, from: 'forge' }, spire: { x: 92, y: 54, from: 'chapel' },
+      ashford: { x: 74, y: 52, from: 'banditfort' }, reedhaven: { x: 82, y: 62, from: 'ashford' }, stonegate: { x: 94, y: 64, from: 'reedhaven' },
+      cinder: { x: 62, y: 34, from: 'mine' }, archive: { x: 66, y: 62, from: 'mausoleum' }, eclipse: { x: 84, y: 48, from: 'archive' } } },
     EXPEDITIONS: [
       { id: 'quarry', name: 'Old Quarry', age: 1, tint: 0x8a7a5a, risk: 'Low', reward: 'Stone, iron', desc: 'Abandoned cuts of good stone. Quiet, with a few beasts.', trees: 4, rocks: 6, ore: 8, chests: 1, foes: ['beast', 'beast', 'normal'] },
       { id: 'forest', name: 'Deep Forest', age: 1, tint: 0x3f6a3a, risk: 'Low', reward: 'Wood, food', desc: 'Ancient trees and hidden caches. Wolves and bandits roam between them.', trees: 22, rocks: 3, ore: 0, chests: 3, foes: ['beast', 'beast', 'normal', 'normal'] },

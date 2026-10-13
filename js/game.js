@@ -4533,7 +4533,7 @@
     const cost = CFG.CAMP_COST[d.age];
     return `<small><button class="campBtn" data-camp="${d.id}" ${canPay(cost) ? '' : 'disabled'}>Build camp (${costText(cost)})</button> ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
   }
-  let jTab = 'journey';                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
+  let jTab = 'map', jMapSel = 'quarry', jFocus = true;                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
   function renderJournal() {
     const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
     document.getElementById('jStory').innerHTML = (story.intro ? chain.map((s, i) => `<div class="q ${storyDone(s.id) ? 'done' : i === first ? 'now' : ''}"><span>${storyDone(s.id) ? '✔' : i === first ? '➤' : '•'}</span><span>${s.goal}</span></div>`).join('') +
@@ -4550,17 +4550,36 @@
       wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${mem.map(n => clsTitle(n).replace('Swordsman', 'Sword').replace('Great Swordsman', 'Great Sword') + ' ' + n.name).join(', ')}</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
     const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers: ${soldierCount()}/${soldierCap()} (more barracks and archery ranges raise the limit). Pick up to ${bandMax()} warband${bandMax() > 1 ? 's' : ''} to bring (more at higher ages): they follow you and fights (fallen soldiers are carried home), and is away from the village meanwhile. Tap a soldier in the village to change their warband.</small></div></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet. Build a barracks or archery range.</small></div></div>');
-    const jtabs = `<div class="jtabs"><button data-jtab="journey" class="${jTab === 'journey' ? 'on' : ''}">Journeys</button><button data-jtab="raid" class="${jTab === 'raid' ? 'on' : ''}">Raids</button></div>`;
-    document.getElementById('jExp').innerHTML = jtabs + escHtml + CFG.EXPEDITIONS.filter(d => !!d.raid === (jTab === 'raid')).map(d => {
+    const jtabs = `<div class="jtabs"><button data-jtab="map" class="${jTab === 'map' ? 'on' : ''}">Map</button><button data-jtab="journey" class="${jTab === 'journey' ? 'on' : ''}">Journeys</button><button data-jtab="raid" class="${jTab === 'raid' ? 'on' : ''}">Raids</button></div>`;
+    const chLocked = (d) => (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse);
+    const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
+    const rowOf = (d) => {
       const weak = powerFor(d) < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
       return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>Risk: ${d.risk}${d.raid ? ` · ⚔ Raid: ${d.bands} warband${d.bands > 1 ? 's' : ''}` : ''} · Power ${needOf(d)}${d.raid ? ` (you: ${powerFor(d)}, warbands you bring + you)` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · Reward: ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) ? 'disabled' : ''}>${lock ? 'Locked' : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
-    }).join('');
-    jEl.querySelectorAll('#jExp button[data-jtab]').forEach(b => b.addEventListener('click', () => { jTab = b.dataset.jtab; renderJournal(); }));
+    };
+    const mapHtml = () => {                                                  // 지도 화면: 마디(원정)와 길. 고르면 아래에 같은 카드가 나온다
+      const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id));
+      if (!ids.has(jMapSel)) jMapSel = (vis.find(d => !lockOf(d)) || vis[0]).id;
+      const posOf = (id) => id === 'village' ? V : N[id];
+      let lines = '', dots = '';
+      for (const d of vis) { const n = N[d.id]; if (n.from !== 'village' && !ids.has(n.from)) continue; const p = posOf(n.from); lines += `<line x1="${p.x}" y1="${p.y}" x2="${n.x}" y2="${n.y}"/>`; }
+      for (const d of vis) {
+        const n = N[d.id], locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? '#e0604a' : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
+        dots += `<g data-node="${d.id}" class="${locked ? 'lk' : ''}"><circle class="hit" cx="${n.x}" cy="${n.y}" r="5"/><circle cx="${n.x}" cy="${n.y}" r="3.2" fill="${col}" stroke="${sel ? '#fff' : story.cleared[d.id] ? '#8fd49a' : '#2a2118'}" stroke-width="${sel || story.cleared[d.id] ? 1 : 0.5}"/><text x="${n.x}" y="${n.y + 1.1}">${sym}</text>${story.cleared[d.id] ? `<text class="ok" x="${n.x + 3.6}" y="${n.y - 2.6}">&#10003;</text>` : ''}${sel ? `<text class="nm" x="${n.x}" y="${n.y + 7.2}">${d.name}</text>` : ''}</g>`;
+      }
+      const sd = CFG.EXPEDITIONS.find(d => d.id === jMapSel);
+      return `<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid &nbsp; &#9790; night &nbsp; &#9733; story site &nbsp; dim = locked or too strong &nbsp; &#10003; cleared</small>` + (sd ? rowOf(sd) : '') + escHtml;
+    };
+    const expList = jTab === 'map' ? mapHtml() : CFG.EXPEDITIONS.filter(d => !!d.raid === (jTab === 'raid')).map(rowOf).join('');
+    document.getElementById('jExp').innerHTML = jtabs + (jTab === 'map' ? '' : escHtml) + expList;       // 지도 탭: 지도와 카드가 먼저, 전투단 목록은 그 아래
+    if (jFocus) { jFocus = false; const card = jEl.querySelector('.jcard'), ex = document.getElementById('jExp'); if (card && ex) card.scrollTop += ex.getBoundingClientRect().top - card.getBoundingClientRect().top - 8; }       // 열거나 탭을 바꾸면 지도 부분으로 스크롤
+    jEl.querySelectorAll('#jExp [data-node]').forEach(g => g.addEventListener('click', () => { jMapSel = g.dataset.node; renderJournal(); }));
+    jEl.querySelectorAll('#jExp button[data-jtab]').forEach(b => b.addEventListener('click', () => { jTab = b.dataset.jtab; jFocus = true; renderJournal(); }));
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
     jEl.querySelectorAll('#jExp button[data-wb]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.wb; toggleBring(i); renderJournal(); }));
   }
-  function openJournal() { if (dead || exActive) return; renderJournal(); jEl.style.display = 'flex'; }
+  function openJournal() { if (dead || exActive) return; jFocus = true; renderJournal(); jEl.style.display = 'flex'; }
   function closeJournal() { jEl.style.display = 'none'; }
   function toggleJournal() { jEl.style.display === 'flex' ? closeJournal() : openJournal(); }
   document.getElementById('jClose').addEventListener('click', closeJournal);

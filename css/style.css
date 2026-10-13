@@ -332,3 +332,8 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #actions #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; width: 70px; height: 70px; font-size: 14px; margin-top: 6px; }
 @media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #actions #atkBtn { width: 60px; height: 60px; font-size: 12px; } }
 #jExp .jtabs { display: flex; gap: 6px; margin: 4px 0 6px; } #jExp .jtabs button { flex: 1; background: rgba(255,255,255,.1); color: #d8cfbc; box-shadow: none; } #jExp .jtabs button.on { background: linear-gradient(#ffd27a, #ff9a3c); color: #3a1408; box-shadow: 0 2px 0 #a8480f; }
+#jExp .jmap { display: block; width: 100%; margin: 6px 0 2px; background: radial-gradient(ellipse at 20% 50%, #34502f, #1f2c20 70%); border: 1px solid #5a4a30; border-radius: 10px; touch-action: manipulation; }
+#jExp .jmap .roads line { stroke: #b99a62; stroke-width: 0.7; stroke-dasharray: 1.6 1.2; opacity: .8; }
+#jExp .jmap text { fill: #fff; font-size: 3.4px; text-anchor: middle; pointer-events: none; font-weight: 700; } #jExp .jmap text.nm { fill: #ffe7a8; font-size: 3px; paint-order: stroke; stroke: #1b1209; stroke-width: 0.7px; } #jExp .jmap text.ok { fill: #8fd49a; font-size: 3px; }
+#jExp .jmap g[data-node] { cursor: pointer; } #jExp .jmap g.lk { opacity: .45; } #jExp .jmap .hit { fill: transparent; }
+#jExp .jleg { display: block; font-size: 10.5px; color: #a9a49a; margin: 0 0 4px; line-height: 1.4; }
