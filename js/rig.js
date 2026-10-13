@@ -846,9 +846,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       sp.updateWorldMatrix(true, false); const q = sp.getWorldQuaternion(new THREE.Quaternion()), d = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
       return Math.hypot(d.x, d.z) < 0.3 ? null : Math.atan2(d.x, d.z);
     }
+    spearOrigin() {                                                    // 창을 쥔 손의 수평 위치: 찌르기 판정이 몸 가운데가 아니라 창이 나가는 자리에서 시작하게 한다
+      const R = this.rig; if (!R.handR) return null; R.root.updateMatrixWorld(true); const p = R.handR.getWorldPosition(new THREE.Vector3()); return [p.x, p.z];
+    }
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
-      const stab = !!this.shot && /^(stab|lunge)$/.test(this.variant), idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
+      const stab = !!this.shot && /^(stab|slash|lunge)$/.test(this.variant), swing = !!this.shot && this.variant === 'slash', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
       const tgt = stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
       const k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (stab ? dt / 0.1 : -dt / 0.12)));
       if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
@@ -857,7 +860,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
       const fw = (this._fw || (this._fw = new THREE.Vector3())).set(0, 0.06, 1).applyQuaternion(R.root.getWorldQuaternion(this._qr || (this._qr = new THREE.Quaternion())));       // 창끝은 팔 방향보다 적을 향해(캐릭터 정면, 수평) 길게 뻗는다
-      d.normalize().multiplyScalar(0.15).addScaledVector(fw.normalize(), 0.85).normalize();
+      d.normalize().multiplyScalar(swing ? 0.8 : 0.15).addScaledVector(fw.normalize(), swing ? 0.2 : 0.85).normalize();
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
       d.applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);

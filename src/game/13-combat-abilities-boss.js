@@ -28,9 +28,9 @@
         }
         const sd = lunge ? { ...base, dmg: dm * 2.6 * (1 + 0.12 * pl.st.lunge), half: Math.PI / 8 * (1 + 0.12 * pl.st.impale), stun: 0.6 + 0.25 * pl.st.impale, rangeMul: 2.3 * reach, slash: (base.slash || 1) * 2.0, tier: 1 }       // 마지막 돌진 찌르기: 온몸을 실어 더 아프고 더 멀리, 기절까지
           : { ...base, dmg: dm * 1.25 * (1 + 0.12 * pl.st.lunge), half: Math.PI / 10 * (1 + 0.12 * pl.st.impale), stun: 0.25 * pl.st.impale, rangeMul: 1.9 * reach, slash: (base.slash || 1) * 1.6 };          // 찌르기: 좁고 아주 긴 사거리
-        const sa = playerAnim.spearAim(), ang = sa === null ? facing : sa;       // 찌르기 판정은 보이는 창끝이 가리키는 방향으로
-        shake = lunge ? 0.55 : 0.2; spawnThrust(player.position.x, player.position.z, ang, ATK_RANGE * sd.rangeMul);
-        const hits = sectorHit(player.position.x, player.position.z, ang, true, sd);
+        const sa = playerAnim.spearAim(), ang = sa === null ? facing : sa, so = playerAnim.spearOrigin() || [player.position.x, player.position.z];       // 찌르기 판정은 보이는 창끝이 가리키는 방향으로
+        shake = lunge ? 0.55 : 0.2; spawnThrust(so[0], so[1], ang, ATK_RANGE * sd.rangeMul);
+        const hits = sectorHit(so[0], so[1], ang, true, sd);
         if (lunge) floatText(hits >= 2 ? `FULL THRUST x${hits}!` : 'FULL THRUST!', player.position.x + Math.sin(facing) * 2, 2.8, player.position.z + Math.cos(facing) * 2);
         else if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       });
