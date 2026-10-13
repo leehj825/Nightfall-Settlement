@@ -670,11 +670,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
       if (a && (rs === 'mineMocap' || rs === 'chopMocap')) a.timeScale = a.getClip().duration / 1.0;                 // 곡괭이질 0.9초, 도끼질 1초에 한 번
     }
+    breakCombo() { this.atkI = 0; this.spI = 0; this.brI = 0; }                                                   // 회피·점프·방어·채집·무기 교체를 하면 콤보는 처음부터
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
-      if (!this.shot && performance.now() - (this._ce || 0) > 1000) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
+      if (!this.shot && performance.now() - (this._ce || 0) > 800) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
       if (name === 'attackSword' && this.rig.brawl && this.acts.brawlPunch) {                                                 // 맨손(주인공 무기 해제·일반 시민): 주먹과 발차기를 끊김 없이 이어 붙인다 (앞뒤의 느린 부분은 잘라 낸다)
         const nm = BRAWL_SEQ[this.brI = ((this.brI || 0) % BRAWL_SEQ.length)]; this.brI++;
         const act = this.acts[nm], cd = act.getClip().duration, meta = MIXAMO_CLIPS[nm], hit = meta ? meta.hit : 0.45, a0 = Math.max(0, hit - 0.28), a1 = Math.min(0.97, hit + 0.2);
@@ -692,8 +693,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.15 : 0.65);
       }
       if (name === 'attackSword' && this.rig.style === 'gs' && this.acts.gsAttack1) {                 // 대검: 세 번은 크게 베기, 네 번째는 제자리 회전 베기 (범위가 넓다)
-        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'gsAttack' + this.atkI; this.heavy = this.atkI === 4;
-        ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 1.1);
+        this.atkI = ((this.atkI || 0) % 4) + 1; name = this.atkI === 4 ? 'gsAttack4' : ['gsAttack2', 'gsAttack3', 'gsAttack2'][this.atkI - 1]; this.heavy = this.atkI === 4;       // 첫 동작(gsAttack1)은 칼자루로 치는 듯해서 뺐다: 빠르게 휘두르는 베기 둘을 번갈아 쓴다
+        ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 0.9);
       }
       const act = this.acts[name]; act.timeScale = ts;
       const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name];
@@ -710,12 +711,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
     jump() {
       if (this.dead || this.shot || this.guarding) return false;
+      this.breakCombo();
       const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
       return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
     }
     // 회피(대시): 이동 방향(f 앞 / b 뒤 / p,n 옆)에 맞는 구르기·회피 동작
     dodge(dir) {
       if (this.dead || this.guarding) return false;
+      this.breakCombo();
       const k = { f: 'bowDodgeF', b: 'bowDodgeB', p: 'bowDodgeP', n: 'bowDodgeN' }[dir] || 'bowDodgeF'; if (!this.acts[k]) return false;
       this.shot = null; return this._short(k, 0.5, 0.06);
     }
@@ -729,7 +732,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 막기: 방패 / 대검 / 활 팩의 막기 자세를 잡고 있는다 (끝 자세에서 멈춘다). 풀면 원래 동작으로
     guard(on) {
       on = !!on; if (on === !!this.guarding || this.dead) return;
-      this.guarding = on;
+      this.guarding = on; if (on) this.breakCombo();
       if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
       else this._play(this.baseName || 'idle', 0.15, true);
     }
@@ -817,6 +820,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       V.M.makeBasis(V.x, V.d, V.z); V.q.setFromRotationMatrix(V.M);                  // 모델: 자루 = +Y, 머리/날 = +Z
       R.handR.getWorldQuaternion(V.h).invert(); t.quaternion.copy(V.h).multiply(V.q);
     }
+    spearAim() {                                                       // 창이 지금 가리키는 수평 방향(라디안): 찌르기 판정을 보이는 창끝에 맞추려고 쓴다
+      const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.visible) return null;
+      sp.updateWorldMatrix(true, false); const q = sp.getWorldQuaternion(new THREE.Quaternion()), d = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+      return Math.hypot(d.x, d.z) < 0.3 ? null : Math.atan2(d.x, d.z);
+    }
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
       const stab = !!this.shot && this.variant === 'stab', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
@@ -828,7 +836,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
       const fw = (this._fw || (this._fw = new THREE.Vector3())).set(0, 0.06, 1).applyQuaternion(R.root.getWorldQuaternion(this._qr || (this._qr = new THREE.Quaternion())));       // 창끝은 팔 방향보다 적을 향해(캐릭터 정면, 수평) 길게 뻗는다
-      d.normalize().multiplyScalar(0.3).addScaledVector(fw.normalize(), 0.7).normalize();
+      d.normalize().multiplyScalar(0.15).addScaledVector(fw.normalize(), 0.85).normalize();
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
       d.applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);

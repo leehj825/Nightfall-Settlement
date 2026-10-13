@@ -74,7 +74,7 @@
       if (d < bestD) { bestD = d; best = o; }
     }
     if (!best) return toast('Nothing to gather nearby');
-    gathering = { target: best, t: 0 };
+    gathering = { target: best, t: 0 }; playerAnim.breakCombo();
   }
 
   const fenceMat = mat(0x8a5a34), wallMat = mat(0x4a4d52);

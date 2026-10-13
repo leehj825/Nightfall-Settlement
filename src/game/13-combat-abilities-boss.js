@@ -27,8 +27,9 @@
           return;
         }
         const sd = { ...base, dmg: dm * 1.25 * (1 + 0.12 * pl.st.lunge), half: Math.PI / 10 * (1 + 0.12 * pl.st.impale), stun: 0.25 * pl.st.impale, rangeMul: 1.9 * reach, slash: (base.slash || 1) * 1.6 };          // 찌르기: 좁고 아주 긴 사거리
-        shake = 0.2; spawnThrust(player.position.x, player.position.z, facing, ATK_RANGE * sd.rangeMul);
-        const hits = sectorHit(player.position.x, player.position.z, facing, true, sd);
+        const sa = playerAnim.spearAim(), ang = sa === null ? facing : sa;       // 찌르기 판정은 보이는 창끝이 가리키는 방향으로
+        shake = 0.2; spawnThrust(player.position.x, player.position.z, ang, ATK_RANGE * sd.rangeMul);
+        const hits = sectorHit(player.position.x, player.position.z, ang, true, sd);
         if (hits >= 3) floatText(`PIERCE x${hits}!`, player.position.x + Math.sin(facing) * 2, 2.6, player.position.z + Math.cos(facing) * 2);
       });
       return;
@@ -66,6 +67,7 @@
   const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear', none: 'Unarmed' };
   function swapWeapon() {
     if (dead) return;
+    playerAnim.breakCombo();
     weaponMode = weaponMode === 'sword' ? 'great' : weaponMode === 'great' ? 'bow' : weaponMode === 'bow' ? 'spear' : weaponMode === 'spear' ? 'none' : 'sword';
     playerRig.brawl = weaponMode === 'none'; playerRig.main = weaponMode; playerRig.style = weaponMode === 'sword' ? 'ss' : weaponMode === 'great' ? 'gs' : weaponMode === 'bow' ? 'bow' : '';
     document.getElementById('swapCur').textContent = `Q · ${WEAPON_NAME[weaponMode]}`;
