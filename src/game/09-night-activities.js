@@ -158,6 +158,7 @@
       updateHud();
     }
     if (u.champ) { story.champs = (story.champs || 0) + 1; const k = 8 + dayNow(); res.iron += k; res.shard++; giveXp(80); floatText(`Champion down! +${k} Iron, +1 Shard`, e.position.x, 3.2, e.position.z); Snd.play('victory'); updateHud(); }
+    if (u.guardian && exActive && exCamp) campBroken(e);
     if (u.guardian && exActive) { makeChest(e.position.x, e.position.z, false); floatText('Guardian down! A chest appears', e.position.x, 3.2, e.position.z); shake = Math.max(shake, 0.5); }
     if (u.ex && Math.random() < 0.35) { res.iron++; updateHud(); floatText('Loot: Iron +1', e.position.x, 2.4, e.position.z); }
     if (wave.type === 'hunt' && Math.random() < 0.5) { res.food++; updateHud(); floatText('Loot: Food +1', e.position.x, 2.4, e.position.z); }
