@@ -251,14 +251,15 @@
     }
     g.t += dt;
     facing = Math.atan2(o.position.x - player.position.x, o.position.z - player.position.z); player.rotation.y = facing;
-    const prog = Math.min(1, g.t / CFG.PLAYER_GATHER_TIME), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    const need = o.userData.gatherTime || CFG.PLAYER_GATHER_TIME, prog = Math.min(1, g.t / need), rx = Math.cos(yaw), rz = -Math.sin(yaw);
     gBg.visible = gFill.visible = true;
     gBg.position.set(player.position.x, 0.02, player.position.z);
     gFill.position.set(player.position.x - rx * 0.65, 0.02, player.position.z - rz * 0.65);
     gFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
-    if (g.t >= CFG.PLAYER_GATHER_TIME) {
+    if (g.t >= need) {
       scene.remove(o);
-      if (o.userData.type === 'chest') { exObjs.splice(exObjs.indexOf(o), 1); openChest(o); }
+      if (o.userData.type === 'banditBanner') { exObjs.splice(exObjs.indexOf(o), 1); burnBanner(o); }
+      else if (o.userData.type === 'chest') { exObjs.splice(exObjs.indexOf(o), 1); openChest(o); }
       else {
         const pool = exObjs.includes(o) ? exObjs : obstacles; pool.splice(pool.indexOf(o), 1);
         res[o.userData.type] += gatherYield(o.userData.type); rollIron(o); Snd.play('chop');

@@ -169,6 +169,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **Face and armor tweaks** (nf-v81): the round cheek bumps were removed from every character's face. The leader no longer shows a helmet or breastplate when you upgrade armor: armor still reduces damage as before, but the leader's look stays the same (soldiers still show their armor). The leader's shield still changes with armor tier.
 
+**Raid power and the banner objective** (nf-v83): raids now compare your power counting only the warbands you bring plus you (soldiers left at home do not help in a camp); the Raids tab shows your number next to the need, and the toast when you are too weak says so. Needs were lowered a little: Raider Outpost 22, Bandit Camp 50. There is now a second way to break a camp: stand next to the bandit banner in the middle of the camp and press Gather (G) for 3 seconds (moving cancels it). A burning banner breaks the camp like killing the chief does, with a smaller reward (+4 iron, +3 food), the same lasting effect on raids, and the guards stop fighting; the chief can still be killed for his chest. The camp counts as cleared once it is broken and the chests are taken. Only tested headless.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
