@@ -189,6 +189,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **Night lighting fix** (nf-v92): the night fog was measured from the camera, so zooming out pushed the whole village into fog and made it darker, as if the light followed the camera. The fog distances now add the camera's distance to the hero, so what is around the hero looks the same at any zoom. The night is also a little brighter overall (moonlight 0.18 to 0.30, ambient 0.28 to 0.42) and the Map View (bird's-eye) adds a bit of ambient light at night. In a headless test at night the screen brightness at three zoom levels went from 73 / 76 / 53 (darker when far) to 70 / 86 / 89 (no longer darker when far). Day lighting is unchanged. Only tested headless.
 
+**Closer walls** (nf-v93): the defense lines are now planned with their pieces almost touching: the wooden fence spacing went from 3.0 to 2.5 (the fence piece is 2.4 wide) and the stone wall from 3.57 to 3.13 (the piece is 3.0 wide), so there are about 20% and 14% more pieces on each line (the first line 48 pieces, the second 64) and they need a bit more wood and stone to build or upgrade; the gates are a little narrower (about 2.6 for the first line). This only applies to lines you plan from now on: walls already built or planned in an existing save keep their old spacing. Only tested headless (in a fresh debug village the nearest pieces were 2.5 and 3.13 apart).
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations

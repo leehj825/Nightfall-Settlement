@@ -4580,8 +4580,8 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
     BP_COST: { wood: 5, stone: 5 },            // 동료가 청사진 1개를 지을 때 드는 자원 (나무 목책 / 돌 성벽)
     // 자동 방어선 도면: 모닥불(0,0) 기준 원형 배치. gaps = 비워 둘 슬롯 번호(출입구)
     DESIGN: [      // 사각형 방어선: half = 한 변의 절반(중앙 기준), perHalf = 중심에서 모서리까지 구간 수 (부재 간격 = half / perHalf)
-      { label: 'Defense Line: Tier 1', cost: { wood: 30 }, half: 15, perHalf: 5, kind: 'wood' },     // 30 x 30
-      { label: 'Defense Line: Tier 2 (Stone)', cost: { stone: 50 }, half: 25, perHalf: 7, kind: 'stone', age: 3 },   // 50 x 50
+      { label: 'Defense Line: Tier 1', cost: { wood: 30 }, half: 15, perHalf: 6, kind: 'wood' },     // 30 x 30 (간격 2.5: 목책 폭 2.4 와 거의 붙는다)
+      { label: 'Defense Line: Tier 2 (Stone)', cost: { stone: 50 }, half: 25, perHalf: 8, kind: 'stone', age: 3 },   // 50 x 50 (간격 3.1: 성벽 폭 3.0)
     ],
     // ----- 시대 발전 (테크 트리): 모닥불/마을 회관을 클릭해서 업그레이드 -----
     AGES: [
