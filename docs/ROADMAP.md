@@ -19,7 +19,7 @@
 | drill ground | **Training yard** | building that trains veterans |
 | war map | **Campaign map** | map of realms, holds and castles |
 
-> The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md).
+> The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md). The siege plan is in [SIEGE_PLAN.md](SIEGE_PLAN.md).
 
 ## Status (nf-v108)
 See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
@@ -38,7 +38,7 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - Tuning after phone testing, and custom models.
 
 **Next steps, in order**
-1. **Siege plan, then sieges:** write a plan first, then castle and fortress nodes with walls, gates, ladders and rams, and a defender garrison.
+1. **Sieges** (plan written in `SIEGE_PLAN.md`, not built): castle and fortress nodes with walls, gates, ladders and rams, and a defender garrison.
 2. **Banners, the host, levies, wounds and courage.**
 3. **Final campaign and endgame:** a last assault on a realm's castle; captured outposts that pay income.
 4. **Polish:** battle report screen, cavalry and siege crews, audio, formations; balance and phone testing; custom models.
