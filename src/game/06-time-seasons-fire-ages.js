@@ -34,9 +34,9 @@
   }
   function applyLighting(n, b = 0) {           // n: 밤 정도, b: 붉은 달 정도 (습격의 밤에만)
     sun.color.copy(L.sunDay).lerp(L.sunNight, n).lerp(L.sunBlood, b * 0.85);
-    sun.intensity = lerp(1.2, 0.18, n) + b * 0.35;
+    sun.intensity = lerp(1.2, 0.3, n) + b * 0.35;
     ambient.color.copy(L.ambDay).lerp(L.ambNight, n).lerp(L.ambBlood, b * 0.8);
-    ambient.intensity = lerp(0.6, 0.28, n) + b * 0.12;
+    ambient.intensity = lerp(0.6, 0.42, n) + b * 0.12;
     scene.fog.color.copy(L.fogDay).lerp(L.fogNight, n).lerp(L.fogBlood, b * 0.9);
     scene.background.copy(scene.fog.color);
     scene.fog.near = lerp(35, 6, n);
