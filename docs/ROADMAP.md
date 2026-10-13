@@ -19,6 +19,8 @@
 | drill ground | **Training yard** | building that trains veterans |
 | war map | **Campaign map** | map of realms, holds and castles |
 
+> The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md).
+
 ## Status (nf-v64)
 See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
 
