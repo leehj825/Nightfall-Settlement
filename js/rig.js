@@ -481,19 +481,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return { root, bodyMat, head, spine: null, handR: head, handL: head, baseScale: opts.scale ?? 1.5, clips: BEAST_CLIPS };
   }
 
-  // 창 공격 동작의 좌우를 바꾼다: 몸통·머리·다리의 쪽(비틀기와 디딤발)을 거울상으로 뒤집는다 (팔은 그대로: 창은 오른손에 있다). 검·방패의 공격(ssAttack1)은 창 전용 복사본을 쓴다
+  // 창 공격 동작의 좌우를 바꾼다: 몸통·머리의 쪽(비틀기)만 거울상으로 뒤집는다 (팔·다리는 그대로, 마지막 돌진 찌르기는 원래대로). 검·방패의 공격(ssAttack1)은 창 전용 복사본을 쓴다
   (() => {
-    const swapLR = (n) => n.replace(/(hip|knee)([LR])\./, (m, a, b) => a + (b === 'L' ? 'R' : 'L') + '.');
     const mirror = (src, name) => {
       const tr = src.tracks.map(t => {
-        if (!/^(hips|spine|head|hipL|hipR|kneeL|kneeR)\.quaternion$/.test(t.name)) return t.clone();
+        if (!/^(hips|spine|head)\.quaternion$/.test(t.name)) return t.clone();
         const v = t.values.slice(); for (let i = 0; i < v.length; i += 4) { v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
-        return new THREE.QuaternionKeyframeTrack(swapLR(t.name), t.times.slice(), v);
+        return new THREE.QuaternionKeyframeTrack(t.name, t.times.slice(), v);
       });
       return new THREE.AnimationClip(name, src.duration, tr);
     };
     if (STICK_CLIPS.ssAttack1) STICK_CLIPS.spearSlash1 = STICK_CLIPS.ssAttack1;
-    for (const n of ['spearStab', 'spearSlash1', 'spearFinal', 'spearLunge']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n);
+    for (const n of ['spearStab', 'spearSlash1']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n);
   })();
 
   // ----- 장비 메쉬 (손 뼈에 붙는다): 칼날이 팔 방향(+Z)으로 향하도록 inner.rotation.x = π/2 -----
