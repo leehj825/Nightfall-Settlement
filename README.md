@@ -183,6 +183,8 @@ Interface fixes (nf-v67): the **View** button (camera) moved to the right-hand b
 
 **Less text in the game** (nf-v89): the Journal shows only the current story goal (no list of old goals, stars or log lines), a one-line power and departure hint, and a short warband line ("2/2 ready", no soldier names); site cards are shorter (for example "High · 2 bands · 1d march (8 food) · Power 50 (you 93) · Loot..." with one-line descriptions for the raids); the warband window lost its explanatory paragraphs and its standard line, and the order hint is a few words; march, camp, hold and return messages are one short line each ("Camp broken! +8 iron +6 food · raids -20%", "Night 3: ~16 raiders repelled."); the first-day tips and objectives are shorter; the morning report no longer has the wealth, gear and market lines. No rules changed. Rule of thumb for new text: one short line, numbers before words, no explanations in the game (they belong in this README).
 
+**One Journal view** (nf-v90): the Journeys and Raids tabs are gone. Every site (forays, raids, night and story sites) is on the map, and the far raids are listed under it, so the Journal is now just: current goal, the map, the selected site's card, then your warbands. Older notes above that mention the Journeys / Raids tabs or lists describe earlier versions.
+
 Project state and how to continue in a new chat: [docs/HANDOFF.md](docs/HANDOFF.md). Long-term plans (army and war expansion: warbands, commands, war map, sieges, enemy factions) are in [docs/ROADMAP.md](docs/ROADMAP.md). Not built yet.
 
 ## Motion-capture animations
