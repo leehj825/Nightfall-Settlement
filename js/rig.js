@@ -481,7 +481,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return { root, bodyMat, head, spine: null, handR: head, handL: head, baseScale: opts.scale ?? 1.5, clips: BEAST_CLIPS };
   }
 
-  // 창 공격 동작의 좌우를 바꾼다: 찌르기·휘두르기는 두 팔과 윗몸(척추·머리), 마지막 돌진 찌르기는 두 팔만 좌우를 바꾼다 (엉덩이와 다리는 원래대로, 창은 오른손·방패는 왼손 그대로). 검·방패의 공격(ssAttack1)은 창 전용 복사본을 쓴다
+  // 창 공격 동작의 좌우를 바꾼다: 찌르기·휘두르기는 원래 동작 그대로, 마지막 돌진 찌르기만 두 팔의 좌우를 바꾼다 (엉덩이와 다리는 원래대로, 창은 오른손·방패는 왼손 그대로). 검·방패의 공격(ssAttack1)은 창 전용 복사본을 쓴다
   (() => {
     const mirror = (src, name, torso) => {                                 // 두 팔은 좌우를 맞바꾸고(축 반전), torso 가 true 면 척추·머리도 거울상으로 뒤집는다. 엉덩이·다리는 그대로
       const tr = src.tracks.map(t => {
@@ -493,7 +493,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       return new THREE.AnimationClip(name, src.duration, tr);
     };
     if (STICK_CLIPS.ssAttack1) STICK_CLIPS.spearSlash1 = STICK_CLIPS.ssAttack1;
-    for (const n of ['spearStab', 'spearSlash1']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n, true);
     for (const n of ['spearFinal', 'spearLunge']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n, false);
   })();
 
