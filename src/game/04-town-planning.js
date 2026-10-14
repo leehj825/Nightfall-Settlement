@@ -31,15 +31,8 @@
     else if (lvl <= 1) {
       add(new THREE.ConeGeometry(1.9, 2.6, 8), tentMat, 0, 1.3, 0);
       add(new THREE.BoxGeometry(0.7, 1.1, 0.12), windowGlow, 0, 0.55, 1.6).rotation.x = -0.35;
-    } else if (lvl === 2) {
-      add(new THREE.BoxGeometry(2.6, 1.8, 2.6), houseWall, 0, 0.9, 0);
-      add(new THREE.ConeGeometry(2.3, 1.4, 4), houseRoof, 0, 2.5, 0).rotation.y = Math.PI / 4;
-      add(new THREE.BoxGeometry(0.5, 0.5, 0.06), windowGlow, 0.6, 1.0, 1.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.06), windowGlow, -0.6, 1.0, 1.32);
-    } else {
-      add(new THREE.BoxGeometry(2.8, 2.1, 2.8), stoneWall, 0, 1.05, 0);
-      add(new THREE.ConeGeometry(2.5, 1.5, 4), slateRoof, 0, 2.85, 0).rotation.y = Math.PI / 4;
-      add(new THREE.BoxGeometry(0.5, 1.2, 0.5), chimneyMat, 0.8, 3.0, 0.6);
-      add(new THREE.BoxGeometry(0.5, 0.6, 0.06), windowGlow, 0.7, 1.2, 1.42); add(new THREE.BoxGeometry(0.5, 0.6, 0.06), windowGlow, -0.7, 1.2, 1.42);
+    } else {                                                           // 2단계 목골 집 / 3단계 이상 돌집 (04b-models.js)
+      houseModel(g, lvl);
     }
   }
   function refreshHouses() { for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house') setHouseModel(h); }

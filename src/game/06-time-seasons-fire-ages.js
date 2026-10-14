@@ -105,28 +105,9 @@
       add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
       add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
       flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
-    } else if (stage === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
-      add(new THREE.BoxGeometry(6.2, 3.2, 6.2), keepStone, 0, 1.6, 0);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-        add(new THREE.CylinderGeometry(1.0, 1.1, 4.6, 10), keepTower, sx * 3.1, 2.3, sz * 3.1);
-        add(new THREE.ConeGeometry(1.3, 1.2, 10), keepTop, sx * 3.1, 5.2, sz * 3.1);
-      }
-      add(new THREE.BoxGeometry(3.2, 2.6, 3.2), keepStone, 0, 4.5, 0);
-      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; add(new THREE.BoxGeometry(0.55, 0.55, 0.55), keepTop, Math.cos(a) * 1.7, 6.0, Math.sin(a) * 1.7); }
-      add(new THREE.BoxGeometry(1.6, 2.2, 0.14), hallDark, 0, 1.1, 3.12);
-      flame.position.y = 6.0; fireLight.position.y = 7.2; hallHint.position.y = 8.6;
-    } else {                                                           // 4~5단계: 큰 성채(Great Hall) / 왕좌의 방(Throne Hall: 금빛 지붕)
-      const gold = new THREE.MeshStandardMaterial({ color: 0xe0b040, flatShading: true, roughness: 0.6, metalness: 0.3 });
-      add(new THREE.BoxGeometry(7.6, 3.6, 7.6), keepStone, 0, 1.8, 0);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-        add(new THREE.CylinderGeometry(1.2, 1.3, 5.6, 10), keepTower, sx * 3.8, 2.8, sz * 3.8);
-        add(new THREE.ConeGeometry(1.5, 1.6, 10), stage >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
-      }
-      for (const [dx, dz] of [[0, -3.9], [0, 3.9], [-3.9, 0], [3.9, 0]]) add(new THREE.CylinderGeometry(0.7, 0.8, 4.4, 8), keepTower, dx, 2.2, dz);
-      add(new THREE.BoxGeometry(4.0, 3.2, 4.0), keepStone, 0, 5.2, 0);
-      add(new THREE.ConeGeometry(3.0, 2.2, 4), stage >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
-      add(new THREE.BoxGeometry(1.8, 2.4, 0.14), hallDark, 0, 1.2, 3.84);
-      flame.position.y = 9.4; fireLight.position.y = 10.6; hallHint.position.y = 12;
+    } else {                                                           // 3~5단계: 석조 성채 (04b-models.js)
+      keepModel(add, stage);
+      flame.position.y = stage >= 4 ? 10.2 : 8.4; fireLight.position.y = stage >= 4 ? 11.4 : 9.6; hallHint.position.y = stage >= 4 ? 13 : 11;
     }
     FIRE_R = CFG.HALL_RADIUS[stage - 1];
     campfire.userData.radius = FIRE_R;
