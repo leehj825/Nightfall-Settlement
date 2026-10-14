@@ -909,12 +909,12 @@
     }
     renderSiegeRows();
   }
-  const siegeGear = () => story.siege || (story.siege = { ram: 0, ladder: 0 });
+  const siegeGear = () => { const g = story.siege || (story.siege = { ram: 0, ladder: 0 }); if (g.catapult === undefined) g.catapult = 0; return g; };
   function renderSiegeRows() {                                         // 공성 장비: 공성 작업장이 있어야 만들 수 있다. 보유 수는 마을 창고에 쌓인다
     const h = document.createElement('div'); h.className = 'shead'; h.textContent = 'Siege gear - for castles'; smithList.appendChild(h);
     if (!builtBuildings('siegeshop').length) { const r = document.createElement('div'); r.className = 'srow'; r.innerHTML = '<div class="sinfo"><small>Build a Siege Workshop first (the last Village Plan step, Age 3).</small></div>'; smithList.appendChild(r); return; }
     const G = siegeGear();
-    for (const [key, name, desc, cost, have, cap] of [['ram', 'Siege Ram', 'Batters a castle gate. Soldiers push it.', CFG.SIEGE.RAM, G.ram, 1], ['ladder', 'Siege Ladder', 'Raise it to climb a castle wall.', CFG.SIEGE.LADDER, G.ladder, CFG.SIEGE.LADDER_MAX]]) {
+    for (const [key, name, desc, cost, have, cap] of [['ram', 'Siege Ram', 'Batters a castle gate. Soldiers push it.', CFG.SIEGE.RAM, G.ram, 1], ['ladder', 'Siege Ladder', 'Raise it to climb a castle wall.', CFG.SIEGE.LADDER, G.ladder, CFG.SIEGE.LADDER_MAX], ['catapult', 'Catapult', 'Hurls boulders: cracks a wall open from range and hits the defenders. Needs you or two soldiers beside it.', CFG.SIEGE.CATAPULT, G.catapult, 1]]) {
       const row = document.createElement('div'); row.className = 'srow';
       row.innerHTML = `<div class="sinfo"><b>${name}</b> <small>${desc}</small><small>Cost: ${costText(cost)} · You carry: ${have} / ${cap}</small></div><div class="sbtns"><button>Build</button></div>`;
       const b = row.querySelector('button'); b.disabled = have >= cap || !canPay(cost);
@@ -1854,7 +1854,7 @@
         spawnCd = rand(0.8, 1.2) * Math.max(CFG.MIN_SPAWN_INTERVAL, CFG.SPAWN_INTERVAL_BASE / (1 + CFG.SPAWN_RATE_GROWTH * (waveDay - 1)));
       }
     }
-    if (exActive && exCamp && (exCamp.ram || exCamp.oil)) castleTick(dt);
+    if (exActive && exCamp && (exCamp.ram || exCamp.oil || exCamp.cat)) castleTick(dt);
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
@@ -4112,7 +4112,7 @@
   // ---------- 산적 야영지 (습격 Raid): 목책 · 문 · 감시탑 · 천막 · 모닥불 · 우두머리 천막. 목책은 막히는 지형 (적의 길 막힘은 다음 단계) ----------
   const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = mat(0x80838c), campStoneDark = mat(0x575a63), campGateMat = mat(0x3a2a1c);
   let exStats = { kills: 0, t0: 0 };                                 // 이번 원정의 전투 기록 (보고서용)
-  let siegeLoad = { ram: 0, ladder: 0 };                             // 이번 원정에 가져온 공성 장비
+  let siegeLoad = { ram: 0, ladder: 0, catapult: 0 };                             // 이번 원정에 가져온 공성 장비
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
   function buildBanditCamp(d, cx, cz, inner) {
     const C = d.camp, R = C.radius, gateA = -Math.PI / 2, segs = Math.round(2 * Math.PI * R / 2.6), step = Math.PI * 2 / segs;
@@ -4191,7 +4191,17 @@
       g.position.set(cx, 0, cz - R - 12); exAdd(g, false);
       ram = { mesh: g, log, hp: 120, maxHp: 120, dead: false, hitCd: 1.2, recoil: 0, gx: cx, gz: cz - R - 3.2, sz: cz - R - 12 };
     }
-    return { cx, cz, R, towers, banner, fire, solids, gate, ram, ladders, oil, drops: [], load: { ...siegeLoad }, alarm: false, broken: false };
+    let cat = null;
+    if (gate && siegeLoad.catapult > 0) {                              // 투석기: 성벽 동쪽 바깥에 놓인다. 곁에 사람이 있어야 쏜다
+      const g = new THREE.Group(), wood = mat(0x7a5632), base = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 3.4), wood); base.position.y = 0.7;
+      for (const [px, pz] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8), campDark); wh.rotation.z = Math.PI / 2; wh.position.set(px, 0.5, pz); g.add(wh); }
+      for (const px of [-0.8, 0.8]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.2, 0.2), wood); post.position.set(px, 1.7, 0); g.add(post); }
+      const armPivot = new THREE.Group(); armPivot.position.set(0, 2.6, 0); const arm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 4.4), mat(0x8a6038)); arm.position.z = -1.1; const bucket = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.9), campDark); bucket.position.set(0, 0.2, 1.1); armPivot.add(arm, bucket); armPivot.rotation.x = 0.6;
+      g.add(base, armPivot); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      g.position.set(cx + R + 11, 0, cz); g.rotation.y = -Math.PI / 2; exAdd(g, false);
+      cat = { mesh: g, arm: armPivot, hp: CFG.SIEGE.CAT_HP, dead: false, cd: 4, anim: 0, shots: 0, ball: null, flight: 0, tx: 0, tz: 0, sx: 0, sz: 0, target: null };
+    }
+    return { cx, cz, R, towers, banner, fire, solids, gate, ram, cat, ladders, oil, drops: [], load: { ...siegeLoad }, alarm: false, broken: false };
   }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
@@ -4373,15 +4383,46 @@
   function ladderTick(dt) {
     const C = exCamp; if (!C || !C.ladders) return;
     for (const L of C.ladders) {
-      if (!L.up) continue;
+      if (!L.up || L.perm) continue;
       const wx = C.cx + Math.cos(L.a) * C.R, wz = C.cz + Math.sin(L.a) * C.R;
       const mine = Math.hypot(player.position.x - wx, player.position.z - wz) < 7 || npcs.some(n => n.escort && !n.down && Math.hypot(n.position.x - wx, n.position.z - wz) < 5);
       const foes = enemies.some(e => e.userData.ex && !e.userData.sinking && !e.userData.tower && Math.hypot(e.position.x - wx, e.position.z - wz) < 7 && Math.hypot(e.position.x - C.cx, e.position.z - C.cz) < C.R);
       L.t += dt * (foes && !mine ? 1 : foes ? 0.35 : -0.5); L.t = Math.max(0, L.t);
-      if (L.t > 14) dropLadder(L);
+      if (L.t > 14 && !L.perm) dropLadder(L);
     }
   }
-  function castleTick(dt) { ramTick(dt); oilTick(dt); ladderTick(dt); }
+  function breachWall(a, perm) {                                     // 성벽의 (각도 a) 자리 세 칸을 낮춘다 (투석기 명중: 영구)
+    const C = exCamp; if (!C) return; const wx = C.cx + Math.cos(a) * C.R, wz = C.cz + Math.sin(a) * C.R, segs = [];
+    for (const w of C.solids.slice()) if (w.userData.wall && !w.userData.gatePart && Math.hypot(w.position.x - wx, w.position.z - wz) < 4.6) { segs.push({ w, sy: w.scale.y }); w.scale.y = 0.28; C.solids.splice(C.solids.indexOf(w), 1); const i = exObjs.indexOf(w); if (i >= 0) exObjs.splice(i, 1); }
+    C.ladders.push({ a, pickup: null, mesh: null, up: true, t: 0, segs, perm: !!perm, lost: false, breach: true });
+    toast('The wall is breached!'); shake = Math.max(shake, 0.8); campAlarm(); floatText('WALL BREACHED!', wx, 4, wz);
+  }
+  function catapultTick(dt) {                                        // 투석기: 곁에 주인공이나 병사 둘이 있으면 일정 시간마다 돌덩이를 던진다. 먼저 성벽 동쪽을 세 번 때려 허물고, 그다음엔 가까운 망루의 궁수를 노린다
+    const C = exCamp, K = C && C.cat; if (!K || K.dead) return;
+    const m = K.mesh, near = (!dead && Math.hypot(player.position.x - m.position.x, player.position.z - m.position.z) < 6) || npcs.filter(n => n.escort && !n.down && Math.hypot(n.position.x - m.position.x, n.position.z - m.position.z) < 6).length >= 2;
+    for (const e of enemies) { const u = e.userData; if (!u.ex || u.sinking || u.dying > 0 || u.tower) continue; if (Math.hypot(e.position.x - m.position.x, e.position.z - m.position.z) < 3.6) K.hp -= dt * (u.kind === 'brute' ? 7 : 3.5); }
+    if (K.hp <= 0) { K.dead = true; scene.remove(m); toast('The catapult is lost!'); floatText('CATAPULT LOST', m.position.x, 3, m.position.z); return; }
+    if (K.ball) {                                                    // 날아가는 돌덩이
+      K.flight += dt / 1.4; const u = Math.min(1, K.flight);
+      K.ball.position.set(K.sx + (K.tx - K.sx) * u, 1.8 + 7 * Math.sin(u * Math.PI), K.sz + (K.tz - K.sz) * u);
+      if (u >= 1) {
+        scene.remove(K.ball); K.ball = null; burst({ x: K.tx, z: K.tz }, 16); sfxAt('boom', K.tx, K.tz); shake = Math.max(shake, 0.45);
+        for (const e of enemies.slice()) { const v = e.userData; if (!v.ex || v.sinking || v.dying > 0) continue; if (Math.hypot(e.position.x - K.tx, e.position.z - K.tz) < 4) hitEnemy(e, CFG.SIEGE.CAT_DMG, K.tx, K.tz, true, null, true); }
+        K.shots++;
+        if (K.target && K.target.tower) { K.target.tower.userData.hits = (K.target.tower.userData.hits || 0) + 1; if (K.target.tower.userData.hits >= 2) { K.target.tower.scale.y = 0.6; for (const e of enemies.slice()) if (e.userData.tower && Math.hypot(e.position.x - K.target.tower.position.x, e.position.z - K.target.tower.position.z) < 2.5) { e.userData.hp = 0; hitEnemy(e, 9999, K.tx, K.tz, false, null, true); } floatText('TOWER HIT!', K.tx, 3, K.tz); } }
+        else if (K.target && K.target.wall) { K.wallHits = (K.wallHits || 0) + 1; floatText(`WALL CRACKS ${K.wallHits}/3`, K.tx, 4, K.tz); if (K.wallHits >= 3) breachWall(0, true); }
+      }
+    }
+    if (K.anim > 0) { K.anim = Math.max(0, K.anim - dt * 1.8); K.arm.rotation.x = 0.6 - 2.0 * Math.sin((1 - K.anim) * Math.PI * 0.5); } else K.arm.rotation.x += (0.6 - K.arm.rotation.x) * Math.min(1, dt * 2);
+    if (!near || C.broken) return; K.cd -= dt; if (K.cd > 0 || K.ball) return;
+    K.cd = CFG.SIEGE.CAT_RELOAD; K.anim = 1;
+    const wallOpen = (K.wallHits || 0) >= 3; let tw = null, bd = 1e9;
+    if (wallOpen) for (const t of C.towers) { if ((t.userData.hits || 0) >= 2) continue; const d = Math.hypot(t.position.x - m.position.x, t.position.z - m.position.z); if (d < bd) { bd = d; tw = t; } }
+    K.sx = m.position.x; K.sz = m.position.z;
+    if (tw) { K.target = { tower: tw }; K.tx = tw.position.x; K.tz = tw.position.z; } else if (!wallOpen) { K.target = { wall: true }; K.tx = C.cx + C.R - 0.3; K.tz = C.cz + (Math.random() - 0.5) * 3; } else { K.target = null; K.tx = C.cx + C.R * 0.4; K.tz = C.cz; }
+    K.ball = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), mat(0x55585e)); K.ball.position.set(K.sx, 2.6, K.sz); scene.add(K.ball); K.flight = 0; sfxAt('boom', K.sx, K.sz);
+  }
+  function castleTick(dt) { ramTick(dt); oilTick(dt); ladderTick(dt); catapultTick(dt); }
   function ramCrewPower() {                                          // 망치를 미는 힘: 곁의 병사 1명당 1, 주인공이 뒤에서 밀면 2
     const R = exCamp && exCamp.ram; if (!R || R.dead) return 0;
     const px = R.mesh.position.x, pz = R.mesh.position.z; let pw = 0;
@@ -4620,11 +4661,11 @@
     const marchCost = d.march ? marchFood(d) : 0; if (marchCost) res.food -= marchCost;                 // 행군 식량은 출발할 때 먹는다
     fadeTo(() => {
       exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
-      if (d.castle) { const G = siegeGear(); siegeLoad = { ram: Math.min(1, G.ram), ladder: Math.min(CFG.SIEGE.LADDER_MAX, G.ladder) }; G.ram -= siegeLoad.ram; G.ladder -= siegeLoad.ladder; }
-      else siegeLoad = { ram: 0, ladder: 0 };
+      if (d.castle) { const G = siegeGear(); siegeLoad = { ram: Math.min(1, G.ram), ladder: Math.min(CFG.SIEGE.LADDER_MAX, G.ladder), catapult: Math.min(1, G.catapult) }; G.ram -= siegeLoad.ram; G.ladder -= siegeLoad.ladder; G.catapult -= siegeLoad.catapult; }
+      else siegeLoad = { ram: 0, ladder: 0, catapult: 0 };
       exStats = { kills: 0, t0: performance.now() };
       buildZone(d);
-      if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
+      if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder || siegeLoad.catapult ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}${siegeLoad.catapult ? ', catapult' : ''}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
       const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
@@ -4641,7 +4682,7 @@
     if (!exActive || exEnding) return;
     const ex = exActive; exEnding = true; gathering = null;
     fadeTo(() => {
-      if (ex.dest.castle && exCamp && exCamp.load) { const G = siegeGear(), ramOk = exCamp.ram && !exCamp.ram.dead, lost = exCamp.ladders.filter(l => l.lost).length; G.ram += ramOk ? exCamp.load.ram : 0; G.ladder += Math.max(0, exCamp.load.ladder - lost); }        // 살아남은 장비는 집으로 가져온다
+      if (ex.dest.castle && exCamp && exCamp.load) { const G = siegeGear(), ramOk = exCamp.ram && !exCamp.ram.dead, lost = exCamp.ladders.filter(l => l.lost).length; G.ram += ramOk ? exCamp.load.ram : 0; G.catapult += exCamp.cat && !exCamp.cat.dead ? exCamp.load.catapult : 0; G.ladder += Math.max(0, exCamp.load.ladder - lost); }        // 살아남은 장비는 집으로 가져온다
       const backLines = ex.dest.march ? marchBack(ex.dest) : null;                          // 돌아오는 길의 밤들 (병사들은 아직 원정 중으로 센다)
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       const left = exObjs.filter(o => o.userData.type === 'chest').length + enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
@@ -4660,7 +4701,7 @@
         lines.push(took ? (ex.dest.castle ? `${ex.dest.name} taken!` : `${ex.dest.name} broken!`) : `You withdrew from ${ex.dest.name}.`);
         lines.push(`Time ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} · ${exStats.kills} foes defeated`);
         lines.push(`Warbands: ${report0.join(' · ') || 'none'}${fallen ? ` · ${fallen} fell${ex.dest.castle && !took ? ' (lost for good)' : ', recovering at home'}` : ''}`);
-        if (camp && camp.gate) { const G = camp.gate, lad = camp.load ? camp.load.ladder : 0, lostL = camp.ladders.filter(l => l.lost).length; lines.push(`Gate ${G.broken ? 'broken' : 'standing'}${camp.load && camp.load.ram ? ` · ram ${camp.ram && camp.ram.dead ? 'lost' : 'saved'}` : ' · no ram'} · ladders ${Math.max(0, lad - lostL)}/${lad} kept`); }
+        if (camp && camp.gate) { const G = camp.gate, lad = camp.load ? camp.load.ladder : 0, lostL = camp.ladders.filter(l => l.lost).length; if (camp.load && camp.load.catapult) lines.push(`Catapult ${camp.cat && !camp.cat.dead ? 'saved' : 'lost'} · ${camp.cat ? camp.cat.shots : 0} boulders thrown`); lines.push(`Gate ${G.broken ? 'broken' : 'standing'}${camp.load && camp.load.ram ? ` · ram ${camp.ram && camp.ram.dead ? 'lost' : 'saved'}` : ' · no ram'} · ladders ${Math.max(0, lad - lostL)}/${lad} kept`); }
         if (gain) lines.push(`Loot: ${gain}`);
         if (took && realm) lines.push(`${realmDef(realm).short} raids -${Math.round(realmRelief(realm) * 100)}%`);
       }
@@ -4816,7 +4857,7 @@
   // (이 파일의 것은 모두 function 선언이다)
   const soldierVal = (n) => 2 + 2 * (n.role === 'melee' ? soldierWeaponDef(n) : gearDef(n.gear.bow)).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
   function marchPartySize() { return escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax()).length; }
-  function marchFood(d) { const g = d.castle && story.siege ? Math.min(1, story.siege.ram) * CFG.SIEGE.FOOD_RAM + Math.min(CFG.SIEGE.LADDER_MAX, story.siege.ladder) * CFG.SIEGE.FOOD_LADDER : 0; return d.march ? Math.ceil(marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) + g : 0; }
+  function marchFood(d) { const g = d.castle && story.siege ? Math.min(1, story.siege.ram) * CFG.SIEGE.FOOD_RAM + Math.min(CFG.SIEGE.LADDER_MAX, story.siege.ladder) * CFG.SIEGE.FOOD_LADDER + Math.min(1, story.siege.catapult || 0) * CFG.SIEGE.FOOD_CATAPULT : 0; return d.march ? Math.ceil(marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) + g : 0; }
   function homeThreat(day) {                                              // 그날 밤 마을을 덮칠 적의 수 (startWave 와 같은 식, 무리 크기만)
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     if (isRaid(day)) return Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n);
@@ -5403,6 +5444,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

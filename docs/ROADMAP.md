@@ -38,7 +38,7 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - Tuning after phone testing, and custom models.
 
 **Next steps, in order**
-1. **Sieges** (plan in `SIEGE_PLAN.md`; steps 1 to 4, the Legion Castle with a barred gate, a ram, ladders, boiling oil and the Siege Workshop with carried gear, are built; capture rewards, the Iron Fortress and the battle report are built too; the catapult and a castle for the other two realms are not): castle and fortress nodes with walls, gates, ladders and rams, and a defender garrison.
+1. **Sieges** (plan in `SIEGE_PLAN.md`; steps 1 to 4, the Legion Castle with a barred gate, a ram, ladders, boiling oil and the Siege Workshop with carried gear, are built; capture rewards, the Iron Fortress and the battle report are built too; the catapult is built too (nf-v115); a castle for the other two realms is not): castle and fortress nodes with walls, gates, ladders and rams, and a defender garrison.
 2. **Banners, the host, levies, wounds and courage.**
 3. **Final campaign and endgame:** a last assault on a realm's castle; captured outposts that pay income.
 4. **Polish:** battle report screen, cavalry and siege crews, audio, formations; balance and phone testing; custom models.

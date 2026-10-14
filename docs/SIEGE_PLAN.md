@@ -1,6 +1,6 @@
 # Siege plan
 
-Status: **steps 1 to 5 built** (`nf-v110` Legion Castle, `nf-v111` ram and breakable gate, `nf-v112` ladders and boiling oil, `nf-v113` Siege Workshop and carried gear, `nf-v114` capture rewards, Iron Fortress and battle report); step 6 (catapult and polish) is still optional plan. It is campaign map phase 5. It turns the roadmap's "castles and sieges" into small shippable steps. Terms follow the roadmap table (warband, host, realm, hold, provisions, courage). Numbers are guesses; they live in `CFG` so they can be tuned after phone testing.
+Status: **steps 1 to 6 built** (`nf-v110` Legion Castle, `nf-v111` ram and breakable gate, `nf-v112` ladders and boiling oil, `nf-v113` Siege Workshop and carried gear, `nf-v114` capture rewards, Iron Fortress and battle report); step 6 (catapult) built in `nf-v115`; balance and phone testing remain. It is campaign map phase 5. It turns the roadmap's "castles and sieges" into small shippable steps. Terms follow the roadmap table (warband, host, realm, hold, provisions, courage). Numbers are guesses; they live in `CFG` so they can be tuned after phone testing.
 
 ## 1. Goal
 A **castle** is a walled raid that cannot be won by walking in. You march a host to it, break the **gate** (or climb the **walls**), beat the garrison and take the keep. The leader must be present: the rule added in `nf-v109` (soldiers deal only 20% damage to a chief when the leader is more than 16 paces away) stays.
@@ -51,7 +51,7 @@ A **castle** is a walled raid that cannot be won by walking in. You march a host
 3. **Ladders and wall defenders - DONE in nf-v112 (`raiseLadder`, `dropLadder`, `oilTick`; ladders lie at the wall and are raised with Gather, not carried yet):** ladder entity and climbing, wall archers with oil and rocks.
 4. **Siege Workshop and gear cost - DONE in nf-v113 (`siegeshop` building, `CFG.SIEGE`, `story.siege`, `renderSiegeRows`):** building, gear production, carrying it on the march (provisions), loss on failure.
 5. **Capture and fortress - DONE in nf-v114 (`legionfortress`, battle report in `endExpedition`, castle bonus in `campBroken`):** capture as hold, realm relief, a larger fortress tier; battle report screen (win, losses, gear lost).
-6. **Catapult and polish (optional):** catapult, balance pass, phone testing.
+6. **Catapult and polish - catapult DONE in nf-v115 (`catapultTick`, `breachWall`); polish and balance pending phone tests:** catapult, balance pass, phone testing.
 
 ## 6. Risks and how to handle them
 - **Performance on phones:** limit wall defenders (about 20), reuse shared geometry, no per-brick physics (gate and wall sections are single objects with HP).
