@@ -64,7 +64,7 @@
   const thrustGeo = new THREE.PlaneGeometry(0.34, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5);
   function spawnThrust(x, z, ang, len) {
     const g = new THREE.Group(), m = new THREE.Mesh(thrustGeo, new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
-    m.scale.z = len; g.add(m); g.position.set(x, 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
+    m.scale.z = len; g.add(m); g.position.set(x, actorH(x, z) + 0.9, z); g.rotation.y = ang; g.userData.life = SLASH_LIFE * 1.3; scene.add(g); slashes.push(g);
   }
   const WEAPON_NAME = { sword: 'Sword', great: 'Great Sword', bow: 'Bow', spear: 'Spear', none: 'Unarmed' };
   function swapWeapon() {
@@ -185,7 +185,7 @@
     m.position.set(sx, y0, sz);
     m.castShadow = true;
     const mark = new THREE.Mesh(markGeo, new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
-    mark.rotation.x = -Math.PI / 2; mark.position.set(tx, 0.06, tz);      // 낙하 지점 경고 (대시로 피할 수 있다)
+    mark.rotation.x = -Math.PI / 2; mark.position.set(tx, groundY(tx, tz, 1.8) + 0.06, tz);      // 낙하 지점 경고 (대시로 피할 수 있다)
     m.userData = { vx: (tx - sx) / T, vz: (tz - sz) / T, vy: (0.5 * ROCK_G * T * T - y0) / T, t: 0, T, tx, tz, mark };
     scene.add(m, mark);
     rocks.push(m);
@@ -198,7 +198,7 @@
     burst({ x, z }, 30);                                                  // 붉은 폭발 파티클
     const g = new THREE.Group();                                          // 폭발 범위 섬광
     const f = new THREE.Mesh(boomGeo, new THREE.MeshBasicMaterial({ color: 0xff3b1a, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
-    f.rotation.x = -Math.PI / 2; g.add(f); g.position.set(x, 0.1, z); g.userData.life = SLASH_LIFE * 1.5;
+    f.rotation.x = -Math.PI / 2; g.add(f); g.position.set(x, groundY(x, z, 2) + 0.1, z); g.userData.life = SLASH_LIFE * 1.5;
     scene.add(g); slashes.push(g);
     if (Math.hypot(player.position.x - x, player.position.z - z) < 25) shake = Math.max(shake, 0.4);
     for (const o of obstacles.slice()) {                                  // 광역 피해: 반경 내 모든 구조물 체력 -50
@@ -258,8 +258,7 @@
     facing = Math.atan2(o.position.x - player.position.x, o.position.z - player.position.z); player.rotation.y = facing;
     const need = o.userData.gatherTime || CFG.PLAYER_GATHER_TIME, prog = Math.min(1, g.t / need), rx = Math.cos(yaw), rz = -Math.sin(yaw);
     gBg.visible = gFill.visible = true;
-    gBg.position.set(player.position.x, 0.02, player.position.z);
-    gFill.position.set(player.position.x - rx * 0.65, 0.02, player.position.z - rz * 0.65);
+    { const gy = groundY(player.position.x, player.position.z, 0.9) + 0.04; gBg.position.set(player.position.x, gy, player.position.z); gFill.position.set(player.position.x - rx * 0.65, gy, player.position.z - rz * 0.65); }
     gFill.scale.set(Math.max(0.001, 1.3 * prog), 0.14, 1);
     if (g.t >= need) {
       scene.remove(o);
@@ -285,7 +284,7 @@
     const g = new THREE.Group();
     const m = new THREE.Mesh(ultGeo, new THREE.MeshBasicMaterial({ color: 0x8affc0, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2; m.scale.setScalar(CFG.RALLY_RADIUS * (1 + 0.2 * pl.st.rally) / CFG.ULT_RADIUS); g.add(m);
-    g.position.set(player.position.x, 0.12, player.position.z); g.userData.life = 0.45; scene.add(g); slashes.push(g);
+    g.position.set(player.position.x, groundY(player.position.x, player.position.z, 3) + 0.12, player.position.z); g.userData.life = 0.45; scene.add(g); slashes.push(g);
     let k = 0;
     for (const n of npcs) {
       if (n.role === 'citizen' || n.down || Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) > CFG.RALLY_RADIUS) continue;
@@ -301,7 +300,7 @@
     const g = new THREE.Group();                                     // 360도 원반형 검기
     const m = new THREE.Mesh(ultGeo, new THREE.MeshBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2; g.add(m);
-    g.position.set(player.position.x, 0.12, player.position.z); g.userData.life = 0.3;
+    g.position.set(player.position.x, groundY(player.position.x, player.position.z, 3) + 0.12, player.position.z); g.userData.life = 0.3;
     scene.add(g); slashes.push(g);
     shake = 0.7;
     let n = 0;
@@ -326,7 +325,7 @@
     const disc = mk(teleDiscGeo), ring = mk(teleRingGeo);
     ring.scale.set(CFG.QUAKE_MAX, CFG.QUAKE_MAX, 1);
     disc.rotation.x = ring.rotation.x = -Math.PI / 2;
-    g.add(disc, ring); g.position.set(e.position.x, 0.1, e.position.z);
+    g.add(disc, ring); g.position.set(e.position.x, groundY(e.position.x, e.position.z, 3) + 0.1, e.position.z);
     scene.add(g); u.tele = g;
   }
   function hideTelegraph(e) { const u = e.userData; if (u.tele) { scene.remove(u.tele); u.tele = null; } }
@@ -356,7 +355,7 @@
   }
   function spawnShockwave(x, z) {
     const m = new THREE.Mesh(shockGeo, new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.15, z); m.scale.set(0.1, 0.1, 1); sfxAt('boom', x, z);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, groundY(x, z, 2) + 0.15, z); m.scale.set(0.1, 0.1, 1); sfxAt('boom', x, z);
     scene.add(m);
     shocks.push({ m, x, z, r: 0, hit: new Set() });
     burst({ x, z }, 24);

@@ -40,6 +40,7 @@
     const rd = riverDist(x, z); return h + (-0.55 - h) * (1 - sstep(TERR.riverW - 0.6, TERR.riverW + 1.6, rd));
   }
   const actorH = (x, z) => onBridge(x, z) ? BR.y : terrH(x, z);
+  const groundY = (x, z, r = 1.6) => { let h = actorH(x, z); for (const [dx, dz] of [[r, 0], [-r, 0], [0, r], [0, -r]]) h = Math.max(h, terrH(x + dx, z + dz)); return h; };       // 바닥 표시(공격 범위·고리)가 언덕에 묻히지 않도록: 주변 땅 높이의 최댓값
   let riverMode = 'normal', riverDay = -1, waterMesh = null;           // normal / flood (봄 첫날 범람: 더 넓고 느림) / ice (겨울: 얼어서 어디서나 건널 수 있다)
   const inRiver = (x, z) => !onBridge(x, z) && riverDist(x, z) < TERR.riverW + 0.2 + (riverMode === 'flood' ? 1.4 : 0);
   const terrSpd = (x, z) => {

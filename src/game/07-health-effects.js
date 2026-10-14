@@ -70,7 +70,7 @@
       color: def.slashColor || 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2;
     g.add(m);
-    g.position.set(x, 0.08, z);
+    g.position.set(x, groundY(x, z, 2.2) + 0.08, z);
     g.rotation.y = ang;
     g.scale.setScalar(slashScale(def));
     g.userData.life = SLASH_LIFE;

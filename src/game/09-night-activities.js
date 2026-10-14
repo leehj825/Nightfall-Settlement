@@ -389,7 +389,7 @@
           const pulse = 0.5 + 0.5 * Math.sin(u.castT * 24);
           if (e.material.emissive) { e.material.emissive.setHex(0xff2000); e.material.emissiveIntensity = 0.25 + 0.75 * pulse; }
           if (u.tele) u.tele.children.forEach(c => c.material.opacity = 0.15 + 0.25 * pulse);
-          u.tele && u.tele.position.set(e.position.x, 0.1, e.position.z);
+          u.tele && u.tele.position.set(e.position.x, groundY(e.position.x, e.position.z, 2) + 0.1, e.position.z);
           if (u.castT <= 0) { hideTelegraph(e); u.slamT = CFG.BOSS_JUMP_TIME; }
         } else if (u.slamCd <= 0) { u.castT = CFG.BOSS_CAST_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL; showTelegraph(e); }
       }
