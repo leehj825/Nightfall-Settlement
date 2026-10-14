@@ -141,6 +141,7 @@
     { id: 'winter', name: 'Through the Cold', desc: 'Live through a whole winter', test: () => CFG.SEASONS_ON && dayNow() >= CFG.SEASON_DAYS * 4 + 1 },
     { id: 'merchant', name: 'Good Business', desc: 'Trade with a travelling merchant' },
     { id: 'clear', name: 'Site Cleared', desc: 'Clear an expedition site completely' },
+    { id: 'won', name: 'Warlord Fallen', desc: 'Take the Iron Throne and win the campaign' },
     { id: 'escort', name: 'Never Alone', desc: 'Return from an expedition with an escort' },
     { id: 'camp1', name: 'Outpost', desc: 'Build a camp', test: () => Object.keys(story.camps).length >= 1 },
     { id: 'camp3', name: 'Supply Line', desc: 'Build 3 camps', test: () => Object.keys(story.camps).length >= 3 },

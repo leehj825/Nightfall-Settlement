@@ -38,12 +38,12 @@
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
   function buildBanditCamp(d, cx, cz, inner) {
     const C = d.camp, R = C.radius, gateA = -Math.PI / 2, segs = Math.round(2 * Math.PI * R / 2.6), step = Math.PI * 2 / segs;
-    const solids = [], stone = !!C.stone, stake = new THREE.ConeGeometry(0.3, 0.8, 4), plank = stone ? new THREE.BoxGeometry(2.8, 4.2, 0.9) : new THREE.BoxGeometry(2.7, 2.2, 0.45), wallM = stone ? campStone : campWood;
+    const solids = [], stone = !!C.stone, stake = new THREE.ConeGeometry(0.3, 0.8, 4), plank = stone ? new THREE.BoxGeometry(2.8, 4.2, 0.9) : C.gate ? new THREE.BoxGeometry(2.7, 3.6, 0.55) : new THREE.BoxGeometry(2.7, 2.2, 0.45), wallM = stone ? campStone : campWood;
     for (let i = 0; i < segs; i++) {                                // 목책: 남쪽(입구 쪽)에 문 틈을 남기고 빙 둘러 세운다
       const a = i * step; let ad = a - (gateA + Math.PI * 2); ad = Math.atan2(Math.sin(ad), Math.cos(ad));
       if (Math.abs(ad) < step * 1.6) continue;
-      const g = new THREE.Group(), body = new THREE.Mesh(plank, wallM); body.position.y = stone ? 2.1 : 1.1;
-      for (const o of [-0.95, 0, 0.95]) { const s = new THREE.Mesh(stone ? new THREE.BoxGeometry(0.7, 0.6, 0.95) : stake, stone ? campStoneDark : campDark); s.position.set(o, stone ? 4.5 : 2.6, 0); g.add(s); }
+      const g = new THREE.Group(), body = new THREE.Mesh(plank, wallM); body.position.y = stone ? 2.1 : C.gate ? 1.8 : 1.1;
+      for (const o of [-0.95, 0, 0.95]) { const s = new THREE.Mesh(stone ? new THREE.BoxGeometry(0.7, 0.6, 0.95) : stake, stone ? campStoneDark : campDark); s.position.set(o, stone ? 4.5 : C.gate ? 4.0 : 2.6, 0); g.add(s); }
       g.add(body); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
       g.position.set(cx + Math.cos(a) * R, 0, cz + Math.sin(a) * R); g.rotation.y = -a - Math.PI / 2; g.userData = { type: 'palisade', radius: 1.45, wall: true };
       exAdd(g, true); solids.push(g);
@@ -390,6 +390,7 @@
     if (rf) { story.campFx = (story.campFx || []).filter(x => x.id !== id).concat({ id, until: dayNow() + rf.days }); }
     const rl = exActive && exActive.dest.realm; toast(`Camp broken! +${fi} iron +${fo} food${rl ? ` · ${realmDef(rl).short} raids -${Math.round(realmRelief(rl) * 100)}%` : ''}`); Snd.play('victory'); shake = Math.max(shake, 0.6);
     if (exActive && exActive.dest.castle) { const f = exActive.dest.id === 'legionfortress' ? 2 : 1; res.stone += 12 * f; res.iron += 10 * f; res.wood += 8 * f; updateHud(); giveXp(100 * f); setTimeout(() => toast(`${exActive ? exActive.dest.name : 'Castle'} taken! +${12 * f} stone +${10 * f} iron +${8 * f} wood`), 1200); }
+    if (exActive && exActive.dest.final) { story.campaignWon = true; unlockAch('won'); addCourage(100); floatText('THE IRON WARLORD FALLS!', e.position.x, 5, e.position.z); shake = 1; }
     floatText(exActive && exActive.dest.castle ? 'CASTLE TAKEN!' : 'CAMP BROKEN!', e.position.x, 3.6, e.position.z);
   }
   function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
@@ -569,7 +570,7 @@
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
     if (d.ch === 6 && !story.eclipse) return toast('Light the Wide Road first');
     if (d.ch === 5 && !story.road) return toast('Swear the Keeper\'s Oath first');
-    if (d.after && !story.cleared[d.after]) return toast(`Take the ${CFG.EXPEDITIONS.find(x => x.id === d.after).name} first`);
+    { const miss = [].concat(d.after || []).find(a => !story.cleared[a]); if (miss) return toast(`Take the ${CFG.EXPEDITIONS.find(x => x.id === miss).name} first`); }
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('Recover the earlier relics first: this place stays hidden until you carry them');
     if (d.bands && escortBands.filter(i => escortPool().some(n => n.warband === i)).length < d.bands) return toast(`Needs ${d.bands} warbands${bandMax() < d.bands ? ` (you can bring ${bandMax()})` : ''}`);
     if (d.march) {                                                          // 먼 곳: 식량과 확인 (한 번 더 누르면 출발)
@@ -632,7 +633,7 @@
       if (ex.dest.castle && !took) for (const n of backMen) if (n.down && !n.levy) removeNpc(n);
       for (const n of backMen.filter(x => x.levy)) dismissLevy(n);
       if (ex.dest.raid) addCourage(took ? CFG.COURAGE.WIN : -CFG.COURAGE.WITHDRAW);                      // 공성에 실패하면 쓰러진 병사는 돌아오지 못한다
-      if (backLines || lines.length) setTimeout(() => showTripReport(ex.dest.raid ? (took ? 'Victory' : 'Withdrawn') : 'Home again', lines.concat(backLines || [], report0.length && !lines.length ? `Back: ${report0.join(' · ')}` : [])), 2600);
+      if (backLines || lines.length) setTimeout(() => showTripReport(ex.dest.final && took ? 'THE CAMPAIGN IS WON' : ex.dest.raid ? (took ? 'Victory' : 'Withdrawn') : 'Home again', (ex.dest.final && took ? ['The Iron Warlord is dead and the three realms are broken.', 'The night will never be the same. The land is yours.'] : []).concat(lines).concat(backLines || [], report0.length && !lines.length ? `Back: ${report0.join(' · ')}` : [])), 2600);
       if (report0.length && !backLines && !lines.length) setTimeout(() => toast(`Back home: ${report0.join(' · ')}`), 2200);
       cleanupZone(); exActive = null;
       if (ex.party > 0) unlockAch('escort');
@@ -723,7 +724,7 @@
       const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id)), near = vis.filter(d => !N[d.id].far), far = vis.filter(d => N[d.id].far);
       if (!far.length) jMapFar = false;
       if (ids.has(jMapSel)) jMapFar = !!N[jMapSel].far; else jMapSel = (jMapFar ? far[0] : (near.find(d => !lockOf(d)) || near[0])).id;
-      const FAR = { hillclan: { x: 30, y: 18, from: 'home' }, clanhold: { x: 62, y: 12, from: 'hillclan' }, legionkeep: { x: 30, y: 52, from: 'home' }, legionfort: { x: 58, y: 58, from: 'legionkeep' }, legioncastle: { x: 78, y: 38, from: 'legionfort' }, legionfortress: { x: 92, y: 20, from: 'legioncastle' } };       // 먼 땅 지도: 마을에서 갈래로 뻗는 길
+      const FAR = { hillclan: { x: 30, y: 18, from: 'home' }, clanhold: { x: 62, y: 12, from: 'hillclan' }, legionkeep: { x: 30, y: 52, from: 'home' }, legionfort: { x: 58, y: 58, from: 'legionkeep' }, legioncastle: { x: 78, y: 38, from: 'legionfort' }, legionfortress: { x: 92, y: 20, from: 'legioncastle' }, clancastle: { x: 88, y: 6, from: 'clanhold' }, banditcastle: { x: 52, y: 34, from: 'home' }, ironthrone: { x: 92, y: 58, from: 'legioncastle' } };       // 먼 땅 지도: 마을에서 갈래로 뻗는 길
       const posOf = (id) => id === 'village' || id === 'home' ? V : N[id].far ? (FAR[id] || { x: 50, y: 35 }) : N[id];
       let lines = '', dots = '';
       const shown = jMapFar ? far : near;
