@@ -59,3 +59,6 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - In `Anim.base()` the clip speed is set every frame, so a custom speed must be applied after the generic line.
 - Non-looping clips must not end on their first pose: the retarget tool samples just before the clip end.
 - Save data is additive. New fields should be read with a fallback so old saves still load.
+
+## Siege layer (nf-v110 to nf-v115)
+Plan and status: `docs/SIEGE_PLAN.md`. Code is in `src/game/16-expeditions-story-journal.js` (`buildBanditCamp` with `stone`/`gate`/`ladders`/`oil` camp options, `gateHit`, `castleTick` = `ramTick` + `oilTick` + `ladderTick` + `catapultTick`, `breachWall`, `raiseLadder`, battle report in `endExpedition`), `src/game/05-smithy-roles.js` (`renderSiegeRows`, `siegeGear` = `story.siege`), `src/game/16b-march.js` (gear food), config in `js/config.js` (`legioncastle`, `legionfortress`, `CFG.SIEGE`, `siegeshop` and the last `TOWN_GROUPS` step). Test notes: in headless tests call `__nf.pause(false)` and dismiss morning-event dialogs and the tutorial coach (they freeze time); use `__nf.yaw = Math.PI` to face +z; debug-only hooks (`makeNpc`, `siegeGear`, `createBuilding`, `ramTick`, `breachWall`, `invincible`) exist in `?debug` mode. Balance numbers are guesses: tune on phones.
