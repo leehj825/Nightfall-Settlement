@@ -100,11 +100,8 @@
     campDecor.visible = stage === 1; flame.visible = stage === 1;
     if (stage === 1) { flame.position.y = 0; fireLight.position.y = 1.4; hallHint.position.y = 2.6; }
     else if (stage === 2) {                                              // 나무 마을 회관 (큰 목조 건물)
-      add(new THREE.BoxGeometry(4.6, 2.6, 4.6), hallWood, 0, 1.3, 0);
-      add(new THREE.ConeGeometry(3.9, 1.9, 4), hallRoof, 0, 3.55, 0).rotation.y = Math.PI / 4;
-      add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
-      add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
-      flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
+      townHallModel(add);
+      flame.position.y = 7.2; fireLight.position.y = 8.2; hallHint.position.y = 9.4;
     } else {                                                           // 3~5단계: 석조 성채 (04b-models.js)
       keepModel(add, stage);
       flame.position.y = stage >= 4 ? 10.2 : 8.4; fireLight.position.y = stage >= 4 ? 11.4 : 9.6; hallHint.position.y = stage >= 4 ? 13 : 11;
