@@ -265,6 +265,7 @@
       scene.remove(o);
       if (o.userData.type === 'banditBanner') { exObjs.splice(exObjs.indexOf(o), 1); burnBanner(o); }
       else if (o.userData.type === 'chest') { exObjs.splice(exObjs.indexOf(o), 1); openChest(o); }
+      else if (o.userData.type === 'siegeLadder') { exObjs.splice(exObjs.indexOf(o), 1); raiseLadder(o); }
       else {
         const pool = exObjs.includes(o) ? exObjs : obstacles; pool.splice(pool.indexOf(o), 1);
         res[o.userData.type] += gatherYield(o.userData.type); rollIron(o); Snd.play('chop');

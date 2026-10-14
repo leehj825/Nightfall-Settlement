@@ -395,7 +395,7 @@
     if (dead || gathering) return;
     let best = null, bestD = GATHER_RANGE;
     for (const o of (exActive ? exObjs : obstacles)) {
-      if (o.userData.type !== 'wood' && o.userData.type !== 'stone' && o.userData.type !== 'chest' && !(o.userData.type === 'banditBanner' && exCamp && !exCamp.broken)) continue;
+      if (o.userData.type !== 'wood' && o.userData.type !== 'stone' && o.userData.type !== 'chest' && o.userData.type !== 'siegeLadder' && !(o.userData.type === 'banditBanner' && exCamp && !exCamp.broken)) continue;
       const d = Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius;
       if (d < bestD) { bestD = d; best = o; }
     }
@@ -1835,7 +1835,7 @@
         spawnCd = rand(0.8, 1.2) * Math.max(CFG.MIN_SPAWN_INTERVAL, CFG.SPAWN_INTERVAL_BASE / (1 + CFG.SPAWN_RATE_GROWTH * (waveDay - 1)));
       }
     }
-    if (exActive && exCamp && exCamp.ram) ramTick(dt);
+    if (exActive && exCamp && (exCamp.ram || exCamp.oil)) castleTick(dt);
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
@@ -3617,6 +3617,7 @@
       scene.remove(o);
       if (o.userData.type === 'banditBanner') { exObjs.splice(exObjs.indexOf(o), 1); burnBanner(o); }
       else if (o.userData.type === 'chest') { exObjs.splice(exObjs.indexOf(o), 1); openChest(o); }
+      else if (o.userData.type === 'siegeLadder') { exObjs.splice(exObjs.indexOf(o), 1); raiseLadder(o); }
       else {
         const pool = exObjs.includes(o) ? exObjs : obstacles; pool.splice(pool.indexOf(o), 1);
         res[o.userData.type] += gatherYield(o.userData.type); rollIron(o); Snd.play('chop');
@@ -4146,6 +4147,17 @@
     const banner = new THREE.Group(), bp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 5.5, 6), campDark), bc = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.06), campRed);   // 산적 깃발 (다음 단계의 목표물)
     bp.position.y = 2.75; bc.position.set(0.85, 4.8, 0); banner.add(bp, bc); banner.position.set(cx + 3.2, 0, cz - 1.5); banner.userData = { type: 'banditBanner', radius: 0.5, gatherTime: 3 }; exAdd(banner, true); inner.push({ x: cx + 3.2, z: cz - 1.5, r: 1.5 });
     for (let k = 0; k < C.chests; k++) { const a = k * 2.1 + 1.0, p = { x: cx + Math.cos(a) * R * 0.34, z: cz + Math.sin(a) * R * 0.34 }; makeChest(p.x, p.z, false); inner.push({ x: p.x, z: p.z, r: 1.6 }); }
+    const ladders = [], oil = [];
+    const ladderMesh = () => { const g = new THREE.Group(), wd = mat(0x8a6038); for (const lx of [-0.45, 0.45]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 6.4, 0.12), wd); rail.position.set(lx, 3.2, 0); g.add(rail); } for (let k = 0; k < 9; k++) { const rung = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.1), wd); rung.position.y = 0.5 + k * 0.68; g.add(rung); } g.traverse(m => { if (m.isMesh) m.castShadow = true; }); return g; };
+    for (let k = 0; k < (C.ladders || 0); k++) {                    // 사다리: 성벽 밖 땅에 누워 있다. 주인공이 일으켜 세우면 그 자리에서 성벽을 넘을 수 있다 (오래 두면 수비병이 밀어 넘어뜨린다)
+      const a = [gateA - 1.0, gateA + 1.0, 0][k % 3], pg = new THREE.Group(), lm = ladderMesh();
+      lm.rotation.x = Math.PI / 2; lm.position.y = 0.2; pg.add(lm); pg.position.set(cx + Math.cos(a) * (R + 4), 0, cz + Math.sin(a) * (R + 4)); pg.rotation.y = -a - Math.PI / 2;
+      pg.userData = { type: 'siegeLadder', radius: 1.3, gatherTime: 2, a, k }; exAdd(pg, true); ladders.push({ a, pickup: pg, mesh: null, up: false, t: 0, segs: [] });
+    }
+    for (let k = 0; k < (C.oil || 0); k++) {                        // 끓는 기름 항아리: 성벽 위. 문 양옆 둘과 옆구리 둘 (망치와 사다리를 노린다)
+      const a = [gateA - 0.32, gateA + 0.32, gateA - 1.4, gateA + 1.4][k % 4], g = new THREE.Group(), pot = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.4, 0.7, 8), campDark);
+      pot.position.y = 4.55; addGlow(g, 0xff7a2a, 2.2, 1.2); g.add(pot); g.position.set(cx + Math.cos(a) * (R - 0.4), 0, cz + Math.sin(a) * (R - 0.4)); exAdd(g, false); oil.push({ x: g.position.x, z: g.position.z, cd: 4 + k * 1.6, mesh: g });
+    }
     let ram = null;
     if (gate) {                                                       // 공성 망치: 성문 앞 멀리에서 시작한다 (다음 단계에서 대장간에서 만들어 가져온다)
       const g = new THREE.Group(), wood = mat(0x7a5632);
@@ -4158,7 +4170,7 @@
       g.position.set(cx, 0, cz - R - 12); exAdd(g, false);
       ram = { mesh: g, log, hp: 120, maxHp: 120, dead: false, hitCd: 1.2, recoil: 0, gx: cx, gz: cz - R - 3.2, sz: cz - R - 12 };
     }
-    return { cx, cz, R, towers, banner, fire, solids, gate, ram, alarm: false, broken: false };
+    return { cx, cz, R, towers, banner, fire, solids, gate, ram, ladders, oil, drops: [], alarm: false, broken: false };
   }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
@@ -4221,6 +4233,7 @@
   }
   function cleanupZone() {
     for (const o of exMeshes.concat(exObjs)) scene.remove(o);
+    if (exCamp) for (const d of exCamp.drops || []) { scene.remove(d.ring); scene.remove(d.ball); }
     exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null; for (const n of npcs) n.ramCrew = false;
     for (const e of enemies.slice()) if (e.userData.ex) removeEnemy(e);
   }
@@ -4276,7 +4289,11 @@
     const C = exCamp; if (!C) return { x: tx, z: tz };
     const inA = Math.hypot(x - C.cx, z - C.cz) < C.R - 0.5, inB = Math.hypot(tx - C.cx, tz - C.cz) < C.R - 0.5;
     if (inA === inB) return { x: tx, z: tz };
-    const gx = C.cx, gz = C.cz - C.R;
+    let gx = C.cx, gz = C.cz - C.R;
+    if (C.gate && !C.gate.broken) {                                         // 성문이 닫혀 있으면 세워진 사다리 쪽으로 (없으면 문 앞에서 막힌다)
+      let bd = 1e9; for (const L of C.ladders || []) if (L.up) { const lx = C.cx + Math.cos(L.a) * C.R, lz = C.cz + Math.sin(L.a) * C.R, d = Math.hypot(lx - x, lz - z); if (d < bd) { bd = d; gx = lx; gz = lz; } }
+      if (bd < 1e9) { const dx = gx - C.cx, dz = gz - C.cz, dl = Math.hypot(dx, dz) || 1; if (Math.hypot(gx - x, gz - z) < 1.8) return inA ? { x: gx + dx / dl * 5, z: gz + dz / dl * 5 } : { x: gx - dx / dl * 5, z: gz - dz / dl * 5 }; return { x: gx, z: gz }; }
+    }
     if (Math.hypot(gx - x, gz - z) < 1.8) return inA ? { x: gx, z: gz - 5 } : { x: gx, z: gz + 5 };       // 문을 지나는 중이면 그 너머를 향한다
     return { x: gx, z: gz };
   }
@@ -4287,6 +4304,64 @@
       if (d < m && d > 1e-4) { e.position.x = o.position.x + dx / d * m; e.position.z = o.position.z + dz / d * m; }
     }
   }
+  const dropGeo = new THREE.SphereGeometry(0.4, 8, 6), dropMat = new THREE.MeshBasicMaterial({ color: 0xff8a2a }), ringGeo = new THREE.RingGeometry(1.6, 2.2, 24), ringMat = new THREE.MeshBasicMaterial({ color: 0xff4a1a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+  function oilTick(dt) {                                             // 성벽 위 기름 항아리: 가까운 표적(주인공·병사·망치) 아래에 붉은 표시를 하고 잠시 뒤 끓는 기름을 쏟는다
+    const C = exCamp; if (!C || !C.oil || C.broken) return;
+    for (const o of C.oil) {
+      o.cd -= dt; if (o.cd > 0) continue;
+      let best = null, bd = 10.5;
+      const cand = []; if (!dead) cand.push({ x: player.position.x, z: player.position.z });
+      for (const n of npcs) if (n.escort && !n.down) cand.push({ x: n.position.x, z: n.position.z });
+      if (C.ram && !C.ram.dead) cand.push({ x: C.ram.mesh.position.x, z: C.ram.mesh.position.z + 1.4, ram: true });
+      for (const t of cand) { const d = Math.hypot(t.x - o.x, t.z - o.z); if (Math.hypot(t.x - C.cx, t.z - C.cz) > C.R + 0.5 && d < bd) { bd = d; best = t; } }
+      if (!best) { o.cd = 1.2; continue; }
+      o.cd = rand(5.5, 8);
+      const ring = new THREE.Mesh(ringGeo, ringMat.clone()); ring.rotation.x = -Math.PI / 2; ring.position.set(best.x, 0.06, best.z); scene.add(ring);
+      const ball = new THREE.Mesh(dropGeo, dropMat); ball.position.set(o.x, 4.6, o.z); scene.add(ball);
+      C.drops.push({ x: best.x, z: best.z, sx: o.x, sz: o.z, t: 0, ring, ball });
+      sfxAt('bow', o.x, o.z);
+    }
+    for (let i = C.drops.length - 1; i >= 0; i--) {
+      const d = C.drops[i]; d.t += dt; const u = Math.min(1, d.t / 1.1);
+      d.ball.position.set(d.sx + (d.x - d.sx) * u, 4.6 * (1 - u * u) + 0.3, d.sz + (d.z - d.sz) * u); d.ring.material.opacity = 0.25 + 0.35 * Math.abs(Math.sin(d.t * 9));
+      if (d.t < 1.1) continue;
+      scene.remove(d.ring); scene.remove(d.ball); C.drops.splice(i, 1);
+      burst({ x: d.x, z: d.z }, 10); sfxAt('boom', d.x, d.z); floatText('BOILING OIL!', d.x, 2.2, d.z);
+      const dmgE = CFG.ENEMY_CONTACT_DMG * 1.6;
+      if (!dead && invincibleT <= 0 && Math.hypot(player.position.x - d.x, player.position.z - d.z) < 2.3) { damage(dmgE); hurtCd = Math.max(hurtCd, 0.4); }
+      for (const n of npcs) if (n.escort && !n.down && Math.hypot(n.position.x - d.x, n.position.z - d.z) < 2.3) damageEscort(n, dmgE);
+      if (C.ram && !C.ram.dead && Math.hypot(C.ram.mesh.position.x - d.x, C.ram.mesh.position.z + 1.4 - d.z) < 3) C.ram.hp -= 18;
+    }
+  }
+  function raiseLadder(o) {                                          // 사다리를 일으켜 세운다: 그 자리의 성벽 두 칸이 낮아져 넘어갈 수 있다
+    const C = exCamp; if (!C) return;
+    const L = C.ladders.find(l => l.pickup === o); if (!L || L.up) return;
+    const a = L.a, wx = C.cx + Math.cos(a) * C.R, wz = C.cz + Math.sin(a) * C.R;
+    const g = new THREE.Group(), lm = (() => { const q = new THREE.Group(), wd = mat(0x8a6038); for (const lx of [-0.45, 0.45]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 6.4, 0.12), wd); rail.position.set(lx, 3.2, 0); q.add(rail); } for (let k = 0; k < 9; k++) { const rung = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.1), wd); rung.position.y = 0.5 + k * 0.68; q.add(rung); } return q; })();
+    lm.rotation.x = 0.42; lm.position.z = -2.4; g.add(lm); g.position.set(wx, 0, wz); g.rotation.y = -a - Math.PI / 2; scene.add(g); exMeshes.push(g);
+    L.mesh = g; L.up = true; L.t = 0; L.segs = [];
+    for (const w of C.solids.slice()) if (w.userData.wall && !w.userData.gatePart && Math.hypot(w.position.x - wx, w.position.z - wz) < 3.2) { L.segs.push({ w, sy: w.scale.y }); w.scale.y = 0.3; C.solids.splice(C.solids.indexOf(w), 1); const i = exObjs.indexOf(w); if (i >= 0) exObjs.splice(i, 1); }
+    toast('Ladder raised! Climb over the wall'); Snd.play('chop'); campAlarm();
+  }
+  function dropLadder(L, why) {                                      // 수비병이 사다리를 밀어 넘어뜨리면 성벽이 다시 막힌다
+    const C = exCamp; if (!C || !L.up) return;
+    L.up = false; if (L.mesh) { scene.remove(L.mesh); const i = exMeshes.indexOf(L.mesh); if (i >= 0) exMeshes.splice(i, 1); L.mesh = null; }
+    for (const s of L.segs) { s.w.scale.y = s.sy; C.solids.push(s.w); exObjs.push(s.w); } L.segs = [];
+    const pg = L.pickup; pg.userData.type = 'siegeLadder'; scene.add(pg); exObjs.push(pg);
+    toast(why || 'The defenders pushed the ladder over!');
+  }
+  function ladderTick(dt) {
+    const C = exCamp; if (!C || !C.ladders) return;
+    for (const L of C.ladders) {
+      if (!L.up) continue;
+      const wx = C.cx + Math.cos(L.a) * C.R, wz = C.cz + Math.sin(L.a) * C.R;
+      const mine = Math.hypot(player.position.x - wx, player.position.z - wz) < 7 || npcs.some(n => n.escort && !n.down && Math.hypot(n.position.x - wx, n.position.z - wz) < 5);
+      const foes = enemies.some(e => e.userData.ex && !e.userData.sinking && !e.userData.tower && Math.hypot(e.position.x - wx, e.position.z - wz) < 7 && Math.hypot(e.position.x - C.cx, e.position.z - C.cz) < C.R);
+      L.t += dt * (foes && !mine ? 1 : foes ? 0.35 : -0.5); L.t = Math.max(0, L.t);
+      if (L.t > 14) dropLadder(L);
+    }
+  }
+  function castleTick(dt) { ramTick(dt); oilTick(dt); ladderTick(dt); }
   function ramCrewPower() {                                          // 망치를 미는 힘: 곁의 병사 1명당 1, 주인공이 뒤에서 밀면 2
     const R = exCamp && exCamp.ram; if (!R || R.dead) return 0;
     const px = R.mesh.position.x, pz = R.mesh.position.z; let pw = 0;
@@ -5290,6 +5365,6 @@
   }
   updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

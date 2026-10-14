@@ -69,7 +69,7 @@
     if (dead || gathering) return;
     let best = null, bestD = GATHER_RANGE;
     for (const o of (exActive ? exObjs : obstacles)) {
-      if (o.userData.type !== 'wood' && o.userData.type !== 'stone' && o.userData.type !== 'chest' && !(o.userData.type === 'banditBanner' && exCamp && !exCamp.broken)) continue;
+      if (o.userData.type !== 'wood' && o.userData.type !== 'stone' && o.userData.type !== 'chest' && o.userData.type !== 'siegeLadder' && !(o.userData.type === 'banditBanner' && exCamp && !exCamp.broken)) continue;
       const d = Math.hypot(o.position.x - player.position.x, o.position.z - player.position.z) - o.userData.radius;
       if (d < bestD) { bestD = d; best = o; }
     }
