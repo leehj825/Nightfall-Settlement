@@ -47,7 +47,7 @@ A **castle** is a walled raid that cannot be won by walking in. You march a host
 
 ## 5. Phases (each a small, testable update)
 1. **Castle zone, plain assault (no gear) - DONE in nf-v110 (`legioncastle`, gate in `buildBanditCamp`, `gateHit`):** castle node and zone with stone walls, gate (strong, normal weapons do 10%), towers and garrison; broken only by killing the lord. Gate can be opened by killing the gate captain as a temporary rule. Balance on Normal and Hard with the headless bot (`scratchpad/camp.js` style).
-2. **Ram and breakable gate:** ram entity (push crew, HP, damage to the gate), gate with HP and a broken model.
+2. **Ram and breakable gate - DONE in nf-v111 (`ramTick`, `ramCrewPower`; the ram is placed in front of the gate for now, step 4 makes it carried gear):** ram entity (push crew, HP, damage to the gate), gate with HP and a broken model.
 3. **Ladders and wall defenders:** ladder entity and climbing, wall archers with oil and rocks.
 4. **Siege Workshop and gear cost:** building, gear production, carrying it on the march (provisions), loss on failure.
 5. **Capture and fortress:** capture as hold, realm relief, a larger fortress tier; battle report screen (win, losses, gear lost).

@@ -88,7 +88,19 @@
     const banner = new THREE.Group(), bp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 5.5, 6), campDark), bc = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.06), campRed);   // 산적 깃발 (다음 단계의 목표물)
     bp.position.y = 2.75; bc.position.set(0.85, 4.8, 0); banner.add(bp, bc); banner.position.set(cx + 3.2, 0, cz - 1.5); banner.userData = { type: 'banditBanner', radius: 0.5, gatherTime: 3 }; exAdd(banner, true); inner.push({ x: cx + 3.2, z: cz - 1.5, r: 1.5 });
     for (let k = 0; k < C.chests; k++) { const a = k * 2.1 + 1.0, p = { x: cx + Math.cos(a) * R * 0.34, z: cz + Math.sin(a) * R * 0.34 }; makeChest(p.x, p.z, false); inner.push({ x: p.x, z: p.z, r: 1.6 }); }
-    return { cx, cz, R, towers, banner, fire, solids, gate, alarm: false, broken: false };
+    let ram = null;
+    if (gate) {                                                       // 공성 망치: 성문 앞 멀리에서 시작한다 (다음 단계에서 대장간에서 만들어 가져온다)
+      const g = new THREE.Group(), wood = mat(0x7a5632);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.4, 4.4), wood); frame.position.y = 0.75;
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.25, 4.0), mat(0x5a3d22)); roof.position.y = 2.1; roof.rotation.z = 0;
+      for (const [px, pz] of [[-0.85, -1.8], [0.85, -1.8], [-0.85, 1.8], [0.85, 1.8]]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.4, 0.16), wood); post.position.set(px, 1.45, pz); g.add(post); const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.2, 8), campDark); wh.rotation.z = Math.PI / 2; wh.position.set(px * 1.15, 0.42, pz); g.add(wh); }
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 4.8, 8), mat(0x8a6038)); log.rotation.x = Math.PI / 2; log.position.y = 1.3; log.name = 'ramLog';
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 8), campStoneDark); head.rotation.x = Math.PI / 2; head.position.set(0, 1.3, 2.8);
+      g.add(frame, roof, log, head); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      g.position.set(cx, 0, cz - R - 12); exAdd(g, false);
+      ram = { mesh: g, log, hp: 120, maxHp: 120, dead: false, hitCd: 1.2, recoil: 0, gx: cx, gz: cz - R - 3.2, sz: cz - R - 12 };
+    }
+    return { cx, cz, R, towers, banner, fire, solids, gate, ram, alarm: false, broken: false };
   }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
@@ -151,7 +163,7 @@
   }
   function cleanupZone() {
     for (const o of exMeshes.concat(exObjs)) scene.remove(o);
-    exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null;
+    exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null; for (const n of npcs) n.ramCrew = false;
     for (const e of enemies.slice()) if (e.userData.ex) removeEnemy(e);
   }
   function exEnemyStep(e, u, dt) {
@@ -217,6 +229,26 @@
       if (d < m && d > 1e-4) { e.position.x = o.position.x + dx / d * m; e.position.z = o.position.z + dz / d * m; }
     }
   }
+  function ramCrewPower() {                                          // 망치를 미는 힘: 곁의 병사 1명당 1, 주인공이 뒤에서 밀면 2
+    const R = exCamp && exCamp.ram; if (!R || R.dead) return 0;
+    const px = R.mesh.position.x, pz = R.mesh.position.z; let pw = 0;
+    for (const n of npcs) if (n.escort && !n.down && n.ramCrew && Math.hypot(n.position.x - px, n.position.z - pz) < 4.5) pw++;
+    if (!dead && Math.hypot(player.position.x - px, player.position.z - (pz - 2.4)) < 3.2) pw += 2;
+    return pw;
+  }
+  function ramTick(dt) {                                             // 성문 부수는 망치: 밀 사람이 있으면 문 앞까지 나아가 때린다. 가까운 적에게 맞아 부서질 수 있다
+    const C = exCamp, R = C && C.ram, G = C && C.gate; if (!R || R.dead) return;
+    if (G.broken) { for (const n of npcs) n.ramCrew = false; return; }
+    const m = R.mesh, pw = ramCrewPower();
+    for (const e of enemies) { const u = e.userData; if (!u.ex || u.sinking || u.dying > 0) continue; if (Math.hypot(e.position.x - m.position.x, e.position.z - m.position.z) < 3.4) R.hp -= dt * (u.kind === 'brute' ? 7 : u.kind === 'archer' ? 1 : 3.5); }
+    if (R.hp <= 0) { R.dead = true; scene.remove(m); for (const n of npcs) n.ramCrew = false; toast('The ram is lost! Break the gate by hand'); shake = Math.max(shake, 0.5); floatText('RAM LOST', m.position.x, 3, m.position.z); return; }
+    if (pw >= 2 && m.position.z < R.gz) { m.position.z = Math.min(R.gz, m.position.z + Math.min(3.0, 0.8 * pw) * dt); }
+    else if (pw >= 2 && m.position.z >= R.gz) {
+      R.hitCd -= dt * (0.6 + 0.2 * pw);
+      if (R.hitCd <= 0) { R.hitCd = 1.8; R.recoil = 1; gateHit(16, true); sfxAt('boom', G.x, G.z); shake = Math.max(shake, 0.35); }
+    }
+    if (R.recoil > 0) { R.recoil = Math.max(0, R.recoil - dt * 2.2); R.log.position.z = -Math.sin(R.recoil * Math.PI) * 0.6; }
+  }
   function gateHit(dmg, siege) {                                   // 성문에 피해: 일반 무기는 10%만 먹는다 (공성 무기는 4배, 호출하는 쪽이 사람 0.5 / 병사 0.25 배로 줄여 넘긴다)
     const C = exCamp, G = C && C.gate; if (!G || G.broken) return;
     G.hp -= dmg * (siege ? 4 : 1); for (const p of G.parts) { p.position.x += (Math.random() - 0.5) * 0.06; }
@@ -278,7 +310,7 @@
     if (foe && n.hold) bd = Math.hypot(foe.position.x - n.position.x, foe.position.z - n.position.z);
     let state = ord === 'withdraw' ? 'Falling back' : 'Escorting';
     if (foe) {
-      state = 'Fighting';
+      state = 'Fighting'; n.ramCrew = false;
       if (n.role === 'melee') {
         if (bd > 1.7) exMove(n, foe.position.x, foe.position.z, ord === 'charge' ? 6 : 5.2, dt);
         else { n.face = Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z); n.rotation.y = n.face; if (n.atkCd <= 0) soldierStrike(foe); }
@@ -287,6 +319,9 @@
         else if (bd < 4) exMove(n, n.position.x * 2 - foe.position.x, n.position.z * 2 - foe.position.z, 4.5, dt);
         if (bd <= 11) soldierShoot(foe);
       }
+    } else if (n.role === 'melee' && ord !== 'withdraw' && !n.hold && exCamp && exCamp.ram && !exCamp.ram.dead && exCamp.gate && !exCamp.gate.broken && Math.hypot(player.position.x - exCamp.ram.mesh.position.x, player.position.z - exCamp.ram.mesh.position.z) < 24 && (n.ramCrew || npcs.filter(x => x.escort && x.ramCrew).length < 3)) {      // 망치 병사: 지휘관이 가까이 있으면 셋이 망치를 밀고 간다
+      state = 'Pushing ram'; n.ramCrew = true; const rm = exCamp.ram.mesh, slot = npcs.filter(x => x.escort && x.ramCrew).indexOf(n), side = [-1.7, 1.7, 0][Math.max(0, slot) % 3], tz = rm.position.z - (slot === 2 ? 3 : 0.3);
+      const d = Math.hypot(rm.position.x + side - n.position.x, tz - n.position.z); if (d > 0.8) exMove(n, rm.position.x + side, tz, 6, dt); else { n.face = 0; n.rotation.y = 0; n.anim.base('idle', 0); }
     } else if (n.role === 'melee' && ord !== 'withdraw' && !n.hold && exCamp && exCamp.gate && !exCamp.gate.broken && Math.hypot(player.position.x - exCamp.gate.x, player.position.z - exCamp.gate.z) < 16) {      // 성문이 닫혀 있고 주인공이 문 앞에 있으면 병사도 문을 친다 (약하게)
       state = 'Breaking gate'; const G = exCamp.gate, gd = Math.hypot(G.x - n.position.x, G.z - n.position.z);
       if (gd > 4.2) exMove(n, G.x + ((npcs.filter(x => x.escort).indexOf(n) % 5) - 2) * 1.3, G.z - 3.6, 5.5, dt);
