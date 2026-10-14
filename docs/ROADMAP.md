@@ -19,9 +19,9 @@
 | drill ground | **Training yard** | building that trains veterans |
 | war map | **Campaign map** | map of realms, holds and castles |
 
-> The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md). The siege plan is in [SIEGE_PLAN.md](SIEGE_PLAN.md).
+> The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md). The siege plan is in [SIEGE_PLAN.md](SIEGE_PLAN.md), wounds and courage in [WAR_STATE_PLAN.md](WAR_STATE_PLAN.md), and the **stages and Training Field plan** in [STAGES_AND_TRAINING_PLAN.md](STAGES_AND_TRAINING_PLAN.md).
 
-## Status (nf-v108)
+## Status (nf-v123)
 See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
 
 **Done**
@@ -34,14 +34,15 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
 
 **Not done**
-- Sieges (map phase 5), banners and the host, levies and wounds, courage, the final campaign, extra unit types, audio, a battle report screen, formations.
+- Stage pacing (stages 4 and 5 and the gates), the Training Field, banners and the host, extra unit types, audio, formations.
 - Tuning after phone testing, and custom models.
 
 **Next steps, in order**
-1. **Sieges** (plan in `SIEGE_PLAN.md`; steps 1 to 4, the Legion Castle with a barred gate, a ram, ladders, boiling oil and the Siege Workshop with carried gear, are built; capture rewards, the Iron Fortress and the battle report are built too; the catapult is built too (nf-v115); castles for all three realms and the final siege (Iron Throne) are built too (nf-v122)): castle and fortress nodes with walls, gates, ladders and rams, and a defender garrison.
-2. **Banners and the host** (wounds, courage and levies are built, nf-v118).
-3. **Final campaign and endgame:** done in nf-v122 (the Iron Throne after the three realm castles).
-4. **Polish:** battle report screen, cavalry and siege crews, audio, formations; balance and phone testing; custom models.
+1. **Stages and gates:** rename "Age" to "Stage" in text, add checklist plus minimum-day gates (the settlement currently reaches Stage 3 almost instantly).
+2. **Stage 4 Walled City and Stage 5 Seat of Power:** new unlocks (third wall ring, market district, bigger population cap), perks and a wider default camera.
+3. **Training Field:** a separate zone to see the whole army, rehearse battles and orders with no losses, siege practice and veteran drills.
+4. **Banners and the host** (unlocked at Stage 5), tested on the Training Field.
+5. **Polish:** cavalry and siege crews, audio, formations; balance and phone testing; custom models.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 
