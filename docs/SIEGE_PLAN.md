@@ -1,6 +1,6 @@
 # Siege plan
 
-Status: **step 1 built in `nf-v110`** (Legion Castle, plain assault); steps 2 to 6 still plan. It is campaign map phase 5. It turns the roadmap's "castles and sieges" into small shippable steps. Terms follow the roadmap table (warband, host, realm, hold, provisions, courage). Numbers are guesses; they live in `CFG` so they can be tuned after phone testing.
+Status: **steps 1 and 2 built** (`nf-v110` Legion Castle, `nf-v111` ram and breakable gate); steps 3 to 6 still plan. It is campaign map phase 5. It turns the roadmap's "castles and sieges" into small shippable steps. Terms follow the roadmap table (warband, host, realm, hold, provisions, courage). Numbers are guesses; they live in `CFG` so they can be tuned after phone testing.
 
 ## 1. Goal
 A **castle** is a walled raid that cannot be won by walking in. You march a host to it, break the **gate** (or climb the **walls**), beat the garrison and take the keep. The leader must be present: the rule added in `nf-v109` (soldiers deal only 20% damage to a chief when the leader is more than 16 paces away) stays.
