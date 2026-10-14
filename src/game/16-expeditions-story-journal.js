@@ -385,6 +385,10 @@
   }
   function campBroken(e, how) {
     const C = exCamp; if (!C || C.broken) return; C.broken = true;
+    if (exActive && exActive.training) {                                      // 공성 연습: 보상 없이 결과만 보여 준다
+      const secs = Math.round((performance.now() - exStats.t0) / 1000), G = C.gate, K = C.cat, lost = C.ladders.filter(l => l.lost).length;
+      showTripReport('Siege practice: keep taken', [`Time ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, `Gate ${G && G.broken ? 'broken' : 'standing'}${C.ram ? ` · ram ${C.ram.dead ? 'lost' : 'saved'}` : ''}`, `Ladders lost: ${lost}${K ? ` · boulders thrown: ${K.shots}` : ''}`, 'Practice only: no losses, no rewards.']); toast('Practice keep taken!'); return;
+    }
     const fi = how === 'banner' ? 4 : 8, fo = how === 'banner' ? 3 : 6; res.iron += fi; res.food += fo; updateHud(); giveXp(how === 'banner' ? 40 : 60);
     const id = exActive && exActive.dest.id, rf = CFG.CAMP_RELIEF[id];
     if (rf) { story.campFx = (story.campFx || []).filter(x => x.id !== id).concat({ id, until: dayNow() + rf.days }); }
@@ -682,7 +686,7 @@
     const b = document.getElementById('expBtn');
     b.firstChild.textContent = exActive ? 'Return home' : 'Journal';
     b.classList.toggle('on', !!exActive);
-    { const tb = document.getElementById('trainBar'); if (tb) tb.style.display = exActive && exActive.training ? 'flex' : 'none'; }
+    { const tb = document.getElementById('trainBar'); if (tb) { tb.style.display = exActive && exActive.training ? 'flex' : 'none'; for (const b of tb.querySelectorAll('[data-tr]')) b.style.display = (b.dataset.tr === 'clear' || b.dataset.tr === 'leave' || !(exActive && exActive.dest.siege)) ? '' : 'none'; } }
   }
   let returnArm = 0;
   function requestReturn() {                       // 상자·적이 남아 있으면 실수로 돌아가지 않도록 한 번 더 누르게 한다
@@ -719,7 +723,7 @@
       const ready = mem.filter(n => !n.down && !n.escort).length, on = bringing(i);
       wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${ready}/${mem.length} ready</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
-    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div>${wounded ? `<button class="tendBtn" ${res.food < npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD ? 'disabled' : ''}>Tend wounded (${npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD} food)</button>` : ''}</div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div><div class="ex"><div class="info"><b>Training Field</b><small>${trainReady() ? 'See every warband on parade and fight practice battles. No losses, no rewards.' : `Opens at Stage ${CFG.TRAIN.AGE}`}</small></div><button class="trainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Enter</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
+    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div>${wounded ? `<button class="tendBtn" ${res.food < npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD ? 'disabled' : ''}>Tend wounded (${npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD} food)</button>` : ''}</div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div><div class="ex"><div class="info"><b>Training Field</b><small>${trainReady() ? 'See every warband on parade and fight practice battles. No losses, no rewards.' : `Opens at Stage ${CFG.TRAIN.AGE}`}</small></div><button class="trainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Parade</button><button class="siegeTrainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Siege</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
     const chLocked = (d) => (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse);
     const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
@@ -749,7 +753,8 @@
     jEl.querySelectorAll('#jExp [data-maptab]').forEach(b => b.addEventListener('click', () => { jMapFar = b.dataset.maptab === 'far'; const ids2 = CFG.EXPEDITIONS.filter(d => CFG.MAP.NODES[d.id] && !chLocked(d) && !!CFG.MAP.NODES[d.id].far === jMapFar); if (ids2.length && !ids2.some(d => d.id === jMapSel)) jMapSel = ids2[0].id; renderJournal(); }));
     jEl.querySelectorAll('.tendBtn').forEach(b => b.addEventListener('click', tendWounded));
     jEl.querySelectorAll('.levyBtn').forEach(b => b.addEventListener('click', callLevy));
-    jEl.querySelectorAll('.trainBtn').forEach(b => b.addEventListener('click', startTraining));
+    jEl.querySelectorAll('.trainBtn').forEach(b => b.addEventListener('click', () => startTraining('parade')));
+    jEl.querySelectorAll('.siegeTrainBtn').forEach(b => b.addEventListener('click', () => startTraining('siege')));
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .holdBtn').forEach(b => b.dataset.recall ? b.addEventListener('click', () => recallGarrison(b.dataset.recall)) : b.addEventListener('click', () => garrisonIt(b.dataset.hold)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));

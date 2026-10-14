@@ -146,7 +146,7 @@
   let lastNmDay = 0;
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
     const u = e.userData; if (exActive && u.ex) exStats.kills++;
-    if (exActive && exActive.training && u.ex) { burst(e.position, 10); sfxAt('die', e.position.x, e.position.z); hideTelegraph(e); u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die(); return; }       // 훈련장: 경험치·전리품 없음
+    if (exActive && exActive.training && u.ex) { burst(e.position, 10); sfxAt('die', e.position.x, e.position.z); hideTelegraph(e); u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die(); if (u.guardian && exCamp) campBroken(e); return; }       // 훈련장: 경험치·전리품 없음 (공성 연습에서는 우두머리를 쓰러뜨리면 끝)
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
     giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * ((u.prowl && !u.roam) || (u.ex && exActive && exActive.night) ? 2 : u.roam ? 1.3 : 1));

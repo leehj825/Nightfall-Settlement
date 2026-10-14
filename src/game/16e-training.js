@@ -2,16 +2,18 @@
   // (이 파일의 것은 모두 function 선언이다)
   const TRAIN_DEST = { id: 'trainfield', name: 'Training Field', training: true, tint: 0x4d6a3c, trees: 6, rocks: 3, ore: 0, chests: 0, foes: [], desc: '' };
   function trainReady() { return age >= CFG.TRAIN.AGE; }
-  function startTraining() {
+  const TRAIN_SIEGE = { id: 'trainsiege', name: 'Siege practice', training: true, siege: true, tint: 0x4d6a3c, trees: 0, rocks: 2, ore: 0, chests: 0, get camp() { return CFG.TRAIN.SIEGE.camp; }, get foes() { return CFG.TRAIN.SIEGE.foes; }, get guardian() { return CFG.TRAIN.SIEGE.guardian; }, desc: '' };
+  function startTraining(mode) {
     if (exActive || dead || exEnding) return;
     if (!trainReady()) return toast(`The Training Field opens at Stage ${CFG.TRAIN.AGE}`);
     if (nowHour < 6 || nowHour >= 16) return toast('Train in daylight (before 16:00)');
     if (!escortPool().length) return toast('No soldiers to train');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
-      exActive = { dest: TRAIN_DEST, training: true, night: false, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
-      siegeLoad = { ram: 0, ladder: 0, catapult: 0 }; exStats = { kills: 0, t0: performance.now(), battle: null };
-      buildZone(TRAIN_DEST);
+      const siege = mode === 'siege', dest = siege ? TRAIN_SIEGE : TRAIN_DEST;
+      exActive = { dest, training: true, night: false, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
+      siegeLoad = siege ? { ram: 1, ladder: CFG.SIEGE.LADDER_MAX, catapult: 1 } : { ram: 0, ladder: 0, catapult: 0 }; exStats = { kills: 0, t0: performance.now(), battle: null };       // 공성 연습: 장비는 소모되지 않는다
+      buildZone(dest);
       const party = escortPool(), bands = [...new Set(party.map(n => n.warband))].sort((a, b) => (a < 0 ? 99 : a) - (b < 0 ? 99 : b));
       bands.forEach((bi, row) => {                                              // 전투단마다 한 줄: 왼쪽에 깃발과 이름
         const z = EXC.z - 34 + row * 3.6, mem = party.filter(n => n.warband === bi), col = bi >= 0 ? warbandColor(bi) : '#9aa0aa';
@@ -19,6 +21,7 @@
         pole.position.y = 2; cloth.position.set(0.6, 3.4, 0); g.add(pole, cloth);
         const lbl = textSprite(bi >= 0 ? warbandName(bi) : 'Levies', col, 3.4, 0.9, 'bold 52px sans-serif'); lbl.position.set(0, 4.6, 0); g.add(lbl);
         g.position.set(EXC.x - 10, 0, z); exAdd(g, false);
+        if (siege) { const mem2 = party.filter(n => n.warband === bi); mem2.forEach((n, j) => { npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n); n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n); n.escort = true; n.hold = null; n.parade = null; n.position.set(EXC.x + ((j % 6) - 2.5) * 1.8, 0, EXC.z - 31 - row * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false; n.hp = n.maxHp; }); return; }
         mem.forEach((n, j) => {
           npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
           n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);
@@ -28,12 +31,12 @@
       exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 24); facing = 0; player.rotation.y = 0; yaw = 0; DIST = Math.min(DIST_MAX, 26); pitch = 0.95;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
-      exEnding = false; updateExUi(); toast(`Training Field: ${party.length} soldiers on parade. Pick a practice battle`); Snd.play('horn');
+      exEnding = false; updateExUi(); toast(siege ? 'Siege practice: break the gate, take the keep. Gear is not used up' : `Training Field: ${party.length} soldiers on parade. Pick a practice battle`); Snd.play('horn');
     });
   }
   function trainSpawn(id) {                                                  // 모의 전투: 정해진 적을 불러낸다 (다치지도 보상도 없다)
     if (!exActive || !exActive.training) return;
-    const set = CFG.TRAIN.SETS.find(s => s.id === id); if (!set) return;
+    const set = CFG.TRAIN.SETS.find(s => s.id === id); if (!set || exActive.dest.siege) return;
     trainClear(true);
     const foes = set.foes.slice(); foes.forEach((kind, i) => {
       const a = (i / Math.max(1, foes.length) - 0.5) * 1.6, p = { x: EXC.x + Math.sin(a) * 18, z: EXC.z - 17 + Math.cos(a) * 4 + (i % 2) * 2 };

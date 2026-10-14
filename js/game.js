@@ -1757,7 +1757,7 @@
   let lastNmDay = 0;
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
     const u = e.userData; if (exActive && u.ex) exStats.kills++;
-    if (exActive && exActive.training && u.ex) { burst(e.position, 10); sfxAt('die', e.position.x, e.position.z); hideTelegraph(e); u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die(); return; }       // 훈련장: 경험치·전리품 없음
+    if (exActive && exActive.training && u.ex) { burst(e.position, 10); sfxAt('die', e.position.x, e.position.z); hideTelegraph(e); u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die(); if (u.guardian && exCamp) campBroken(e); return; }       // 훈련장: 경험치·전리품 없음 (공성 연습에서는 우두머리를 쓰러뜨리면 끝)
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
     giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * ((u.prowl && !u.roam) || (u.ex && exActive && exActive.night) ? 2 : u.roam ? 1.3 : 1));
@@ -4537,6 +4537,10 @@
   }
   function campBroken(e, how) {
     const C = exCamp; if (!C || C.broken) return; C.broken = true;
+    if (exActive && exActive.training) {                                      // 공성 연습: 보상 없이 결과만 보여 준다
+      const secs = Math.round((performance.now() - exStats.t0) / 1000), G = C.gate, K = C.cat, lost = C.ladders.filter(l => l.lost).length;
+      showTripReport('Siege practice: keep taken', [`Time ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, `Gate ${G && G.broken ? 'broken' : 'standing'}${C.ram ? ` · ram ${C.ram.dead ? 'lost' : 'saved'}` : ''}`, `Ladders lost: ${lost}${K ? ` · boulders thrown: ${K.shots}` : ''}`, 'Practice only: no losses, no rewards.']); toast('Practice keep taken!'); return;
+    }
     const fi = how === 'banner' ? 4 : 8, fo = how === 'banner' ? 3 : 6; res.iron += fi; res.food += fo; updateHud(); giveXp(how === 'banner' ? 40 : 60);
     const id = exActive && exActive.dest.id, rf = CFG.CAMP_RELIEF[id];
     if (rf) { story.campFx = (story.campFx || []).filter(x => x.id !== id).concat({ id, until: dayNow() + rf.days }); }
@@ -4834,7 +4838,7 @@
     const b = document.getElementById('expBtn');
     b.firstChild.textContent = exActive ? 'Return home' : 'Journal';
     b.classList.toggle('on', !!exActive);
-    { const tb = document.getElementById('trainBar'); if (tb) tb.style.display = exActive && exActive.training ? 'flex' : 'none'; }
+    { const tb = document.getElementById('trainBar'); if (tb) { tb.style.display = exActive && exActive.training ? 'flex' : 'none'; for (const b of tb.querySelectorAll('[data-tr]')) b.style.display = (b.dataset.tr === 'clear' || b.dataset.tr === 'leave' || !(exActive && exActive.dest.siege)) ? '' : 'none'; } }
   }
   let returnArm = 0;
   function requestReturn() {                       // 상자·적이 남아 있으면 실수로 돌아가지 않도록 한 번 더 누르게 한다
@@ -4871,7 +4875,7 @@
       const ready = mem.filter(n => !n.down && !n.escort).length, on = bringing(i);
       wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${ready}/${mem.length} ready</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
-    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div>${wounded ? `<button class="tendBtn" ${res.food < npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD ? 'disabled' : ''}>Tend wounded (${npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD} food)</button>` : ''}</div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div><div class="ex"><div class="info"><b>Training Field</b><small>${trainReady() ? 'See every warband on parade and fight practice battles. No losses, no rewards.' : `Opens at Stage ${CFG.TRAIN.AGE}`}</small></div><button class="trainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Enter</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
+    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div>${wounded ? `<button class="tendBtn" ${res.food < npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD ? 'disabled' : ''}>Tend wounded (${npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD} food)</button>` : ''}</div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div><div class="ex"><div class="info"><b>Training Field</b><small>${trainReady() ? 'See every warband on parade and fight practice battles. No losses, no rewards.' : `Opens at Stage ${CFG.TRAIN.AGE}`}</small></div><button class="trainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Parade</button><button class="siegeTrainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Siege</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
     const chLocked = (d) => (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse);
     const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
@@ -4901,7 +4905,8 @@
     jEl.querySelectorAll('#jExp [data-maptab]').forEach(b => b.addEventListener('click', () => { jMapFar = b.dataset.maptab === 'far'; const ids2 = CFG.EXPEDITIONS.filter(d => CFG.MAP.NODES[d.id] && !chLocked(d) && !!CFG.MAP.NODES[d.id].far === jMapFar); if (ids2.length && !ids2.some(d => d.id === jMapSel)) jMapSel = ids2[0].id; renderJournal(); }));
     jEl.querySelectorAll('.tendBtn').forEach(b => b.addEventListener('click', tendWounded));
     jEl.querySelectorAll('.levyBtn').forEach(b => b.addEventListener('click', callLevy));
-    jEl.querySelectorAll('.trainBtn').forEach(b => b.addEventListener('click', startTraining));
+    jEl.querySelectorAll('.trainBtn').forEach(b => b.addEventListener('click', () => startTraining('parade')));
+    jEl.querySelectorAll('.siegeTrainBtn').forEach(b => b.addEventListener('click', () => startTraining('siege')));
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .holdBtn').forEach(b => b.dataset.recall ? b.addEventListener('click', () => recallGarrison(b.dataset.recall)) : b.addEventListener('click', () => garrisonIt(b.dataset.hold)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));
@@ -5118,16 +5123,18 @@
   // (이 파일의 것은 모두 function 선언이다)
   const TRAIN_DEST = { id: 'trainfield', name: 'Training Field', training: true, tint: 0x4d6a3c, trees: 6, rocks: 3, ore: 0, chests: 0, foes: [], desc: '' };
   function trainReady() { return age >= CFG.TRAIN.AGE; }
-  function startTraining() {
+  const TRAIN_SIEGE = { id: 'trainsiege', name: 'Siege practice', training: true, siege: true, tint: 0x4d6a3c, trees: 0, rocks: 2, ore: 0, chests: 0, get camp() { return CFG.TRAIN.SIEGE.camp; }, get foes() { return CFG.TRAIN.SIEGE.foes; }, get guardian() { return CFG.TRAIN.SIEGE.guardian; }, desc: '' };
+  function startTraining(mode) {
     if (exActive || dead || exEnding) return;
     if (!trainReady()) return toast(`The Training Field opens at Stage ${CFG.TRAIN.AGE}`);
     if (nowHour < 6 || nowHour >= 16) return toast('Train in daylight (before 16:00)');
     if (!escortPool().length) return toast('No soldiers to train');
     closeJournal(); exEnding = true; gathering = null;
     fadeTo(() => {
-      exActive = { dest: TRAIN_DEST, training: true, night: false, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
-      siegeLoad = { ram: 0, ladder: 0, catapult: 0 }; exStats = { kills: 0, t0: performance.now(), battle: null };
-      buildZone(TRAIN_DEST);
+      const siege = mode === 'siege', dest = siege ? TRAIN_SIEGE : TRAIN_DEST;
+      exActive = { dest, training: true, night: false, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
+      siegeLoad = siege ? { ram: 1, ladder: CFG.SIEGE.LADDER_MAX, catapult: 1 } : { ram: 0, ladder: 0, catapult: 0 }; exStats = { kills: 0, t0: performance.now(), battle: null };       // 공성 연습: 장비는 소모되지 않는다
+      buildZone(dest);
       const party = escortPool(), bands = [...new Set(party.map(n => n.warband))].sort((a, b) => (a < 0 ? 99 : a) - (b < 0 ? 99 : b));
       bands.forEach((bi, row) => {                                              // 전투단마다 한 줄: 왼쪽에 깃발과 이름
         const z = EXC.z - 34 + row * 3.6, mem = party.filter(n => n.warband === bi), col = bi >= 0 ? warbandColor(bi) : '#9aa0aa';
@@ -5135,6 +5142,7 @@
         pole.position.y = 2; cloth.position.set(0.6, 3.4, 0); g.add(pole, cloth);
         const lbl = textSprite(bi >= 0 ? warbandName(bi) : 'Levies', col, 3.4, 0.9, 'bold 52px sans-serif'); lbl.position.set(0, 4.6, 0); g.add(lbl);
         g.position.set(EXC.x - 10, 0, z); exAdd(g, false);
+        if (siege) { const mem2 = party.filter(n => n.warband === bi); mem2.forEach((n, j) => { npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n); n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n); n.escort = true; n.hold = null; n.parade = null; n.position.set(EXC.x + ((j % 6) - 2.5) * 1.8, 0, EXC.z - 31 - row * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false; n.hp = n.maxHp; }); return; }
         mem.forEach((n, j) => {
           npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
           n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);
@@ -5144,12 +5152,12 @@
       exActive.party = party.length;
       player.position.set(EXC.x, 0, EXC.z - 24); facing = 0; player.rotation.y = 0; yaw = 0; DIST = Math.min(DIST_MAX, 26); pitch = 0.95;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
-      exEnding = false; updateExUi(); toast(`Training Field: ${party.length} soldiers on parade. Pick a practice battle`); Snd.play('horn');
+      exEnding = false; updateExUi(); toast(siege ? 'Siege practice: break the gate, take the keep. Gear is not used up' : `Training Field: ${party.length} soldiers on parade. Pick a practice battle`); Snd.play('horn');
     });
   }
   function trainSpawn(id) {                                                  // 모의 전투: 정해진 적을 불러낸다 (다치지도 보상도 없다)
     if (!exActive || !exActive.training) return;
-    const set = CFG.TRAIN.SETS.find(s => s.id === id); if (!set) return;
+    const set = CFG.TRAIN.SETS.find(s => s.id === id); if (!set || exActive.dest.siege) return;
     trainClear(true);
     const foes = set.foes.slice(); foes.forEach((kind, i) => {
       const a = (i / Math.max(1, foes.length) - 0.5) * 1.6, p = { x: EXC.x + Math.sin(a) * 18, z: EXC.z - 17 + Math.cos(a) * 4 + (i % 2) * 2 };
