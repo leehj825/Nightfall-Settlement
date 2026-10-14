@@ -348,3 +348,5 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #jExp .jmap .roads path.far { fill: none; stroke: #8a7a52; stroke-width: 0.9; stroke-dasharray: 2.2 1.6; opacity: .8; }
 #jExp .jmap .roads line.far { stroke: #8a7a52; stroke-dasharray: 2.4 1.6; }
 #jExp .jtabs { display: flex; gap: 6px; margin: 6px 0 2px; } #jExp .jtabs button { flex: 1; padding: 7px 4px; font-size: 13px; border-radius: 8px; border: 1px solid #5a4a30; background: #2a2118; color: #d8c8a0; } #jExp .jtabs button.on { background: #7a5a2a; color: #fff; border-color: #c8923a; }
+
+#trainBar { position: fixed; top: 124px; left: 50%; transform: translateX(-50%); z-index: 22; gap: 8px; } #trainBar button { font: inherit; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 14px; border: 2px solid #c8923a; background: rgba(40, 28, 16, .88); color: #ffe7a8; }

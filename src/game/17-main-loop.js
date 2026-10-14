@@ -41,7 +41,7 @@
 
     // 시간 / 조명
     { const h0 = (gameMin / 60) % 24, isNight = h0 >= 18 || h0 < 6;
-      gameMin += dt * MIN_PER_SEC * (exActive ? CFG.EXP_TIME_MULT : isNight ? (resting ? CFG.REST_SPEED : CFG.NIGHT_SPEED) : 1); }          // 원정 중에는 천천히, 밤에는 빠르게(쉬는 중에는 아주 빠르게)
+      gameMin += dt * MIN_PER_SEC * (exActive ? (exActive.training ? 0 : CFG.EXP_TIME_MULT) : isNight ? (resting ? CFG.REST_SPEED : CFG.NIGHT_SPEED) : 1); }          // 원정 중에는 천천히, 밤에는 빠르게(쉬는 중에는 아주 빠르게)
     const hour = (gameMin / 60) % 24;
     const night = hour >= 20 || hour < 5;
     const nf = nightFactor(hour);

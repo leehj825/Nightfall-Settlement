@@ -35,7 +35,7 @@
   document.getElementById('restartBtn').addEventListener('click', () => { clearSave(); location.reload(); });
   const buzz = (p) => { if (settings.haptic !== false && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} } };         // 진동 (설정에서 끌 수 있다)
   function damage(n) {
-    if (invincibleT > 0) return;               // 대시 무적
+    if (invincibleT > 0 || (exActive && exActive.training)) return;               // 대시 무적 / 훈련장에서는 다치지 않는다
     n = Math.max(1, Math.round(n * dm().dmg * (1 - gearDef(playerGear.armor).reduce) * 0.92 ** pl.st.guard));      // 난이도 + 방어구 + 성장 피해 감소
     if (blocking) { n = Math.max(1, Math.round(n * 0.25)); Snd.play('hit', 0.6); } else if (hp - n > 0) playerAnim.flinch();        // 막는 중에는 피해 75% 감소, 아니면 맞는 동작
     hp = Math.max(0, hp - n);
