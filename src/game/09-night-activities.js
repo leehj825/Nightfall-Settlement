@@ -21,9 +21,9 @@
   }
   // ---------- 밤사냥: 조용한 밤에는 성벽 밖을 떠도는 '밤 방랑자'가 나온다 (처치하면 경험치 2배 + 전리품, 마을은 공격하지 않는다) ----------
   function spawnProwlers(day) {
-    const n = Math.min(6, 2 + Math.floor(day / 2));
+    const n = Math.min(12, 3 + Math.floor(day * 0.8));
     for (let i = 0; i < n; i++) {
-      const a = rand(0, Math.PI * 2), r = rand(39, 47), kind = day >= 4 && Math.random() < 0.3 ? 'normal' : 'beast';
+      const a = rand(0, Math.PI * 2), r = rand(40, 80), kind = day >= 4 && Math.random() < 0.3 ? 'normal' : 'beast';
       spawnEnemy(kind, { x: Math.cos(a) * r, z: Math.sin(a) * r });
       const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night'); addGlow(e, 0x8f9cff, 1.5, 1.1);
     }
@@ -47,7 +47,7 @@
   function roamerTick(dt) {
     if (dead || exActive || uiPause || eventOpen) return;
     roamT -= dt; if (roamT > 0) return;
-    const day = Math.max(1, dayNow()), want = Math.min(6, 2 + Math.floor(day / 3));
+    const day = Math.max(1, dayNow()), want = Math.min(12, 3 + Math.floor(day / 2));
     let n = 0; for (const e of enemies) if (e.userData.roam && !e.userData.sinking) n++;
     roamT = n < want / 2 ? 2 : 7; if (n >= want) return;
     for (let k = 0; k < 10; k++) {

@@ -12,7 +12,7 @@
   const archerMat = mat(0xc9731d), healerMat = mat(0x2fbf8f), sapperMat = mat(0xd6b02a);
   function spawnEnemy(kind = 'normal', at = null) {
     const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast', archer = kind === 'archer', healer = kind === 'healer', sapper = kind === 'sapper';
-    const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
+    const a = rand(0, Math.PI * 2), r = Math.min(MAP - 1, 86);    // 맵 외곽 (안개 속 먼 곳)
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : sapper ? 0.9 : healer ? 1.05 : 1;
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)

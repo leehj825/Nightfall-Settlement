@@ -1,9 +1,9 @@
 // Nightfall Settlement - balance and content data (CFG). Tweak numbers here.
   // ---------- 밸런스 설정 (여기서 조절) ----------
   const CFG = {
-    TREE_COUNT: 60, STONE_COUNT: 50,           // 맵에 항상 유지하려는 나무 / 바위 수 (모자라면 계속 다시 채워진다)
+    TREE_COUNT: 160, STONE_COUNT: 120,           // 맵에 항상 유지하려는 나무 / 바위 수 (모자라면 계속 다시 채워진다)
     REPLENISH_INTERVAL: 2.5, REPLENISH_BATCH: 3,   // 자원 보충 주기(초) / 한 번에 종류별 최대 보충 수
-    SPAWN_ZONES: { inner: 0.4, annulus: 0.35 },    // 자원 생성 위치 비율: 마을 안쪽 / 1~2단계 성벽 사이 (나머지는 맵 전체) → 동료가 문을 덜 드나든다
+    SPAWN_ZONES: { inner: 0.22, annulus: 0.2 },    // 자원 생성 위치 비율: 마을 안쪽 / 1~2단계 성벽 사이 (나머지는 맵 전체) → 동료가 문을 덜 드나든다
     GATHER_WORKERS_BIG_DEFICIT: 30, GATHER_BUFFER: 15,   // 부족분이 크고 여유 자원이 GATHER_BUFFER 미만일 때만 채집조를 절반으로 늘린다 (평소엔 1명)
     GATHER_YIELD: { wood: 3, stone: 3 },       // 1회 채집당 획득량 (플레이어·동료 공통)
     BP_COST: { wood: 5, stone: 5 },            // 동료가 청사진 1개를 지을 때 드는 자원 (나무 목책 / 돌 성벽)
@@ -284,7 +284,7 @@
     // 웨이브 / 난이도: 밤마다 총 마릿수 = WAVE_BASE + Day * WAVE_PER_DAY
     WAVE_BASE: 5, WAVE_PER_DAY: 4,
     SPAWN_INTERVAL_BASE: 6, SPAWN_RATE_GROWTH: 0.3, MIN_SPAWN_INTERVAL: 0.6,   // 간격 = BASE / (1 + GROWTH*(Day-1))
-    MAX_ALIVE: 30,                             // 동시에 존재할 수 있는 적 수
+    MAX_ALIVE: 45,                             // 동시에 존재할 수 있는 적 수
     // 브루트 (Day 2부터, 웨이브 마지막에 등장)
     BRUTE_FROM_DAY: 2, BRUTE_HP: 10, BRUTE_SCALE: 1.5, BRUTE_SPEED_MUL: 0.7, BRUTE_CONTACT_DMG: 25, ENEMY_CONTACT_DMG: 10,
     KNOCKBACK: 0.7, KNOCKBACK_UPGRADED: 1.6, BRUTE_KNOCKBACK_MUL: 0.7,   // 넉백 거리 (무기 강화 시 증가)

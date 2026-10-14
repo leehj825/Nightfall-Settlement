@@ -54,14 +54,20 @@
     }
     return [rand(-MAP + 3, MAP - 3), rand(-MAP + 3, MAP - 3)];
   }
+  function biomeDensity(type, x, z) {                                        // 지대별 자원 밀도 (0~1)
+    if (Math.max(Math.abs(x), Math.abs(z)) < 34) return 1;
+    const b = biomeAt(x, z);
+    return type === 'wood' ? { forest: 1, meadow: 0.5, marsh: 0.3, rock: 0.15 }[b] : type === 'stone' ? { forest: 0.3, meadow: 0.5, marsh: 0.15, rock: 1 }[b] : 1;
+  }
   function scatter(factory, count, ok = () => true) {
     for (let i = 0; i < count; i++) {
       const o = factory();
       for (let tries = 0; tries < 60; tries++) {
         const [x, z] = samplePoint();
         if (Math.hypot(x, z) < 6 || inRiver(x, z) || !ok(x, z)) continue;   // 모닥불 주변 비우기
+        if (Math.random() > biomeDensity(o.userData.type, x, z)) continue;       // 숲에는 나무, 고원에는 바위가 많다
         if (obstacles.some(p => Math.hypot(p.position.x - x, p.position.z - z) < p.userData.radius + o.userData.radius + 0.8)) continue;
-        o.position.set(x, 0, z);
+        o.position.set(x, Math.max(0, terrH(x, z)), z);
         o.rotation.y = rand(0, Math.PI * 2);
         scene.add(o);
         obstacles.push(o);
@@ -89,7 +95,7 @@
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
-  const setDist = d => { DIST = bird ? Math.min(95, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
+  const setDist = d => { DIST = bird ? Math.min(150, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
   const camGoal = new THREE.Vector3(), lookAt = new THREE.Vector3();
   const viewYaw = () => yaw + (camFront && !bird ? Math.PI : 0);          // 카메라가 실제로 놓이는 각도 (앞모습 보기에서는 영웅 정면에 놓인다)
   function goalPos(out) {
@@ -121,7 +127,7 @@
   let panMid = null, panId = null;
   const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
     const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-    birdX = Math.max(-90, Math.min(90, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-90, Math.min(90, birdZ + (-rz * dx + fz * dy) * sc));
+    birdX = Math.max(-140, Math.min(140, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-140, Math.min(140, birdZ + (-rz * dx + fz * dy) * sc));
   };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
