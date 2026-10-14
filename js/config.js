@@ -11,16 +11,19 @@
     DESIGN: [      // 사각형 방어선: half = 한 변의 절반(중앙 기준), perHalf = 중심에서 모서리까지 구간 수 (부재 간격 = half / perHalf)
       { label: 'Defense Line: Tier 1', cost: { wood: 30 }, half: 15, perHalf: 6, kind: 'wood' },     // 30 x 30 (간격 2.5: 목책 폭 2.4 와 거의 붙는다)
       { label: 'Defense Line: Tier 2 (Stone)', cost: { stone: 50 }, half: 25, perHalf: 8, kind: 'stone', age: 3 },   // 50 x 50 (간격 3.1: 성벽 폭 3.0)
+      { label: 'Defense Line: Tier 3 (Great Wall)', cost: { stone: 180 }, half: 40, perHalf: 13, kind: 'stone', age: 4 },   // 80 x 80 (간격 3.1)
     ],
     // ----- 시대 발전 (테크 트리): 모닥불/마을 회관을 클릭해서 업그레이드 -----
     // 단계(Stage) 조건: 자원 외에 최소 날짜와 목표(체크리스트)를 채워야 올라갈 수 있다. goals 는 06 파일의 STAGE_TESTS 이름
-    STAGE_GATES: { 2: { day: 2, goals: ['houses4', 'cit6'] }, 3: { day: 5, goals: ['blood1', 'barracksRange', 'cit10'] } },
+    STAGE_GATES: { 2: { day: 2, goals: ['houses4', 'cit6'] }, 3: { day: 5, goals: ['blood1', 'barracksRange', 'cit10'] }, 4: { day: 9, goals: ['stronghold', 'outerWall', 'cit14'] }, 5: { day: 14, goals: ['castleTaken', 'siegeWorkshop'] } },
     AGES: [
       { name: 'Camp', hall: 'Campfire', unlock: 'Wooden fences · Tents' },
       { name: 'Wooden Town', hall: 'Wooden Town Hall', cost: { wood: 80 }, unlock: 'Barracks · Archery Range · Farm · Lumber Camp · Quarry' },
       { name: 'Stone Fortress', hall: 'Stone Keep', cost: { wood: 200, stone: 150, iron: 15 }, unlock: 'Stone walls · Defense towers' },
+      { name: 'Walled City', hall: 'Great Hall', cost: { wood: 300, stone: 300, iron: 40, food: 40 }, unlock: 'Great Wall · Market District · Second Barracks · Training Field' },
+      { name: 'Seat of Power', hall: 'Throne Hall', cost: { stone: 500, iron: 100, food: 100 }, unlock: 'Banners and the host · Throne Hall · +1 warband' },
     ],
-    FIRE_HP_BY_AGE: [150, 260, 420], HALL_RADIUS: [0.8, 2.6, 3.4],      // 시대별 거점 체력 / 충돌 반지름
+    FIRE_HP_BY_AGE: [150, 260, 420, 600, 800], HALL_RADIUS: [0.8, 2.6, 3.4, 3.8, 4.2],      // 시대별 거점 체력 / 충돌 반지름
     UPGRADE_FENCE_AGE: 3,                                              // 목책 → 돌 성벽 강화는 3시대부터
     // 마을 인프라 설계: 시대가 열릴 때마다 다음 묶음을 설계할 수 있다. lots는 사각 방어선 안쪽 격자 배치 (auto: 벌목장/채석장은 숲/바위 근처에 자동 선정)
     TOWN_GROUPS: [
@@ -40,6 +43,8 @@
       { age: 3, needsOuterWall: true, needsHomesBuilt: true, label: 'Plan Outer Homes (2/2)', cost: { wood: 80 }, lots: [{ kind: 'house', x: 13, z: -20 }, { kind: 'house', x: 7, z: 20 }, { kind: 'house', x: 13, z: 20 }] },
       // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
       { age: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', auto: 'town' }] },
+      // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
+      { age: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
@@ -84,6 +89,8 @@
       1: [{ id: 'forager', label: 'Forager', desc: '+1 wood and stone from every gather' }, { id: 'fortifier', label: 'Fortifier', desc: 'Wooden fences have 50% more health' }, { id: 'scout', label: 'Scout', desc: '+10% move speed and faster healing by the fire' }],
       2: [{ id: 'lord', label: 'Lord', desc: 'Soldiers have +15% health and +10% damage' }, { id: 'merchant', label: 'Merchant', desc: 'Market trades pay more, worksites haul 25% more' }, { id: 'smith', label: 'Master Smith', desc: 'Forging is faster and gear costs 25% less' }],
       3: [{ id: 'warlord', label: 'Warlord', desc: 'Ultimate, Rally and Dash recharge much faster' }, { id: 'steward', label: 'Steward', desc: '+10 prosperity, happier citizens, +1 max population' }, { id: 'engineer', label: 'Engineer', desc: 'Towers hit 50% harder and reach further, stone walls +50% health' }],
+      4: [{ id: 'veteran', label: 'Drillmaster', desc: 'Soldiers deal +10% damage' }, { id: 'provisioner', label: 'Provisioner', desc: 'Marches cost 25% less food' }, { id: 'bastion', label: 'Bastion', desc: 'Stone walls have +25% health' }],
+      5: [{ id: 'warhost', label: 'Warhost', desc: 'You can bring one more warband on a journey' }, { id: 'crown', label: 'Crown', desc: '+10 prosperity and +1 maximum population' }, { id: 'banneret', label: 'Banneret', desc: 'Courage starts higher and recovers faster' }],
     },
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
     EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초

@@ -32,7 +32,7 @@
   function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
   function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   // 원정에 데려가는 전투단: 시대에 따라 최대 1(시대 1) / 2(시대 2) / 3(시대 3)개. 다시 누르면 뺀다
-  const bandMax = () => age >= 3 ? 3 : age >= 2 ? 2 : 1;
+  const bandMax = () => (age >= 3 ? 3 : age >= 2 ? 2 : 1) + (hasPerk('warhost') ? 1 : 0);
   const bringing = (i) => escortBands.includes(i);
   function toggleBring(i) {
     if (bringing(i)) { escortBands = escortBands.filter(x => x !== i); return true; }

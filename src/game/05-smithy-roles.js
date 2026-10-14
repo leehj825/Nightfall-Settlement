@@ -95,6 +95,7 @@
     perks[a] = id;
     if (id === 'lord') for (const n of npcs) if (n.role !== 'citizen') { const m = npcMaxHp(n.role, n.trait); n.hp += m - n.maxHp; n.maxHp = m; n.labelText = ''; }
     if (id === 'fortifier' || id === 'engineer') for (const o of obstacles) if (o.userData.type === 'fence' && o.userData.level === (id === 'engineer' ? 'stone' : 'wood')) { o.userData.hp *= 1.5; o.userData.maxHp *= 1.5; }
+    if (id === 'bastion') for (const o of obstacles) if (o.userData.type === 'fence' && o.userData.level === 'stone') { o.userData.hp *= 1.25; o.userData.maxHp *= 1.25; }
     updateHud(); updateProsperity();
   }
   function openDifficultyChoice() {

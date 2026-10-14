@@ -339,6 +339,7 @@
   }
   // 둘째(바깥) 방어선이 계획되었고, 그 성벽 청사진이 하나도 남지 않았으면 완성
   const homesBuilt = () => !blueprints.some(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house');       // 지을 집 청사진이 남아 있지 않다
+  const thirdWallDone = () => designTier >= 3 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   const outerWallDone = () => designTier >= 2 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   // 바깥 구역(첫 목책~둘째 성벽 사이): 이미 지은 농장·사격장은 그대로 옮기고(레벨·일꾼 유지) 모자란 농장은 새로 짓는다
   function planOuterFields(g) {
@@ -362,6 +363,7 @@
     if (age < g.age) return toast(`Available in Stage ${g.age} (${CFG.AGES[g.age - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
+    if (g.needsThirdWall && !thirdWallDone()) return toast('Finish the Great Wall first');
     if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
     payCost(g.cost);
     townStage++;

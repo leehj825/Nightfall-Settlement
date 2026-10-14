@@ -267,7 +267,7 @@
     }
     if (n) updateHud();
   }
-  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + (hasPerk('steward') ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
+  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + ((hasPerk('steward') || hasPerk('crown')) ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {

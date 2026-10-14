@@ -105,7 +105,7 @@
       add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
       add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
       flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
-    } else {                                                           // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
+    } else if (age === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
       add(new THREE.BoxGeometry(6.2, 3.2, 6.2), keepStone, 0, 1.6, 0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         add(new THREE.CylinderGeometry(1.0, 1.1, 4.6, 10), keepTower, sx * 3.1, 2.3, sz * 3.1);
@@ -115,6 +115,18 @@
       for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; add(new THREE.BoxGeometry(0.55, 0.55, 0.55), keepTop, Math.cos(a) * 1.7, 6.0, Math.sin(a) * 1.7); }
       add(new THREE.BoxGeometry(1.6, 2.2, 0.14), hallDark, 0, 1.1, 3.12);
       flame.position.y = 6.0; fireLight.position.y = 7.2; hallHint.position.y = 8.6;
+    } else {                                                           // 4~5단계: 큰 성채(Great Hall) / 왕좌의 방(Throne Hall: 금빛 지붕)
+      const gold = new THREE.MeshStandardMaterial({ color: 0xe0b040, flatShading: true, roughness: 0.6, metalness: 0.3 });
+      add(new THREE.BoxGeometry(7.6, 3.6, 7.6), keepStone, 0, 1.8, 0);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        add(new THREE.CylinderGeometry(1.2, 1.3, 5.6, 10), keepTower, sx * 3.8, 2.8, sz * 3.8);
+        add(new THREE.ConeGeometry(1.5, 1.6, 10), age >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
+      }
+      for (const [dx, dz] of [[0, -3.9], [0, 3.9], [-3.9, 0], [3.9, 0]]) add(new THREE.CylinderGeometry(0.7, 0.8, 4.4, 8), keepTower, dx, 2.2, dz);
+      add(new THREE.BoxGeometry(4.0, 3.2, 4.0), keepStone, 0, 5.2, 0);
+      add(new THREE.ConeGeometry(3.0, 2.2, 4), age >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
+      add(new THREE.BoxGeometry(1.8, 2.4, 0.14), hallDark, 0, 1.2, 3.84);
+      flame.position.y = 9.4; fireLight.position.y = 10.6; hallHint.position.y = 12;
     }
     FIRE_R = CFG.HALL_RADIUS[age - 1];
     campfire.userData.radius = FIRE_R;
@@ -127,7 +139,7 @@
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
     if (a >= 3) for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house' && (h.userData.level || 1) < 2) { h.userData.level = 2; setHouseModel(h); }       // 3시대: 텐트는 모두 나무집으로
-    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn();
+    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn(); setCamMax();
     npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
   // ----- 시대 발전 패널 -----
@@ -148,6 +160,11 @@
     cit6: () => [`6 citizens (${Math.min(6, npcs.filter(n => n.role === 'citizen').length)}/6)`, npcs.filter(n => n.role === 'citizen').length >= 6],
     blood1: () => ['Survive the first Blood Moon raid', dayNow() > raidDays[0]],
     barracksRange: () => ['Barracks and Archery Range built', builtBuildings('barracks').length >= 1 && builtBuildings('range').length >= 1],
+    stronghold: () => ['Break a realm stronghold', ['banditfort', 'clanhold', 'legionfort', 'hillclan', 'legionkeep'].some(id => story.cleared[id])],
+    outerWall: () => ['Second wall finished', outerWallDone()],
+    cit14: () => [`14 citizens (${Math.min(14, npcs.filter(n => n.role === 'citizen').length)}/14)`, npcs.filter(n => n.role === 'citizen').length >= 14],
+    castleTaken: () => ['Take a realm castle', ['legioncastle', 'clancastle', 'banditcastle'].some(id => story.cleared[id])],
+    siegeWorkshop: () => ['Siege Workshop built', builtBuildings('siegeshop').length >= 1],
     cit10: () => [`10 citizens (${Math.min(10, npcs.filter(n => n.role === 'citizen').length)}/10)`, npcs.filter(n => n.role === 'citizen').length >= 10],
   };
   function stageChecks(target) {                                             // 다음 단계의 조건 목록: { text, ok }

@@ -241,7 +241,8 @@
   // ---------- 카메라 (Orbit + Lerp) ----------
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
-  let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
+  let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
+  function setCamMax() { DIST_MAX = age >= 4 ? 34 : age >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
@@ -377,7 +378,7 @@
   const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
   const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1) * (dashBonusT > 0 ? 1 + 0.25 * pl.st.vault : 1);
   const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0) + (pl.st.forage >= 3 ? 1 : 0) + (pl.st.forage >= 5 ? 1 : 0);
-  const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1);
+  const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1) * (hasPerk('bastion') ? 1.25 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
   const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd) * (pl.st.stride && !enemyWithin(player.position.x, player.position.z, 20) ? 1 + 0.08 * pl.st.stride : 1);       // Long Stride: 적이 가까이 없을 때만
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
@@ -386,7 +387,7 @@
   const courageOf = () => Math.max(0, Math.min(100, story.courage ?? CFG.COURAGE.START));
   const courageMul = () => { const c = courageOf() / 100, K = CFG.COURAGE; return c <= 0.7 ? K.MIN_MUL + (1 - K.MIN_MUL) * c / 0.7 : 1 + (K.MAX_MUL - 1) * (c - 0.7) / 0.3; };       // 0 = 0.75, 70 = 1.0, 100 = 1.1
   function addCourage(d) { const was = courageOf(); story.courage = Math.max(0, Math.min(100, was + d)); if (story.courage <= 0 && was > 0 && exActive) toast('The host loses heart and falls back!'); }
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * (hasPerk('veteran') ? 1.1 : 1) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' };
@@ -817,6 +818,7 @@
   }
   // 둘째(바깥) 방어선이 계획되었고, 그 성벽 청사진이 하나도 남지 않았으면 완성
   const homesBuilt = () => !blueprints.some(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house');       // 지을 집 청사진이 남아 있지 않다
+  const thirdWallDone = () => designTier >= 3 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   const outerWallDone = () => designTier >= 2 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   // 바깥 구역(첫 목책~둘째 성벽 사이): 이미 지은 농장·사격장은 그대로 옮기고(레벨·일꾼 유지) 모자란 농장은 새로 짓는다
   function planOuterFields(g) {
@@ -840,6 +842,7 @@
     if (age < g.age) return toast(`Available in Stage ${g.age} (${CFG.AGES[g.age - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
+    if (g.needsThirdWall && !thirdWallDone()) return toast('Finish the Great Wall first');
     if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
     payCost(g.cost);
     townStage++;
@@ -1005,6 +1008,7 @@
     perks[a] = id;
     if (id === 'lord') for (const n of npcs) if (n.role !== 'citizen') { const m = npcMaxHp(n.role, n.trait); n.hp += m - n.maxHp; n.maxHp = m; n.labelText = ''; }
     if (id === 'fortifier' || id === 'engineer') for (const o of obstacles) if (o.userData.type === 'fence' && o.userData.level === (id === 'engineer' ? 'stone' : 'wood')) { o.userData.hp *= 1.5; o.userData.maxHp *= 1.5; }
+    if (id === 'bastion') for (const o of obstacles) if (o.userData.type === 'fence' && o.userData.level === 'stone') { o.userData.hp *= 1.25; o.userData.maxHp *= 1.25; }
     updateHud(); updateProsperity();
   }
   function openDifficultyChoice() {
@@ -1149,7 +1153,7 @@
       add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
       add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
       flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
-    } else {                                                           // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
+    } else if (age === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
       add(new THREE.BoxGeometry(6.2, 3.2, 6.2), keepStone, 0, 1.6, 0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         add(new THREE.CylinderGeometry(1.0, 1.1, 4.6, 10), keepTower, sx * 3.1, 2.3, sz * 3.1);
@@ -1159,6 +1163,18 @@
       for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; add(new THREE.BoxGeometry(0.55, 0.55, 0.55), keepTop, Math.cos(a) * 1.7, 6.0, Math.sin(a) * 1.7); }
       add(new THREE.BoxGeometry(1.6, 2.2, 0.14), hallDark, 0, 1.1, 3.12);
       flame.position.y = 6.0; fireLight.position.y = 7.2; hallHint.position.y = 8.6;
+    } else {                                                           // 4~5단계: 큰 성채(Great Hall) / 왕좌의 방(Throne Hall: 금빛 지붕)
+      const gold = new THREE.MeshStandardMaterial({ color: 0xe0b040, flatShading: true, roughness: 0.6, metalness: 0.3 });
+      add(new THREE.BoxGeometry(7.6, 3.6, 7.6), keepStone, 0, 1.8, 0);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        add(new THREE.CylinderGeometry(1.2, 1.3, 5.6, 10), keepTower, sx * 3.8, 2.8, sz * 3.8);
+        add(new THREE.ConeGeometry(1.5, 1.6, 10), age >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
+      }
+      for (const [dx, dz] of [[0, -3.9], [0, 3.9], [-3.9, 0], [3.9, 0]]) add(new THREE.CylinderGeometry(0.7, 0.8, 4.4, 8), keepTower, dx, 2.2, dz);
+      add(new THREE.BoxGeometry(4.0, 3.2, 4.0), keepStone, 0, 5.2, 0);
+      add(new THREE.ConeGeometry(3.0, 2.2, 4), age >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
+      add(new THREE.BoxGeometry(1.8, 2.4, 0.14), hallDark, 0, 1.2, 3.84);
+      flame.position.y = 9.4; fireLight.position.y = 10.6; hallHint.position.y = 12;
     }
     FIRE_R = CFG.HALL_RADIUS[age - 1];
     campfire.userData.radius = FIRE_R;
@@ -1171,7 +1187,7 @@
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
     if (a >= 3) for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house' && (h.userData.level || 1) < 2) { h.userData.level = 2; setHouseModel(h); }       // 3시대: 텐트는 모두 나무집으로
-    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn();
+    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn(); setCamMax();
     npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
   // ----- 시대 발전 패널 -----
@@ -1192,6 +1208,11 @@
     cit6: () => [`6 citizens (${Math.min(6, npcs.filter(n => n.role === 'citizen').length)}/6)`, npcs.filter(n => n.role === 'citizen').length >= 6],
     blood1: () => ['Survive the first Blood Moon raid', dayNow() > raidDays[0]],
     barracksRange: () => ['Barracks and Archery Range built', builtBuildings('barracks').length >= 1 && builtBuildings('range').length >= 1],
+    stronghold: () => ['Break a realm stronghold', ['banditfort', 'clanhold', 'legionfort', 'hillclan', 'legionkeep'].some(id => story.cleared[id])],
+    outerWall: () => ['Second wall finished', outerWallDone()],
+    cit14: () => [`14 citizens (${Math.min(14, npcs.filter(n => n.role === 'citizen').length)}/14)`, npcs.filter(n => n.role === 'citizen').length >= 14],
+    castleTaken: () => ['Take a realm castle', ['legioncastle', 'clancastle', 'banditcastle'].some(id => story.cleared[id])],
+    siegeWorkshop: () => ['Siege Workshop built', builtBuildings('siegeshop').length >= 1],
     cit10: () => [`10 citizens (${Math.min(10, npcs.filter(n => n.role === 'citizen').length)}/10)`, npcs.filter(n => n.role === 'citizen').length >= 10],
   };
   function stageChecks(target) {                                             // 다음 단계의 조건 목록: { text, ok }
@@ -2133,7 +2154,7 @@
     const k = n.moodT; n.moodT = 0;
     const aura = Math.min(6, npcs.reduce((a, x) => a + (x !== n ? (TR(x).aura || 0) : 0), 0));
     let target = 50 + (TR(n).mood || 0) + aura + (n.hungry ? -30 : 8) + (builtBuildings('well').length ? 4 + 2 * (bLevel('well') - 1) : 0) + (builtBuildings('market').length ? 4 : 0)
-      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + (hasPerk('steward') ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + (story.finale ? 4 : 0) + (story.wide ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
+      + Math.max(-10, Math.min(15, (prosScore - 40) / 3)) + (n.stateNow === 'Resting' || n.stateNow === 'Lunch break' ? 6 : 0) + ((hasPerk('steward') || hasPerk('crown')) ? 5 : 0) + (story.beacon ? 6 : 0) + (story.dawn ? 4 : 0) + (story.finale ? 4 : 0) + (story.wide ? 4 : 0) + season().mood - (n.sick > 0 ? 10 : 0) - n.shock;
     if (n.role === 'citizen') target += (builtBuildings('house').length ? 4 : -8) + (jobKind(n) && likesJob(n, jobKind(n)) ? 4 : 0);
     target = Math.max(0, Math.min(100, target));
     n.mood += Math.max(-3 * k, Math.min(3 * k, target - n.mood));
@@ -2173,7 +2194,7 @@
   }
 
   // 시민 외형은 시대에 따라 달라진다: 옷 색 + 2시대 모자 / 3시대 투구와 망토
-  const citizenColor = () => [0xe8d27a, 0xf2c230, 0xe39a1a][age - 1];
+  const citizenColor = () => [0xe8d27a, 0xf2c230, 0xe39a1a, 0xdc8a1a, 0xd07818][age - 1];
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
@@ -2203,7 +2224,7 @@
     const gear = soldiers.length ? soldiers.reduce((a, n) => a + ((n.role === 'melee' ? soldierWeaponDef(n).tier : gearDef(n.gear.bow).tier) + gearDef(n.gear.armor).tier) / 4, 0) / soldiers.length : 0;
     const amen = Math.min(1, (builtBuildings('well').length ? 0.5 : 0) + (builtBuildings('market').length ? 0.5 : 0));
     moodAvg = npcs.length ? npcs.reduce((a, n) => a + n.mood, 0) / npcs.length : 60;
-    return Math.min(100, (hasPerk('steward') ? 10 : 0) + (story.beacon ? 5 : 0) + Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100))));
+    return Math.min(100, ((hasPerk('steward') || hasPerk('crown')) ? 10 : 0) + (story.beacon ? 5 : 0) + Math.round(100 * (0.15 * pop + 0.15 * food + 0.15 * housing + 0.15 * wall + 0.1 * gear + 0.1 * amen + 0.2 * (moodAvg / 100))));
   }
   const prosLabel = (v) => CFG.PROSPERITY_LABELS.find(l => v < l[0])[1];
   const prosEl = document.getElementById('prosN'), moodEl = document.getElementById('moodN');
@@ -2335,7 +2356,7 @@
   function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
   function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   // 원정에 데려가는 전투단: 시대에 따라 최대 1(시대 1) / 2(시대 2) / 3(시대 3)개. 다시 누르면 뺀다
-  const bandMax = () => age >= 3 ? 3 : age >= 2 ? 2 : 1;
+  const bandMax = () => (age >= 3 ? 3 : age >= 2 ? 2 : 1) + (hasPerk('warhost') ? 1 : 0);
   const bringing = (i) => escortBands.includes(i);
   function toggleBring(i) {
     if (bringing(i)) { escortBands = escortBands.filter(x => x !== i); return true; }
@@ -2733,7 +2754,7 @@
     }
     if (n) updateHud();
   }
-  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + (hasPerk('steward') ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
+  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + ((hasPerk('steward') || hasPerk('crown')) ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
@@ -3972,7 +3993,7 @@
       if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
       else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
     } };
-    while (CFG.DESIGN[designTier]) designDefense();
+    while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].age || age >= CFG.DESIGN[designTier].age)) designDefense();
     finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
     for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown(); finishAll(); }          // 둘째 주택 묶음은 첫 묶음이 지어진 뒤에 계획된다
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
@@ -4919,7 +4940,7 @@
   // (이 파일의 것은 모두 function 선언이다)
   const soldierVal = (n) => 2 + 2 * (n.role === 'melee' ? soldierWeaponDef(n) : gearDef(n.gear.bow)).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
   function marchPartySize() { return escortPool().filter(n => inParty(n)).slice(0, CFG.WARBAND.SIZE * bandMax()).length; }
-  function marchFood(d) { const g = d.castle && story.siege ? Math.min(1, story.siege.ram) * CFG.SIEGE.FOOD_RAM + Math.min(CFG.SIEGE.LADDER_MAX, story.siege.ladder) * CFG.SIEGE.FOOD_LADDER + Math.min(1, story.siege.catapult || 0) * CFG.SIEGE.FOOD_CATAPULT : 0; return d.march ? Math.ceil(marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) + g : 0; }
+  function marchFood(d) { const g = d.castle && story.siege ? Math.min(1, story.siege.ram) * CFG.SIEGE.FOOD_RAM + Math.min(CFG.SIEGE.LADDER_MAX, story.siege.ladder) * CFG.SIEGE.FOOD_LADDER + Math.min(1, story.siege.catapult || 0) * CFG.SIEGE.FOOD_CATAPULT : 0; return d.march ? Math.ceil((marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) * (hasPerk('provisioner') ? 0.75 : 1)) + g : 0; }
   function homeThreat(day) {                                              // 그날 밤 마을을 덮칠 적의 수 (startWave 와 같은 식, 무리 크기만)
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     if (isRaid(day)) return Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n);
@@ -5055,7 +5076,7 @@
     const medic = Math.min(2, npcs.filter(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic').length) * CFG.WOUND.MEDIC_EXTRA;
     for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic);
     for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
-    const c = courageOf(), K = CFG.COURAGE.START; story.courage = c < K ? Math.min(K, c + CFG.COURAGE.DRIFT) : c > K ? Math.max(K, c - CFG.COURAGE.DRIFT) : c;
+    const c = courageOf(), K = CFG.COURAGE.START + (hasPerk('banneret') ? 10 : 0), D = CFG.COURAGE.DRIFT * (hasPerk('banneret') ? 1.6 : 1); story.courage = c < K ? Math.min(K, c + D) : c > K ? Math.max(K, c - D) : c;
     if (res.food <= 0 && npcs.some(n => n.role !== 'citizen')) addCourage(-CFG.COURAGE.HUNGRY);
   }
   // ---------- 세력 (원정 지도 4단계): 산적 영주 / 언덕 부족 / 강철 군단. 큰 습격은 한 세력이 보낸다. 그 세력의 야영지를 점령할수록 그 세력의 습격이 약해진다 ----------

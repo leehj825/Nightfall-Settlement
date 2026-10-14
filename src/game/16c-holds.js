@@ -79,6 +79,6 @@
     const medic = Math.min(2, npcs.filter(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic').length) * CFG.WOUND.MEDIC_EXTRA;
     for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic);
     for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
-    const c = courageOf(), K = CFG.COURAGE.START; story.courage = c < K ? Math.min(K, c + CFG.COURAGE.DRIFT) : c > K ? Math.max(K, c - CFG.COURAGE.DRIFT) : c;
+    const c = courageOf(), K = CFG.COURAGE.START + (hasPerk('banneret') ? 10 : 0), D = CFG.COURAGE.DRIFT * (hasPerk('banneret') ? 1.6 : 1); story.courage = c < K ? Math.min(K, c + D) : c > K ? Math.max(K, c - D) : c;
     if (res.food <= 0 && npcs.some(n => n.role !== 'citizen')) addCourage(-CFG.COURAGE.HUNGRY);
   }

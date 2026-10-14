@@ -91,7 +91,8 @@
   // ---------- 카메라 (Orbit + Lerp) ----------
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
-  let DIST = 8; const LOOK_H = 1.6, DIST_MIN = 4, DIST_MAX = 22;
+  let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
+  function setCamMax() { DIST_MAX = age >= 4 ? 34 : age >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
