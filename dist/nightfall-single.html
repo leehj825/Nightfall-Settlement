@@ -6476,13 +6476,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       g.userData.growth = 0.3;
     } else if (kind === 'lumber') {                                      // 벌목장: 나무 오두막 + 통나무 더미
-      add(new THREE.BoxGeometry(2.2, 1.5, 1.8), woodMat2, 0, 0.75, 0);
-      add(new THREE.BoxGeometry(2.6, 0.2, 2.2), houseRoof, 0, 1.6, 0);
-      for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.25, 0.25, 1.6, 8), logPile, 1.7, 0.25 + (i === 2 ? 0.4 : 0), -0.5 + (i % 2) * 0.55).rotation.z = Math.PI / 2;
+      lumberModel(add);
     } else if (kind === 'quarry') {                                      // 채석장: 바위 더미 + 곡괭이 틀
-      for (let i = 0; i < 4; i++) add(new THREE.DodecahedronGeometry(0.5 + i * 0.12, 0), rockPile, -0.9 + i * 0.7, 0.4, (i % 2) * 0.8);
-      add(new THREE.BoxGeometry(0.15, 1.6, 0.15), woodMat2, 1.4, 0.8, 0);
-      add(new THREE.BoxGeometry(1.0, 0.15, 0.15), woodMat2, 1.4, 1.6, 0);
+      quarryModel(add);
     } else if (kind === 'well') {                                        // 우물: 돌 테두리 + 물 + 작은 지붕
       add(new THREE.CylinderGeometry(1.0, 1.1, 0.7, 12), stoneWall, 0, 0.35, 0);
       add(new THREE.CylinderGeometry(0.78, 0.78, 0.05, 12), new THREE.MeshStandardMaterial({ color: 0x3a78c8, roughness: 0.3 }), 0, 0.7, 0);
@@ -6514,9 +6510,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       g.userData.stock = {};
       for (const id in CFG.GEAR) if (CFG.GEAR[id].cost) g.userData.stock[id] = 0;
     } else {                                                             // 방어 타워: 돌 원기둥 + 흉벽
-      add(new THREE.CylinderGeometry(1.2, 1.5, 4, 10), towerStone, 0, 2, 0);
-      add(new THREE.CylinderGeometry(1.7, 1.7, 0.5, 10), towerTop, 0, 4.25, 0);
-      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; add(new THREE.BoxGeometry(0.5, 0.5, 0.5), towerTop, Math.cos(a) * 1.55, 4.75, Math.sin(a) * 1.55); }
+      towerModel(add);
       g.userData.shootCd = rand(0, 1);
     }
     g.position.set(x, 0, z);
@@ -6956,6 +6950,57 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const sx of [2.0, 2.7, 3.4]) add(new THREE.BoxGeometry(0.1, 1.2, 0.1), beam, sx > 3 ? 3.4 : sx, B + 0.6, D / 2 + 0.5);
     for (const sx of [2.2, 2.5, 2.8, 3.1]) { add(new THREE.CylinderGeometry(0.03, 0.03, 1.9, 4), beam, sx, B + 1.05, D / 2 + 0.4); add(new THREE.ConeGeometry(0.07, 0.25, 4), iron, sx, B + 2.1, D / 2 + 0.4); }
     add(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 5), beam, 0, T + gh + 0.9, 0); add(new THREE.BoxGeometry(0.8, 0.5, 0.04), red, 0.42, T + gh + 1.7, 0);   // 지붕 위 깃발
+  }
+
+  function lumberModel(add) {                                                // 벌목장: 통나무 오두막 + 나무 켜는 틀 + 쌓인 통나무와 그루터기 + 도끼
+    const log = M(0x7a4f2a), logDk = M(0x5a3a1e), roof = M(0x6b4a2b), cut = M(0xd9b98a), beam = M(0x4a301c), iron = M(0x8d9199), stone = M(0x6f7078);
+    add(new THREE.BoxGeometry(2.6, 0.2, 2.2), stone, 0, 0.1, 0);
+    for (let i = 0; i < 5; i++) add(new THREE.CylinderGeometry(0.2, 0.2, 2.3, 8), i % 2 ? log : logDk, 0, 0.35 + i * 0.3, 0).rotation.z = Math.PI / 2;      // 쌓은 통나무 벽 (앞뒤는 얇게)
+    for (const sz of [-0.95, 0.95]) for (let i = 0; i < 5; i++) add(new THREE.CylinderGeometry(0.2, 0.2, 2.3, 8), i % 2 ? log : logDk, 0, 0.35 + i * 0.3, sz).rotation.z = Math.PI / 2;
+    add(new THREE.BoxGeometry(2.3, 1.5, 1.7), logDk, 0, 0.95, 0);
+    const rf = add(gableGeo(3.0, 1.0, 2.8), roof, 0, 1.7, 0); rf.rotation.y = Math.PI / 2;
+    add(new THREE.BoxGeometry(2.8, 0.1, 0.14), beam, 0, 2.72, 0);
+    add(new THREE.BoxGeometry(0.6, 1.0, 0.1), M(0x3a2414), 0, 0.7, 1.0);                                           // 문
+    add(new THREE.BoxGeometry(0.5, 0.45, 0.08), new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffa030, emissiveIntensity: 0.4 }), 0.8, 1.1, 1.0);
+    for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.12, 1.1, 0.12), beam, sx * 0.9, 0.55, -2.0);               // 톱질 틀 (X자)
+    add(new THREE.BoxGeometry(2.0, 0.14, 0.14), beam, 0, 0.75, -2.0);
+    for (const sx of [-1, 1]) { const x = add(new THREE.BoxGeometry(0.1, 1.2, 0.1), beam, sx * 0.9, 0.6, -2.0); x.rotation.z = sx * 0.5; }
+    add(new THREE.CylinderGeometry(0.22, 0.22, 1.9, 8), log, 0, 0.95, -2.0).rotation.z = Math.PI / 2;                 // 켜는 중인 통나무
+    add(new THREE.CylinderGeometry(0.4, 0.45, 0.45, 8), logDk, 1.9, 0.22, 1.1); add(new THREE.CylinderGeometry(0.36, 0.36, 0.05, 8), cut, 1.9, 0.46, 1.1);   // 그루터기
+    add(new THREE.BoxGeometry(0.08, 0.55, 0.08), beam, 1.9, 0.75, 1.1).rotation.z = 0.5; add(new THREE.BoxGeometry(0.3, 0.2, 0.05), iron, 2.05, 0.95, 1.1);    // 꽂힌 도끼
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 3 - r; i++) add(new THREE.CylinderGeometry(0.22, 0.22, 1.6, 8), r ? log : logDk, 2.0, 0.22 + r * 0.38, -1.0 + i * 0.5 + r * 0.25).rotation.z = Math.PI / 2;   // 통나무 더미
+    for (const sz of [-1.0, 1.0]) add(new THREE.BoxGeometry(0.08, 0.08, 0.06), cut, 2.82, 0.4, sz * 0.4);
+  }
+
+  function quarryModel(add) {                                                // 채석장: 깎인 바위 단 + 돌 블록 + 크레인(도르래) + 수레 + 곡괭이
+    const rock = M(0x9a9aa2), rockDk = M(0x7c7d86), block = M(0xb4b6bc), beam = M(0x4a301c), rope = M(0xc9b28a), iron = M(0x8d9199), cart = M(0x7a4f2a);
+    add(new THREE.BoxGeometry(3.2, 0.5, 2.4), rockDk, -0.6, 0.25, -0.3); add(new THREE.BoxGeometry(2.4, 0.5, 1.8), rock, -0.8, 0.75, -0.5); add(new THREE.BoxGeometry(1.5, 0.5, 1.2), rockDk, -1.0, 1.25, -0.6);   // 깎아 낸 계단식 바위
+    add(new THREE.DodecahedronGeometry(0.6, 0), rock, -1.9, 0.5, 0.6);
+    for (const [x, z, s] of [[1.0, 0.9, 0.8], [1.9, 0.6, 0.7], [1.3, 1.6, 0.6]]) { add(new THREE.BoxGeometry(s, s * 0.7, s), block, x, s * 0.35, z).rotation.y = x; }   // 다듬은 돌 블록
+    add(new THREE.BoxGeometry(0.8, 0.5, 0.8), block, 1.5, 1.05, 0.9).rotation.y = 0.4;
+    add(new THREE.BoxGeometry(0.16, 2.6, 0.16), beam, 0.6, 1.3, -0.9);                                              // 크레인 기둥과 팔
+    add(new THREE.BoxGeometry(1.8, 0.14, 0.14), beam, 1.4, 2.5, -0.9);
+    const br = add(new THREE.BoxGeometry(0.1, 1.2, 0.1), beam, 0.95, 2.0, -0.9); br.rotation.z = 0.8;
+    add(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 4), rope, 2.1, 1.9, -0.9); add(new THREE.BoxGeometry(0.5, 0.35, 0.5), block, 2.1, 1.1, -0.9);
+    add(new THREE.BoxGeometry(0.9, 0.35, 0.6), cart, -2.0, 0.55, 1.5); for (const sx of [-0.3, 0.3]) add(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 8), M(0x3a2414), -2.0 + sx, 0.25, 1.82).rotation.x = Math.PI / 2;   // 수레
+    for (const sx of [-0.3, 0.3]) add(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 8), M(0x3a2414), -2.0 + sx, 0.25, 1.18).rotation.x = Math.PI / 2;
+    add(new THREE.DodecahedronGeometry(0.3, 0), rock, -2.0, 0.85, 1.5);
+    add(new THREE.BoxGeometry(0.08, 1.0, 0.08), beam, 0.1, 0.5, 1.4).rotation.z = 0.4; add(new THREE.BoxGeometry(0.5, 0.1, 0.1), iron, -0.05, 0.98, 1.4);      // 기대 둔 곡괭이
+  }
+
+  function towerModel(add) {                                                 // 방어 타워: 비탈진 돌 기단 + 돌 몸통 + 화살 구멍 + 돌출 흉벽 + 목재 지붕과 깃발 (궁수 높이는 y≈4.3 유지)
+    const st = M(0x7f838c), stDk = M(0x6a6e77), top = M(0x5c606a), wood = M(0x6b4a2b), roof = M(0x8c3a24), flag = M(0xc23a2a), slit = M(0x14161c);
+    add(new THREE.CylinderGeometry(1.7, 1.9, 0.6, 10), stDk, 0, 0.3, 0);
+    add(new THREE.CylinderGeometry(1.2, 1.5, 3.4, 10), st, 0, 2.3, 0);
+    for (const y of [1.2, 2.2, 3.1]) add(new THREE.CylinderGeometry(1.5 - (y - 0.6) * 0.08, 1.5 - (y - 0.6) * 0.08, 0.1, 10), stDk, 0, y, 0);   // 돌 단 줄
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; add(new THREE.BoxGeometry(0.12, 0.6, 0.12), slit, Math.cos(a) * 1.3, 2.4, Math.sin(a) * 1.3); }   // 화살 구멍
+    add(new THREE.CylinderGeometry(1.0, 1.0, 0.7, 8), slit, 0, 0.7, 1.45).scale.set(0.5, 1, 0.1);                   // 문
+    add(new THREE.CylinderGeometry(1.85, 1.3, 0.5, 10), top, 0, 4.0, 0);                                            // 밖으로 돌출한 받침
+    add(new THREE.CylinderGeometry(1.8, 1.8, 0.16, 10), wood, 0, 4.3, 0);                                           // 전망 바닥
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; add(new THREE.BoxGeometry(0.5, 0.5, 0.45), top, Math.cos(a) * 1.7, 4.65, Math.sin(a) * 1.7).rotation.y = -a; }   // 흉벽
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; add(new THREE.BoxGeometry(0.14, 1.6, 0.14), wood, Math.cos(a) * 1.0, 5.3, Math.sin(a) * 1.0); }   // 지붕 기둥
+    add(new THREE.ConeGeometry(1.55, 1.0, 8), roof, 0, 6.4, 0);
+    add(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 5), wood, 0, 7.4, 0); add(new THREE.BoxGeometry(0.6, 0.35, 0.04), flag, 0.3, 7.7, 0);
   }
   // ---------- 대장간: 장비 제작 창 ----------
   const hallBtnEl = document.getElementById('hallBtn');
@@ -9965,7 +10010,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     designTier = sn.designTier; townStage = sn.townStage || 0; stage = sn.stage || 1; chapterCleared = sn.chapterCleared;
     buildHall(); updateStageUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
-    dead = false; fireAlive = true; flame.visible = true; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
+    dead = false; fireAlive = true; flame.visible = stage === 1; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
     dashBonusT = dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
     for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
