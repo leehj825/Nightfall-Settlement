@@ -323,3 +323,5 @@ During an attack the great sword is held with both hands: a two-bone arm solver 
 ## Better house and castle models (nf-v132)
 - New `src/game/04b-models.js`: detailed procedural `houseModel` (stone foundation, timber-frame or stone-quoin walls, gabled eave roof, chimney, framed door with awning, shuttered windows with flower boxes, dormer from Stage 3) and `keepModel` (plinth, crenellated curtain, four corner towers with banners, arched gate with portcullis, central donjon; larger at Stage 4, gold roofs at Stage 5).
 - Stage 1 huts unchanged. Real OBJ models can still be dropped in via `tools/build_structures.py`.
+
+- nf-v133: Stage 2 gate now needs 3 homes (the Tent Village plan only has 3 lots; 4 was unreachable).

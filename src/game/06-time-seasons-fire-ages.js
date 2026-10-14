@@ -137,7 +137,7 @@
   }
   const STAGE_TESTS = {                                                       // 단계 목표: [글, 달성 여부]
     nights1: () => ['Survive night 1', dayNow() >= 2],
-    houses4: () => [`4 homes built (${Math.min(4, builtBuildings('house').length)}/4)`, builtBuildings('house').length >= 4],
+    houses3: () => [`3 homes built (${Math.min(3, builtBuildings('house').length)}/3)`, builtBuildings('house').length >= 3],
     cit6: () => [`6 citizens (${Math.min(6, npcs.filter(n => n.role === 'citizen').length)}/6)`, npcs.filter(n => n.role === 'citizen').length >= 6],
     blood1: () => ['Survive the first Blood Moon raid', dayNow() > raidDays[0]],
     barracksRange: () => ['Barracks and Archery Range built', builtBuildings('barracks').length >= 1 && builtBuildings('range').length >= 1],

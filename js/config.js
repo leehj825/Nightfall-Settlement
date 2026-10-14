@@ -15,7 +15,7 @@
     ],
     // ----- 시대 발전 (테크 트리): 모닥불/마을 회관을 클릭해서 업그레이드 -----
     // 단계(Stage) 조건: 자원 외에 최소 날짜와 목표(체크리스트)를 채워야 올라갈 수 있다. goals 는 06 파일의 STAGE_TESTS 이름
-    STAGE_GATES: { 2: { day: 2, goals: ['houses4', 'cit6'] }, 3: { day: 5, goals: ['blood1', 'barracksRange', 'cit10'] }, 4: { day: 9, goals: ['stronghold', 'outerWall', 'cit14'] }, 5: { day: 14, goals: ['castleTaken', 'siegeWorkshop'] } },
+    STAGE_GATES: { 2: { day: 2, goals: ['houses3', 'cit6'] }, 3: { day: 5, goals: ['blood1', 'barracksRange', 'cit10'] }, 4: { day: 9, goals: ['stronghold', 'outerWall', 'cit14'] }, 5: { day: 14, goals: ['castleTaken', 'siegeWorkshop'] } },
     STAGES: [
       { name: 'Camp', hall: 'Campfire', unlock: 'Wooden fences · Tents' },
       { name: 'Wooden Town', hall: 'Wooden Town Hall', cost: { wood: 80 }, unlock: 'Barracks · Archery Range · Farm · Lumber Camp · Quarry' },
