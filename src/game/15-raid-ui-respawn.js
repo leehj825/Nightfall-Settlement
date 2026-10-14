@@ -14,7 +14,7 @@
         const f = camera.getWorldDirection(new THREE.Vector3()), tx = near.position.x - player.position.x, tz = near.position.z - player.position.z;
         const rel = Math.atan2(tx * -f.z + tz * f.x, tx * f.x + tz * f.z); arrow = ` ${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(rel / (Math.PI / 4)) + 8) % 8]}${Math.round(nd0)}m`;
       }
-      const t = `${exActive.dest.name} · home in ${mm}:${ss} · 🎁${chests.length}${arrow} · ☠${foes.length}${exCamp ? (exCamp.broken ? ' · camp broken ✔' : exCamp.alarm ? ' · ALARM' : ' · chief alive') : ''}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
+      const t = `${exActive.dest.name} · home in ${mm}:${ss} · 🎁${chests.length}${arrow} · ☠${foes.length} · ✊${Math.round(courageOf())}${exCamp ? (exCamp.broken ? ' · camp broken ✔' : exCamp.alarm ? ' · ALARM' : ' · chief alive') : ''}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = `🌑 Blood Moon raid: ${realmDef(realmOfNight(nd)).short}`; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }

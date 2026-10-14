@@ -1,5 +1,6 @@
   // ---------- 전투단 (Warband, 군대 확장 1단계): 병사를 최대 6명씩 묶는다. 전투단이 원정에 함께 나가는 단위다 ----------
   // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
+  const inParty = (n) => escortBands.includes(n.warband) || !!n.levy;           // 원정에 가는 병사: 고른 전투단 + 소집한 농민병
   function isSoldier(n) { return n.role !== 'citizen'; }
   function warbandMembers(i) { return npcs.filter(n => isSoldier(n) && n.warband === i); }
   function warbandName(i) { return wbi(i).name; }
@@ -40,7 +41,7 @@
     if (escortBands.length >= mx) { toast(`Max ${mx} warband${mx > 1 ? 's' : ''} at this age`); return false; }
     escortBands.push(i); return true;
   }
-  function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length + holdCount(); }
+  function soldierCount() { return npcs.filter(n => (isSoldier(n) && !n.levy) || n.promote).length + holdCount(); }
 
   // ---------- 전투단 이름·색(플레이어가 바꿀 수 있음)과 화면 아래 띠, 전투단 창 ----------
   let warbandInfo = null;                                       // [{ name, color }] - 저장됨. 처음 쓸 때 기본값으로 만든다
@@ -55,7 +56,7 @@
   function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; for (const n of warbandMembers(i)) n.hold = null; return true; }
   const WB_ORDER_LABEL = { forward: 'Forward', stand: 'Stand firm', withdraw: 'Withdraw', charge: 'Charge' };
   const WB_ORDER_HINT = { forward: 'Fight as usual.', stand: 'Hold ground, no chasing.', withdraw: 'Fall back, no melee.', charge: 'Rush the foe.' };
-  const orderOf = (n) => n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
+  const orderOf = (n) => exActive && courageOf() <= 0 && n && n.role === 'melee' ? 'withdraw' : n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
   // ---------- 지휘관의 깃발 (Leader's standard): 주인공(지휘관)의 곁에 있는 병사는 더 세게 치고 덜 맞는다. 지휘관이 쓰러지면 사라진다 ----------
   function standardRadius() { const S = CFG.STANDARD; return S.RADIUS * (1 + S.RANK_RADIUS * pl.st.standard) * (playerClass === 'commander' ? 1.25 : 1); }
   function standardMods(n) {

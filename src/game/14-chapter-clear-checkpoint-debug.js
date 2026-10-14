@@ -54,7 +54,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.filter(n => !n.levy).map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }

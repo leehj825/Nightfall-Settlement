@@ -235,7 +235,7 @@
   function damageEscort(n, dmg) {
     if (n.down) return;
     n.hp = Math.max(0, n.hp - Math.max(1, Math.round(dmg * dm().dmg * (1 - gearDef(n.gear.armor).reduce) * standardMods(n).guard * (TR(n).dmg || 1))));
-    if (n.hp <= 0) { n.down = true; n.mat.color.set(0x777777); n.anim.die(); grieve(); toast(`${n.name} is down - they will be carried home`); }
+    if (n.hp <= 0) { n.down = true; n.mat.color.set(0x777777); n.anim.die(); grieve(); addCourage(-CFG.COURAGE.FALL); toast(`${n.name} is down - they will be carried home`); }
   }
   // ---------- 야영지 행동: 목책 때문에 안팎을 오갈 때는 남쪽 문을 거친다 / 목책·탑·천막은 적도 뚫지 못한다 / 경보 / 우두머리를 쓰러뜨리면 야영지가 무너진다 ----------
   function campRoute(x, z, tx, tz) {
@@ -543,7 +543,7 @@
   const escortPool = () => npcs.filter(n => n.role !== 'citizen' && !n.down && !n.escort);
   function powerOf() {                                       // 마을의 전투력: 병사 + 주인공
     const val = (n) => 2 + 2 * (n.role === 'melee' ? soldierWeaponDef(n) : gearDef(n.gear.bow)).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
-    const all = npcs.filter(n => n.role !== 'citizen'), going = all.filter(n => escortBands.includes(n.warband));
+    const all = npcs.filter(n => n.role !== 'citizen'), going = all.filter(n => inParty(n));
     const brought = going.reduce((a, n) => a + val(n), 0), home = all.filter(n => !going.includes(n)).reduce((a, n) => a + val(n), 0) * 0.35;      // 데려가는 전투단은 전부, 마을에 남는 병사는 35%만 (예비대)
     const me = 3 * pl.lvl + 3 * bestPlayerTier() + 2 * gearDef(playerGear.armor).tier;
     return { sold: Math.round(brought + home), brought: Math.round(brought), home: Math.round(home), me: Math.round(me), total: Math.round(brought + home + me) };
@@ -590,7 +590,7 @@
       exStats = { kills: 0, t0: performance.now() };
       buildZone(d);
       if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder || siegeLoad.catapult ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}${siegeLoad.catapult ? ', catapult' : ''}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
-      const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
+      const party = escortPool().filter(n => inParty(n)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
         n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);                    // 원정 직업으로 바꾼다 (마을 직업은 clsHome 에 남는다)
@@ -611,25 +611,27 @@
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       const left = exObjs.filter(o => o.userData.type === 'chest').length + enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;
       const cleared = exCamp ? (exCamp.broken && exObjs.filter(o => o.userData.type === 'chest').length === 0) : left === 0;
-      const backMen = npcs.filter(x => x.escort), report0 = [...new Set(backMen.map(x => x.warband))].map(i => `${warbandName(i).replace(' Warband', '')} ${backMen.filter(x => x.warband === i && !x.down).length}/${backMen.filter(x => x.warband === i).length}`);
+      const backMen = npcs.filter(x => x.escort), report0 = [...new Set(backMen.filter(x => !x.levy).map(x => x.warband))].map(i => `${warbandName(i).replace(' Warband', '')} ${backMen.filter(x => x.warband === i && !x.down).length}/${backMen.filter(x => x.warband === i).length}`);
       backMen.forEach((n, k) => {                                              // 동행 병사 귀환: 돌아온 자리에서 걸어서 각자의 일과 초소로 간다 (쓰러진 병사는 회복)
         n.escort = false; n.hold = null; n.cls = homeCls(n); applyGear(n);       // 마을로 돌아오면 마을 직업으로
         const a = k * 2.4, rr = 2 + (k % 3) * 0.9;
-        if (n.down) { n.hp = n.maxHp; n.position.set(n.home.x, 0, n.home.z); }       // 쓰러진 병사는 집으로 옮겨져 회복한다
+        if (n.down) { n.hp = n.maxHp; n.position.set(n.home.x, 0, n.home.z); const W = ex.dest.castle ? CFG.WOUND.CASTLE_DAYS : CFG.WOUND.DAYS; n.woundDays = W[0] + Math.floor(Math.random() * (W[1] - W[0] + 1)); }       // 쓰러진 병사는 집으로 옮겨져 며칠 앓는다
         else n.position.set(ex.ret.x + Math.sin(a) * rr, 0, ex.ret.z + Math.cos(a) * rr);
         n.px = n.position.x; n.pz = n.position.z; n.atkCd = 0;
       });
-      const fallen = backMen.filter(x => x.down).length, camp = exCamp, took = !!(camp && camp.broken), lines = [];
+      const fallen = backMen.filter(x => x.down && !x.levy).length, camp = exCamp, took = !!(camp && camp.broken), lines = [];
       if (ex.dest.raid) {                                                           // 전투 보고서: 습격·공성이 끝나면 한 화면에 결과를 모아 보여 준다
         const secs = Math.round((performance.now() - exStats.t0) / 1000), realm = ex.dest.realm;
         lines.push(took ? (ex.dest.castle ? `${ex.dest.name} taken!` : `${ex.dest.name} broken!`) : `You withdrew from ${ex.dest.name}.`);
         lines.push(`Time ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} · ${exStats.kills} foes defeated`);
-        lines.push(`Warbands: ${report0.join(' · ') || 'none'}${fallen ? ` · ${fallen} fell${ex.dest.castle && !took ? ' (lost for good)' : ', recovering at home'}` : ''}`);
+        lines.push(`Warbands: ${report0.join(' · ') || 'none'}${fallen ? ` · ${fallen} fell${ex.dest.castle && !took ? ' (lost for good)' : ', wounded at home'}` : ''}`);
         if (camp && camp.gate) { const G = camp.gate, lad = camp.load ? camp.load.ladder : 0, lostL = camp.ladders.filter(l => l.lost).length; if (camp.load && camp.load.catapult) lines.push(`Catapult ${camp.cat && !camp.cat.dead ? 'saved' : 'lost'} · ${camp.cat ? camp.cat.shots : 0} boulders thrown`); lines.push(`Gate ${G.broken ? 'broken' : 'standing'}${camp.load && camp.load.ram ? ` · ram ${camp.ram && camp.ram.dead ? 'lost' : 'saved'}` : ' · no ram'} · ladders ${Math.max(0, lad - lostL)}/${lad} kept`); }
         if (gain) lines.push(`Loot: ${gain}`);
         if (took && realm) lines.push(`${realmDef(realm).short} raids -${Math.round(realmRelief(realm) * 100)}%`);
       }
-      if (ex.dest.castle && !took) for (const n of backMen) if (n.down) removeNpc(n);                      // 공성에 실패하면 쓰러진 병사는 돌아오지 못한다
+      if (ex.dest.castle && !took) for (const n of backMen) if (n.down && !n.levy) removeNpc(n);
+      for (const n of backMen.filter(x => x.levy)) dismissLevy(n);
+      if (ex.dest.raid) addCourage(took ? CFG.COURAGE.WIN : -CFG.COURAGE.WITHDRAW);                      // 공성에 실패하면 쓰러진 병사는 돌아오지 못한다
       if (backLines || lines.length) setTimeout(() => showTripReport(ex.dest.raid ? (took ? 'Victory' : 'Withdrawn') : 'Home again', lines.concat(backLines || [], report0.length && !lines.length ? `Back: ${report0.join(' · ')}` : [])), 2600);
       if (report0.length && !backLines && !lines.length) setTimeout(() => toast(`Back home: ${report0.join(' · ')}`), 2200);
       cleanupZone(); exActive = null;
@@ -710,7 +712,7 @@
       const ready = mem.filter(n => !n.down && !n.escort).length, on = bringing(i);
       wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${ready}/${mem.length} ready</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
-    const escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()}</small></div></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
+    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div></div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
     const chLocked = (d) => (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse);
     const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
@@ -734,6 +736,7 @@
     document.getElementById('jExp').innerHTML = expList;       // 지도와 카드가 먼저, 전투단 목록은 그 아래
     if (jFocus) { jFocus = false; const card = jEl.querySelector('.jcard'), ex = document.getElementById('jExp'); if (card && ex) card.scrollTop += ex.getBoundingClientRect().top - card.getBoundingClientRect().top - 8; }       // 열거나 탭을 바꾸면 지도 부분으로 스크롤
     jEl.querySelectorAll('#jExp [data-node]').forEach(g => g.addEventListener('click', () => { jMapSel = g.dataset.node; renderJournal(); }));
+    jEl.querySelectorAll('.levyBtn').forEach(b => b.addEventListener('click', callLevy));
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .holdBtn').forEach(b => b.dataset.recall ? b.addEventListener('click', () => recallGarrison(b.dataset.recall)) : b.addEventListener('click', () => garrisonIt(b.dataset.hold)));
     jEl.querySelectorAll('#jExp .campBtn').forEach(b => b.addEventListener('click', () => buildCamp(b.dataset.camp)));

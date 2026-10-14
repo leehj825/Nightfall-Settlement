@@ -1,7 +1,7 @@
   // ---------- 행군 (원정 지도 2단계): 먼 곳(march 일)으로 가면 며칠이 흐른다. 병사들은 식량을 먹고, 마을의 밤은 자동으로 치른다 ----------
   // (이 파일의 것은 모두 function 선언이다)
   const soldierVal = (n) => 2 + 2 * (n.role === 'melee' ? soldierWeaponDef(n) : gearDef(n.gear.bow)).tier + 1.5 * gearDef(n.gear.armor).tier + 1.5 * vetLv(n);
-  function marchPartySize() { return escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax()).length; }
+  function marchPartySize() { return escortPool().filter(n => inParty(n)).slice(0, CFG.WARBAND.SIZE * bandMax()).length; }
   function marchFood(d) { const g = d.castle && story.siege ? Math.min(1, story.siege.ram) * CFG.SIEGE.FOOD_RAM + Math.min(CFG.SIEGE.LADDER_MAX, story.siege.ladder) * CFG.SIEGE.FOOD_LADDER + Math.min(1, story.siege.catapult || 0) * CFG.SIEGE.FOOD_CATAPULT : 0; return d.march ? Math.ceil(marchPartySize() * d.march * 2 * CFG.MAP_RULES.FOOD_PER_SOLDIER_DAY) + g : 0; }
   function homeThreat(day) {                                              // 그날 밤 마을을 덮칠 적의 수 (startWave 와 같은 식, 무리 크기만)
     const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
@@ -19,7 +19,7 @@
   }
   const nightRatio = (day, away) => homeGuard(away) / (homeThreat(day) * CFG.MAP_RULES.RAIDER_STRENGTH);
   function homeOdds(d) {                                                  // 출발 전 안내: 자리를 비우는 동안의 밤들 가운데 가장 위험한 밤
-    const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());
+    const party = escortPool().filter(n => inParty(n)).slice(0, CFG.WARBAND.SIZE * bandMax());
     let worst = 9; for (let i = 0; i < d.march * 2; i++) worst = Math.min(worst, nightRatio(dayNow() + i, party));
     return worst >= 1.2 ? 'Village should hold' : worst >= 0.6 ? 'Walls may be hit' : worst >= 0.3 ? 'Heavy losses likely' : 'Village may fall: keep a warband home';
   }

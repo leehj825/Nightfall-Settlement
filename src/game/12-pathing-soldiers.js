@@ -331,7 +331,7 @@
     if (npc.escort) { escortStep(dt); return; }                       // 원정에 동행 중인 병사
     const isDay = hour >= 6 && hour < 18;
     if (npc.down) {
-      if (isDay) reviveNpc(); else { setLabel('Down'); return; }
+      if (isDay && !(npc.woundDays > 0)) { npc.woundDays = 0; reviveNpc(); } else { setLabel(npc.woundDays > 0 ? `Wounded ${npc.woundDays}d` : 'Down'); return; }
     }
     npc.atkCd -= dt; npc.atkLock = (npc.atkLock || 0) - dt;
     npc.graceT -= dt;

@@ -26,7 +26,10 @@
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n);
+  const courageOf = () => Math.max(0, Math.min(100, story.courage ?? CFG.COURAGE.START));
+  const courageMul = () => { const c = courageOf() / 100, K = CFG.COURAGE; return c <= 0.7 ? K.MIN_MUL + (1 - K.MIN_MUL) * c / 0.7 : 1 + (K.MAX_MUL - 1) * (c - 0.7) / 0.3; };       // 0 = 0.75, 70 = 1.0, 100 = 1.1
+  function addCourage(d) { const was = courageOf(); story.courage = Math.max(0, Math.min(100, was + d)); if (story.courage <= 0 && was > 0 && exActive) toast('The host loses heart and falls back!'); }
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' };

@@ -32,6 +32,7 @@
     toast(`${n.name} returns from ${d.name}`); Snd.play('chime'); updateHud(); realmCheck(); renderJournal();
   }
   function holdsMorning() {                                                // 매일 아침: 주둔 병사의 식량, 되찾으러 오는 적, 방치된 곳의 복귀
+    woundsMorning();
     const hs = story.holds || {}, day = dayNow(), lines = [];
     for (const id of Object.keys(hs)) {
       const d = CFG.EXPEDITIONS.find(x => x.id === id), h = hs[id]; if (!d) continue;
@@ -56,4 +57,21 @@
     if (story.camps[d.id]) return `<small>&#10003; Camp ${inc}/day</small>`;
     if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id]; return `<small>Broken${cd === undefined ? '' : ` · lost in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))}d`}<br><button class="holdBtn" data-hold="${d.id}">Garrison (1 soldier)</button></small>`; }
     return '';
+  }
+  const levyCount = () => npcs.filter(n => n.levy).length;
+  function callLevy() {                                                      // 농민병 소집: 식량을 내고 약한 임시 병사를 하나 부른다 (다음 원정 한 번만)
+    if (exActive || dead) return;
+    if (levyCount() >= CFG.LEVY.MAX) return toast('No more villagers can be called');
+    if (res.food < CFG.LEVY.FOOD) return toast(`Need ${CFG.LEVY.FOOD} food`);
+    res.food -= CFG.LEVY.FOOD; const k = levyCount() + 1, n = makeNpc('melee', homeSlot(npcs.length), 'initial', 0, { name: `Levy ${k}` });
+    n.levy = true; n.warband = -3; n.maxHp = Math.round(n.maxHp * CFG.LEVY.HP); n.hp = n.maxHp; applyGear(n);
+    toast(`${n.name} called up`); Snd.play('horn', 0.5); updateHud(); renderJournal();
+  }
+  function dismissLevy(n) { npc = n; scene.remove(n); const i = npcs.indexOf(n); if (i >= 0) npcs.splice(i, 1); }
+  function woundsMorning() {                                                 // 아침: 부상이 줄어든다 (마을에 치료사가 있으면 하루 더), 불려 온 농민병은 돌아간다, 용기는 조금씩 되돌아온다
+    const medic = npcs.some(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic') ? CFG.WOUND.MEDIC_EXTRA : 0;
+    for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic);
+    for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
+    const c = courageOf(), K = CFG.COURAGE.START; story.courage = c < K ? Math.min(K, c + CFG.COURAGE.DRIFT) : c > K ? Math.max(K, c - CFG.COURAGE.DRIFT) : c;
+    if (res.food <= 0 && npcs.some(n => n.role !== 'citizen')) addCourage(-CFG.COURAGE.HUNGRY);
   }
