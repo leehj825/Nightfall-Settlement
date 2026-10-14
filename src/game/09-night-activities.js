@@ -206,6 +206,7 @@
       if (d > range + e.userData.r) continue;
       if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; if (def.stun && !e.userData.boss && enemies.includes(e)) e.userData.stunT = Math.max(e.userData.stunT || 0, def.stun); }
     }
+    if (exActive && exCamp && exCamp.gate && !exCamp.gate.broken && gateInReach(x, z, ang, range, half)) gateHit((def.dmg || 1) * (byPlayer ? 0.5 : 0.25), !!def.siege);                   // 성문도 맞는다
     return n;
   }
 

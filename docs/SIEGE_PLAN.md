@@ -1,6 +1,6 @@
 # Siege plan
 
-Status: **plan only, nothing built yet** (written at `nf-v109`). It is campaign map phase 5. It turns the roadmap's "castles and sieges" into small shippable steps. Terms follow the roadmap table (warband, host, realm, hold, provisions, courage). Numbers are guesses; they live in `CFG` so they can be tuned after phone testing.
+Status: **step 1 built in `nf-v110`** (Legion Castle, plain assault); steps 2 to 6 still plan. It is campaign map phase 5. It turns the roadmap's "castles and sieges" into small shippable steps. Terms follow the roadmap table (warband, host, realm, hold, provisions, courage). Numbers are guesses; they live in `CFG` so they can be tuned after phone testing.
 
 ## 1. Goal
 A **castle** is a walled raid that cannot be won by walking in. You march a host to it, break the **gate** (or climb the **walls**), beat the garrison and take the keep. The leader must be present: the rule added in `nf-v109` (soldiers deal only 20% damage to a chief when the leader is more than 16 paces away) stays.
@@ -46,7 +46,7 @@ A **castle** is a walled raid that cannot be won by walking in. You march a host
 - Zone state (gate HP, wall HP) is not saved mid-siege (like camps today: leaving resets the zone, with the existing "camp still stands" rules).
 
 ## 5. Phases (each a small, testable update)
-1. **Castle zone, plain assault (no gear):** castle node and zone with stone walls, gate (strong, normal weapons do 10%), towers and garrison; broken only by killing the lord. Gate can be opened by killing the gate captain as a temporary rule. Balance on Normal and Hard with the headless bot (`scratchpad/camp.js` style).
+1. **Castle zone, plain assault (no gear) - DONE in nf-v110 (`legioncastle`, gate in `buildBanditCamp`, `gateHit`):** castle node and zone with stone walls, gate (strong, normal weapons do 10%), towers and garrison; broken only by killing the lord. Gate can be opened by killing the gate captain as a temporary rule. Balance on Normal and Hard with the headless bot (`scratchpad/camp.js` style).
 2. **Ram and breakable gate:** ram entity (push crew, HP, damage to the gate), gate with HP and a broken model.
 3. **Ladders and wall defenders:** ladder entity and climbing, wall archers with oil and rocks.
 4. **Siege Workshop and gear cost:** building, gear production, carrying it on the march (provisions), loss on failure.

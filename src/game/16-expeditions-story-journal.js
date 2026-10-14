@@ -32,16 +32,16 @@
     if (map.has(e.material)) e.material = map.get(e.material);
   }
   // ---------- 산적 야영지 (습격 Raid): 목책 · 문 · 감시탑 · 천막 · 모닥불 · 우두머리 천막. 목책은 막히는 지형 (적의 길 막힘은 다음 단계) ----------
-  const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c);
+  const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = mat(0x80838c), campStoneDark = mat(0x575a63), campGateMat = mat(0x3a2a1c);
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
   function buildBanditCamp(d, cx, cz, inner) {
     const C = d.camp, R = C.radius, gateA = -Math.PI / 2, segs = Math.round(2 * Math.PI * R / 2.6), step = Math.PI * 2 / segs;
-    const solids = [], stake = new THREE.ConeGeometry(0.3, 0.8, 4), plank = new THREE.BoxGeometry(2.7, 2.2, 0.45);
+    const solids = [], stone = !!C.stone, stake = new THREE.ConeGeometry(0.3, 0.8, 4), plank = stone ? new THREE.BoxGeometry(2.8, 4.2, 0.9) : new THREE.BoxGeometry(2.7, 2.2, 0.45), wallM = stone ? campStone : campWood;
     for (let i = 0; i < segs; i++) {                                // 목책: 남쪽(입구 쪽)에 문 틈을 남기고 빙 둘러 세운다
       const a = i * step; let ad = a - (gateA + Math.PI * 2); ad = Math.atan2(Math.sin(ad), Math.cos(ad));
       if (Math.abs(ad) < step * 1.6) continue;
-      const g = new THREE.Group(), body = new THREE.Mesh(plank, campWood); body.position.y = 1.1;
-      for (const o of [-0.95, 0, 0.95]) { const s = new THREE.Mesh(stake, campDark); s.position.set(o, 2.6, 0); g.add(s); }
+      const g = new THREE.Group(), body = new THREE.Mesh(plank, wallM); body.position.y = stone ? 2.1 : 1.1;
+      for (const o of [-0.95, 0, 0.95]) { const s = new THREE.Mesh(stone ? new THREE.BoxGeometry(0.7, 0.6, 0.95) : stake, stone ? campStoneDark : campDark); s.position.set(o, stone ? 4.5 : 2.6, 0); g.add(s); }
       g.add(body); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
       g.position.set(cx + Math.cos(a) * R, 0, cz + Math.sin(a) * R); g.rotation.y = -a - Math.PI / 2; g.userData = { type: 'palisade', radius: 1.45, wall: true };
       exAdd(g, true); solids.push(g);
@@ -50,10 +50,19 @@
       const a = gateA + s * step * 1.9, g = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 5, 7), campDark), cloth = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.06), campRed);
       pole.position.y = 2.5; cloth.position.set(0.55, 4.1, 0); g.add(pole, cloth); g.position.set(cx + Math.cos(a) * R, 0, cz + Math.sin(a) * R); g.userData = { type: 'gatepost', radius: 0.5 }; exAdd(g, true);
     }
+    let gate = null;
+    if (C.gate) {                                                   // 성문: 닫힌 문짝 셋 (체력이 있다). 부수기 전에는 아무도 지나지 못한다
+      gate = { hp: C.gate, maxHp: C.gate, broken: false, parts: [], x: cx, z: cz - R };
+      for (const ox of [-2.7, 0, 2.7]) {
+        const g = new THREE.Group(), door = new THREE.Mesh(new THREE.BoxGeometry(2.7, 4.4, 0.6), campGateMat), band = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 0.7), campStoneDark);
+        door.position.y = 2.2; band.position.y = 1.2; const band2 = band.clone(); band2.position.y = 3.3; g.add(door, band, band2); g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+        g.position.set(cx + ox, 0, cz - R); g.userData = { type: 'palisade', radius: 1.45, wall: true, gatePart: true }; exAdd(g, true); gate.parts.push(g); solids.push(g);
+      }
+    }
     const towers = [];
     for (let k = 0; k < C.towers; k++) {                            // 감시탑: 네 모서리 (망루 위 궁수 배치는 다음 단계)
       const a = Math.PI / 4 + k * (Math.PI * 2 / C.towers), g = new THREE.Group();
-      for (const [lx, lz] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 5.2, 6), campWood); leg.position.set(lx, 2.6, lz); g.add(leg); }
+      for (const [lx, lz] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 5.2, 6), stone ? campStone : campWood); leg.position.set(lx, 2.6, lz); g.add(leg); }
       const deck = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.25, 3.4), campWood); deck.position.y = 5.2;
       const roof = new THREE.Mesh(new THREE.ConeGeometry(2.9, 1.4, 4), campTent[1]); roof.position.y = 8.5; roof.rotation.y = Math.PI / 4;
       g.add(deck, roof);
@@ -70,7 +79,8 @@
       g.position.set(cx + Math.cos(a) * rr, 0, cz + Math.sin(a) * rr); g.rotation.y = rand(0, 6); g.userData = { type: 'tent', radius: 1.8 }; exAdd(g, true); solids.push(g);
       inner.push({ x: g.position.x, z: g.position.z, r: 2.4 });
     }
-    { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.ConeGeometry(2.9, 3.4, 7), campRed);     // 우두머리 천막: 더 크고 붉다
+    if (stone) { const g = new THREE.Group(), kp = new THREE.Mesh(new THREE.BoxGeometry(7, 6.4, 6), campStone); kp.position.y = 3.2; const top = new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.8, 6.6), campStoneDark); top.position.y = 6.6; g.add(kp, top); g.traverse(m => { if (m.isMesh) m.castShadow = true; }); g.position.set(cx, 0, cz + R * 0.6); g.userData = { type: 'tent', radius: 4.4 }; exAdd(g, true); inner.push({ x: cx, z: cz + R * 0.6, r: 5 }); }
+    else { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.ConeGeometry(2.9, 3.4, 7), campRed);     // 우두머리 천막: 더 크고 붉다
       t.position.y = 1.7; g.add(t); g.traverse(m => { if (m.isMesh) m.castShadow = true; }); g.position.set(cx, 0, cz + R * 0.5); g.userData = { type: 'tent', radius: 2.6 }; exAdd(g, true); inner.push({ x: cx, z: cz + R * 0.5, r: 3.6 }); }
     const fire = new THREE.Group();                                  // 가운데 모닥불
     for (let k = 0; k < 3; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.2, 0.2), campDark); l.position.y = 0.12; l.rotation.y = k * 1.05; fire.add(l); }
@@ -78,7 +88,7 @@
     const banner = new THREE.Group(), bp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 5.5, 6), campDark), bc = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.06), campRed);   // 산적 깃발 (다음 단계의 목표물)
     bp.position.y = 2.75; bc.position.set(0.85, 4.8, 0); banner.add(bp, bc); banner.position.set(cx + 3.2, 0, cz - 1.5); banner.userData = { type: 'banditBanner', radius: 0.5, gatherTime: 3 }; exAdd(banner, true); inner.push({ x: cx + 3.2, z: cz - 1.5, r: 1.5 });
     for (let k = 0; k < C.chests; k++) { const a = k * 2.1 + 1.0, p = { x: cx + Math.cos(a) * R * 0.34, z: cz + Math.sin(a) * R * 0.34 }; makeChest(p.x, p.z, false); inner.push({ x: p.x, z: p.z, r: 1.6 }); }
-    return { cx, cz, R, towers, banner, fire, solids, alarm: false, broken: false };
+    return { cx, cz, R, towers, banner, fire, solids, gate, alarm: false, broken: false };
   }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
@@ -207,6 +217,19 @@
       if (d < m && d > 1e-4) { e.position.x = o.position.x + dx / d * m; e.position.z = o.position.z + dz / d * m; }
     }
   }
+  function gateHit(dmg, siege) {                                   // 성문에 피해: 일반 무기는 10%만 먹는다 (공성 무기는 4배, 호출하는 쪽이 사람 0.5 / 병사 0.25 배로 줄여 넘긴다)
+    const C = exCamp, G = C && C.gate; if (!G || G.broken) return;
+    G.hp -= dmg * (siege ? 4 : 1); for (const p of G.parts) { p.position.x += (Math.random() - 0.5) * 0.06; }
+    if (G.hp <= 0) {
+      G.broken = true; for (const p of G.parts) { scene.remove(p); const i = exObjs.indexOf(p); if (i >= 0) exObjs.splice(i, 1); const j = C.solids.indexOf(p); if (j >= 0) C.solids.splice(j, 1); }
+      toast('The gate is broken!'); Snd.play('victory', 0.6); shake = Math.max(shake, 0.7); campAlarm(); floatText('GATE BROKEN!', G.x, 4, G.z);
+    }
+  }
+  function gateInReach(x, z, ang, range, half) {                   // 부채꼴 안에 닫힌 성문이 있는가
+    const G = exCamp && exCamp.gate; if (!G || G.broken) return false;
+    const dx = G.x - x, dz = G.z - z, d = Math.hypot(dx, dz); if (d > range + 3.5) return false;
+    return d < 1 || (dx * Math.sin(ang) + dz * Math.cos(ang)) / d > Math.cos(half + 0.5);
+  }
   function campAlarm() { const C = exCamp; if (!C || C.alarm || C.broken) return; C.alarm = true; toast('Alarm!'); Snd.play('horn'); }
   function campReliefTxt(id) { if (holdOf(id)) return ''; const x = (story.campFx || []).find(f => f.id === id), r = CFG.CAMP_RELIEF[id]; return x && r && dayNow() <= x.until ? ` · raids -${Math.round(r.pct * 100)}% to day ${x.until}` : ''; }
   function burnBanner(o) {                                                  // 산적 깃발을 불태우면 야영지가 사기를 잃는다 (우두머리를 쓰러뜨리는 것의 다른 길)
@@ -264,6 +287,10 @@
         else if (bd < 4) exMove(n, n.position.x * 2 - foe.position.x, n.position.z * 2 - foe.position.z, 4.5, dt);
         if (bd <= 11) soldierShoot(foe);
       }
+    } else if (n.role === 'melee' && ord !== 'withdraw' && !n.hold && exCamp && exCamp.gate && !exCamp.gate.broken && Math.hypot(player.position.x - exCamp.gate.x, player.position.z - exCamp.gate.z) < 16) {      // 성문이 닫혀 있고 주인공이 문 앞에 있으면 병사도 문을 친다 (약하게)
+      state = 'Breaking gate'; const G = exCamp.gate, gd = Math.hypot(G.x - n.position.x, G.z - n.position.z);
+      if (gd > 4.2) exMove(n, G.x + ((npcs.filter(x => x.escort).indexOf(n) % 5) - 2) * 1.3, G.z - 3.6, 5.5, dt);
+      else { n.face = Math.atan2(G.x - n.position.x, G.z - n.position.z); n.rotation.y = n.face; if (n.atkCd <= 0) { n.anim.once('attackSword'); const dur = n.anim.shot ? n.anim.shot.dur : 0.6; n.atkCd = Math.max(1.0, dur); n.atkLock = dur * 0.9; later(n.anim.hitIn ?? 0.25, () => { if (npcs.includes(n) && !n.down) gateHit(soldierWeaponDef(n).dmg * soldierMult(n) * 0.25, false); }); } }
     } else if (n.hold) {
       if (Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) > 0.6) exMove(n, n.hold.x, n.hold.z, 5, dt);       // 지킬 자리로 돌아온다
     } else {
