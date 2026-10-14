@@ -1686,7 +1686,7 @@
   ];
   let lastNmDay = 0;
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
-    const u = e.userData;
+    const u = e.userData; if (exActive && u.ex) exStats.kills++;
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
     giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * ((u.prowl && !u.roam) || (u.ex && exActive && exActive.night) ? 2 : u.roam ? 1.3 : 1));
@@ -4111,6 +4111,7 @@
   }
   // ---------- 산적 야영지 (습격 Raid): 목책 · 문 · 감시탑 · 천막 · 모닥불 · 우두머리 천막. 목책은 막히는 지형 (적의 길 막힘은 다음 단계) ----------
   const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = mat(0x80838c), campStoneDark = mat(0x575a63), campGateMat = mat(0x3a2a1c);
+  let exStats = { kills: 0, t0: 0 };                                 // 이번 원정의 전투 기록 (보고서용)
   let siegeLoad = { ram: 0, ladder: 0 };                             // 이번 원정에 가져온 공성 장비
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
   function buildBanditCamp(d, cx, cz, inner) {
@@ -4175,7 +4176,7 @@
       pg.userData = { type: 'siegeLadder', radius: 1.3, gatherTime: 2, a, k }; exAdd(pg, true); ladders.push({ a, pickup: pg, mesh: null, up: false, t: 0, segs: [] });
     }
     for (let k = 0; k < (C.oil || 0); k++) {                        // 끓는 기름 항아리: 성벽 위. 문 양옆 둘과 옆구리 둘 (망치와 사다리를 노린다)
-      const a = [gateA - 0.32, gateA + 0.32, gateA - 1.4, gateA + 1.4][k % 4], g = new THREE.Group(), pot = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.4, 0.7, 8), campDark);
+      const a = [gateA - 0.32, gateA + 0.32, gateA - 1.4, gateA + 1.4, gateA - 2.4, gateA + 2.4][k % 6], g = new THREE.Group(), pot = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.4, 0.7, 8), campDark);
       pot.position.y = 4.55; addGlow(g, 0xff7a2a, 2.2, 1.2); g.add(pot); g.position.set(cx + Math.cos(a) * (R - 0.4), 0, cz + Math.sin(a) * (R - 0.4)); exAdd(g, false); oil.push({ x: g.position.x, z: g.position.z, cd: 4 + k * 1.6, mesh: g });
     }
     let ram = null;
@@ -4425,7 +4426,8 @@
     const id = exActive && exActive.dest.id, rf = CFG.CAMP_RELIEF[id];
     if (rf) { story.campFx = (story.campFx || []).filter(x => x.id !== id).concat({ id, until: dayNow() + rf.days }); }
     const rl = exActive && exActive.dest.realm; toast(`Camp broken! +${fi} iron +${fo} food${rl ? ` · ${realmDef(rl).short} raids -${Math.round(realmRelief(rl) * 100)}%` : ''}`); Snd.play('victory'); shake = Math.max(shake, 0.6);
-    floatText('CAMP BROKEN!', e.position.x, 3.6, e.position.z);
+    if (exActive && exActive.dest.castle) { const f = exActive.dest.id === 'legionfortress' ? 2 : 1; res.stone += 12 * f; res.iron += 10 * f; res.wood += 8 * f; updateHud(); giveXp(100 * f); setTimeout(() => toast(`${exActive ? exActive.dest.name : 'Castle'} taken! +${12 * f} stone +${10 * f} iron +${8 * f} wood`), 1200); }
+    floatText(exActive && exActive.dest.castle ? 'CASTLE TAKEN!' : 'CAMP BROKEN!', e.position.x, 3.6, e.position.z);
   }
   function exMove(n, tx, tz, speed, dt) {          // 원정 지역용 단순 이동: 장애물 밀어내기 + 지역 경계
     if (exCamp) { const r = campRoute(n.position.x, n.position.z, tx, tz); tx = r.x; tz = r.z; }
@@ -4602,6 +4604,7 @@
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
     if (d.ch === 6 && !story.eclipse) return toast('Light the Wide Road first');
     if (d.ch === 5 && !story.road) return toast('Swear the Keeper\'s Oath first');
+    if (d.after && !story.cleared[d.after]) return toast(`Take the ${CFG.EXPEDITIONS.find(x => x.id === d.after).name} first`);
     if (d.needs && !d.needs.every(r => story.relics[r])) return toast('Recover the earlier relics first: this place stays hidden until you carry them');
     if (d.bands && escortBands.filter(i => escortPool().some(n => n.warband === i)).length < d.bands) return toast(`Needs ${d.bands} warbands${bandMax() < d.bands ? ` (you can bring ${bandMax()})` : ''}`);
     if (d.march) {                                                          // 먼 곳: 식량과 확인 (한 번 더 누르면 출발)
@@ -4619,6 +4622,7 @@
       exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       if (d.castle) { const G = siegeGear(); siegeLoad = { ram: Math.min(1, G.ram), ladder: Math.min(CFG.SIEGE.LADDER_MAX, G.ladder) }; G.ram -= siegeLoad.ram; G.ladder -= siegeLoad.ladder; }
       else siegeLoad = { ram: 0, ladder: 0 };
+      exStats = { kills: 0, t0: performance.now() };
       buildZone(d);
       if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
       const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
@@ -4650,8 +4654,19 @@
         else n.position.set(ex.ret.x + Math.sin(a) * rr, 0, ex.ret.z + Math.cos(a) * rr);
         n.px = n.position.x; n.pz = n.position.z; n.atkCd = 0;
       });
-      if (backLines) setTimeout(() => showTripReport(`Home again`, backLines.concat(report0.length ? `Back: ${report0.join(' · ')}` : [])), 2600);
-      if (report0.length && !backLines) setTimeout(() => toast(`Back home: ${report0.join(' · ')}`), 2200);
+      const fallen = backMen.filter(x => x.down).length, camp = exCamp, took = !!(camp && camp.broken), lines = [];
+      if (ex.dest.raid) {                                                           // 전투 보고서: 습격·공성이 끝나면 한 화면에 결과를 모아 보여 준다
+        const secs = Math.round((performance.now() - exStats.t0) / 1000), realm = ex.dest.realm;
+        lines.push(took ? (ex.dest.castle ? `${ex.dest.name} taken!` : `${ex.dest.name} broken!`) : `You withdrew from ${ex.dest.name}.`);
+        lines.push(`Time ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} · ${exStats.kills} foes defeated`);
+        lines.push(`Warbands: ${report0.join(' · ') || 'none'}${fallen ? ` · ${fallen} fell${ex.dest.castle && !took ? ' (lost for good)' : ', recovering at home'}` : ''}`);
+        if (camp && camp.gate) { const G = camp.gate, lad = camp.load ? camp.load.ladder : 0, lostL = camp.ladders.filter(l => l.lost).length; lines.push(`Gate ${G.broken ? 'broken' : 'standing'}${camp.load && camp.load.ram ? ` · ram ${camp.ram && camp.ram.dead ? 'lost' : 'saved'}` : ' · no ram'} · ladders ${Math.max(0, lad - lostL)}/${lad} kept`); }
+        if (gain) lines.push(`Loot: ${gain}`);
+        if (took && realm) lines.push(`${realmDef(realm).short} raids -${Math.round(realmRelief(realm) * 100)}%`);
+      }
+      if (ex.dest.castle && !took) for (const n of backMen) if (n.down) removeNpc(n);                      // 공성에 실패하면 쓰러진 병사는 돌아오지 못한다
+      if (backLines || lines.length) setTimeout(() => showTripReport(ex.dest.raid ? (took ? 'Victory' : 'Withdrawn') : 'Home again', lines.concat(backLines || [], report0.length && !lines.length ? `Back: ${report0.join(' · ')}` : [])), 2600);
+      if (report0.length && !backLines && !lines.length) setTimeout(() => toast(`Back home: ${report0.join(' · ')}`), 2200);
       cleanupZone(); exActive = null;
       if (ex.party > 0) unlockAch('escort');
       if (cleared) unlockAch('clear');
@@ -4858,7 +4873,7 @@
   }
   // ---------- 점령지 (원정 지도 3단계): 무너뜨린 야영지에 병사를 남겨 지키면 '점령지'가 된다. 수입과 습격 감소가 계속되지만 적이 되찾으러 올 수 있다 ----------
   // (이 파일의 것은 모두 function 선언이다) story.holds[id] = { n: 주둔 병사 수, since: 날 }, story.clearedDay[id] = 마지막으로 무너뜨린 날
-  const HOLD_MAX = 3, HOLD_REVERT_DAYS = 10, HOLD_RANK = { clanwatch: 1.2, legionpost: 1.4, clanhold: 2.2, legionkeep: 2, legioncastle: 2.6, raiderpost: 1, banditcamp: 1.4, hillclan: 1.4, banditfort: 2, legionfort: 2.4 };
+  const HOLD_MAX = 3, HOLD_REVERT_DAYS = 10, HOLD_RANK = { clanwatch: 1.2, legionpost: 1.4, clanhold: 2.2, legionkeep: 2, legioncastle: 2.6, legionfortress: 3.2, raiderpost: 1, banditcamp: 1.4, hillclan: 1.4, banditfort: 2, legionfort: 2.4 };
   const holdOf = (id) => (story.holds || {})[id] || null;
   const holdCount = () => Object.values(story.holds || {}).reduce((a, h) => a + h.n, 0);
   function holdRisk(id) {                                                  // 하루에 되찾으러 올 확률과, 왔을 때 지킬 확률
