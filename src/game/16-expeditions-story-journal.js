@@ -698,7 +698,7 @@
     const cost = CFG.CAMP_COST[d.age];
     return `<small><button class="campBtn" data-camp="${d.id}" ${canPay(cost) ? '' : 'disabled'}>Build camp (${costText(cost)})</button> ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
   }
-  let jMapSel = 'quarry', jFocus = true;                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
+  let jMapSel = 'quarry', jFocus = true, jMapFar = false;                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
   function renderJournal() {
     const chain = storyChain(), first = chain.findIndex(s => !storyDone(s.id));
     { const cur = chain[first >= 0 ? first : chain.length - 1]; document.getElementById('jStory').innerHTML = story.intro && cur ? `<div class="q now"><span>&#10148;</span><span>${cur.goal}</span></div>` : '<div class="q">Your story begins at the next dawn...</div>'; }
@@ -721,23 +721,25 @@
     };
     const mapHtml = () => {                                                  // 지도 화면: 마디(원정)와 길. 고르면 아래에 같은 카드가 나온다
       const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id)), near = vis.filter(d => !N[d.id].far), far = vis.filter(d => N[d.id].far);
-      if (!ids.has(jMapSel)) jMapSel = (near.find(d => !lockOf(d)) || near[0]).id;
-      const posOf = (id) => id === 'village' ? V : N[id];
+      if (!far.length) jMapFar = false;
+      if (ids.has(jMapSel)) jMapFar = !!N[jMapSel].far; else jMapSel = (jMapFar ? far[0] : (near.find(d => !lockOf(d)) || near[0])).id;
+      const FAR = { hillclan: { x: 30, y: 18, from: 'home' }, clanhold: { x: 62, y: 12, from: 'hillclan' }, legionkeep: { x: 30, y: 52, from: 'home' }, legionfort: { x: 58, y: 58, from: 'legionkeep' }, legioncastle: { x: 78, y: 38, from: 'legionfort' }, legionfortress: { x: 92, y: 20, from: 'legioncastle' } };       // 먼 땅 지도: 마을에서 갈래로 뻗는 길
+      const posOf = (id) => id === 'village' || id === 'home' ? V : N[id].far ? (FAR[id] || { x: 50, y: 35 }) : N[id];
       let lines = '', dots = '';
-      for (const d of near) { const n = N[d.id]; if (n.from !== 'village' && !ids.has(n.from)) continue; const p = posOf(n.from); lines += `<line x1="${p.x}" y1="${p.y}" x2="${n.x}" y2="${n.y}"/>`; }
-      const farPos = (id) => ({ x: 14 + far.indexOf(far.find(d => d.id === id)) * (76 / Math.max(1, far.length - 1)), y: 82 });       // 먼 땅은 지도 아래쪽 띠에 늘어놓는다
-      if (far.length) lines += `<path d="M${V.x} ${V.y + 3} Q 3 60 8 82 L ${farPos(far[far.length - 1].id).x} 82" class="far"/>`;
-      for (const d of near.concat(far)) {
-        const n = N[d.id].far ? farPos(d.id) : N[d.id], locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? realmDef(d.realm).color : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
+      const shown = jMapFar ? far : near;
+      for (const d of shown) { const n = posOf(d.id), fr = jMapFar ? (FAR[d.id] ? FAR[d.id].from : 'home') : N[d.id].from; if (fr !== 'village' && fr !== 'home' && !ids.has(fr)) continue; const p = posOf(fr); lines += `<line x1="${p.x}" y1="${p.y}" x2="${n.x}" y2="${n.y}"${jMapFar ? ' class="far"' : ''}/>`; }
+      for (const d of shown) {
+        const n = posOf(d.id), locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? realmDef(d.realm).color : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
         dots += `<g data-node="${d.id}" class="${locked ? 'lk' : ''}"><circle class="hit" cx="${n.x}" cy="${n.y}" r="5"/><circle cx="${n.x}" cy="${n.y}" r="3.2" fill="${col}" stroke="${sel ? '#fff' : story.cleared[d.id] ? '#8fd49a' : '#2a2118'}" stroke-width="${sel || story.cleared[d.id] ? 1 : 0.5}"/><text x="${n.x}" y="${n.y + 1.1}">${sym}</text>${holdOf(d.id) ? `<text class="flag" x="${n.x + 3.8}" y="${n.y - 2.2}">&#9873;</text>` : story.cleared[d.id] ? `<text class="ok" x="${n.x + 3.6}" y="${n.y - 2.6}">&#10003;</text>` : ''}${sel ? `<text class="nm" x="${n.x}" y="${n.y + 7.2}">${d.name}</text>` : ''}</g>`;
       }
       const sd = CFG.EXPEDITIONS.find(d => d.id === jMapSel);
-      return `<svg class="jmap" viewBox="0 0 100 ${far.length ? 92 : 70}"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid (realm colour) &nbsp; &#9790; night &nbsp; &#9733; story</small>${realmBar()}` + (far.length ? `<small class="jleg">Bottom row: far lands (march days)</small>` : '') + (sd ? rowOf(sd) : '') + escHtml;
+      return `${far.length ? `<div class="jtabs"><button data-maptab="near" class="${jMapFar ? '' : 'on'}">Near lands</button><button data-maptab="far" class="${jMapFar ? 'on' : ''}">Far lands (${far.length})</button></div>` : ''}<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid (realm colour) &nbsp; &#9790; night &nbsp; &#9733; story</small>${realmBar()}` + (jMapFar ? `<small class="jleg">Far lands: each trip takes days of marching (food and home nights count)</small>` : '') + (sd ? rowOf(sd) : '') + escHtml;
     };
     const expList = mapHtml();
     document.getElementById('jExp').innerHTML = expList;       // 지도와 카드가 먼저, 전투단 목록은 그 아래
     if (jFocus) { jFocus = false; const card = jEl.querySelector('.jcard'), ex = document.getElementById('jExp'); if (card && ex) card.scrollTop += ex.getBoundingClientRect().top - card.getBoundingClientRect().top - 8; }       // 열거나 탭을 바꾸면 지도 부분으로 스크롤
     jEl.querySelectorAll('#jExp [data-node]').forEach(g => g.addEventListener('click', () => { jMapSel = g.dataset.node; renderJournal(); }));
+    jEl.querySelectorAll('#jExp [data-maptab]').forEach(b => b.addEventListener('click', () => { jMapFar = b.dataset.maptab === 'far'; const ids2 = CFG.EXPEDITIONS.filter(d => CFG.MAP.NODES[d.id] && !chLocked(d) && !!CFG.MAP.NODES[d.id].far === jMapFar); if (ids2.length && !ids2.some(d => d.id === jMapSel)) jMapSel = ids2[0].id; renderJournal(); }));
     jEl.querySelectorAll('.levyBtn').forEach(b => b.addEventListener('click', callLevy));
     jEl.querySelectorAll('#jExp button[data-id]').forEach(b => b.addEventListener('click', () => startExpedition(b.dataset.id)));
     jEl.querySelectorAll('#jExp .holdBtn').forEach(b => b.dataset.recall ? b.addEventListener('click', () => recallGarrison(b.dataset.recall)) : b.addEventListener('click', () => garrisonIt(b.dataset.hold)));
