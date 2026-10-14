@@ -20,9 +20,16 @@
     story.holds = story.holds || {}; const h = story.holds[id];
     if (h && h.n >= HOLD_MAX) return toast('Garrison is full');
     const s = pickGarrison(); if (!s) return toast('No free soldier');
-    const name = s.name; garrisonOut(s);
-    if (h) h.n++; else { story.holds[id] = { n: 1, since: dayNow() }; story.camps[id] = true; rebuildCamps(); }
+    const name = s.name, man = { name: s.name, trait: s.trait, xp: { ...(s.xp || {}) }, vxp: s.vxp || 0 }; garrisonOut(s);
+    if (h) { h.n++; (h.men = h.men || []).push(man); } else { story.holds[id] = { n: 1, since: dayNow(), men: [man] }; story.camps[id] = true; rebuildCamps(); }
     toast(`${name} garrisons ${d.name}`); Snd.play('chime'); updateHud(); realmCheck(); renderJournal();
+  }
+  function recallGarrison(id) {                                            // 점령지에 둔 병사 한 명을 마을로 불러온다 (이름·성격·숙련은 그대로)
+    const d = CFG.EXPEDITIONS.find(x => x.id === id), h = holdOf(id); if (!d || !h) return;
+    const man = (h.men && h.men.pop()) || {}, n = makeNpc('melee', homeSlot(npcs.length), 'initial', 0, { name: man.name, trait: man.trait, xp: man.xp });
+    if (man.vxp) n.vxp = man.vxp;
+    h.n--; if (h.n <= 0) { delete story.holds[id]; (story.clearedDay = story.clearedDay || {})[id] = dayNow(); }          // 마지막 병사가 돌아오면 열흘 뒤 다시 산적이 차지한다
+    toast(`${n.name} returns from ${d.name}`); Snd.play('chime'); updateHud(); realmCheck(); renderJournal();
   }
   function holdsMorning() {                                                // 매일 아침: 주둔 병사의 식량, 되찾으러 오는 적, 방치된 곳의 복귀
     const hs = story.holds || {}, day = dayNow(), lines = [];
@@ -45,7 +52,7 @@
   function holdHtml(d) {                                                   // 일지 카드: 점령 상태와 버튼 (글은 짧게)
     if (!d.raid) return '';
     const h = holdOf(d.id), inc = Object.entries(CFG.CAMPS[d.id] || {}).map(([k, v]) => `+${v} ${k}`).join(' ');
-    if (h) { const r = holdRisk(d.id); return `<small>&#9873; Held ${h.n}/${HOLD_MAX} · ${inc}/day · retake ${Math.round(r.chance * 100)}%/day, hold ${Math.round(r.win * 100)}%<br><button class="holdBtn" data-hold="${d.id}" ${h.n >= HOLD_MAX ? 'disabled' : ''}>+1 soldier</button></small>`; }
+    if (h) { const r = holdRisk(d.id); return `<small>&#9873; Held ${h.n}/${HOLD_MAX} · ${inc}/day · retake ${Math.round(r.chance * 100)}%/day, hold ${Math.round(r.win * 100)}%<br><button class="holdBtn" data-hold="${d.id}" ${h.n >= HOLD_MAX ? 'disabled' : ''}>+1 soldier</button> <button class="holdBtn" data-recall="${d.id}">Bring 1 home</button></small>`; }
     if (story.camps[d.id]) return `<small>&#10003; Camp ${inc}/day</small>`;
     if (story.cleared[d.id]) { const cd = (story.clearedDay || {})[d.id]; return `<small>Broken${cd === undefined ? '' : ` · lost in ${Math.max(0, HOLD_REVERT_DAYS - (dayNow() - cd))}d`}<br><button class="holdBtn" data-hold="${d.id}">Garrison (1 soldier)</button></small>`; }
     return '';
