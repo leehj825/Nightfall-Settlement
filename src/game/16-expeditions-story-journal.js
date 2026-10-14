@@ -725,12 +725,14 @@
       const posOf = (id) => id === 'village' ? V : N[id];
       let lines = '', dots = '';
       for (const d of near) { const n = N[d.id]; if (n.from !== 'village' && !ids.has(n.from)) continue; const p = posOf(n.from); lines += `<line x1="${p.x}" y1="${p.y}" x2="${n.x}" y2="${n.y}"/>`; }
-      for (const d of near) {
-        const n = N[d.id], locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? realmDef(d.realm).color : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
+      const farPos = (id) => ({ x: 14 + far.indexOf(far.find(d => d.id === id)) * (76 / Math.max(1, far.length - 1)), y: 82 });       // 먼 땅은 지도 아래쪽 띠에 늘어놓는다
+      if (far.length) lines += `<path d="M${V.x} ${V.y + 3} Q 3 60 8 82 L ${farPos(far[far.length - 1].id).x} 82" class="far"/>`;
+      for (const d of near.concat(far)) {
+        const n = N[d.id].far ? farPos(d.id) : N[d.id], locked = lockOf(d), sel = d.id === jMapSel, col = d.raid ? realmDef(d.realm).color : d.night ? '#6f7cff' : d.ch ? '#e0b43c' : '#5fc060', sym = d.raid ? '&#9876;' : d.night ? '&#9790;' : d.ch ? '&#9733;' : '&#9679;';
         dots += `<g data-node="${d.id}" class="${locked ? 'lk' : ''}"><circle class="hit" cx="${n.x}" cy="${n.y}" r="5"/><circle cx="${n.x}" cy="${n.y}" r="3.2" fill="${col}" stroke="${sel ? '#fff' : story.cleared[d.id] ? '#8fd49a' : '#2a2118'}" stroke-width="${sel || story.cleared[d.id] ? 1 : 0.5}"/><text x="${n.x}" y="${n.y + 1.1}">${sym}</text>${holdOf(d.id) ? `<text class="flag" x="${n.x + 3.8}" y="${n.y - 2.2}">&#9873;</text>` : story.cleared[d.id] ? `<text class="ok" x="${n.x + 3.6}" y="${n.y - 2.6}">&#10003;</text>` : ''}${sel ? `<text class="nm" x="${n.x}" y="${n.y + 7.2}">${d.name}</text>` : ''}</g>`;
       }
       const sd = CFG.EXPEDITIONS.find(d => d.id === jMapSel);
-      return `<svg class="jmap" viewBox="0 0 100 70"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid (realm colour) &nbsp; &#9790; night &nbsp; &#9733; story</small>${realmBar()}` + (far.length ? `<div class="jfar"><b>Far lands</b> (march days)<br>${far.map(d => `<button data-node="${d.id}" class="farchip${d.id === jMapSel ? ' on' : ''}${lockOf(d) ? ' lk' : ''}" style="border-left: 4px solid ${realmDef(d.realm).color}">${holdOf(d.id) ? '&#9873; ' : ''}${d.name} · ${d.march} day${d.march > 1 ? 's' : ''}</button>`).join('')}</div>` : '') + (sd ? rowOf(sd) : '') + escHtml;
+      return `<svg class="jmap" viewBox="0 0 100 ${far.length ? 92 : 70}"><g class="roads">${lines}</g><g class="home" transform="translate(${V.x} ${V.y})"><circle r="3.6" fill="#c8923a"/><text y="1.2">&#8962;</text><text class="nm" y="7.2">Home</text></g>${dots}</svg><small class="jleg">&#9679; foray &nbsp; &#9876; raid (realm colour) &nbsp; &#9790; night &nbsp; &#9733; story</small>${realmBar()}` + (far.length ? `<small class="jleg">Bottom row: far lands (march days)</small>` : '') + (sd ? rowOf(sd) : '') + escHtml;
     };
     const expList = mapHtml();
     document.getElementById('jExp').innerHTML = expList;       // 지도와 카드가 먼저, 전투단 목록은 그 아래

@@ -344,3 +344,5 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #actions, #leftActions, #ctxActions, #planBox { pointer-events: none; }
 #actions > *, #leftActions > *, #ctxActions > *, #planBox > * { pointer-events: auto; }
 #ctxActions .btn[style*="display: none"], #leftActions .btn[style*="display: none"] { pointer-events: none; }
+
+#jExp .jmap .roads path.far { fill: none; stroke: #8a7a52; stroke-width: 0.9; stroke-dasharray: 2.2 1.6; opacity: .8; }
