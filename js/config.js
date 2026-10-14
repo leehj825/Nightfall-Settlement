@@ -36,13 +36,17 @@
       // 바깥 구역 주택: 6채를 두 번에 나누어 계획한다 (둘째 묶음은 첫 묶음이 다 지어진 뒤). 집 1채 = 최대 인구 +1
       { age: 3, needsOuterWall: true, label: 'Plan Outer Homes (1/2)', cost: { wood: 60 }, lots: [{ kind: 'house', x: -13, z: -20 }, { kind: 'house', x: -7, z: -20 }, { kind: 'house', x: 7, z: -20 }] },
       { age: 3, needsOuterWall: true, needsHomesBuilt: true, label: 'Plan Outer Homes (2/2)', cost: { wood: 80 }, lots: [{ kind: 'house', x: 13, z: -20 }, { kind: 'house', x: 7, z: 20 }, { kind: 'house', x: 13, z: 20 }] },
+      // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
+      { age: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', auto: 'town' }] },
     ],
+    SIEGE: { RAM: { wood: 40, iron: 12 }, LADDER: { wood: 18, iron: 2 }, LADDER_MAX: 3, FOOD_RAM: 2, FOOD_LADDER: 1 },      // 공성 장비 제작 비용 (대장간 창, 공성 작업장이 있어야 한다)
     BUILDING: {
       house: { res: 'wood', cost: 6, radius: 2.1 }, barracks: { res: 'stone', cost: 6, radius: 3.6 }, range: { res: 'wood', cost: 8, radius: 2.6 },
       farm: { res: 'wood', cost: 6, radius: 0.3, size: [5, 0.4, 4] }, lumber: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] },
       smith: { res: 'wood', cost: 10, radius: 2.4, size: [4.2, 2.6, 3.4] },
       well: { res: 'wood', cost: 6, radius: 1.3, size: [2.4, 2.4, 2.4] }, market: { res: 'wood', cost: 12, radius: 2.6, size: [5.2, 2.4, 3.4] },
       quarry: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] }, tower: { res: 'stone', cost: 10, radius: 1.7, size: [3.2, 4.5, 3.2] },
+      siegeshop: { res: 'wood', cost: 14, radius: 3.4, size: [6, 3, 4.4] },
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)

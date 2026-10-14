@@ -33,6 +33,7 @@
   }
   // ---------- 산적 야영지 (습격 Raid): 목책 · 문 · 감시탑 · 천막 · 모닥불 · 우두머리 천막. 목책은 막히는 지형 (적의 길 막힘은 다음 단계) ----------
   const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = mat(0x80838c), campStoneDark = mat(0x575a63), campGateMat = mat(0x3a2a1c);
+  let siegeLoad = { ram: 0, ladder: 0 };                             // 이번 원정에 가져온 공성 장비
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
   function buildBanditCamp(d, cx, cz, inner) {
     const C = d.camp, R = C.radius, gateA = -Math.PI / 2, segs = Math.round(2 * Math.PI * R / 2.6), step = Math.PI * 2 / segs;
@@ -90,7 +91,7 @@
     for (let k = 0; k < C.chests; k++) { const a = k * 2.1 + 1.0, p = { x: cx + Math.cos(a) * R * 0.34, z: cz + Math.sin(a) * R * 0.34 }; makeChest(p.x, p.z, false); inner.push({ x: p.x, z: p.z, r: 1.6 }); }
     const ladders = [], oil = [];
     const ladderMesh = () => { const g = new THREE.Group(), wd = mat(0x8a6038); for (const lx of [-0.45, 0.45]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 6.4, 0.12), wd); rail.position.set(lx, 3.2, 0); g.add(rail); } for (let k = 0; k < 9; k++) { const rung = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.1), wd); rung.position.y = 0.5 + k * 0.68; g.add(rung); } g.traverse(m => { if (m.isMesh) m.castShadow = true; }); return g; };
-    for (let k = 0; k < (C.ladders || 0); k++) {                    // 사다리: 성벽 밖 땅에 누워 있다. 주인공이 일으켜 세우면 그 자리에서 성벽을 넘을 수 있다 (오래 두면 수비병이 밀어 넘어뜨린다)
+    for (let k = 0; k < (C.gate ? Math.min(C.ladders || 0, siegeLoad.ladder) : 0); k++) {                    // 사다리: 성벽 밖 땅에 누워 있다. 주인공이 일으켜 세우면 그 자리에서 성벽을 넘을 수 있다 (오래 두면 수비병이 밀어 넘어뜨린다)
       const a = [gateA - 1.0, gateA + 1.0, 0][k % 3], pg = new THREE.Group(), lm = ladderMesh();
       lm.rotation.x = Math.PI / 2; lm.position.y = 0.2; pg.add(lm); pg.position.set(cx + Math.cos(a) * (R + 4), 0, cz + Math.sin(a) * (R + 4)); pg.rotation.y = -a - Math.PI / 2;
       pg.userData = { type: 'siegeLadder', radius: 1.3, gatherTime: 2, a, k }; exAdd(pg, true); ladders.push({ a, pickup: pg, mesh: null, up: false, t: 0, segs: [] });
@@ -100,7 +101,7 @@
       pot.position.y = 4.55; addGlow(g, 0xff7a2a, 2.2, 1.2); g.add(pot); g.position.set(cx + Math.cos(a) * (R - 0.4), 0, cz + Math.sin(a) * (R - 0.4)); exAdd(g, false); oil.push({ x: g.position.x, z: g.position.z, cd: 4 + k * 1.6, mesh: g });
     }
     let ram = null;
-    if (gate) {                                                       // 공성 망치: 성문 앞 멀리에서 시작한다 (다음 단계에서 대장간에서 만들어 가져온다)
+    if (gate && siegeLoad.ram > 0) {                                                       // 공성 망치: 성문 앞 멀리에서 시작한다 (다음 단계에서 대장간에서 만들어 가져온다)
       const g = new THREE.Group(), wood = mat(0x7a5632);
       const frame = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.4, 4.4), wood); frame.position.y = 0.75;
       const roof = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.25, 4.0), mat(0x5a3d22)); roof.position.y = 2.1; roof.rotation.z = 0;
@@ -111,7 +112,7 @@
       g.position.set(cx, 0, cz - R - 12); exAdd(g, false);
       ram = { mesh: g, log, hp: 120, maxHp: 120, dead: false, hitCd: 1.2, recoil: 0, gx: cx, gz: cz - R - 3.2, sz: cz - R - 12 };
     }
-    return { cx, cz, R, towers, banner, fire, solids, gate, ram, ladders, oil, drops: [], alarm: false, broken: false };
+    return { cx, cz, R, towers, banner, fire, solids, gate, ram, ladders, oil, drops: [], load: { ...siegeLoad }, alarm: false, broken: false };
   }
   function buildZone(d) {
     const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
@@ -288,8 +289,7 @@
     const C = exCamp; if (!C || !L.up) return;
     L.up = false; if (L.mesh) { scene.remove(L.mesh); const i = exMeshes.indexOf(L.mesh); if (i >= 0) exMeshes.splice(i, 1); L.mesh = null; }
     for (const s of L.segs) { s.w.scale.y = s.sy; C.solids.push(s.w); exObjs.push(s.w); } L.segs = [];
-    const pg = L.pickup; pg.userData.type = 'siegeLadder'; scene.add(pg); exObjs.push(pg);
-    toast(why || 'The defenders pushed the ladder over!');
+    L.lost = true; toast(why || 'The defenders pushed the ladder over and it broke!');
   }
   function ladderTick(dt) {
     const C = exCamp; if (!C || !C.ladders) return;
@@ -539,7 +539,10 @@
     const marchCost = d.march ? marchFood(d) : 0; if (marchCost) res.food -= marchCost;                 // 행군 식량은 출발할 때 먹는다
     fadeTo(() => {
       exActive = { dest: d, night: !!d.night, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
+      if (d.castle) { const G = siegeGear(); siegeLoad = { ram: Math.min(1, G.ram), ladder: Math.min(CFG.SIEGE.LADDER_MAX, G.ladder) }; G.ram -= siegeLoad.ram; G.ladder -= siegeLoad.ladder; }
+      else siegeLoad = { ram: 0, ladder: 0 };
       buildZone(d);
+      if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
       const party = escortPool().filter(n => escortBands.includes(n.warband)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
@@ -556,6 +559,7 @@
     if (!exActive || exEnding) return;
     const ex = exActive; exEnding = true; gathering = null;
     fadeTo(() => {
+      if (ex.dest.castle && exCamp && exCamp.load) { const G = siegeGear(), ramOk = exCamp.ram && !exCamp.ram.dead, lost = exCamp.ladders.filter(l => l.lost).length; G.ram += ramOk ? exCamp.load.ram : 0; G.ladder += Math.max(0, exCamp.load.ladder - lost); }        // 살아남은 장비는 집으로 가져온다
       const backLines = ex.dest.march ? marchBack(ex.dest) : null;                          // 돌아오는 길의 밤들 (병사들은 아직 원정 중으로 센다)
       const gain = ['wood', 'stone', 'iron', 'food', 'shard'].map(k => [k, res[k] - ex.res0[k]]).filter(x => x[1] > 0).map(([k, v]) => `${v} ${k}`).join(', ');
       const left = exObjs.filter(o => o.userData.type === 'chest').length + enemies.filter(e => e.userData.ex && !(e.userData.dying > 0)).length;

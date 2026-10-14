@@ -31,6 +31,20 @@
       smithList.appendChild(row);
     }
     }
+    renderSiegeRows();
+  }
+  const siegeGear = () => story.siege || (story.siege = { ram: 0, ladder: 0 });
+  function renderSiegeRows() {                                         // 공성 장비: 공성 작업장이 있어야 만들 수 있다. 보유 수는 마을 창고에 쌓인다
+    const h = document.createElement('div'); h.className = 'shead'; h.textContent = 'Siege gear - for castles'; smithList.appendChild(h);
+    if (!builtBuildings('siegeshop').length) { const r = document.createElement('div'); r.className = 'srow'; r.innerHTML = '<div class="sinfo"><small>Build a Siege Workshop first (the last Village Plan step, Age 3).</small></div>'; smithList.appendChild(r); return; }
+    const G = siegeGear();
+    for (const [key, name, desc, cost, have, cap] of [['ram', 'Siege Ram', 'Batters a castle gate. Soldiers push it.', CFG.SIEGE.RAM, G.ram, 1], ['ladder', 'Siege Ladder', 'Raise it to climb a castle wall.', CFG.SIEGE.LADDER, G.ladder, CFG.SIEGE.LADDER_MAX]]) {
+      const row = document.createElement('div'); row.className = 'srow';
+      row.innerHTML = `<div class="sinfo"><b>${name}</b> <small>${desc}</small><small>Cost: ${costText(cost)} · You carry: ${have} / ${cap}</small></div><div class="sbtns"><button>Build</button></div>`;
+      const b = row.querySelector('button'); b.disabled = have >= cap || !canPay(cost);
+      b.addEventListener('click', () => { if (siegeGear()[key] >= cap || !canPay(cost)) return; payCost(cost); siegeGear()[key]++; forgeEffect(smithOpenFor); updateHud(); toast(`${name} built (${siegeGear()[key]}/${cap})`); renderSmith(); });
+      smithList.appendChild(row);
+    }
   }
   function forgeEffect(sm) {                  // 모루 위 불꽃 + 화덕이 확 밝아진다 + 쾅 소리
     burst({ x: sm.position.x + 1.2, z: sm.position.z + 2.5, y: 1 }, 20); forgeFlash = 1;
