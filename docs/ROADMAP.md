@@ -34,16 +34,12 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
 
 **Not done**
-- Stage pacing (stages 4 and 5 and the gates), the Training Field, banners and the host, extra unit types, audio, formations.
+- Banners and the host, extra unit types, audio, formations.
 - Tuning after phone testing, and custom models.
 
 **Next steps, in order** (details in `STAGES_AND_TRAINING_PLAN.md`)
-1. **Fix ground hit effects** that hide inside terrain with height.
-2. **Stages and gates:** rename "Age" to "Stage", add checklist plus minimum-day gates (the settlement reaches Stage 3 almost instantly).
-3. **World v2:** a much bigger map (radius about 100), varied terrain (lake, tributary, hills, ravine, marsh, forest), more enemies and roaming packs.
-4. **Stage 4 Walled City and Stage 5 Seat of Power:** third wall ring, market district, bigger population cap, perks.
-5. **Training Field:** see the whole army, rehearse battles and orders, siege practice, veteran drills.
-6. **Banners and the host** (unlocked at Stage 5), tested on the Training Field.
+1. **Done (nf-v124 to nf-v130):** ground hit effects follow terrain, Stages and gates, World v2 (radius 100, lake, stream, marsh, forests, cliff plateau, more enemies), Stage 4 Walled City and Stage 5 Seat of Power, the Training Field (parade, three practice battles, siege practice, veteran drills).
+2. **Banners and the host** (unlocked at Stage 5), tested on the Training Field.
 7. **Polish:** cavalry and siege crews, audio, formations; balance and phone testing; custom models.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.

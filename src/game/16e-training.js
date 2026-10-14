@@ -45,6 +45,15 @@
     exStats.battle = { id, label: set.label, n: foes.length, t0: performance.now(), k0: exStats.kills };
     toast(`${set.label}: ${foes.length} foes. Fight!`); Snd.play('horn');
   }
+  function trainDrill() {                                                    // 훈련: 오늘 아직 훈련하지 않은 병사에게 숙련(drill) +2, 병사 한 명당 식량 1 (하루에 한 번만)
+    if (!exActive || !exActive.training || exActive.dest.siege) return;
+    const K = CFG.TRAIN.DRILL, day = dayNow(), todo = npcs.filter(n => n.escort && n.role !== 'citizen' && !n.levy && n.drillDay !== day);
+    if (!todo.length) return toast('Everyone has drilled today');
+    const cost = todo.length * K.FOOD; if (res.food < cost) return toast(`Need ${cost} food to drill ${todo.length} soldiers`);
+    res.food -= cost; let up = 0;
+    for (const n of todo) { const b = vetLv(n); n.vxp = (n.vxp || 0) + K.XP; n.drillDay = day; if (vetLv(n) > b) { up++; floatText(`${n.name}: Veteran ${vetLv(n)}`, n.position.x, 3.0, n.position.z); } npc = n; n.anim.once('attackSword'); }
+    updateHud(); Snd.play('chime'); toast(`Drills: ${todo.length} soldiers +${K.XP} drills (${cost} food)${up ? ` · ${up} new veteran rank${up > 1 ? 's' : ''}` : ''}`);
+  }
   function trainClear(silent) {
     for (const e of enemies.slice()) if (e.userData.practice) removeEnemy(e);
     if (exStats) exStats.battle = silent ? exStats.battle : null; if (!silent) toast('Field cleared');
@@ -67,4 +76,4 @@
       exEnding = false; updateExUi(); updateHud(); toast('Back from the Training Field');
     });
   }
-  document.getElementById('trainBar').addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); e.stopPropagation(); const k = b.dataset.tr; if (k === 'clear') trainClear(); else if (k === 'leave') endTraining(); else trainSpawn(k); });
+  document.getElementById('trainBar').addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); e.stopPropagation(); const k = b.dataset.tr; if (k === 'clear') trainClear(); else if (k === 'drill') trainDrill(); else if (k === 'leave') endTraining(); else trainSpawn(k); });

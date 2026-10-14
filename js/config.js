@@ -49,7 +49,7 @@
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
     LEVY: { MAX: 4, FOOD: 6, HP: 0.6, DMG: 0.7 },
-    TRAIN: { AGE: 4, SETS: [
+    TRAIN: { AGE: 4, DRILL: { FOOD: 1, XP: 2 }, SETS: [
       { id: 'raiders', label: 'Raiders', foes: ['normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'normal', 'normal'] },
       { id: 'mixed', label: 'Archers and brutes', foes: ['archer', 'archer', 'archer', 'archer', 'brute', 'brute', 'brute', 'normal', 'normal', 'normal', 'normal'] },
       { id: 'shields', label: 'Shield line', foes: ['shield', 'shield', 'shield', 'shield', 'shield', 'shield', 'shield', 'shield', 'archer', 'archer'] }],
