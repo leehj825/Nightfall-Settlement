@@ -89,7 +89,7 @@
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
     if (peaceful && night && !exActive && !dead) {                                   // 병영·사격장 곁에서 병사와 함께 훈련하면 경험치를 얻는다
       const camp = builtBuildings('barracks').concat(builtBuildings('range')).find(b => Math.hypot(b.position.x - player.position.x, b.position.z - player.position.z) < b.userData.radius + 5);
-      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + age * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
+      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + stage * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
     }
     nightActivities(dt, hour, night);
     updateNpcs(dt, hour, t);

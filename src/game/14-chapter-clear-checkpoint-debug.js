@@ -43,7 +43,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, stage, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -96,8 +96,8 @@
     order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `O · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' }, sn.playerGear || {}); if (!(sn.playerGear && sn.playerGear.great)) playerGear.great = gearAtTier('great', gearDef(playerGear.sword).tier); if (!(sn.playerGear && sn.playerGear.spear)) playerGear.spear = gearAtTier('spear', gearDef(playerGear.sword).tier); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
-    designTier = sn.designTier; townStage = sn.townStage || 0; age = sn.age || 1; chapterCleared = sn.chapterCleared;
-    buildHall(); updateAgeUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
+    designTier = sn.designTier; townStage = sn.townStage || 0; stage = sn.stage || 1; chapterCleared = sn.chapterCleared;
+    buildHall(); updateStageUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
     dead = false; fireAlive = true; flame.visible = true; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
     dashBonusT = dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
@@ -145,7 +145,7 @@
   function debugSetup() {
     if (dead) return;
     res.wood += 400; res.stone += 400; res.iron += 60;
-    setAge(3);                                                // 디버그: 3시대(석조 요새)로
+    setStage(3);                                                // 디버그: 3시대(석조 요새)로
     if (!playerClass) setClass('warrior');
     for (const a of [1, 2, 3]) if (!perks[a]) choosePerk(a, CFG.PERKS[a][0].id);
     const finishAll = () => { for (const b of blueprints.slice()) {                // 도면을 즉시 완성
@@ -153,7 +153,7 @@
       if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
       else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
     } };
-    while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].age || age >= CFG.DESIGN[designTier].age)) designDefense();
+    while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].stage || stage >= CFG.DESIGN[designTier].stage)) designDefense();
     finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
     for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown(); finishAll(); }          // 둘째 주택 묶음은 첫 묶음이 지어진 뒤에 계획된다
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료

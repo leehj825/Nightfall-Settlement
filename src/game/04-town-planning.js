@@ -51,7 +51,7 @@
     const sm = (kind === 'well' || kind === 'smith' || kind === 'range') && structMesh(kind);        // 모델이 있으면 모델 건물
     if (sm) g.add(sm);
     if (kind === 'house') {
-      g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
+      g.userData.level = stage;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
     } else if (kind === 'siegeshop') {                                   // 공성 작업장: 열린 헛간, 안에 망치 뼈대와 사다리 걸이
       for (const [px, pz] of [[-2.6, -1.8], [2.6, -1.8], [-2.6, 1.8], [2.6, 1.8]]) add(new THREE.BoxGeometry(0.28, 2.6, 0.28), woodMat2, px, 1.3, pz);
@@ -225,7 +225,7 @@
   function upgradeGates() {
     for (const g of gateWaypoints) {
       const lv = g.lv || 1, cost = CFG.BUILD_UPGRADE[lv + 1];
-      if (lv >= age || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
+      if (lv >= stage || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
       payCost(cost); setGateLevel(g, lv + 1); report.upgraded++; updateHud();
       dust(g.x, g.z); sfxAt('build', g.x, g.z); floatText(`Gate Lv${lv + 1}!`, g.x, 3.6, g.z); return;
     }
@@ -289,14 +289,14 @@
     }
     const [type, n] = Object.entries(cfg.cost)[0];
     document.getElementById('designLbl').textContent = cfg.label;
-    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Stage ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
+    document.getElementById('designCost').textContent = cfg.stage && stage < cfg.stage ? `Requires Stage ${cfg.stage} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
     designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
   }
   function designDefense() {
     if (dead) return;
     const cfg = CFG.DESIGN[designTier];
     if (!cfg) return;
-    if (cfg.age && age < cfg.age) return toast(`Available from Stage ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
+    if (cfg.stage && stage < cfg.stage) return toast(`Available from Stage ${cfg.stage} (${CFG.STAGES[cfg.stage - 1].name})`);
     const [type, n] = Object.entries(cfg.cost)[0];
     if (res[type] < n) return toast(`Need ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`);
     res[type] -= n;
@@ -360,7 +360,7 @@
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
-    if (age < g.age) return toast(`Available in Stage ${g.age} (${CFG.AGES[g.age - 1].name})`);
+    if (stage < g.stage) return toast(`Available in Stage ${g.stage} (${CFG.STAGES[g.stage - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
     if (g.needsThirdWall && !thirdWallDone()) return toast('Finish the Great Wall first');
@@ -383,17 +383,17 @@
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
   function planCandidates() {
-    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, stage: D.stage || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, stage: T.stage, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
     const m = settings.plan || 'balanced';
     const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
     return order.filter(Boolean);
   }
-  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
+  function nextPlan() { const c = planCandidates(); return c.find(x => stage >= x.stage && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
   function updatePlanBtn() {
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].age}`) : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && stage >= x.stage) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].stage}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -411,11 +411,11 @@
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Stage ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (stage < g.stage ? `Requires Stage ${g.stage}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
-    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
+    if (stage < CFG.UPGRADE_FENCE_STAGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_STAGE} (${CFG.STAGES[CFG.UPGRADE_FENCE_STAGE - 1].name})`);
     const f = nearestFence('wood');
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);

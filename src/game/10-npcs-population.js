@@ -149,15 +149,15 @@
   }
 
   // 시민 외형은 시대에 따라 달라진다: 옷 색 + 2시대 모자 / 3시대 투구와 망토
-  const citizenColor = () => [0xe8d27a, 0xf2c230, 0xe39a1a, 0xdc8a1a, 0xd07818][age - 1];
+  const citizenColor = () => [0xe8d27a, 0xf2c230, 0xe39a1a, 0xdc8a1a, 0xd07818][stage - 1];
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
     return;                                                           // 예전 막대 인형용 모자·투구·망토 장식은 새 다각형 캐릭터와 겹쳐 이상하게 보이므로 쓰지 않는다
-    if (n.role !== 'citizen' || age < 2 || n.rig.skin) return;
+    if (n.role !== 'citizen' || stage < 2 || n.rig.skin) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
-    if (age === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
+    if (stage === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
     else { add(new THREE.SphereGeometry(0.24, 10, 6), helmMat, 0, 1.82, 0); add(new THREE.BoxGeometry(0.5, 0.9, 0.05), capeMat, 0, 1.15, -0.18); }
     n.body.add(g); n.decor = g;
   }
@@ -202,7 +202,7 @@
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
-    { const fm = npcs.find(n => n.foreman), woodLeft = age >= CFG.UPGRADE_FENCE_AGE ? obstacles.filter(o => o.userData.type === 'fence' && o.userData.level === 'wood').length : 0;
+    { const fm = npcs.find(n => n.foreman), woodLeft = stage >= CFG.UPGRADE_FENCE_STAGE ? obstacles.filter(o => o.userData.type === 'fence' && o.userData.level === 'wood').length : 0;
       if (r.fort || r.rep || woodLeft) rows.push(`${fm ? 'Foreman ' + fm.name : 'Workers'}: ${r.fort} wall${r.fort === 1 ? '' : 's'} fortified, ${r.rep} repaired${woodLeft ? ` · ${woodLeft} wooden left${res.stone < CFG.FENCE_UPGRADE_STONE ? ' (need stone)' : ''}` : ''}`); }
     if (isRaid(dayNo)) rows.push(`⚠ Raid tonight: ${forecast(dayNo)}`); else if (isRaid(dayNo + 1)) rows.push(`⚠ Raid TOMORROW night: ${forecast(dayNo + 1)}`);
     if (r.season) rows.push(r.season);

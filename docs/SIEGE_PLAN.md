@@ -29,7 +29,7 @@ A **castle** is a walled raid that cannot be won by walking in. You march a host
 | **Ladder** | Lets soldiers and you climb a wall section | Placed by a warband; climbing soldiers take arrows; wall defenders can push a ladder over once |
 | **Catapult** (later step) | Breaks a wall section from range | Slow, needs crew, hits towers and wall walks |
 
-- The Siege Workshop is a new building in Age 3 (a Village Plan step). It costs wood and iron; gear costs iron and is carried by the host on the march (cost counted in provisions). Gear lost in a failed siege is gone.
+- The Siege Workshop is a new building in Stage 3 (a Village Plan step). It costs wood and iron; gear costs iron and is carried by the host on the march (cost counted in provisions). Gear lost in a failed siege is gone.
 
 ### 3.3 The fight (phases, one real-time zone)
 1. **Approach:** archers on the walls and towers shoot at anyone within range. Staying in range costs health; use cover and shields. Soldiers hold unless ordered.
@@ -64,7 +64,7 @@ A **castle** is a walled raid that cannot be won by walking in. You march a host
 1. One big real-time battle, with the ram and ladders as phases inside it (not separate screens).
 2. First version: **ram and ladders only**; catapult later.
 3. Losing a siege costs soldiers and gear for good; no wounds yet.
-4. The Siege Workshop is Age 3 only.
+4. The Siege Workshop is Stage 3 only.
 5. A castle takes 3 warbands to attempt (power need set from the garrison, like camps).
 6. Soldiers do 20% damage to the lord without the leader nearby (existing rule), and 10% to walls and gates without siege gear.
 

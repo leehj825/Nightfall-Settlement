@@ -1,11 +1,11 @@
   // ---------- 훈련장 (Training Field): 별도 지역. 모든 전투단이 줄지어 서고, 모의 전투를 치른다. 시계는 멈추고, 아무도 다치지 않으며, 보상도 없다 ----------
   // (이 파일의 것은 모두 function 선언이다)
   const TRAIN_DEST = { id: 'trainfield', name: 'Training Field', training: true, tint: 0x4d6a3c, trees: 6, rocks: 3, ore: 0, chests: 0, foes: [], desc: '' };
-  function trainReady() { return age >= CFG.TRAIN.AGE; }
+  function trainReady() { return stage >= CFG.TRAIN.STAGE; }
   const TRAIN_SIEGE = { id: 'trainsiege', name: 'Siege practice', training: true, siege: true, tint: 0x4d6a3c, trees: 0, rocks: 2, ore: 0, chests: 0, get camp() { return CFG.TRAIN.SIEGE.camp; }, get foes() { return CFG.TRAIN.SIEGE.foes; }, get guardian() { return CFG.TRAIN.SIEGE.guardian; }, desc: '' };
   function startTraining(mode) {
     if (exActive || dead || exEnding) return;
-    if (!trainReady()) return toast(`The Training Field opens at Stage ${CFG.TRAIN.AGE}`);
+    if (!trainReady()) return toast(`The Training Field opens at Stage ${CFG.TRAIN.STAGE}`);
     if (nowHour < 6 || nowHour >= 16) return toast('Train in daylight (before 16:00)');
     if (!escortPool().length) return toast('No soldiers to train');
     closeJournal(); exEnding = true; gathering = null;

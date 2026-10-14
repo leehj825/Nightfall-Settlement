@@ -30,7 +30,7 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - **Raids:** Raider Outpost (1 warband), Bandit Camp (2), Bandit Stronghold (3), far raids (Hill Clan, Iron Legion, Clan Stronghold, Legion Keep); camp behaviour (alarm, gates, tower archers, burn the banner or kill the chief); lasting relief when a camp is broken.
 - **Campaign map:** phase 1 map tab, phase 2 march days, provisions and auto-resolved home nights with a morning report, phase 3 garrisons and holds, phase 4 three realms (Bandit Lords, Hill Clan, Iron Legion) with per-realm relief. The Journeys and Raids tabs were removed (the map replaces them).
 - **Hero:** advanced movement and spear skills, great sword and spear blacksmith gear, spear combo (stab, stab, full-force lunge), three-hit sword and great sword combos with a combo reset window, a red Attack button, camera drag anywhere, leader face from a reference picture.
-- **Village:** tents become houses at Age 3, outer ring farms and archery range, outer homes and corner towers, closer walls, towers shoot hostile creatures, night lighting follows the hero.
+- **Village:** tents become houses at Stage 3, outer ring farms and archery range, outer homes and corner towers, closer walls, towers shoot hostile creatures, night lighting follows the hero.
 - **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
 
 **Not done**
@@ -101,7 +101,7 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 
 | Today | What it becomes |
 |---|---|
-| **Ages** (Camp, Wooden Town, Stone Fortress) | The army tech tiers. Age 1: forays only (one warband). Age 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Age 3: the campaign map, a siege workshop and companies (several warbands). |
+| **Ages** (Camp, Wooden Town, Stone Fortress) | The army tech tiers. Stage 1: forays only (one warband). Stage 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Stage 3: the campaign map, a siege workshop and companies (several warbands). |
 | **Village Plan / town stages** | New plan steps: a training yard (raises the soldier cap and veteran training), a siege workshop, stables later. They use the same outer ring and wall rules as the outer fields. |
 | **Journey (expeditions)** | Stays as the **foray** level: same zones, chests, timer and escort, but you bring a warband. The chapter expeditions become the first nodes on the campaign map, so story progress and relics unlock nodes. |
 | **Night raid defense** | Unchanged at its core. Attacked realms send revenge raids; neglected defense invites bigger ones. Warbands you take away weaken the village, so the plan is to keep at least one warband home or rely on towers and walls. |
@@ -119,7 +119,7 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 - Warbands outside your view, or whole battles you choose to auto-resolve, use an abstract strength-versus-strength roll so phones stay fast.
 
 ### Gating, so early game does not change
-- War features appear from Age 2 (raids) and Age 3 (campaign map). Players who only want survival can keep playing the classic way.
+- War features appear from Stage 2 (raids) and Stage 3 (campaign map). Players who only want survival can keep playing the classic way.
 - A setting can turn the war layer off for players who prefer the original game (decision still open).
 
 ### Save and balance

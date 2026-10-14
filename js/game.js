@@ -242,7 +242,7 @@
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
   let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
-  function setCamMax() { DIST_MAX = age >= 4 ? 34 : age >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
+  function setCamMax() { DIST_MAX = stage >= 4 ? 34 : stage >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
@@ -530,7 +530,7 @@
     const sm = (kind === 'well' || kind === 'smith' || kind === 'range') && structMesh(kind);        // 모델이 있으면 모델 건물
     if (sm) g.add(sm);
     if (kind === 'house') {
-      g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
+      g.userData.level = stage;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
     } else if (kind === 'siegeshop') {                                   // 공성 작업장: 열린 헛간, 안에 망치 뼈대와 사다리 걸이
       for (const [px, pz] of [[-2.6, -1.8], [2.6, -1.8], [-2.6, 1.8], [2.6, 1.8]]) add(new THREE.BoxGeometry(0.28, 2.6, 0.28), woodMat2, px, 1.3, pz);
@@ -704,7 +704,7 @@
   function upgradeGates() {
     for (const g of gateWaypoints) {
       const lv = g.lv || 1, cost = CFG.BUILD_UPGRADE[lv + 1];
-      if (lv >= age || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
+      if (lv >= stage || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
       payCost(cost); setGateLevel(g, lv + 1); report.upgraded++; updateHud();
       dust(g.x, g.z); sfxAt('build', g.x, g.z); floatText(`Gate Lv${lv + 1}!`, g.x, 3.6, g.z); return;
     }
@@ -768,14 +768,14 @@
     }
     const [type, n] = Object.entries(cfg.cost)[0];
     document.getElementById('designLbl').textContent = cfg.label;
-    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Stage ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
+    document.getElementById('designCost').textContent = cfg.stage && stage < cfg.stage ? `Requires Stage ${cfg.stage} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
     designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
   }
   function designDefense() {
     if (dead) return;
     const cfg = CFG.DESIGN[designTier];
     if (!cfg) return;
-    if (cfg.age && age < cfg.age) return toast(`Available from Stage ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
+    if (cfg.stage && stage < cfg.stage) return toast(`Available from Stage ${cfg.stage} (${CFG.STAGES[cfg.stage - 1].name})`);
     const [type, n] = Object.entries(cfg.cost)[0];
     if (res[type] < n) return toast(`Need ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`);
     res[type] -= n;
@@ -839,7 +839,7 @@
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
-    if (age < g.age) return toast(`Available in Stage ${g.age} (${CFG.AGES[g.age - 1].name})`);
+    if (stage < g.stage) return toast(`Available in Stage ${g.stage} (${CFG.STAGES[g.stage - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
     if (g.needsThirdWall && !thirdWallDone()) return toast('Finish the Great Wall first');
@@ -862,17 +862,17 @@
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
   function planCandidates() {
-    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, stage: D.stage || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, stage: T.stage, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
     const m = settings.plan || 'balanced';
     const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
     return order.filter(Boolean);
   }
-  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
+  function nextPlan() { const c = planCandidates(); return c.find(x => stage >= x.stage && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
   function updatePlanBtn() {
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].age}`) : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && stage >= x.stage) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].stage}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -890,11 +890,11 @@
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Stage ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (stage < g.stage ? `Requires Stage ${g.stage}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
-    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
+    if (stage < CFG.UPGRADE_FENCE_STAGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_STAGE} (${CFG.STAGES[CFG.UPGRADE_FENCE_STAGE - 1].name})`);
     const f = nearestFence('wood');
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);
@@ -935,9 +935,9 @@
       const h = document.createElement('div'); h.className = 'shead'; h.textContent = `${SLOT_HEAD[slot]} - you use: ${gearDef(playerGear[slot] || 'armor_none').name}`; smithList.appendChild(h);
     for (const [id, d] of Object.entries(CFG.GEAR)) {
       if (!d.cost || d.slot !== slot) continue;
-      const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age || (d.req && !story[d.req]);
+      const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.stage || 1) > stage || (d.req && !story[d.req]);
       const row = document.createElement('div'); row.className = 'srow';
-      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Stage ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
+      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.stage || 1) > stage ? `Requires Stage ${d.stage} (${CFG.STAGES[d.stage - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
       const [bc, be] = row.querySelectorAll('button');
       bc.disabled = locked || !canPay(gearCost(d)); be.disabled = stock <= 0 || equipped;
       bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
@@ -1022,7 +1022,7 @@
   function openPerk(a) {
     const list = CFG.PERKS[a];
     if (!list || perks[a] || dead) return;
-    openEvent({ tag: `Stage ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
+    openEvent({ tag: `Stage ${a} perk`, title: `${CFG.STAGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this stage.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
   addEventListener('keydown', e => { if (e.code === 'KeyO' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); if (e.code === 'KeyY' && !e.repeat) toggleMark(); });
@@ -1135,8 +1135,8 @@
   let fireAlive = true, fireHp = CFG.FIRE_HP;
 
   // ---------- 시대 발전: 모닥불 → 나무 마을 회관 → 석조 성채 ----------
-  let age = 1;
-  const fireMax = () => CFG.FIRE_HP_BY_AGE[age - 1];
+  let stage = 1;
+  const fireMax = () => CFG.FIRE_HP_BY_STAGE[stage - 1];
   const hallGroup = new THREE.Group();
   campfire.add(hallGroup);
   const hallHint = textSprite('Upgrade Stage: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
@@ -1145,15 +1145,15 @@
   function buildHall() {
     while (hallGroup.children.length) hallGroup.remove(hallGroup.children[0]);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; hallGroup.add(o); return o; };
-    campDecor.visible = age === 1; flame.visible = age === 1;
-    if (age === 1) { flame.position.y = 0; fireLight.position.y = 1.4; hallHint.position.y = 2.6; }
-    else if (age === 2) {                                              // 나무 마을 회관 (큰 목조 건물)
+    campDecor.visible = stage === 1; flame.visible = stage === 1;
+    if (stage === 1) { flame.position.y = 0; fireLight.position.y = 1.4; hallHint.position.y = 2.6; }
+    else if (stage === 2) {                                              // 나무 마을 회관 (큰 목조 건물)
       add(new THREE.BoxGeometry(4.6, 2.6, 4.6), hallWood, 0, 1.3, 0);
       add(new THREE.ConeGeometry(3.9, 1.9, 4), hallRoof, 0, 3.55, 0).rotation.y = Math.PI / 4;
       add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
       add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
       flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
-    } else if (age === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
+    } else if (stage === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
       add(new THREE.BoxGeometry(6.2, 3.2, 6.2), keepStone, 0, 1.6, 0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         add(new THREE.CylinderGeometry(1.0, 1.1, 4.6, 10), keepTower, sx * 3.1, 2.3, sz * 3.1);
@@ -1168,39 +1168,39 @@
       add(new THREE.BoxGeometry(7.6, 3.6, 7.6), keepStone, 0, 1.8, 0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         add(new THREE.CylinderGeometry(1.2, 1.3, 5.6, 10), keepTower, sx * 3.8, 2.8, sz * 3.8);
-        add(new THREE.ConeGeometry(1.5, 1.6, 10), age >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
+        add(new THREE.ConeGeometry(1.5, 1.6, 10), stage >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
       }
       for (const [dx, dz] of [[0, -3.9], [0, 3.9], [-3.9, 0], [3.9, 0]]) add(new THREE.CylinderGeometry(0.7, 0.8, 4.4, 8), keepTower, dx, 2.2, dz);
       add(new THREE.BoxGeometry(4.0, 3.2, 4.0), keepStone, 0, 5.2, 0);
-      add(new THREE.ConeGeometry(3.0, 2.2, 4), age >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
+      add(new THREE.ConeGeometry(3.0, 2.2, 4), stage >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
       add(new THREE.BoxGeometry(1.8, 2.4, 0.14), hallDark, 0, 1.2, 3.84);
       flame.position.y = 9.4; fireLight.position.y = 10.6; hallHint.position.y = 12;
     }
-    FIRE_R = CFG.HALL_RADIUS[age - 1];
+    FIRE_R = CFG.HALL_RADIUS[stage - 1];
     campfire.userData.radius = FIRE_R;
   }
   buildHall();
 
-  const ageEl = document.getElementById('ageN');
-  const ageName = (a) => `Stage ${a} · ${CFG.AGES[a - 1].name}`;
-  function updateAgeUi() { ageEl.textContent = ageName(age); }
-  function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
-    age = a; buildHall(); fireHp = fireMax();
+  const stageEl = document.getElementById('stageN');
+  const stageName = (a) => `Stage ${a} · ${CFG.STAGES[a - 1].name}`;
+  function updateStageUi() { stageEl.textContent = stageName(stage); }
+  function setStage(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
+    stage = a; buildHall(); fireHp = fireMax();
     if (a >= 3) for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house' && (h.userData.level || 1) < 2) { h.userData.level = 2; setHouseModel(h); }       // 3시대: 텐트는 모두 나무집으로
-    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn(); setCamMax();
+    refreshCitizens(); updateStageUi(); updateTownBtn(); updateDesignBtn(); setCamMax();
     npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
   // ----- 시대 발전 패널 -----
   const techEl = document.getElementById('techPanel'), techUpBtn = document.getElementById('techUp');
   function refreshTech() {
-    document.getElementById('techTitle').textContent = `${CFG.AGES[age - 1].hall} · ${ageName(age)}`;
-    document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
-    const nx = CFG.AGES[age];
+    document.getElementById('techTitle').textContent = `${CFG.STAGES[stage - 1].hall} · ${stageName(stage)}`;
+    document.getElementById('techCur').textContent = `Unlocked: ${CFG.STAGES.slice(0, stage).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
+    const nx = CFG.STAGES[stage];
     if (!nx) { document.getElementById('techNext').textContent = 'Final stage reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Stage'; return; }
-    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron)\nUnlocks: ${nx.unlock}`;
-    const chk = stageChecks(age + 1), done = chk.filter(c => c.ok).length;
+    document.getElementById('techNext').textContent = `Next: ${stageName(stage + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron)\nUnlocks: ${nx.unlock}`;
+    const chk = stageChecks(stage + 1), done = chk.filter(c => c.ok).length;
     document.getElementById('techNext').textContent += `\nGoals (${done}/${chk.length}):\n` + chk.map(c => `${c.ok ? '✔' : '○'} ${c.text}`).join('\n');
-    techUpBtn.disabled = !canPay(nx.cost) || done < chk.length; techUpBtn.textContent = `Advance to Stage ${age + 1}`;
+    techUpBtn.disabled = !canPay(nx.cost) || done < chk.length; techUpBtn.textContent = `Advance to Stage ${stage + 1}`;
   }
   const STAGE_TESTS = {                                                       // 단계 목표: [글, 달성 여부]
     nights1: () => ['Survive night 1', dayNow() >= 2],
@@ -1221,19 +1221,19 @@
   }
   function openTech() { if (dead) return; refreshTech(); techEl.style.display = 'flex'; }
   function closeTech() { techEl.style.display = 'none'; }
-  function upgradeAge() {
-    const nx = CFG.AGES[age];
+  function upgradeStage() {
+    const nx = CFG.STAGES[stage];
     if (!nx) return;
     if (!canPay(nx.cost)) return toast(`Need ${costText(nx.cost)}`);
-    { const bad = stageChecks(age + 1).find(c => !c.ok); if (bad) return toast(`Not yet: ${bad.text}`); }
+    { const bad = stageChecks(stage + 1).find(c => !c.ok); if (bad) return toast(`Not yet: ${bad.text}`); }
     payCost(nx.cost);
-    setAge(age + 1);
+    setStage(stage + 1);
     burst({ x: 0, z: 0 }, 40); shake = Math.max(shake, 0.6);
     updateHud(); refreshTech();
-    toast(`Stage advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
-    setTimeout(() => openPerk(age), 900);
+    toast(`Stage advanced! ${stageName(stage)} - ${CFG.STAGES[stage - 1].hall}`);
+    setTimeout(() => openPerk(stage), 900);
   }
-  document.getElementById('techUp').addEventListener('click', upgradeAge);
+  document.getElementById('techUp').addEventListener('click', upgradeStage);
   document.getElementById('techClose').addEventListener('click', closeTech);
   addEventListener('keydown', e => {
     if (e.code === 'KeyT' && !e.repeat) { if (techEl.style.display === 'flex') closeTech(); else if (Math.hypot(player.position.x, player.position.z) < 14) openTech(); else toast('Press T near the town hall (campfire)'); }
@@ -1260,7 +1260,7 @@
 
   function animateFire(t) {
     if (!fireAlive) return;
-    flame.visible = age === 1;                              // 회관·성채 위에는 불꽃을 보이지 않는다 (불빛만 남는다)
+    flame.visible = stage === 1;                              // 회관·성채 위에는 불꽃을 보이지 않는다 (불빛만 남는다)
     const f = 1 + Math.sin(t * 9) * 0.12 + Math.sin(t * 23) * 0.06;
     const hpR = Math.max(0.35, fireHp / fireMax());         // 모닥불 체력이 줄면 불꽃도 작아진다
     flame.scale.set((2 - f) * hpR, f * hpR, (2 - f) * hpR);
@@ -1282,14 +1282,14 @@
   // ---------- 밸런스 기록: 밤마다 한 줄씩 쌓고, 게임 오버 때 한 판 요약을 저장한다. 설정 > Balance report 에서 복사해 공유할 수 있다 ----------
   function saveRunSummary(cause, rb) {
     let runs = []; try { runs = JSON.parse(localStorage.getItem('nf_runs') || '[]') || []; } catch (e) { runs = []; }
-    runs.push({ ts: Date.now(), diff, ng: ngLevel, day: rb.day, lv: pl.lvl, k: totalKills, cls: playerClass, cause, age, pop: npcs.length });
+    runs.push({ ts: Date.now(), diff, ng: ngLevel, day: rb.day, lv: pl.lvl, k: totalKills, cls: playerClass, cause, stage, pop: npcs.length });
     try { localStorage.setItem('nf_runs', JSON.stringify(runs.slice(-15))); } catch (e) {}
   }
   function balanceReport() {
-    const L = [`Nightfall Settlement balance report`, `Now: ${diff}${ngLevel ? ' NG+' + ngLevel : ''} · Day ${dayNow()} · Lv ${pl.lvl} · class ${playerClass || '-'} · age ${age} · pop ${npcs.length} · kills ${totalKills} · power ${Math.round(powerOf().total)}`, '', 'Night log (day, raid?, kills, walls lost, citizens lost, walls fortified, built, pop, prosperity, level, power, wood/stone/iron/food):'];
+    const L = [`Nightfall Settlement balance report`, `Now: ${diff}${ngLevel ? ' NG+' + ngLevel : ''} · Day ${dayNow()} · Lv ${pl.lvl} · class ${playerClass || '-'} · stage ${stage} · pop ${npcs.length} · kills ${totalKills} · power ${Math.round(powerOf().total)}`, '', 'Night log (day, raid?, kills, walls lost, citizens lost, walls fortified, built, pop, prosperity, level, power, wood/stone/iron/food):'];
     for (const s of story.stats || []) L.push(`D${s.d}${s.raid ? ' RAID' : ''}: kills ${s.k}, walls lost ${s.wl}, citizens lost ${s.cl}, fortified ${s.f || 0}, built ${s.b}, pop ${s.pop}, pros ${s.pr}, Lv${s.lv}, power ${s.pw}, ${s.w}/${s.s}/${s.i}/${s.fd}`);
     let runs = []; try { runs = JSON.parse(localStorage.getItem('nf_runs') || '[]') || []; } catch (e) { runs = []; }
-    if (runs.length) { L.push('', 'Past runs:'); for (const r of runs.slice().reverse()) L.push(`${new Date(r.ts).toISOString().slice(0, 10)} ${r.diff}${r.ng ? '+' + r.ng : ''}: day ${r.day}, Lv ${r.lv}, kills ${r.k}, ${r.cls || '-'}, age ${r.age}, pop ${r.pop} - ${r.cause}`); }
+    if (runs.length) { L.push('', 'Past runs:'); for (const r of runs.slice().reverse()) L.push(`${new Date(r.ts).toISOString().slice(0, 10)} ${r.diff}${r.ng ? '+' + r.ng : ''}: day ${r.day}, Lv ${r.lv}, kills ${r.k}, ${r.cls || '-'}, stage ${r.stage}, pop ${r.pop} - ${r.cause}`); }
     return L.join('\n');
   }
   function gameOver(sub) {
@@ -1689,7 +1689,7 @@
     }
   }
   // ---------- 밤 활동 2: 모닥불 이야기 / 등불 상인 / 밤 손님 ----------
-  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide, eclipse: () => story.eclipse };
+  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, stage2: () => stage >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide, eclipse: () => story.eclipse };
   const nightDayNo = () => { const h = (gameMin / 60) % 24; return h < 5 ? dayNow() - 1 : dayNow(); };
   let taleT = 0, nmActive = null, nmLantern = null, lastNightEvDay = 0;
   function nextTale() { return CFG.TALES.find(t => !story.tales[t.id] && TALE_REQ[t.req]()); }
@@ -2196,15 +2196,15 @@
   }
 
   // 시민 외형은 시대에 따라 달라진다: 옷 색 + 2시대 모자 / 3시대 투구와 망토
-  const citizenColor = () => [0xe8d27a, 0xf2c230, 0xe39a1a, 0xdc8a1a, 0xd07818][age - 1];
+  const citizenColor = () => [0xe8d27a, 0xf2c230, 0xe39a1a, 0xdc8a1a, 0xd07818][stage - 1];
   const hatMat = mat(0x7a5530), helmMat = mat(0x9a9da4), capeMat = mat(0xa02a2a);
   function applyCitizenLook(n) {
     if (n.decor) { n.body.remove(n.decor); n.decor = null; }
     return;                                                           // 예전 막대 인형용 모자·투구·망토 장식은 새 다각형 캐릭터와 겹쳐 이상하게 보이므로 쓰지 않는다
-    if (n.role !== 'citizen' || age < 2 || n.rig.skin) return;
+    if (n.role !== 'citizen' || stage < 2 || n.rig.skin) return;
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
-    if (age === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
+    if (stage === 2) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 12), hatMat, 0, 1.93, 0); add(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hatMat, 0, 2.01, 0); }
     else { add(new THREE.SphereGeometry(0.24, 10, 6), helmMat, 0, 1.82, 0); add(new THREE.BoxGeometry(0.5, 0.9, 0.05), capeMat, 0, 1.15, -0.18); }
     n.body.add(g); n.decor = g;
   }
@@ -2249,7 +2249,7 @@
     rows.push(r.kills ? `Night: ${r.kills} raider${r.kills > 1 ? 's' : ''} defeated` : 'A quiet night');
     if (r.wallsLost || r.lostCit) rows.push(`Lost: ${[r.wallsLost ? `${r.wallsLost} wall${r.wallsLost > 1 ? 's' : ''}` : '', r.lostCit ? `${r.lostCit} citizen${r.lostCit > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}`);
     if (r.built || r.upgraded) rows.push(`Built: ${r.built} · Upgraded: ${r.upgraded}`);
-    { const fm = npcs.find(n => n.foreman), woodLeft = age >= CFG.UPGRADE_FENCE_AGE ? obstacles.filter(o => o.userData.type === 'fence' && o.userData.level === 'wood').length : 0;
+    { const fm = npcs.find(n => n.foreman), woodLeft = stage >= CFG.UPGRADE_FENCE_STAGE ? obstacles.filter(o => o.userData.type === 'fence' && o.userData.level === 'wood').length : 0;
       if (r.fort || r.rep || woodLeft) rows.push(`${fm ? 'Foreman ' + fm.name : 'Workers'}: ${r.fort} wall${r.fort === 1 ? '' : 's'} fortified, ${r.rep} repaired${woodLeft ? ` · ${woodLeft} wooden left${res.stone < CFG.FENCE_UPGRADE_STONE ? ' (need stone)' : ''}` : ''}`); }
     if (isRaid(dayNo)) rows.push(`⚠ Raid tonight: ${forecast(dayNo)}`); else if (isRaid(dayNo + 1)) rows.push(`⚠ Raid TOMORROW night: ${forecast(dayNo + 1)}`);
     if (r.season) rows.push(r.season);
@@ -2358,13 +2358,13 @@
   function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
   function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   // 원정에 데려가는 전투단: 시대에 따라 최대 1(시대 1) / 2(시대 2) / 3(시대 3)개. 다시 누르면 뺀다
-  const bandMax = () => (age >= 3 ? 3 : age >= 2 ? 2 : 1) + (hasPerk('warhost') ? 1 : 0);
+  const bandMax = () => (stage >= 3 ? 3 : stage >= 2 ? 2 : 1) + (hasPerk('warhost') ? 1 : 0);
   const bringing = (i) => escortBands.includes(i);
   function toggleBring(i) {
     if (bringing(i)) { escortBands = escortBands.filter(x => x !== i); return true; }
     const mx = bandMax();
     if (mx === 1) { escortBands = [i]; return true; }
-    if (escortBands.length >= mx) { toast(`Max ${mx} warband${mx > 1 ? 's' : ''} at this age`); return false; }
+    if (escortBands.length >= mx) { toast(`Max ${mx} warband${mx > 1 ? 's' : ''} at this stage`); return false; }
     escortBands.push(i); return true;
   }
   function soldierCount() { return npcs.filter(n => (isSoldier(n) && !n.levy) || n.promote).length + holdCount(); }
@@ -2498,7 +2498,7 @@
   }
   const moodAll = (x) => npcs.forEach(n => { n.mood = Math.max(0, Math.min(100, n.mood + x)); });
   const dayNow = () => Math.floor(gameMin / 1440) + 1;
-  const tinkerTarget = () => CFG.LEVELED.flatMap(k => builtBuildings(k)).find(o => lvOf(o) < age);
+  const tinkerTarget = () => CFG.LEVELED.flatMap(k => builtBuildings(k)).find(o => lvOf(o) < stage);
   const EVENTS = [
     { id: 'merchant', title: 'Wandering Merchant', text: 'A cart rolls up to the gate. The merchant offers a few fair trades.', opts: [
       { label: 'Trade 12 Food for 4 Iron', ok: () => res.food >= 12, run: () => { res.food -= 12; res.iron += 4; return 'Deal done: +4 Iron'; } },
@@ -2679,7 +2679,7 @@
     let n = 0;
     for (const kind of CFG.LEVELED) for (const o of builtBuildings(kind)) {
       const lv = lvOf(o), cost = CFG.BUILD_UPGRADE[lv + 1];
-      if (n >= CFG.BUILD_UPGRADES_PER_MORNING || lv >= age || !cost) continue;
+      if (n >= CFG.BUILD_UPGRADES_PER_MORNING || lv >= stage || !cost) continue;
       if (!Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
       payCost(cost); setBuildingLevel(o, lv + 1); n++; report.upgraded++;
       dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); floatText(`${BUILDING_NAME[kind]} Lv${lv + 1}!`, o.position.x, 3.6, o.position.z);
@@ -2749,7 +2749,7 @@
     let n = 0;
     for (const h of builtBuildings('house')) {
       const lv = h.userData.level || 1, cost = CFG.HOUSE_UPGRADE[lv + 1];
-      if (n >= CFG.HOUSE_UPGRADES_PER_MORNING || lv >= age || !cost) continue;
+      if (n >= CFG.HOUSE_UPGRADES_PER_MORNING || lv >= stage || !cost) continue;
       if (!Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;     // 여유가 있을 때만 (비축분을 다 쓰지 않는다)
       payCost(cost); h.userData.level = lv + 1; setHouseModel(h); n++; report.upgraded++;
       dust(h.position.x, h.position.z); sfxAt('build', h.position.x, h.position.z); floatText('House upgraded!', h.position.x, 3.6, h.position.z);
@@ -2826,7 +2826,7 @@
     const soldiers = npcs.filter(n => n.role !== 'citizen');
     let best = null;
     for (const [id, d] of Object.entries(CFG.GEAR)) {
-      if (!d.cost || (d.age || 1) > age || (d.req && !story[d.req]) || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
+      if (!d.cost || (d.stage || 1) > stage || (d.req && !story[d.req]) || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
       const need = soldiers.some(n => (d.slot === 'armor' || d.slot === (n.role === 'melee' ? 'sword' : 'bow')) && d.tier > gearDef(n.gear[d.slot]).tier);
       if (need && (!best || d.tier < best.tier)) best = d;                         // 낮은 등급부터 차례로
     }
@@ -2901,7 +2901,7 @@
   const faceTo = (x, z) => { npc.face = Math.atan2(x - npc.position.x, z - npc.position.z); npc.rotation.y = npc.face; };
   // 집·병영이 생긴 뒤(2시대~)에는 모닥불(회관) 둘레가 아니라, 시민은 각자 집 앞 계단에, 병사는 병영·사격장 앞에 앉아 쉰다. 점심은 시장·우물 앞.
   function restSpot(n, purpose) {
-    if (age < 2) return null;
+    if (stage < 2) return null;
     const cits = npcs.filter(x => x.role === 'citizen'), sold = npcs.filter(x => x.role !== 'citizen');
     let b = null, slot = 0;
     if (n.role === 'citizen') {
@@ -3167,7 +3167,7 @@
     let damaged = null, bs = Infinity;                                      // 가장 많이 다친 성벽부터 (거리는 조금만 반영)
     for (const o of obstacles) { if (o.userData.type !== 'fence' || o.userData.hp >= o.userData.maxHp || !unclaimed(o)) continue; const sc = o.userData.hp / o.userData.maxHp + Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) / 120; if (sc < bs) { bs = sc; damaged = o; } }
     if (damaged) return { kind: 'repair', target: damaged };
-    if (age >= CFG.UPGRADE_FENCE_AGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
+    if (stage >= CFG.UPGRADE_FENCE_STAGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
       const wf = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.level === 'wood' && unclaimed(o));
       if (wf) { if (!fortifyTold) { fortifyTold = true; toast('Your workers will now rebuild the wooden fences in stone'); } return { kind: 'fortify', target: wf }; }
     }
@@ -3192,7 +3192,7 @@
   function taskValid(tk) {
     if (tk.kind === 'build') return blueprints.includes(tk.target);
     if (!obstacles.includes(tk.target)) return false;
-    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && age >= CFG.UPGRADE_FENCE_AGE;
+    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && stage >= CFG.UPGRADE_FENCE_STAGE;
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
@@ -3885,7 +3885,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, stage, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -3938,8 +3938,8 @@
     order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `O · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' }, sn.playerGear || {}); if (!(sn.playerGear && sn.playerGear.great)) playerGear.great = gearAtTier('great', gearDef(playerGear.sword).tier); if (!(sn.playerGear && sn.playerGear.spear)) playerGear.spear = gearAtTier('spear', gearDef(playerGear.sword).tier); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
-    designTier = sn.designTier; townStage = sn.townStage || 0; age = sn.age || 1; chapterCleared = sn.chapterCleared;
-    buildHall(); updateAgeUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
+    designTier = sn.designTier; townStage = sn.townStage || 0; stage = sn.stage || 1; chapterCleared = sn.chapterCleared;
+    buildHall(); updateStageUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
     dead = false; fireAlive = true; flame.visible = true; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
     dashBonusT = dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
@@ -3987,7 +3987,7 @@
   function debugSetup() {
     if (dead) return;
     res.wood += 400; res.stone += 400; res.iron += 60;
-    setAge(3);                                                // 디버그: 3시대(석조 요새)로
+    setStage(3);                                                // 디버그: 3시대(석조 요새)로
     if (!playerClass) setClass('warrior');
     for (const a of [1, 2, 3]) if (!perks[a]) choosePerk(a, CFG.PERKS[a][0].id);
     const finishAll = () => { for (const b of blueprints.slice()) {                // 도면을 즉시 완성
@@ -3995,7 +3995,7 @@
       if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
       else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
     } };
-    while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].age || age >= CFG.DESIGN[designTier].age)) designDefense();
+    while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].stage || stage >= CFG.DESIGN[designTier].stage)) designDefense();
     finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
     for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown(); finishAll(); }          // 둘째 주택 묶음은 첫 묶음이 지어진 뒤에 계획된다
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
@@ -4616,10 +4616,10 @@
     n.stateNow = state; setLabel(state);
   }
   function openChest(o) {
-    const d = exActive.dest, tier = d.age, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
+    const d = exActive.dest, tier = d.stage, picks = [['wood', 10 + tier * 4, 'Wood'], ['stone', 8 + tier * 4, 'Stone'], ['iron', 2 + tier * 2, 'Iron'], ['food', 6 + tier * 3, 'Food']].sort(() => Math.random() - 0.5).slice(0, 2);
     picks.forEach(([k, n, nm], i) => { res[k] += n; floatText(`+${n} ${nm}`, o.position.x, 2.0 + i * 0.5, o.position.z); });
     if (d.ch >= 2) { const k = 1 + (o.userData.relic ? 2 : 0); res.shard += k; floatText(`+${k} Shard`, o.position.x, 2.9, o.position.z); }
-    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chest'); updateHud(); giveXp((8 + 4 * d.age) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
+    burst({ x: o.position.x, z: o.position.z, y: 1 }, 16); Snd.play('chest'); updateHud(); giveXp((8 + 4 * d.stage) * (d.night ? 2 : 1)); if (d.night && story.beacon) { res.shard++; floatText('+1 Shard', o.position.x, 3.3, o.position.z); }
     if (o.userData.relic) foundRelic(d);
   }
 
@@ -4723,7 +4723,7 @@
     const d = CFG.EXPEDITIONS.find(x => x.id === id);
     if (!d || exActive || dead || exEnding) return;
     if (isYours(d)) return toast(`${d.name} is already broken${holdOf(d.id) ? ' and held' : ''}`);
-    if (age < d.age) return toast(`Requires Stage ${d.age} (${CFG.AGES[d.age - 1].name})`);
+    if (stage < d.stage) return toast(`Requires Stage ${d.stage} (${CFG.STAGES[d.stage - 1].name})`);
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
@@ -4821,7 +4821,7 @@
     });
   }
   function buildCamp(id) {
-    const d = CFG.EXPEDITIONS.find(x => x.id === id), cost = CFG.CAMP_COST[d.age];
+    const d = CFG.EXPEDITIONS.find(x => x.id === id), cost = CFG.CAMP_COST[d.stage];
     if (!d || !story.cleared[id] || story.camps[id] || !canPay(cost)) return;
     payCost(cost); story.camps[id] = true; updateHud(); rebuildCamps(); Snd.play('chime'); giveXp(20);
     toast(`${d.name} camp established: ${Object.entries(CFG.CAMPS[id]).map(([k, v]) => `+${v} ${k}`).join(', ')} each morning`);
@@ -4858,7 +4858,7 @@
     if (d.raid) return holdHtml(d);
     if (story.camps[d.id]) return `<small>Camp ✔ ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
     if (!story.cleared[d.id]) return '';
-    const cost = CFG.CAMP_COST[d.age];
+    const cost = CFG.CAMP_COST[d.stage];
     return `<small><button class="campBtn" data-camp="${d.id}" ${canPay(cost) ? '' : 'disabled'}>Build camp (${costText(cost)})</button> ${Object.entries(CFG.CAMPS[d.id]).map(([k, v]) => `+${v} ${k}`).join(', ')} every morning</small>`;
   }
   let jMapSel = 'quarry', jFocus = true, jMapFar = false;                                                      // 일지의 탭: 'journey'(원정) / 'raid'(습격)
@@ -4875,12 +4875,12 @@
       const ready = mem.filter(n => !n.down && !n.escort).length, on = bringing(i);
       wbRows.push(`<div class="ex"><div class="info"><b style="color:${warbandColor(i)}">&#9679; ${warbandName(i)} (${mem.length}/${CFG.WARBAND.SIZE})</b><small>${ready}/${mem.length} ready</small></div><button data-wb="${i}" ${ready ? '' : 'disabled'}>${on ? 'Going &#10003;' : ready ? 'Bring' : 'Away'}</button></div>`);
     }
-    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div>${wounded ? `<button class="tendBtn" ${res.food < npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD ? 'disabled' : ''}>Tend wounded (${npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD} food)</button>` : ''}</div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div><div class="ex"><div class="info"><b>Training Field</b><small>${trainReady() ? 'See every warband on parade and fight practice battles. No losses, no rewards.' : `Opens at Stage ${CFG.TRAIN.AGE}`}</small></div><button class="trainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Parade</button><button class="siegeTrainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Siege</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
+    const wounded = npcs.filter(n => n.woundDays > 0).length, escHtml = `<div class="ex"><div class="info"><b>Warbands</b><small>Soldiers ${soldierCount()}/${soldierCap()} · bring up to ${bandMax()} · Courage ${Math.round(courageOf())}%${wounded ? ` · ${wounded} wounded` : ''}</small></div>${wounded ? `<button class="tendBtn" ${res.food < npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD ? 'disabled' : ''}>Tend wounded (${npcs.filter(n => n.woundDays > 0).reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD} food)</button>` : ''}</div><div class="ex"><div class="info"><b>Levies</b><small>Weak villager fighters for the next journey only: ${levyCount()}/${CFG.LEVY.MAX} · ${CFG.LEVY.FOOD} food each</small></div><button class="levyBtn" ${levyCount() >= CFG.LEVY.MAX || res.food < CFG.LEVY.FOOD || exActive ? 'disabled' : ''}>Call levy</button></div><div class="ex"><div class="info"><b>Training Field</b><small>${trainReady() ? 'See every warband on parade and fight practice battles. No losses, no rewards.' : `Opens at Stage ${CFG.TRAIN.STAGE}`}</small></div><button class="trainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Parade</button><button class="siegeTrainBtn" ${trainReady() && !exActive ? '' : 'disabled'}>Siege</button></div>` + (wbRows.length ? wbRows.join('') : '<div class="ex"><div class="info"><small>No soldiers yet.</small></div></div>');
     const chLocked = (d) => (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse);
-    const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
+    const lockOf = (d) => stage < d.stage || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
-      const weak = powerFor(d) < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''} · <span style="color:${realmDef(d.realm).color}">${realmDef(d.realm).short}</span>` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Stage ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) || isYours(d) ? 'disabled' : ''}>${lock ? 'Locked' : isYours(d) ? (holdOf(d.id) ? 'Held' : 'Broken') : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
+      const weak = powerFor(d) < needOf(d), lock = stage < d.stage || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''} · <span style="color:${realmDef(d.realm).color}">${realmDef(d.realm).short}</span>` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : stage < d.stage ? ` · Requires Stage ${d.stage}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) || isYours(d) ? 'disabled' : ''}>${lock ? 'Locked' : isYours(d) ? (holdOf(d.id) ? 'Held' : 'Broken') : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
     };
     const mapHtml = () => {                                                  // 지도 화면: 마디(원정)와 길. 고르면 아래에 같은 카드가 나온다
       const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id)), near = vis.filter(d => !N[d.id].far), far = vis.filter(d => N[d.id].far);
@@ -5122,11 +5122,11 @@
   // ---------- 훈련장 (Training Field): 별도 지역. 모든 전투단이 줄지어 서고, 모의 전투를 치른다. 시계는 멈추고, 아무도 다치지 않으며, 보상도 없다 ----------
   // (이 파일의 것은 모두 function 선언이다)
   const TRAIN_DEST = { id: 'trainfield', name: 'Training Field', training: true, tint: 0x4d6a3c, trees: 6, rocks: 3, ore: 0, chests: 0, foes: [], desc: '' };
-  function trainReady() { return age >= CFG.TRAIN.AGE; }
+  function trainReady() { return stage >= CFG.TRAIN.STAGE; }
   const TRAIN_SIEGE = { id: 'trainsiege', name: 'Siege practice', training: true, siege: true, tint: 0x4d6a3c, trees: 0, rocks: 2, ore: 0, chests: 0, get camp() { return CFG.TRAIN.SIEGE.camp; }, get foes() { return CFG.TRAIN.SIEGE.foes; }, get guardian() { return CFG.TRAIN.SIEGE.guardian; }, desc: '' };
   function startTraining(mode) {
     if (exActive || dead || exEnding) return;
-    if (!trainReady()) return toast(`The Training Field opens at Stage ${CFG.TRAIN.AGE}`);
+    if (!trainReady()) return toast(`The Training Field opens at Stage ${CFG.TRAIN.STAGE}`);
     if (nowHour < 6 || nowHour >= 16) return toast('Train in daylight (before 16:00)');
     if (!escortPool().length) return toast('No soldiers to train');
     closeJournal(); exEnding = true; gathering = null;
@@ -5289,7 +5289,7 @@
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
     if (peaceful && night && !exActive && !dead) {                                   // 병영·사격장 곁에서 병사와 함께 훈련하면 경험치를 얻는다
       const camp = builtBuildings('barracks').concat(builtBuildings('range')).find(b => Math.hypot(b.position.x - player.position.x, b.position.z - player.position.z) < b.userData.radius + 5);
-      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + age * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
+      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + stage * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
     }
     nightActivities(dt, hour, night);
     updateNpcs(dt, hour, t);
@@ -5524,7 +5524,7 @@
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
     { text: 'Defeat raiders, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
     { text: 'Gather more to build the town', done: () => townStage > 0 },
-    { text: 'Advance your Stage at the Town Hall (T)', done: () => age >= 2 },
+    { text: 'Advance your Stage at the Town Hall (T)', done: () => stage >= 2 },
   ];
   // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
   const COACH = [
@@ -5568,8 +5568,8 @@
     { id: 'night1', name: 'First Dawn', desc: 'Survive the first night', test: () => dayNow() >= 2 },
     { id: 'week', name: 'A Whole Week', desc: 'Reach Day 7', test: () => dayNow() >= 7 },
     { id: 'boss', name: 'Behemoth Slayer', desc: 'Defeat the Behemoth', test: () => chapterCleared },
-    { id: 'age2', name: 'Wooden Town', desc: 'Reach Stage 2', test: () => age >= 2 },
-    { id: 'age3', name: 'Stone Keep', desc: 'Reach Stage 3', test: () => age >= 3 },
+    { id: 'stage2', name: 'Wooden Town', desc: 'Reach Stage 2', test: () => stage >= 2 },
+    { id: 'stage3', name: 'Stone Keep', desc: 'Reach Stage 3', test: () => stage >= 3 },
     { id: 'pop10', name: 'Busy Streets', desc: 'Have 10 villagers', test: () => npcs.length >= 10 },
     { id: 'smith', name: 'Hammer and Anvil', desc: 'Build a Blacksmith', test: () => smiths().length > 0 },
     { id: 'armed', name: 'Armed to the Teeth', desc: 'Have 3 soldiers wearing armor', test: () => npcs.filter(n => n.role !== 'citizen' && n.gear.armor !== 'armor_none').length >= 3 },
@@ -5651,8 +5651,8 @@
     if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openDifficultyChoice, 700);
     saveCheckpoint('Day 1 start');
   }
-  updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
+  updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

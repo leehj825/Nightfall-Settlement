@@ -87,8 +87,8 @@
   let fireAlive = true, fireHp = CFG.FIRE_HP;
 
   // ---------- 시대 발전: 모닥불 → 나무 마을 회관 → 석조 성채 ----------
-  let age = 1;
-  const fireMax = () => CFG.FIRE_HP_BY_AGE[age - 1];
+  let stage = 1;
+  const fireMax = () => CFG.FIRE_HP_BY_STAGE[stage - 1];
   const hallGroup = new THREE.Group();
   campfire.add(hallGroup);
   const hallHint = textSprite('Upgrade Stage: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
@@ -97,15 +97,15 @@
   function buildHall() {
     while (hallGroup.children.length) hallGroup.remove(hallGroup.children[0]);
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; hallGroup.add(o); return o; };
-    campDecor.visible = age === 1; flame.visible = age === 1;
-    if (age === 1) { flame.position.y = 0; fireLight.position.y = 1.4; hallHint.position.y = 2.6; }
-    else if (age === 2) {                                              // 나무 마을 회관 (큰 목조 건물)
+    campDecor.visible = stage === 1; flame.visible = stage === 1;
+    if (stage === 1) { flame.position.y = 0; fireLight.position.y = 1.4; hallHint.position.y = 2.6; }
+    else if (stage === 2) {                                              // 나무 마을 회관 (큰 목조 건물)
       add(new THREE.BoxGeometry(4.6, 2.6, 4.6), hallWood, 0, 1.3, 0);
       add(new THREE.ConeGeometry(3.9, 1.9, 4), hallRoof, 0, 3.55, 0).rotation.y = Math.PI / 4;
       add(new THREE.BoxGeometry(1.2, 1.8, 0.12), hallDark, 0, 0.9, 2.32);
       add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, -1.5, 1.6, 2.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hallDark, 1.5, 1.6, 2.32);
       flame.position.y = 4.15; fireLight.position.y = 5.2; hallHint.position.y = 6.6;
-    } else if (age === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
+    } else if (stage === 3) {                                            // 석조 성채(Keep): 모서리 탑 4개 + 중앙 망루
       add(new THREE.BoxGeometry(6.2, 3.2, 6.2), keepStone, 0, 1.6, 0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         add(new THREE.CylinderGeometry(1.0, 1.1, 4.6, 10), keepTower, sx * 3.1, 2.3, sz * 3.1);
@@ -120,39 +120,39 @@
       add(new THREE.BoxGeometry(7.6, 3.6, 7.6), keepStone, 0, 1.8, 0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         add(new THREE.CylinderGeometry(1.2, 1.3, 5.6, 10), keepTower, sx * 3.8, 2.8, sz * 3.8);
-        add(new THREE.ConeGeometry(1.5, 1.6, 10), age >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
+        add(new THREE.ConeGeometry(1.5, 1.6, 10), stage >= 5 ? gold : keepTop, sx * 3.8, 6.4, sz * 3.8);
       }
       for (const [dx, dz] of [[0, -3.9], [0, 3.9], [-3.9, 0], [3.9, 0]]) add(new THREE.CylinderGeometry(0.7, 0.8, 4.4, 8), keepTower, dx, 2.2, dz);
       add(new THREE.BoxGeometry(4.0, 3.2, 4.0), keepStone, 0, 5.2, 0);
-      add(new THREE.ConeGeometry(3.0, 2.2, 4), age >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
+      add(new THREE.ConeGeometry(3.0, 2.2, 4), stage >= 5 ? gold : keepTop, 0, 8.0, 0).rotation.y = Math.PI / 4;
       add(new THREE.BoxGeometry(1.8, 2.4, 0.14), hallDark, 0, 1.2, 3.84);
       flame.position.y = 9.4; fireLight.position.y = 10.6; hallHint.position.y = 12;
     }
-    FIRE_R = CFG.HALL_RADIUS[age - 1];
+    FIRE_R = CFG.HALL_RADIUS[stage - 1];
     campfire.userData.radius = FIRE_R;
   }
   buildHall();
 
-  const ageEl = document.getElementById('ageN');
-  const ageName = (a) => `Stage ${a} · ${CFG.AGES[a - 1].name}`;
-  function updateAgeUi() { ageEl.textContent = ageName(age); }
-  function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
-    age = a; buildHall(); fireHp = fireMax();
+  const stageEl = document.getElementById('stageN');
+  const stageName = (a) => `Stage ${a} · ${CFG.STAGES[a - 1].name}`;
+  function updateStageUi() { stageEl.textContent = stageName(stage); }
+  function setStage(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
+    stage = a; buildHall(); fireHp = fireMax();
     if (a >= 3) for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house' && (h.userData.level || 1) < 2) { h.userData.level = 2; setHouseModel(h); }       // 3시대: 텐트는 모두 나무집으로
-    refreshCitizens(); updateAgeUi(); updateTownBtn(); updateDesignBtn(); setCamMax();
+    refreshCitizens(); updateStageUi(); updateTownBtn(); updateDesignBtn(); setCamMax();
     npcs.filter(n => n.role !== 'citizen').forEach((n, i) => { n.home = homeSlot(i); });      // 시대가 바뀌면 병사 대기 위치 재배치
   }
   // ----- 시대 발전 패널 -----
   const techEl = document.getElementById('techPanel'), techUpBtn = document.getElementById('techUp');
   function refreshTech() {
-    document.getElementById('techTitle').textContent = `${CFG.AGES[age - 1].hall} · ${ageName(age)}`;
-    document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
-    const nx = CFG.AGES[age];
+    document.getElementById('techTitle').textContent = `${CFG.STAGES[stage - 1].hall} · ${stageName(stage)}`;
+    document.getElementById('techCur').textContent = `Unlocked: ${CFG.STAGES.slice(0, stage).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
+    const nx = CFG.STAGES[stage];
     if (!nx) { document.getElementById('techNext').textContent = 'Final stage reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Stage'; return; }
-    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron)\nUnlocks: ${nx.unlock}`;
-    const chk = stageChecks(age + 1), done = chk.filter(c => c.ok).length;
+    document.getElementById('techNext').textContent = `Next: ${stageName(stage + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron)\nUnlocks: ${nx.unlock}`;
+    const chk = stageChecks(stage + 1), done = chk.filter(c => c.ok).length;
     document.getElementById('techNext').textContent += `\nGoals (${done}/${chk.length}):\n` + chk.map(c => `${c.ok ? '✔' : '○'} ${c.text}`).join('\n');
-    techUpBtn.disabled = !canPay(nx.cost) || done < chk.length; techUpBtn.textContent = `Advance to Stage ${age + 1}`;
+    techUpBtn.disabled = !canPay(nx.cost) || done < chk.length; techUpBtn.textContent = `Advance to Stage ${stage + 1}`;
   }
   const STAGE_TESTS = {                                                       // 단계 목표: [글, 달성 여부]
     nights1: () => ['Survive night 1', dayNow() >= 2],
@@ -173,19 +173,19 @@
   }
   function openTech() { if (dead) return; refreshTech(); techEl.style.display = 'flex'; }
   function closeTech() { techEl.style.display = 'none'; }
-  function upgradeAge() {
-    const nx = CFG.AGES[age];
+  function upgradeStage() {
+    const nx = CFG.STAGES[stage];
     if (!nx) return;
     if (!canPay(nx.cost)) return toast(`Need ${costText(nx.cost)}`);
-    { const bad = stageChecks(age + 1).find(c => !c.ok); if (bad) return toast(`Not yet: ${bad.text}`); }
+    { const bad = stageChecks(stage + 1).find(c => !c.ok); if (bad) return toast(`Not yet: ${bad.text}`); }
     payCost(nx.cost);
-    setAge(age + 1);
+    setStage(stage + 1);
     burst({ x: 0, z: 0 }, 40); shake = Math.max(shake, 0.6);
     updateHud(); refreshTech();
-    toast(`Stage advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
-    setTimeout(() => openPerk(age), 900);
+    toast(`Stage advanced! ${stageName(stage)} - ${CFG.STAGES[stage - 1].hall}`);
+    setTimeout(() => openPerk(stage), 900);
   }
-  document.getElementById('techUp').addEventListener('click', upgradeAge);
+  document.getElementById('techUp').addEventListener('click', upgradeStage);
   document.getElementById('techClose').addEventListener('click', closeTech);
   addEventListener('keydown', e => {
     if (e.code === 'KeyT' && !e.repeat) { if (techEl.style.display === 'flex') closeTech(); else if (Math.hypot(player.position.x, player.position.z) < 14) openTech(); else toast('Press T near the town hall (campfire)'); }
@@ -212,7 +212,7 @@
 
   function animateFire(t) {
     if (!fireAlive) return;
-    flame.visible = age === 1;                              // 회관·성채 위에는 불꽃을 보이지 않는다 (불빛만 남는다)
+    flame.visible = stage === 1;                              // 회관·성채 위에는 불꽃을 보이지 않는다 (불빛만 남는다)
     const f = 1 + Math.sin(t * 9) * 0.12 + Math.sin(t * 23) * 0.06;
     const hpR = Math.max(0.35, fireHp / fireMax());         // 모닥불 체력이 줄면 불꽃도 작아진다
     flame.scale.set((2 - f) * hpR, f * hpR, (2 - f) * hpR);

@@ -183,7 +183,7 @@
     let damaged = null, bs = Infinity;                                      // 가장 많이 다친 성벽부터 (거리는 조금만 반영)
     for (const o of obstacles) { if (o.userData.type !== 'fence' || o.userData.hp >= o.userData.maxHp || !unclaimed(o)) continue; const sc = o.userData.hp / o.userData.maxHp + Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) / 120; if (sc < bs) { bs = sc; damaged = o; } }
     if (damaged) return { kind: 'repair', target: damaged };
-    if (age >= CFG.UPGRADE_FENCE_AGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
+    if (stage >= CFG.UPGRADE_FENCE_STAGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
       const wf = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.level === 'wood' && unclaimed(o));
       if (wf) { if (!fortifyTold) { fortifyTold = true; toast('Your workers will now rebuild the wooden fences in stone'); } return { kind: 'fortify', target: wf }; }
     }
@@ -208,7 +208,7 @@
   function taskValid(tk) {
     if (tk.kind === 'build') return blueprints.includes(tk.target);
     if (!obstacles.includes(tk.target)) return false;
-    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && age >= CFG.UPGRADE_FENCE_AGE;
+    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && stage >= CFG.UPGRADE_FENCE_STAGE;
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)

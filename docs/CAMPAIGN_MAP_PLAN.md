@@ -54,7 +54,7 @@ A new `CFG.MAP` list of **nodes**; the existing expeditions become nodes (so not
 6. **Wounds, levies, banners and the host**: later.
 
 ## 7. How it fits what exists
-- **Ages**: Age 1 shows only near nodes (forays and the outpost), Age 2 adds raids and a second ring, Age 3 the far ring and castles.
+- **Ages**: Stage 1 shows only near nodes (forays and the outpost), Stage 2 adds raids and a second ring, Stage 3 the far ring and castles.
 - **Chapters and story**: chapter sites stay on the map as story nodes; relics reveal them (`needs`, `ch` rules kept).
 - **Raids**: the three camps become raid nodes; `campRelief` stays; later per realm.
 - **Night raids at home**: today fought live. Auto-resolution is used only when you are away for the night; being home keeps the live fight.

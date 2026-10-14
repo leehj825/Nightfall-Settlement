@@ -4,7 +4,7 @@ Status: **built through the Training Field (`nf-v124` to `nf-v130`)**; banners a
 
 ## 1. Terms
 - The settlement's steps are called **Stages** in all player-facing text ("Age" is dropped): Stage 1 Camp, Stage 2 Wooden Town, Stage 3 Stone Fortress, **Stage 4 Walled City**, **Stage 5 Seat of Power**.
-- "Level" stays for the leader and for buildings; "tier" stays for gear. Code names (`age`, `CFG.AGES`) are **not** renamed (saves and many call sites use them); only strings change.
+- "Level" stays for the leader and for buildings; "tier" stays for gear. Code names were renamed to match in `nf-v131` (`age` is now `stage`, `CFG.AGES` is `CFG.STAGES`).
 
 ## 2. Stage gates (pacing)
 Each stage needs **three things**, all shown as a checklist on the Town Hall panel ("3 of 4 done"):
