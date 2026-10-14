@@ -274,7 +274,7 @@
     STRUCT_DPS: { normal: { wood: 10, stone: 10 }, brute: { wood: 20, stone: 35 }, boss: { wood: 80, stone: 80 } },
     RESPAWN_HOUR: 6,                           // 매일 이 시각에 부족한 자원 리스폰
     // 웨이브 / 난이도: 밤마다 총 마릿수 = WAVE_BASE + Day * WAVE_PER_DAY
-    WAVE_BASE: 4, WAVE_PER_DAY: 3,
+    WAVE_BASE: 5, WAVE_PER_DAY: 4,
     SPAWN_INTERVAL_BASE: 6, SPAWN_RATE_GROWTH: 0.3, MIN_SPAWN_INTERVAL: 0.6,   // 간격 = BASE / (1 + GROWTH*(Day-1))
     MAX_ALIVE: 30,                             // 동시에 존재할 수 있는 적 수
     // 브루트 (Day 2부터, 웨이브 마지막에 등장)
