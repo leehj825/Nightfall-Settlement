@@ -138,15 +138,15 @@
   const STAGE_TESTS = {                                                       // 단계 목표: [글, 달성 여부]
     nights1: () => ['Survive night 1', dayNow() >= 2],
     houses3: () => [`3 homes built (${Math.min(3, builtBuildings('house').length)}/3)`, builtBuildings('house').length >= 3],
-    cit6: () => [`6 citizens (${Math.min(6, npcs.filter(n => n.role === 'citizen').length)}/6)`, npcs.filter(n => n.role === 'citizen').length >= 6],
+    cit3: () => [`3 citizens (${Math.min(3, npcs.filter(n => n.role === 'citizen').length)}/3)`, npcs.filter(n => n.role === 'citizen').length >= 3],
     blood1: () => ['Survive the first Blood Moon raid', dayNow() > raidDays[0]],
     barracksRange: () => ['Barracks and Archery Range built', builtBuildings('barracks').length >= 1 && builtBuildings('range').length >= 1],
     stronghold: () => ['Break a realm stronghold', ['banditfort', 'clanhold', 'legionfort', 'hillclan', 'legionkeep'].some(id => story.cleared[id])],
     outerWall: () => ['Second wall finished', outerWallDone()],
-    cit14: () => [`14 citizens (${Math.min(14, npcs.filter(n => n.role === 'citizen').length)}/14)`, npcs.filter(n => n.role === 'citizen').length >= 14],
+    cit14: () => [`Village of 12 people (${Math.min(12, npcs.length)}/12)`, npcs.length >= 12],
     castleTaken: () => ['Take a realm castle', ['legioncastle', 'clancastle', 'banditcastle'].some(id => story.cleared[id])],
     siegeWorkshop: () => ['Siege Workshop built', builtBuildings('siegeshop').length >= 1],
-    cit10: () => [`10 citizens (${Math.min(10, npcs.filter(n => n.role === 'citizen').length)}/10)`, npcs.filter(n => n.role === 'citizen').length >= 10],
+    cit10: () => [`Village of 8 people (${Math.min(8, npcs.length)}/8)`, npcs.length >= 8],
   };
   function stageChecks(target) {                                             // 다음 단계의 조건 목록: { text, ok }
     const g = CFG.STAGE_GATES[target]; if (!g) return [];

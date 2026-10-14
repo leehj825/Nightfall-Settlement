@@ -325,3 +325,4 @@ During an attack the great sword is held with both hands: a two-bone arm solver 
 - Stage 1 huts unchanged. Real OBJ models can still be dropped in via `tools/build_structures.py`.
 
 - nf-v133: Stage 2 gate now needs 3 homes (the Tent Village plan only has 3 lots; 4 was unreachable).
+- nf-v134: Stage gates count people the population cap allows: Stage 2 needs 3 citizens; Stage 3 needs 8 villagers in total, Stage 4 needs 12 (soldiers and citizens both count).
