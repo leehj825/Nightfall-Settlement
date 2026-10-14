@@ -331,7 +331,9 @@
     if (npc.escort) { escortStep(dt); return; }                       // 원정에 동행 중인 병사
     const isDay = hour >= 6 && hour < 18;
     if (npc.down) {
-      if (isDay && !(npc.woundDays > 0)) { npc.woundDays = 0; reviveNpc(); } else { setLabel(npc.woundDays > 0 ? `Wounded ${npc.woundDays}d` : 'Down'); return; }
+      if (isDay && !(npc.woundDays > 0)) { npc.woundDays = 0; npc.sitting = false; reviveNpc(); }
+      else if (npc.woundDays > 0) { if (!npc.sitting) { npc.sitting = true; npc.anim.revive(); } npc.anim.base('sit', 0); setLabel(`Wounded ${npc.woundDays}d`); return; }       // 부상병은 바닥에 눕지 않고 앉아서 쉰다
+      else { setLabel('Down'); return; }
     }
     npc.atkCd -= dt; npc.atkLock = (npc.atkLock || 0) - dt;
     npc.graceT -= dt;

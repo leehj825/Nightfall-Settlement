@@ -68,8 +68,15 @@
     toast(`${n.name} called up`); Snd.play('horn', 0.5); updateHud(); renderJournal();
   }
   function dismissLevy(n) { npc = n; scene.remove(n); const i = npcs.indexOf(n); if (i >= 0) npcs.splice(i, 1); }
+  const woundedList = () => npcs.filter(n => n.woundDays > 0);
+  function tendWounded() {                                                   // 식량을 내고 부상병을 모두 바로 낫게 한다 (부상 하루당 식량 3)
+    const w = woundedList(); if (!w.length) return;
+    const cost = w.reduce((a, n) => a + n.woundDays, 0) * CFG.WOUND.TEND_FOOD;
+    if (res.food < cost) return toast(`Need ${cost} food to tend them`);
+    res.food -= cost; for (const n of w) { n.woundDays = 0; n.sitting = false; } updateHud(); toast(`${w.length} wounded tended (${cost} food)`); Snd.play('heal', 0.5); renderJournal();
+  }
   function woundsMorning() {                                                 // 아침: 부상이 줄어든다 (마을에 치료사가 있으면 하루 더), 불려 온 농민병은 돌아간다, 용기는 조금씩 되돌아온다
-    const medic = npcs.some(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic') ? CFG.WOUND.MEDIC_EXTRA : 0;
+    const medic = Math.min(2, npcs.filter(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic').length) * CFG.WOUND.MEDIC_EXTRA;
     for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic);
     for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
     const c = courageOf(), K = CFG.COURAGE.START; story.courage = c < K ? Math.min(K, c + CFG.COURAGE.DRIFT) : c > K ? Math.max(K, c - CFG.COURAGE.DRIFT) : c;

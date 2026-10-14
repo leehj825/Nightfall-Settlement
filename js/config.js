@@ -39,7 +39,7 @@
       // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
       { age: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', auto: 'town' }] },
     ],
-    WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1 },
+    WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
     LEVY: { MAX: 4, FOOD: 6, HP: 0.6, DMG: 0.7 },
     SIEGE: { RAM: { wood: 40, iron: 12 }, LADDER: { wood: 18, iron: 2 }, CATAPULT: { wood: 60, iron: 20 }, LADDER_MAX: 3, FOOD_RAM: 2, FOOD_LADDER: 1, FOOD_CATAPULT: 3, CAT_RELOAD: 7, CAT_DMG: 70, CAT_HP: 90 },      // 공성 장비 제작 비용 (대장간 창, 공성 작업장이 있어야 한다)
