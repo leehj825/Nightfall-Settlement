@@ -91,7 +91,7 @@
   const fireMax = () => CFG.FIRE_HP_BY_AGE[age - 1];
   const hallGroup = new THREE.Group();
   campfire.add(hallGroup);
-  const hallHint = textSprite('Upgrade Age: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
+  const hallHint = textSprite('Upgrade Stage: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
   campfire.add(hallHint);
   const hallWood = mat(0x8a5a34), hallRoof = mat(0x6b3a22), hallDark = mat(0x2e2218), keepStone = mat(0x8b8e95), keepTower = mat(0x7a7e87), keepTop = mat(0x5c606a);
   function buildHall() {
@@ -122,7 +122,7 @@
   buildHall();
 
   const ageEl = document.getElementById('ageN');
-  const ageName = (a) => `Age ${a} · ${CFG.AGES[a - 1].name}`;
+  const ageName = (a) => `Stage ${a} · ${CFG.AGES[a - 1].name}`;
   function updateAgeUi() { ageEl.textContent = ageName(age); }
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
@@ -136,9 +136,23 @@
     document.getElementById('techTitle').textContent = `${CFG.AGES[age - 1].hall} · ${ageName(age)}`;
     document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
     const nx = CFG.AGES[age];
-    if (!nx) { document.getElementById('techNext').textContent = 'Final age reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Age'; return; }
-    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone)\nUnlocks: ${nx.unlock}`;
-    techUpBtn.disabled = !canPay(nx.cost); techUpBtn.textContent = `Advance to Age ${age + 1}`;
+    if (!nx) { document.getElementById('techNext').textContent = 'Final stage reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Stage'; return; }
+    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron)\nUnlocks: ${nx.unlock}`;
+    const chk = stageChecks(age + 1), done = chk.filter(c => c.ok).length;
+    document.getElementById('techNext').textContent += `\nGoals (${done}/${chk.length}):\n` + chk.map(c => `${c.ok ? '✔' : '○'} ${c.text}`).join('\n');
+    techUpBtn.disabled = !canPay(nx.cost) || done < chk.length; techUpBtn.textContent = `Advance to Stage ${age + 1}`;
+  }
+  const STAGE_TESTS = {                                                       // 단계 목표: [글, 달성 여부]
+    nights1: () => ['Survive night 1', dayNow() >= 2],
+    houses4: () => [`4 homes built (${Math.min(4, builtBuildings('house').length)}/4)`, builtBuildings('house').length >= 4],
+    cit6: () => [`6 citizens (${Math.min(6, npcs.filter(n => n.role === 'citizen').length)}/6)`, npcs.filter(n => n.role === 'citizen').length >= 6],
+    blood1: () => ['Survive the first Blood Moon raid', dayNow() > raidDays[0]],
+    barracksRange: () => ['Barracks and Archery Range built', builtBuildings('barracks').length >= 1 && builtBuildings('range').length >= 1],
+    cit10: () => [`10 citizens (${Math.min(10, npcs.filter(n => n.role === 'citizen').length)}/10)`, npcs.filter(n => n.role === 'citizen').length >= 10],
+  };
+  function stageChecks(target) {                                             // 다음 단계의 조건 목록: { text, ok }
+    const g = CFG.STAGE_GATES[target]; if (!g) return [];
+    return [{ text: `Day ${g.day} or later (day ${dayNow()})`, ok: dayNow() >= g.day }].concat(g.goals.map(id => { const [text, ok] = STAGE_TESTS[id](); return { text, ok }; }));
   }
   function openTech() { if (dead) return; refreshTech(); techEl.style.display = 'flex'; }
   function closeTech() { techEl.style.display = 'none'; }
@@ -146,11 +160,12 @@
     const nx = CFG.AGES[age];
     if (!nx) return;
     if (!canPay(nx.cost)) return toast(`Need ${costText(nx.cost)}`);
+    { const bad = stageChecks(age + 1).find(c => !c.ok); if (bad) return toast(`Not yet: ${bad.text}`); }
     payCost(nx.cost);
     setAge(age + 1);
     burst({ x: 0, z: 0 }, 40); shake = Math.max(shake, 0.6);
     updateHud(); refreshTech();
-    toast(`Age advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
+    toast(`Stage advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
     setTimeout(() => openPerk(age), 900);
   }
   document.getElementById('techUp').addEventListener('click', upgradeAge);

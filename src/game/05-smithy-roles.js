@@ -8,7 +8,7 @@
   function openSmith() {
     if (dead) return;
     const sm = nearestSmith();
-    if (!sm) return toast(smiths().length ? 'Move closer to the Blacksmith' : 'No Blacksmith yet - plan Age 2 buildings first');
+    if (!sm) return toast(smiths().length ? 'Move closer to the Blacksmith' : 'No Blacksmith yet - plan Stage 2 buildings first');
     smithOpenFor = sm; renderSmith(); smithEl.style.display = 'flex';
   }
   function closeSmith() { smithEl.style.display = 'none'; smithOpenFor = null; }
@@ -24,7 +24,7 @@
       if (!d.cost || d.slot !== slot) continue;
       const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age || (d.req && !story[d.req]);
       const row = document.createElement('div'); row.className = 'srow';
-      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
+      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Stage ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
       const [bc, be] = row.querySelectorAll('button');
       bc.disabled = locked || !canPay(gearCost(d)); be.disabled = stock <= 0 || equipped;
       bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
@@ -36,7 +36,7 @@
   const siegeGear = () => { const g = story.siege || (story.siege = { ram: 0, ladder: 0 }); if (g.catapult === undefined) g.catapult = 0; return g; };
   function renderSiegeRows() {                                         // 공성 장비: 공성 작업장이 있어야 만들 수 있다. 보유 수는 마을 창고에 쌓인다
     const h = document.createElement('div'); h.className = 'shead'; h.textContent = 'Siege gear - for castles'; smithList.appendChild(h);
-    if (!builtBuildings('siegeshop').length) { const r = document.createElement('div'); r.className = 'srow'; r.innerHTML = '<div class="sinfo"><small>Build a Siege Workshop first (the last Village Plan step, Age 3).</small></div>'; smithList.appendChild(r); return; }
+    if (!builtBuildings('siegeshop').length) { const r = document.createElement('div'); r.className = 'srow'; r.innerHTML = '<div class="sinfo"><small>Build a Siege Workshop first (the last Village Plan step, Stage 3).</small></div>'; smithList.appendChild(r); return; }
     const G = siegeGear();
     for (const [key, name, desc, cost, have, cap] of [['ram', 'Siege Ram', 'Batters a castle gate. Soldiers push it.', CFG.SIEGE.RAM, G.ram, 1], ['ladder', 'Siege Ladder', 'Raise it to climb a castle wall.', CFG.SIEGE.LADDER, G.ladder, CFG.SIEGE.LADDER_MAX], ['catapult', 'Catapult', 'Hurls boulders: cracks a wall open from range and hits the defenders. Needs you or two soldiers beside it.', CFG.SIEGE.CATAPULT, G.catapult, 1]]) {
       const row = document.createElement('div'); row.className = 'srow';
@@ -108,7 +108,7 @@
   function openPerk(a) {
     const list = CFG.PERKS[a];
     if (!list || perks[a] || dead) return;
-    openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
+    openEvent({ tag: `Stage ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
   addEventListener('keydown', e => { if (e.code === 'KeyO' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); if (e.code === 'KeyY' && !e.repeat) toggleMark(); });

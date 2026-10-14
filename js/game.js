@@ -737,14 +737,14 @@
     }
     const [type, n] = Object.entries(cfg.cost)[0];
     document.getElementById('designLbl').textContent = cfg.label;
-    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Age ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
+    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Stage ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
     designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
   }
   function designDefense() {
     if (dead) return;
     const cfg = CFG.DESIGN[designTier];
     if (!cfg) return;
-    if (cfg.age && age < cfg.age) return toast(`Available from Age ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
+    if (cfg.age && age < cfg.age) return toast(`Available from Stage ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
     const [type, n] = Object.entries(cfg.cost)[0];
     if (res[type] < n) return toast(`Need ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`);
     res[type] -= n;
@@ -807,7 +807,7 @@
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
-    if (age < g.age) return toast(`Available in Age ${g.age} (${CFG.AGES[g.age - 1].name})`);
+    if (age < g.age) return toast(`Available in Stage ${g.age} (${CFG.AGES[g.age - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
     if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
@@ -839,7 +839,7 @@
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Age ${planCandidates()[0].age}`) : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].age}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -857,11 +857,11 @@
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Stage ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
-    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Age ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
+    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
     const f = nearestFence('wood');
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);
@@ -888,7 +888,7 @@
   function openSmith() {
     if (dead) return;
     const sm = nearestSmith();
-    if (!sm) return toast(smiths().length ? 'Move closer to the Blacksmith' : 'No Blacksmith yet - plan Age 2 buildings first');
+    if (!sm) return toast(smiths().length ? 'Move closer to the Blacksmith' : 'No Blacksmith yet - plan Stage 2 buildings first');
     smithOpenFor = sm; renderSmith(); smithEl.style.display = 'flex';
   }
   function closeSmith() { smithEl.style.display = 'none'; smithOpenFor = null; }
@@ -904,7 +904,7 @@
       if (!d.cost || d.slot !== slot) continue;
       const stock = sm.userData.stock[id] || 0, equipped = playerGear[d.slot] === id, locked = (d.age || 1) > age || (d.req && !story[d.req]);
       const row = document.createElement('div'); row.className = 'srow';
-      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
+      row.innerHTML = `<div class="sinfo"><b>${d.name}</b> <small>${d.desc}</small><small>${locked ? ((d.age || 1) > age ? `Requires Stage ${d.age} (${CFG.AGES[d.age - 1].name})` : 'Locked: open the Dawn Gate first') : `Cost: ${costText(gearCost(d))}`} · On rack: ${stock}${equipped ? ' · You are using this' : ''}</small></div><div class="sbtns"><button data-act="craft">Craft</button><button data-act="equip">Equip</button></div>`;
       const [bc, be] = row.querySelectorAll('button');
       bc.disabled = locked || !canPay(gearCost(d)); be.disabled = stock <= 0 || equipped;
       bc.addEventListener('click', () => craftGear(id)); be.addEventListener('click', () => equipPlayer(id));
@@ -916,7 +916,7 @@
   const siegeGear = () => { const g = story.siege || (story.siege = { ram: 0, ladder: 0 }); if (g.catapult === undefined) g.catapult = 0; return g; };
   function renderSiegeRows() {                                         // 공성 장비: 공성 작업장이 있어야 만들 수 있다. 보유 수는 마을 창고에 쌓인다
     const h = document.createElement('div'); h.className = 'shead'; h.textContent = 'Siege gear - for castles'; smithList.appendChild(h);
-    if (!builtBuildings('siegeshop').length) { const r = document.createElement('div'); r.className = 'srow'; r.innerHTML = '<div class="sinfo"><small>Build a Siege Workshop first (the last Village Plan step, Age 3).</small></div>'; smithList.appendChild(r); return; }
+    if (!builtBuildings('siegeshop').length) { const r = document.createElement('div'); r.className = 'srow'; r.innerHTML = '<div class="sinfo"><small>Build a Siege Workshop first (the last Village Plan step, Stage 3).</small></div>'; smithList.appendChild(r); return; }
     const G = siegeGear();
     for (const [key, name, desc, cost, have, cap] of [['ram', 'Siege Ram', 'Batters a castle gate. Soldiers push it.', CFG.SIEGE.RAM, G.ram, 1], ['ladder', 'Siege Ladder', 'Raise it to climb a castle wall.', CFG.SIEGE.LADDER, G.ladder, CFG.SIEGE.LADDER_MAX], ['catapult', 'Catapult', 'Hurls boulders: cracks a wall open from range and hits the defenders. Needs you or two soldiers beside it.', CFG.SIEGE.CATAPULT, G.catapult, 1]]) {
       const row = document.createElement('div'); row.className = 'srow';
@@ -988,7 +988,7 @@
   function openPerk(a) {
     const list = CFG.PERKS[a];
     if (!list || perks[a] || dead) return;
-    openEvent({ tag: `Age ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
+    openEvent({ tag: `Stage ${a} perk`, title: `${CFG.AGES[a - 1].name}: choose a perk`, text: 'Pick one permanent bonus for this age.',
       opts: list.map(p => ({ label: p.label, sub: p.desc, run: () => { choosePerk(a, p.id); return `${p.label}: ${p.desc}`; } })) });
   }
   addEventListener('keydown', e => { if (e.code === 'KeyO' && !e.repeat) toggleOrder(); if (e.code === 'KeyB' && !e.shiftKey && !e.repeat) toggleBird(); if (e.code === 'KeyH' && !e.repeat) toggleFront(); if (e.code === 'KeyY' && !e.repeat) toggleMark(); });
@@ -1105,7 +1105,7 @@
   const fireMax = () => CFG.FIRE_HP_BY_AGE[age - 1];
   const hallGroup = new THREE.Group();
   campfire.add(hallGroup);
-  const hallHint = textSprite('Upgrade Age: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
+  const hallHint = textSprite('Upgrade Stage: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
   campfire.add(hallHint);
   const hallWood = mat(0x8a5a34), hallRoof = mat(0x6b3a22), hallDark = mat(0x2e2218), keepStone = mat(0x8b8e95), keepTower = mat(0x7a7e87), keepTop = mat(0x5c606a);
   function buildHall() {
@@ -1136,7 +1136,7 @@
   buildHall();
 
   const ageEl = document.getElementById('ageN');
-  const ageName = (a) => `Age ${a} · ${CFG.AGES[a - 1].name}`;
+  const ageName = (a) => `Stage ${a} · ${CFG.AGES[a - 1].name}`;
   function updateAgeUi() { ageEl.textContent = ageName(age); }
   function setAge(a) {                       // 시대 적용 (비용 지불 없이): 회관/거주지/시민 외형을 모두 갱신
     age = a; buildHall(); fireHp = fireMax();
@@ -1150,9 +1150,23 @@
     document.getElementById('techTitle').textContent = `${CFG.AGES[age - 1].hall} · ${ageName(age)}`;
     document.getElementById('techCur').textContent = `Unlocked: ${CFG.AGES.slice(0, age).map(a => a.unlock).join(' / ')}` + (playerClass ? `\nYou: ${CFG.CLASSES[playerClass].label}` : '') + (Object.keys(perks).length ? `\nPerks: ${Object.entries(perks).map(([a, id]) => CFG.PERKS[a].find(p => p.id === id).label).join(' · ')}` : '');
     const nx = CFG.AGES[age];
-    if (!nx) { document.getElementById('techNext').textContent = 'Final age reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Age'; return; }
-    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone)\nUnlocks: ${nx.unlock}`;
-    techUpBtn.disabled = !canPay(nx.cost); techUpBtn.textContent = `Advance to Age ${age + 1}`;
+    if (!nx) { document.getElementById('techNext').textContent = 'Final stage reached. Your town hall has become a mighty keep.'; techUpBtn.disabled = true; techUpBtn.textContent = 'Max Stage'; return; }
+    document.getElementById('techNext').textContent = `Next: ${ageName(age + 1)} (${nx.hall}) - Cost: ${costText(nx.cost)} (You have: ${res.wood} Wood · ${res.stone} Stone · ${res.iron} Iron)\nUnlocks: ${nx.unlock}`;
+    const chk = stageChecks(age + 1), done = chk.filter(c => c.ok).length;
+    document.getElementById('techNext').textContent += `\nGoals (${done}/${chk.length}):\n` + chk.map(c => `${c.ok ? '✔' : '○'} ${c.text}`).join('\n');
+    techUpBtn.disabled = !canPay(nx.cost) || done < chk.length; techUpBtn.textContent = `Advance to Stage ${age + 1}`;
+  }
+  const STAGE_TESTS = {                                                       // 단계 목표: [글, 달성 여부]
+    nights1: () => ['Survive night 1', dayNow() >= 2],
+    houses4: () => [`4 homes built (${Math.min(4, builtBuildings('house').length)}/4)`, builtBuildings('house').length >= 4],
+    cit6: () => [`6 citizens (${Math.min(6, npcs.filter(n => n.role === 'citizen').length)}/6)`, npcs.filter(n => n.role === 'citizen').length >= 6],
+    blood1: () => ['Survive the first Blood Moon raid', dayNow() > raidDays[0]],
+    barracksRange: () => ['Barracks and Archery Range built', builtBuildings('barracks').length >= 1 && builtBuildings('range').length >= 1],
+    cit10: () => [`10 citizens (${Math.min(10, npcs.filter(n => n.role === 'citizen').length)}/10)`, npcs.filter(n => n.role === 'citizen').length >= 10],
+  };
+  function stageChecks(target) {                                             // 다음 단계의 조건 목록: { text, ok }
+    const g = CFG.STAGE_GATES[target]; if (!g) return [];
+    return [{ text: `Day ${g.day} or later (day ${dayNow()})`, ok: dayNow() >= g.day }].concat(g.goals.map(id => { const [text, ok] = STAGE_TESTS[id](); return { text, ok }; }));
   }
   function openTech() { if (dead) return; refreshTech(); techEl.style.display = 'flex'; }
   function closeTech() { techEl.style.display = 'none'; }
@@ -1160,11 +1174,12 @@
     const nx = CFG.AGES[age];
     if (!nx) return;
     if (!canPay(nx.cost)) return toast(`Need ${costText(nx.cost)}`);
+    { const bad = stageChecks(age + 1).find(c => !c.ok); if (bad) return toast(`Not yet: ${bad.text}`); }
     payCost(nx.cost);
     setAge(age + 1);
     burst({ x: 0, z: 0 }, 40); shake = Math.max(shake, 0.6);
     updateHud(); refreshTech();
-    toast(`Age advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
+    toast(`Stage advanced! ${ageName(age)} - ${CFG.AGES[age - 1].hall}`);
     setTimeout(() => openPerk(age), 900);
   }
   document.getElementById('techUp').addEventListener('click', upgradeAge);
@@ -4648,7 +4663,7 @@
     const d = CFG.EXPEDITIONS.find(x => x.id === id);
     if (!d || exActive || dead || exEnding) return;
     if (isYours(d)) return toast(`${d.name} is already broken${holdOf(d.id) ? ' and held' : ''}`);
-    if (age < d.age) return toast(`Requires Age ${d.age} (${CFG.AGES[d.age - 1].name})`);
+    if (age < d.age) return toast(`Requires Stage ${d.age} (${CFG.AGES[d.age - 1].name})`);
     if (d.ch === 2 && !story.beacon) return toast('Light the Beacon first');
     if (d.ch === 3 && !story.dawn) return toast('Open the Dawn Gate first');
     if (d.ch === 4 && !story.hollow) return toast('Take the Winter Crown first');
@@ -4802,7 +4817,7 @@
     const lockOf = (d) => age < d.age || chLocked(d) || (d.needs && !d.needs.every(r => story.relics[r])) || powerFor(d) < needOf(d);
     const rowOf = (d) => {
       const weak = powerFor(d) < needOf(d), lock = age < d.age || (d.ch === 2 && !story.beacon) || (d.ch === 3 && !story.dawn) || (d.ch === 4 && !story.hollow) || (d.ch === 5 && !story.road) || (d.ch === 6 && !story.eclipse) || (d.needs && !d.needs.every(r => story.relics[r])) || weak, found = d.relic && story.relics[d.id];
-      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''} · <span style="color:${realmDef(d.realm).color}">${realmDef(d.realm).short}</span>` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Age ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) || isYours(d) ? 'disabled' : ''}>${lock ? 'Locked' : isYours(d) ? (holdOf(d.id) ? 'Held' : 'Broken') : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
+      return `<div class="ex"><div class="info"><b>${d.name}</b><small>${d.desc}</small><small>${d.risk}${d.raid ? ` · ⚔ ${d.bands} band${d.bands > 1 ? 's' : ''} · <span style="color:${realmDef(d.realm).color}">${realmDef(d.realm).short}</span>` : ''}${d.march ? ` · ${d.march}d march (${marchFood(d)} food)` : ''} · Power ${needOf(d)}${d.raid ? ` (you ${powerFor(d)})` : ''}${d.night ? ' · 🌙 ' + (nightWhy || 'Open now') : ''} · ${d.reward}${campReliefTxt(d.id)}${found ? ' · Relic recovered ✔' : ''}${lock ? (d.ch === 2 && !story.beacon ? ' · Light the Beacon first' : d.ch === 3 && !story.dawn ? ' · Open the Dawn Gate first' : d.ch === 4 && !story.hollow ? ' · Take the Winter Crown first' : d.ch === 5 && !story.road ? ' · Swear the Keeper\'s Oath first' : d.needs && !d.needs.every(r => story.relics[r]) ? ' · Needs the earlier sites\' relics' : age < d.age ? ` · Requires Stage ${d.age}` : ` · Needs power ${needOf(d)}`) : ''}</small>${campHtml(d)}</div><button data-id="${d.id}" ${lock || lateFor(d) || fewBands(d) || isYours(d) ? 'disabled' : ''}>${lock ? 'Locked' : isYours(d) ? (holdOf(d.id) ? 'Held' : 'Broken') : lateFor(d) ? (d.night ? 'Night only' : 'Too late') : fewBands(d) ? `Bring ${d.bands} warbands` : 'Depart'}</button></div>`;
     };
     const mapHtml = () => {                                                  // 지도 화면: 마디(원정)와 길. 고르면 아래에 같은 카드가 나온다
       const N = CFG.MAP.NODES, V = CFG.MAP.START, vis = CFG.EXPEDITIONS.filter(d => N[d.id] && !chLocked(d)), ids = new Set(vis.map(d => d.id)), near = vis.filter(d => !N[d.id].far), far = vis.filter(d => N[d.id].far);
@@ -5365,7 +5380,7 @@
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
     { text: 'Defeat raiders, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
     { text: 'Gather more to build the town', done: () => townStage > 0 },
-    { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
+    { text: 'Advance your Stage at the Town Hall (T)', done: () => age >= 2 },
   ];
   // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
   const COACH = [
@@ -5409,8 +5424,8 @@
     { id: 'night1', name: 'First Dawn', desc: 'Survive the first night', test: () => dayNow() >= 2 },
     { id: 'week', name: 'A Whole Week', desc: 'Reach Day 7', test: () => dayNow() >= 7 },
     { id: 'boss', name: 'Behemoth Slayer', desc: 'Defeat the Behemoth', test: () => chapterCleared },
-    { id: 'age2', name: 'Wooden Town', desc: 'Reach Age 2', test: () => age >= 2 },
-    { id: 'age3', name: 'Stone Keep', desc: 'Reach Age 3', test: () => age >= 3 },
+    { id: 'age2', name: 'Wooden Town', desc: 'Reach Stage 2', test: () => age >= 2 },
+    { id: 'age3', name: 'Stone Keep', desc: 'Reach Stage 3', test: () => age >= 3 },
     { id: 'pop10', name: 'Busy Streets', desc: 'Have 10 villagers', test: () => npcs.length >= 10 },
     { id: 'smith', name: 'Hammer and Anvil', desc: 'Build a Blacksmith', test: () => smiths().length > 0 },
     { id: 'armed', name: 'Armed to the Teeth', desc: 'Have 3 soldiers wearing armor', test: () => npcs.filter(n => n.role !== 'citizen' && n.gear.armor !== 'armor_none').length >= 3 },

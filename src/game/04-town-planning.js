@@ -289,14 +289,14 @@
     }
     const [type, n] = Object.entries(cfg.cost)[0];
     document.getElementById('designLbl').textContent = cfg.label;
-    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Age ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
+    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Stage ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
     designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
   }
   function designDefense() {
     if (dead) return;
     const cfg = CFG.DESIGN[designTier];
     if (!cfg) return;
-    if (cfg.age && age < cfg.age) return toast(`Available from Age ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
+    if (cfg.age && age < cfg.age) return toast(`Available from Stage ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
     const [type, n] = Object.entries(cfg.cost)[0];
     if (res[type] < n) return toast(`Need ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`);
     res[type] -= n;
@@ -359,7 +359,7 @@
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
-    if (age < g.age) return toast(`Available in Age ${g.age} (${CFG.AGES[g.age - 1].name})`);
+    if (age < g.age) return toast(`Available in Stage ${g.age} (${CFG.AGES[g.age - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
     if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
@@ -391,7 +391,7 @@
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Age ${planCandidates()[0].age}`) : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].age}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -409,11 +409,11 @@
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Stage ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
-    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Age ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
+    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
     const f = nearestFence('wood');
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);

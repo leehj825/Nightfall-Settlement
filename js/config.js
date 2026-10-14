@@ -13,17 +13,19 @@
       { label: 'Defense Line: Tier 2 (Stone)', cost: { stone: 50 }, half: 25, perHalf: 8, kind: 'stone', age: 3 },   // 50 x 50 (간격 3.1: 성벽 폭 3.0)
     ],
     // ----- 시대 발전 (테크 트리): 모닥불/마을 회관을 클릭해서 업그레이드 -----
+    // 단계(Stage) 조건: 자원 외에 최소 날짜와 목표(체크리스트)를 채워야 올라갈 수 있다. goals 는 06 파일의 STAGE_TESTS 이름
+    STAGE_GATES: { 2: { day: 2, goals: ['houses4', 'cit6'] }, 3: { day: 5, goals: ['blood1', 'barracksRange', 'cit10'] } },
     AGES: [
       { name: 'Camp', hall: 'Campfire', unlock: 'Wooden fences · Tents' },
-      { name: 'Wooden Town', hall: 'Wooden Town Hall', cost: { wood: 50 }, unlock: 'Barracks · Archery Range · Farm · Lumber Camp · Quarry' },
-      { name: 'Stone Fortress', hall: 'Stone Keep', cost: { wood: 100, stone: 100 }, unlock: 'Stone walls · Defense towers' },
+      { name: 'Wooden Town', hall: 'Wooden Town Hall', cost: { wood: 80 }, unlock: 'Barracks · Archery Range · Farm · Lumber Camp · Quarry' },
+      { name: 'Stone Fortress', hall: 'Stone Keep', cost: { wood: 200, stone: 150, iron: 15 }, unlock: 'Stone walls · Defense towers' },
     ],
     FIRE_HP_BY_AGE: [150, 260, 420], HALL_RADIUS: [0.8, 2.6, 3.4],      // 시대별 거점 체력 / 충돌 반지름
     UPGRADE_FENCE_AGE: 3,                                              // 목책 → 돌 성벽 강화는 3시대부터
     // 마을 인프라 설계: 시대가 열릴 때마다 다음 묶음을 설계할 수 있다. lots는 사각 방어선 안쪽 격자 배치 (auto: 벌목장/채석장은 숲/바위 근처에 자동 선정)
     TOWN_GROUPS: [
       { age: 1, label: 'Plan Tent Village', cost: { wood: 40 }, lots: [{ kind: 'house', x: -9, z: -9 }, { kind: 'house', x: -4, z: -9 }, { kind: 'house', x: 4, z: -9 }] },
-      { age: 2, label: 'Plan Age 2 Buildings', cost: { wood: 70 }, lots: [
+      { age: 2, label: 'Plan Stage 2 Buildings', cost: { wood: 70 }, lots: [
         { kind: 'smith', x: -11.5, z: -4.4 }, { kind: 'barracks', x: -7.5, z: 9 }, { kind: 'range', x: 6.5, z: 9 }, { kind: 'farm', x: 10.5, z: -8 }, { kind: 'farm', x: 11, z: 5 },
         { kind: 'well', auto: 'town' }, { kind: 'lumber', auto: true }, { kind: 'quarry', auto: true }] },
       { age: 3, label: 'Plan Towers & Market', cost: { wood: 40, stone: 60 }, lots: [
@@ -221,9 +223,9 @@
     // 이야기: 목표는 순서대로 표시되지만 유물은 어느 순서로든 찾을 수 있다. 처음 달성하면 이야기 장면이 나온다
     STORY: [
       { id: 'first', goal: 'Take your first expedition and come back alive', title: 'Beyond the Walls', text: 'You walked past the walls and came home alive - the village noticed. Warden Edda marks the charred map: a toppled watchtower, an iron mine and a fallen citadel. The nearer roads open once the village grows into a Wooden Town.', reward: { wood: 10, stone: 5, iron: 2 } },
-      { id: 'tower', goal: 'Recover the Beacon Lens from the Ruined Watchtower (Age 2)', title: 'The Beacon Lens', text: 'A cracked lens of glass, warm to the touch. The first relic hums as if it remembers fire. Edda taps the map: "The old iron mine keeps the next one."', reward: { iron: 5 } },
-      { id: 'mine', goal: 'Recover the Iron Heart from the Iron Mine (Age 2)', title: 'The Iron Heart', text: 'A heart of dark iron, heavier than it should be. The second relic. Only one remains, in the citadel far to the north - taken long ago by the people who now guard it.', reward: { iron: 8 } },
-      { id: 'citadel', goal: 'Recover the Beacon Core from the Fallen Citadel (Age 3)', title: 'The Beacon Core', text: 'The last relic pulses in your hands, and the other two answer it. Hurry home - something wants to burn bright tonight.', reward: { iron: 10 } },
+      { id: 'tower', goal: 'Recover the Beacon Lens from the Ruined Watchtower (Stage 2)', title: 'The Beacon Lens', text: 'A cracked lens of glass, warm to the touch. The first relic hums as if it remembers fire. Edda taps the map: "The old iron mine keeps the next one."', reward: { iron: 5 } },
+      { id: 'mine', goal: 'Recover the Iron Heart from the Iron Mine (Stage 2)', title: 'The Iron Heart', text: 'A heart of dark iron, heavier than it should be. The second relic. Only one remains, in the citadel far to the north - taken long ago by the people who now guard it.', reward: { iron: 8 } },
+      { id: 'citadel', goal: 'Recover the Beacon Core from the Fallen Citadel (Stage 3)', title: 'The Beacon Core', text: 'The last relic pulses in your hands, and the other two answer it. Hurry home - something wants to burn bright tonight.', reward: { iron: 10 } },
     ],
     STORY_BEACON: { title: 'The Beacon Is Lit', text: 'Back at the hall the old lantern flares, and a pillar of golden light climbs into the sky. Raiders will think twice, and your people stand a little taller. The village is safe tonight - yet the road beyond the citadel is dark and long...' },
     FORGE_CYCLE: 10,                                                  // 대장간 시민이 장비 1개를 자동 제작하는 주기(초)
@@ -293,24 +295,24 @@
     GEAR: {
       sword_basic: { slot: 'sword', name: 'Sword', short: 'Sword', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
       iron_sword: { slot: 'sword', name: 'Iron Sword', short: 'Iron Sword', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { stone: 10, iron: 5 }, desc: 'Damage 4 · Wider slash · Stronger knockback' },
-      steel_sword: { slot: 'sword', name: 'Steel Sword', short: 'Steel Sword', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { stone: 20, iron: 12 }, desc: 'Damage 6 · Huge slash · Age 3' },
+      steel_sword: { slot: 'sword', name: 'Steel Sword', short: 'Steel Sword', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { stone: 20, iron: 12 }, desc: 'Damage 6 · Huge slash · Stage 3' },
       great_basic: { slot: 'great', name: 'Great Sword', short: 'Great Sword', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
       iron_great: { slot: 'great', name: 'Iron Great Sword', short: 'Iron Great', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { stone: 14, iron: 8 }, desc: 'Great sword damage 4 · Wider cleave' },
-      steel_great: { slot: 'great', name: 'Steel Great Sword', short: 'Steel Great', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { stone: 28, iron: 18 }, desc: 'Great sword damage 6 · Huge cleave · Age 3' },
+      steel_great: { slot: 'great', name: 'Steel Great Sword', short: 'Steel Great', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { stone: 28, iron: 18 }, desc: 'Great sword damage 6 · Huge cleave · Stage 3' },
       beacon_great: { slot: 'great', name: 'Beacon Great Sword', short: 'Beacon Great', dmg: 9, tier: 3, age: 3, req: 'dawn', color: 0xfff0b0, slash: 2.1, slashColor: 0xffd54a, cost: { iron: 28, shard: 4 }, desc: 'Great sword damage 9 · Golden cleave · After the Dawn Gate' },
       spear_basic: { slot: 'spear', name: 'Spear', short: 'Spear', dmg: 2, tier: 0, color: 0xc9ced6, slash: 1, slashColor: 0xffffff },
       iron_spear: { slot: 'spear', name: 'Iron Spear', short: 'Iron Spear', dmg: 4, tier: 1, color: 0x9fc4ff, slash: 1.5, slashColor: 0x4aa8ff, cost: { wood: 8, iron: 5 }, desc: 'Spear damage 4 · Iron head' },
-      steel_spear: { slot: 'spear', name: 'Steel Spear', short: 'Steel Spear', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { wood: 14, iron: 12 }, desc: 'Spear damage 6 · Long steel head · Age 3' },
+      steel_spear: { slot: 'spear', name: 'Steel Spear', short: 'Steel Spear', dmg: 6, tier: 2, age: 3, color: 0xdfe8ff, slash: 1.8, slashColor: 0xc08aff, cost: { wood: 14, iron: 12 }, desc: 'Spear damage 6 · Long steel head · Stage 3' },
       beacon_spear: { slot: 'spear', name: 'Beacon Spear', short: 'Beacon Spear', dmg: 9, tier: 3, age: 3, req: 'dawn', color: 0xfff0b0, slash: 2.1, slashColor: 0xffd54a, cost: { wood: 16, iron: 18, shard: 3 }, desc: 'Spear damage 9 · Golden head · After the Dawn Gate' },
       bow_basic: { slot: 'bow', name: 'Bow', short: 'Bow', dmg: 1, tier: 0, color: 0x8a5a2b },
       strong_bow: { slot: 'bow', name: 'Reinforced Bow', short: 'Bow+', dmg: 2, tier: 1, color: 0x5a3a1a, cost: { wood: 12, iron: 4 }, desc: 'Arrow damage 2 · Iron-tipped limbs' },
-      steel_bow: { slot: 'bow', name: 'Steel Bow', short: 'Steel Bow', dmg: 3, tier: 2, age: 3, color: 0xb9c4d6, cost: { wood: 25, iron: 10 }, desc: 'Arrow damage 3 · Age 3' },
+      steel_bow: { slot: 'bow', name: 'Steel Bow', short: 'Steel Bow', dmg: 3, tier: 2, age: 3, color: 0xb9c4d6, cost: { wood: 25, iron: 10 }, desc: 'Arrow damage 3 · Stage 3' },
       beacon_blade: { slot: 'sword', name: 'Beacon Blade', short: 'Beacon Blade', dmg: 9, tier: 3, age: 3, req: 'dawn', color: 0xfff0b0, slash: 2.1, slashColor: 0xffd54a, cost: { iron: 20, shard: 3 }, desc: 'Damage 9 · Enormous golden slash · After the Dawn Gate' },
       beacon_bow: { slot: 'bow', name: 'Beacon Bow', short: 'Beacon Bow', dmg: 4, tier: 3, age: 3, req: 'dawn', color: 0xffe08a, cost: { wood: 30, iron: 14, shard: 3 }, desc: 'Arrow damage 4 · After the Dawn Gate' },
       beacon_armor: { slot: 'armor', name: 'Beacon Armor', short: 'Beacon', reduce: 0.55, tier: 3, age: 3, req: 'dawn', color: 0xffe9b0, cost: { stone: 20, iron: 16, shard: 4 }, desc: 'Take 55% less damage · After the Dawn Gate' },
       armor_none: { slot: 'armor', name: 'No armor', short: 'None', reduce: 0, tier: 0 },
       iron_armor: { slot: 'armor', name: 'Iron Armor', short: 'Iron', reduce: 0.25, tier: 1, color: 0x8a919c, cost: { stone: 8, iron: 6 }, desc: 'Take 25% less damage' },
-      steel_armor: { slot: 'armor', name: 'Steel Armor', short: 'Steel', reduce: 0.4, tier: 2, age: 3, color: 0xc9d6ea, cost: { stone: 16, iron: 12 }, desc: 'Take 40% less damage · Age 3' },
+      steel_armor: { slot: 'armor', name: 'Steel Armor', short: 'Steel', reduce: 0.4, tier: 2, age: 3, color: 0xc9d6ea, cost: { stone: 16, iron: 12 }, desc: 'Take 40% less damage · Stage 3' },
     },
     // 방패병 (Day 3부터): 화살 면역, 검/근접 동료 돌진에만 피해
     SHIELD_FROM_DAY: 3, SHIELD_CHANCE: 0.3, SHIELD_HP: 3, SHIELD_SPEED_MUL: 0.9,

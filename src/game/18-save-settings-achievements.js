@@ -85,7 +85,7 @@
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
     { text: 'Defeat raiders, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
     { text: 'Gather more to build the town', done: () => townStage > 0 },
-    { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
+    { text: 'Advance your Stage at the Town Hall (T)', done: () => age >= 2 },
   ];
   // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
   const COACH = [
@@ -129,8 +129,8 @@
     { id: 'night1', name: 'First Dawn', desc: 'Survive the first night', test: () => dayNow() >= 2 },
     { id: 'week', name: 'A Whole Week', desc: 'Reach Day 7', test: () => dayNow() >= 7 },
     { id: 'boss', name: 'Behemoth Slayer', desc: 'Defeat the Behemoth', test: () => chapterCleared },
-    { id: 'age2', name: 'Wooden Town', desc: 'Reach Age 2', test: () => age >= 2 },
-    { id: 'age3', name: 'Stone Keep', desc: 'Reach Age 3', test: () => age >= 3 },
+    { id: 'age2', name: 'Wooden Town', desc: 'Reach Stage 2', test: () => age >= 2 },
+    { id: 'age3', name: 'Stone Keep', desc: 'Reach Stage 3', test: () => age >= 3 },
     { id: 'pop10', name: 'Busy Streets', desc: 'Have 10 villagers', test: () => npcs.length >= 10 },
     { id: 'smith', name: 'Hammer and Anvil', desc: 'Build a Blacksmith', test: () => smiths().length > 0 },
     { id: 'armed', name: 'Armed to the Teeth', desc: 'Have 3 soldiers wearing armor', test: () => npcs.filter(n => n.role !== 'citizen' && n.gear.armor !== 'armor_none').length >= 3 },
