@@ -51,7 +51,7 @@
     if (!todo.length) return toast('Everyone has drilled today');
     const cost = todo.length * K.FOOD; if (res.food < cost) return toast(`Need ${cost} food to drill ${todo.length} soldiers`);
     res.food -= cost; let up = 0;
-    for (const n of todo) { const b = vetLv(n); n.vxp = (n.vxp || 0) + K.XP + (drilledTogether(n) ? CFG.BANNER.DRILL_XP : 0); n.drillDay = day; if (vetLv(n) > b) { up++; floatText(`${n.name}: Veteran ${vetLv(n)}`, n.position.x, 3.0, n.position.z); } npc = n; n.anim.once('attackSword'); }
+    for (const n of todo) { const b = vetLv(n); n.vxp = (n.vxp || 0) + K.XP + (drilledTogether(n) ? CFG.BANNER.DRILL_XP : 0) + pl.st.drillmaster; n.drillDay = day; if (vetLv(n) > b) { up++; floatText(`${n.name}: Veteran ${vetLv(n)}`, n.position.x, 3.0, n.position.z); } npc = n; n.anim.once('attackSword'); }
     updateHud(); Snd.play('chime'); toast(`Drills: ${todo.length} soldiers +${K.XP} drills (${cost} food)${up ? ` · ${up} new veteran rank${up > 1 ? 's' : ''}` : ''}`);
   }
   function trainClear(silent) {

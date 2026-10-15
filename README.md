@@ -351,3 +351,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v150:** Stage 5 finishing touches: gatehouses (`gatehouseModel`) on the gates of the second and third wall (visual only, made in `cornerLampsSync`), a "Plan Stables" step (`stableModel`, two horses wander in the paddock, 100 wood 40 stone), and the Victory Monument shows one pennant per realm you hold a site in (full size when the realm is broken).
 
 **nf-v151:** Stage 5 plan step "Plan Outer Homes (3rd ring)" (160 wood): 8 more houses inside the third wall (`findSpotNear`, ring 27 to 36), so the population cap rises by 8 (house = +1 max population). Debug start at Stage 5 now has 23 houses.
+
+**nf-v152:** Cavalry (Stage 5, needs Stables): Mount/Dismount button per soldier in the warband window; mounted men run 1.45x faster and charge for +45%. New Marshal column in the hero skill tree (Banner Lord, War Command, Horse Master, Drill Master). A soldier of each banner carries that banner's flag.

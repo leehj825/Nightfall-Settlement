@@ -462,7 +462,7 @@
     planCd -= dt; if (planCd > 0) return; planCd = 2.5;
     updatePlanBtn();
     if (dead || exActive || eventOpen || uiPause || !saveReady) return;
-    fixKeepOverlaps(); cornerLampsSync();
+    fixKeepOverlaps(); cornerLampsSync(); trimMounts();
     const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
     if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
     const n = nextPlan(); if (n && canPay(n.cost)) n.run();

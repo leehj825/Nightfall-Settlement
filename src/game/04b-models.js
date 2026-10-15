@@ -297,7 +297,7 @@
     mk(new THREE.BoxGeometry(0.6, 0.3, 0.28), coat, 1.2, 1.8, 0);
     mk(new THREE.BoxGeometry(0.15, 0.55, 0.12), dark, 0.62, 1.7, 0).rotation.z = -0.5;
     mk(new THREE.BoxGeometry(0.1, 0.6, 0.12), dark, -0.8, 1.1, 0).rotation.z = 0.35;
-    for (const [lx, lz] of [[-0.6, -0.18], [-0.6, 0.18], [0.6, -0.18], [0.6, 0.18]]) mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz);
+    s.userData.legs = [[-0.6, -0.18], [-0.6, 0.18], [0.6, -0.18], [0.6, 0.18]].map(([lx, lz]) => mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz));
     return s;
   }
   function stableModel(add, seed, add0) {                                    // 마구간: 나무 외양간(칸막이 셋) + 앞 방목장 울타리 + 말 두 마리
@@ -333,7 +333,17 @@
     grp.position.set(gate.x, 0, gate.z); grp.rotation.y = Math.atan2(gate.nx, gate.nz); scene.add(grp); doormats.push(grp);
     return grp;
   }
-  function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다
+  function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다. 기병은 말이 달리고 돌격 힘이 쌓인다. 깃발도 여기서 갱신
+    bannerFlagTick(t);
+    for (const n of npcs) {
+      if (!n.horse) continue;
+      const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
+      const v = dt > 0 ? mv / dt : 0;
+      n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
+      const sw = Math.min(1, v / 5) * 0.55, ph = t * 11, legs = n.horse.userData.legs || [];
+      legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
+      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); n.rider.position.y = 0.8 + n.horse.position.y;
+    }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building') continue;
       if (u.sails) u.sails.rotation.z -= dt * (0.6 + 0.4 * Math.sin(t * 0.3));
