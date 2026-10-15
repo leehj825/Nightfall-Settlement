@@ -4653,12 +4653,12 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
       // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
-      { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 21, z: 3.5 }, { kind: 'pen', x: -22, z: 3.5 }] },
+      { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 20, z: 3.5 }, { kind: 'pen', x: -20, z: 3.5 }] },
       // 5단계 대공사: 풍차, 병원, 승전 기념비 (보기용)
-      { stage: 5, label: 'Plan Great Works', cost: { wood: 120, stone: 150 }, lots: [{ kind: 'windmill', near: { x: 22, z: -17, min: 15, max: 26 } }, { kind: 'infirmary', near: { x: -14, z: -17, min: 15, max: 26 } }, { kind: 'monument', near: { x: -3.5, z: 11, min: 7, max: 14 } }] },
+      { stage: 5, label: 'Plan Great Works', cost: { wood: 120, stone: 150 }, lots: [{ kind: 'windmill', near: { x: 30, z: -30, min: 27, max: 38 } }, { kind: 'infirmary', near: { x: -30, z: -30, min: 27, max: 38 } }, { kind: 'monument', near: { x: -3.5, z: 11, min: 7, max: 14 } }] },
       // 5단계 주택가: 셋째 성벽 안쪽에 집 8채 (집 1채 = 최대 인구 +1)
       { stage: 5, label: 'Plan Outer Homes (3rd ring)', cost: { wood: 160 }, lots: [{ kind: 'house', near: { x: -33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: -33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: 33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: 33, min: 27, max: 36 } }] },
-      { stage: 5, label: 'Plan Stables', cost: { wood: 100, stone: 40 }, lots: [{ kind: 'stable', near: { x: 22, z: 17, min: 15, max: 26 } }] },
+      { stage: 5, label: 'Plan Stables', cost: { wood: 100, stone: 40 }, lots: [{ kind: 'stable', near: { x: 30, z: 30, min: 27, max: 38 } }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
@@ -4676,7 +4676,7 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
       well: { res: 'wood', cost: 6, radius: 1.3, size: [2.4, 2.4, 2.4] }, market: { res: 'wood', cost: 12, radius: 2.6, size: [5.2, 2.4, 3.4] },
       quarry: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] }, tower: { res: 'stone', cost: 10, radius: 1.7, size: [3.2, 4.5, 3.2] },
       siegeshop: { res: 'wood', cost: 14, radius: 3.4, size: [6, 3, 4.4] },
-      plaza: { res: 'stone', cost: 16, radius: 3.0, size: [6, 2.4, 6] }, muster: { res: 'wood', cost: 12, radius: 3.2, size: [6.4, 3.8, 4.4] }, windmill: { res: 'wood', cost: 16, radius: 2.3, size: [4, 5.8, 4] }, infirmary: { res: 'wood', cost: 14, radius: 3.2, size: [5.6, 3.6, 3.8] }, monument: { res: 'stone', cost: 14, radius: 2.0, size: [4, 4.2, 4] }, stable: { res: 'wood', cost: 16, radius: 3.4, size: [5.4, 3.4, 6.4] }, pen: { res: 'wood', cost: 8, radius: 2.8, size: [5.2, 1.1, 4.2] },
+      plaza: { res: 'stone', cost: 16, radius: 3.0, size: [6, 2.4, 6] }, muster: { res: 'wood', cost: 12, radius: 3.0, size: [6.4, 3.8, 4.4] }, windmill: { res: 'wood', cost: 16, radius: 1.9, size: [4, 5.8, 4] }, infirmary: { res: 'wood', cost: 14, radius: 2.8, size: [5.6, 3.6, 3.8] }, monument: { res: 'stone', cost: 14, radius: 1.8, size: [4, 4.2, 4] }, stable: { res: 'wood', cost: 16, radius: 2.8, size: [5.4, 3.4, 6.4] }, pen: { res: 'wood', cost: 8, radius: 2.4, size: [5.2, 1.1, 4.2] },
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
@@ -6803,12 +6803,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 목표 위치 근처의 빈 자리 (바깥 구역용): 이미 있는 건물·계획·성벽·큰길과 겹치지 않는, 목표에서 가장 가까운 칸. near = { x, z, min, max } (min~max 는 마을 중심에서의 체비쇼프 거리)
   function findSpotNear(kind, near) {
     const rad = CFG.BUILDING[kind].radius;
-    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 0.1 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 폭이 얇아 반지름 0.1 로 본다 (두 성벽 사이 길이 좁다)
+    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 1.5 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 충돌 반지름 1.5. 건물 가장자리와 사이에 사람이 지나갈 틈(넉넉히 1.6)을 남긴다
     let best = null, bd = Infinity;
     for (let x = -40; x <= 40; x += 1) for (let z = -40; z <= 40; z += 1) {
       const c = cheb(x, z); if (c < near.min || c > near.max || Math.abs(x) < rad + 1.4 || Math.abs(z) < rad + 1.4) continue;
       const d = Math.hypot(x - near.x, z - near.z); if (d >= bd) continue;
-      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 0.8)) continue;
+      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.6)) continue;
       bd = d; best = { x, z };
     }
     return best || { x: near.x, z: near.z };

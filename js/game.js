@@ -849,12 +849,12 @@
   // 목표 위치 근처의 빈 자리 (바깥 구역용): 이미 있는 건물·계획·성벽·큰길과 겹치지 않는, 목표에서 가장 가까운 칸. near = { x, z, min, max } (min~max 는 마을 중심에서의 체비쇼프 거리)
   function findSpotNear(kind, near) {
     const rad = CFG.BUILDING[kind].radius;
-    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 0.1 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 폭이 얇아 반지름 0.1 로 본다 (두 성벽 사이 길이 좁다)
+    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 1.5 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 충돌 반지름 1.5. 건물 가장자리와 사이에 사람이 지나갈 틈(넉넉히 1.6)을 남긴다
     let best = null, bd = Infinity;
     for (let x = -40; x <= 40; x += 1) for (let z = -40; z <= 40; z += 1) {
       const c = cheb(x, z); if (c < near.min || c > near.max || Math.abs(x) < rad + 1.4 || Math.abs(z) < rad + 1.4) continue;
       const d = Math.hypot(x - near.x, z - near.z); if (d >= bd) continue;
-      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 0.8)) continue;
+      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.6)) continue;
       bd = d; best = { x, z };
     }
     return best || { x: near.x, z: near.z };
