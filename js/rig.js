@@ -290,6 +290,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         const m = modelMesh(key, skel, mat0); root.add(m); out.skin = m; out.model = key; out.setHand(key);
       };
       out.setModel(mk);
+      if (mk === 'leaderParts' && LEADER_UNDER) { out.under = leaderUnderlayer(skel); root.add(out.under); }
     } else for (const g of groups.values()) { const mesh = new THREE.Mesh(mergeGeos(g.items), g.m); mesh.castShadow = !enemy || g.b.name === 'spine'; mesh.receiveShadow = false; g.b.add(mesh); }
     out.clips = STICK_CLIPS;
     return out;
@@ -304,6 +305,54 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return (seed & 1) ? 'citizenFemale' : 'citizenMale';
   }
   const unb64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  // ----- Leader parts: close the gaps that open at the joints (the parts themselves are not changed) -----
+  const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function softenLeaderJoints(geo) {                        // vertices near a joint also follow the bone on the other side of it (0.5 at the joint, 0 at the radius), so a sleeve end stretches to the next piece
+    const J = LEADER_JOINTS, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bi = n => BONES.indexOf(n), n = P.count;
+    for (let i = 0; i < n; i++) {
+      if (SW.getX(i) < 0.99) continue;                      // already soft (the skirt)
+      const b = BONES[SI.getX(i)], side = b.endsWith('L') ? 'L' : b.endsWith('R') ? 'R' : '', s = side === 'L' ? -1 : 1, x = P.getX(i), y = P.getY(i);
+      const near = (jx, jy, r) => 1 - smooth01(0, r, Math.hypot(x - jx, y - jy));
+      const E = [s * (J.shX + J.elX), J.shY - J.elDY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
+      let nb = null, w = 0;
+      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.09) * 0.5, ws = near(s * J.shX, J.shY, 0.06) * 0.35; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
+      else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.09) * 0.5; }
+      else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.10) * 0.5, wh = near(s * J.hipX, J.hipY, 0.07) * 0.35; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
+      else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.10) * 0.5; }
+      if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
+    }
+    SI.needsUpdate = SW.needsUpdate = true;
+  }
+  function leaderUnderlayer(skeleton) {                      // a simple dark body (tubes between the joints) under the armour, soft skinned: what shows through a gap is clothing, not the ground
+    const J = LEADER_JOINTS, bi = n => BONES.indexOf(n), V = [], SI = [], SW = [], IX = [];
+    const tube = (A, B, rx, rz, own, start, end) => {
+      const rings = 6, segs = 8, ax = [B[0] - A[0], B[1] - A[1]], len = Math.hypot(ax[0], ax[1]) || 1, a = [ax[0] / len, ax[1] / len], base = V.length / 3;
+      for (let r = 0; r <= rings; r++) {
+        const t = r / rings, cx = A[0] + (B[0] - A[0]) * t, cy = A[1] + (B[1] - A[1]) * t;
+        const ws = start ? (1 - smooth01(0, 0.25, t)) * 0.5 : 0, we = end ? smooth01(0.75, 1, t) * 0.5 : 0;
+        for (let k = 0; k < segs; k++) {
+          const th = k / segs * Math.PI * 2, ex = Math.cos(th) * rx, ez = Math.sin(th) * rz;
+          V.push(cx + ex * a[1], cy - ex * a[0], ez); SI.push(bi(own), start ? bi(start) : 0, end ? bi(end) : 0, 0); SW.push(1 - ws - we, ws, we, 0);
+        }
+      }
+      for (let r = 0; r < rings; r++) for (let k = 0; k < segs; k++) { const p = base + r * segs + k, q = base + r * segs + (k + 1) % segs; IX.push(p, q, p + segs, q, q + segs, p + segs); }
+    };
+    tube([0, J.hipY - 0.1], [0, J.hipY + 0.06], 0.17, 0.12, 'hips', null, 'spine');
+    tube([0, J.hipY + 0.02], [0, J.neckY - 0.06], 0.17, 0.12, 'spine', 'hips', null);
+    tube([0, J.neckY - 0.1], [0, J.neckY + 0.04], 0.055, 0.055, 'head', 'spine', null);
+    for (const s of [-1, 1]) {
+      const side = s < 0 ? 'L' : 'R', S = [s * J.shX, J.shY], E = [s * (J.shX + J.elX), J.shY - J.elDY], W = [E[0] + s * 0.05, E[1] - 0.26], H = [s * J.hipX, J.hipY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY], Ak = [K[0] + s * 0.02, 0.1];
+      tube(S, E, 0.06, 0.06, 'shoulder' + side, 'spine', 'elbow' + side);
+      tube(E, W, 0.052, 0.052, 'elbow' + side, 'shoulder' + side, null);
+      tube(H, K, 0.09, 0.09, 'hip' + side, 'hips', 'knee' + side);
+      tube(K, Ak, 0.07, 0.07, 'knee' + side, 'hip' + side, null);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(SI), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(SW), 4));
+    g.setIndex(IX); g.computeVertexNormals();
+    const m = new THREE.MeshStandardMaterial({ color: 0x2b1d17, roughness: 0.9, metalness: 0 }); m.skinning = true;
+    const mesh = new THREE.SkinnedMesh(g, m); mesh.frustumCulled = false; mesh.castShadow = false; mesh.bind(skeleton, new THREE.Matrix4());
+    return mesh;
+  }
   function modelMesh(key, skeleton, material) {
     const d = key === 'leaderParts' ? LEADER_PARTS : CHAR_MODELS[key];
     let geo = modelGeos[key];
@@ -317,6 +366,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
       geo.setAttribute('skinWeight', new THREE.BufferAttribute(W, 4)); geo.setAttribute('skinIndex', new THREE.BufferAttribute(I, 4));
       geo.setIndex(new THREE.BufferAttribute(d.idx32 ? unb64(d.idx, Uint32Array) : unb64(d.idx, Uint16Array), 1));
+      if (key === 'leaderParts' && LEADER_SOFT) softenLeaderJoints(geo);
     }
     let tex = modelTexs[key];
     if (!tex) { tex = modelTexs[key] = new THREE.TextureLoader().load(d.tex); tex.flipY = true; tex.anisotropy = 2; }
@@ -330,7 +380,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const BONES = ['hips', 'spine', 'head', 'shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'hipL', 'hipR', 'kneeL', 'kneeR'];
   // 임시: 캐릭터 모델을 끄고 막대인간(폴리곤) 리그만 쓴다. 모델을 다시 켜려면 주소 뒤에 ?models=1 을 붙이거나 이 값을 true 로 바꾼다.
   const USE_CHAR_MODELS = /[?&]models=1/.test(location.search);
-  const USE_LEADER_PARTS = typeof LEADER_PARTS !== 'undefined' && !!window.NF_LEADER, LEADER_KEY = 'leaderParts';
+  const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? Math.max(0, Math.min(4, +window.NF_LEADER || 0)) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = 'leaderParts';
+  // 1 = the parts as they are; 2 = + soft blending at the joint ends; 3 = + a dark under layer (a simple body under the armour); 4 = both
+  const LEADER_SOFT = LEADER_MODE === 2 || LEADER_MODE === 4, LEADER_UNDER = LEADER_MODE === 3 || LEADER_MODE === 4;
   // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
   const LEADER_JOINTS = { shX: 0.29, shY: 1.55, elX: 0.06, elDY: 0.26, hipX: 0.12, hipY: 0.92, kneeX: 0.02, kneeDY: 0.47, neckY: 1.62 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다

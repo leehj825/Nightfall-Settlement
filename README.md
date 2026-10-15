@@ -383,3 +383,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v166:** the new leader model has longer legs (about 8 cm, the leader is 1.88 m tall) and its chain skirt stays on the pelvis so it no longer opens at the back while running (`LEG_WARP`, see `docs/LEADER_MODEL.md`).
 
 **nf-v167:** the new leader's legs are longer again (hip 0.92 m, the leader is 1.92 m tall) and the chain skirt is soft skinned: the back stays connected to the pelvis while the front follows the thighs and stretches (see `docs/LEADER_MODEL.md`).
+
+**nf-v168:** Settings > Leader model now has five choices: Classic, New model, New model + soft joints, New model + under layer, New model + both. The soft joints and the under layer close the gaps that open at the joints when the rigid parts bend (the parts are not changed). `?leader=0..4`. See `docs/LEADER_MODEL.md`.

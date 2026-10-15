@@ -9,9 +9,13 @@ The owner's Tripo model, exported as **`Leader2.glb`** (45 separate meshes `trip
 
 `build_leader_parts.py` reads the glb itself (no libraries), welds the vertices, scales the model to 1.8 m, binds each part to ONE bone (weight 100%) and writes `js/leader_parts.js` (`LEADER_PARTS`).
 
-## Two leader options (Settings > Leader model, or `?leader=0|1`)
+## Leader options (Settings > Leader model, or `?leader=0..4`)
 0. **Classic**: the polygon stick-man.
-1. **New model**: the parts model. The stick-man's joints (shoulder, elbow, hip, knee, neck) are moved to the model's own joint heights (`LEADER_JOINTS` in `js/rig.js`) so the parts swing around the right points. (A third option that stretched the parts onto the classic joints was removed in nf-v165: it looked and moved the same.)
+1. **New model**: the parts model as built (rigid parts, joints of the stick-man moved to the model's joints, `LEADER_JOINTS` in `js/rig.js`).
+2. **New model + soft joints**: vertices near a joint also follow the bone on the other side (`softenLeaderJoints` in `js/rig.js`: 50% at the joint fading to 0 at 7 to 10 cm, 35% at shoulder and hip tops), so a sleeve end or a boot top stretches to the next piece. Only weights change, not the parts.
+3. **New model + under layer**: a simple dark body (tubes between the joints, 11 soft skinned tubes, `leaderUnderlayer`) under the armour, so what shows through a gap is clothing, not the ground.
+4. **New model + both**.
+These are for comparing on the phone; once one is chosen the others and the unused code can be removed.
 
 ## Animation by segment
 `tools/build_models.py` (the old models) blends bone weights by the distance of every vertex to the bones: the animation follows the area around a bone. The new build gives **each part one bone with weight 100%** (`assign()` in `build_leader_parts.py`: head, shoulder = upper arm and pauldron, elbow = forearm, bracer and hand, hips = pelvis and belt, hip = thigh, knee = shin and boot, spine = the rest, left or right by side). A sleeve, a boot or a shoulder pad moves as one rigid piece. To change one part's bone, edit the rules in `assign()` (or add a per-part override table).
