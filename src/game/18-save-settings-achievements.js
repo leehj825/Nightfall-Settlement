@@ -222,11 +222,11 @@
     $('startDbg').addEventListener('click', () => go('dbg' + $('startStage').value));
     setTimeout(() => { titleMode = true; debugJump(5); }, 120);            // 화면이 먼저 뜬 뒤 배경 마을을 짓는다
   }
-  { const sl = document.getElementById('setLeader'); sl.value = window.NF_LEADER ? '1' : '0';                       // 지휘관 모델 바꾸기(시험): 저장해 두고 다시 불러온다
+  { const sl = document.getElementById('setLeader'); sl.value = String(+window.NF_LEADER || 0);                       // 지휘관 모델 바꾸기(시험): 저장해 두고 다시 불러온다
     sl.addEventListener('change', () => {
       try { localStorage.setItem('nf_leader', sl.value); } catch (e) { /* ignore */ }
       try { saveGame(); sessionStorage.setItem('nf_intent', 'continue'); } catch (e) { /* ignore */ }
-      location.href = location.pathname + location.search.replace(/([?&])leader=[01]&?/, '$1').replace(/[?&]$/, '');
+      location.href = location.pathname + location.search.replace(/([?&])leader=[012]&?/, '$1').replace(/[?&]$/, '');
     }); }
   document.getElementById('setUnstick').addEventListener('click', () => {  // 설정 → 길이 막혔을 때: 주인공을 마을 큰길의 빈 곳으로 옮긴다
     if (dead || exActive) return toast('Not now');
