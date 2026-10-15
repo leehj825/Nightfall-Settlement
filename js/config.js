@@ -45,6 +45,8 @@
       { stage: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', auto: 'town' }] },
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
+      // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
+      { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', x: -20, z: 12 }, { kind: 'pen', x: 21, z: 3.5 }, { kind: 'pen', x: -22, z: 3.5 }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
@@ -62,6 +64,7 @@
       well: { res: 'wood', cost: 6, radius: 1.3, size: [2.4, 2.4, 2.4] }, market: { res: 'wood', cost: 12, radius: 2.6, size: [5.2, 2.4, 3.4] },
       quarry: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] }, tower: { res: 'stone', cost: 10, radius: 1.7, size: [3.2, 4.5, 3.2] },
       siegeshop: { res: 'wood', cost: 14, radius: 3.4, size: [6, 3, 4.4] },
+      plaza: { res: 'stone', cost: 16, radius: 3.0, size: [6, 2.4, 6] }, muster: { res: 'wood', cost: 14, radius: 4.2, size: [9, 4.4, 6.4] }, pen: { res: 'wood', cost: 8, radius: 2.8, size: [5.2, 1.1, 4.2] },
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)

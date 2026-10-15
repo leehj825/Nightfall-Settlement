@@ -341,3 +341,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v145:** the warband window has a Whole host order row, Rally Cry reaches banner soldiers anywhere, and the Training Field parade groups by banner (banner soldiers get +1 drill XP).
 
 **nf-v146:** rain and snow follow the camera zoom: the weather box grows (up to 3.2x) and gets more drops when you zoom out, so the whole town is covered. `__nf.setWeather("rain")` forces weather for tests.
+
+**nf-v147 (Stage 5 town):** new Village Plan step "Plan Seat of Power" (150 wood, 120 stone): Fountain Plaza (`plazaModel`), Muster Yard (`musterModel`, banner colour flags), two Animal Pens (`penModel`), all visual only; the Stage 5 keep gets a stair and gold flags. Debug start at Stage 5 builds them too.

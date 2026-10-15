@@ -44,8 +44,9 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 **Next steps, in order**
 1. **Phone tuning pass:** the owner has played the debug build on a phone; collect the findings and tune world performance, stage gates, raid and siege strength, wounds and courage, and the other guessed numbers (all in `js/config.js`).
 2. **Banners and the host:** phases 1 and 2 built in `nf-v144` and `nf-v145` (`BANNERS_PLAN.md`); next the Marshal skill extras, banner flags in the field and phone tuning.
-3. **Models:** archery range, farm, gates, market, siege workshop; later custom skinned characters.
-4. **Polish:** audio, formations, cavalry and siege crews.
+3. **Stage 5 town (nf-v147 done):** a last Village Plan step "Plan Seat of Power" builds a fountain plaza, a Muster Yard (banner flags) and two animal pens; the keep gets a stair and gold flags. Next ideas: gatehouses, infirmary, stables, windmill, trophy monument.
+4. **Models:** archery range, farm, gates, market, siege workshop; later custom skinned characters.
+5. **Polish:** audio, formations, cavalry and siege crews.
 
 Already done and no longer listed as steps: ground hit effects, Stages and gates, World v2, Stages 4 and 5, the Training Field (`nf-v124` to `nf-v130`), the campaign map, realms, sieges and wounds/courage/levies.
 

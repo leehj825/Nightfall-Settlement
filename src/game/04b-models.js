@@ -90,6 +90,10 @@
     for (const [px, pz] of [[0, dw / 2 + 0.03], [0, -dw / 2 - 0.03]]) add(new THREE.BoxGeometry(0.5, 0.8, 0.06), windowGlow, px, top + 0.28 + dh * 0.55, pz);
     add(new THREE.CylinderGeometry(0.05, 0.05, 2.0, 5), M(0x4a301c), 0, top + 0.28 + dh + 3.0, 0);
     add(new THREE.BoxGeometry(1.1, 0.6, 0.05), gold ? M(0xe0b040) : M(0xb02a2a), 0.55, top + 0.28 + dh + 3.4, 0);
+    if (gold) {                                                                                                  // 5단계: 정문 앞 계단과 양옆 금빛 깃발
+      add(new THREE.BoxGeometry(3.6, 0.2, 1.2), lightM, 0, 0.1, W / 2 + 0.9); add(new THREE.BoxGeometry(2.8, 0.2, 0.9), lightM, 0, 0.3, W / 2 + 0.7);
+      for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.06, 0.06, 3.2, 6), M(0x4a301c), sx * 2.3, 1.7, W / 2 + 1.1); add(new THREE.BoxGeometry(0.7, 1.1, 0.04), M(0xe0b040), sx * 2.3 + 0.38, 2.6, W / 2 + 1.1); }
+    }
   }
 
   function townHallModel(add) {                                              // 2단계 마을 회관: 목골 2층 + 박공 지붕 + 현관 지붕 + 종탑 (정면은 +z)
@@ -201,3 +205,50 @@
     add(new THREE.ConeGeometry(1.55, 1.0, 8), roof, 0, 6.4, 0);
     add(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 5), wood, 0, 7.4, 0); add(new THREE.BoxGeometry(0.6, 0.35, 0.04), flag, 0.3, 7.7, 0);
   }
+
+  // ---------- 5단계 '권좌의 도시' 건물: 광장 분수, 집결장(깃발 터), 가축 우리 ----------
+  function plazaModel(add) {                                                 // 광장: 둥근 포석 + 분수 + 가로등 네 개 + 긴 의자
+    add(new THREE.CylinderGeometry(3.0, 3.1, 0.14, 24), M(0x9b9a94), 0, 0.07, 0);
+    add(new THREE.CylinderGeometry(2.1, 2.2, 0.1, 24), M(0xb5b3aa), 0, 0.17, 0);
+    add(new THREE.CylinderGeometry(1.35, 1.5, 0.55, 16), M(0x8d9098), 0, 0.42, 0);                              // 분수 테두리
+    add(new THREE.CylinderGeometry(1.15, 1.15, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x3a78c8, roughness: 0.25 }), 0, 0.66, 0);
+    add(new THREE.CylinderGeometry(0.22, 0.3, 1.3, 8), M(0xa9acb4), 0, 1.2, 0);                                // 가운데 기둥
+    add(new THREE.CylinderGeometry(0.6, 0.3, 0.2, 10), M(0xa9acb4), 0, 1.85, 0);
+    add(new THREE.SphereGeometry(0.2, 8, 6), M(0xe0b040), 0, 2.15, 0);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      add(new THREE.CylinderGeometry(0.06, 0.07, 2.1, 6), M(0x2f3036), sx * 2.5, 1.05, sz * 2.5);
+      add(new THREE.SphereGeometry(0.2, 8, 6), lampGlow, sx * 2.5, 2.2, sz * 2.5);
+    }
+    for (const s of [-1, 1]) { add(new THREE.BoxGeometry(1.6, 0.12, 0.4), woodMat2, 0, 0.5, s * 2.15); for (const dx of [-0.65, 0.65]) add(new THREE.BoxGeometry(0.12, 0.4, 0.34), M(0x6a6e78), dx, 0.22, s * 2.15); }
+  }
+  function musterModel(add) {                                                // 집결장: 다진 흙 마당 + 깃발 세 개(깃발 색) + 무기 걸이 + 단상
+    add(new THREE.BoxGeometry(9, 0.1, 6.4), M(0x8a6c48), 0, 0.05, 0);
+    add(new THREE.BoxGeometry(9.5, 0.2, 0.3), M(0x6a6e78), 0, 0.1, 3.3); add(new THREE.BoxGeometry(9.5, 0.2, 0.3), M(0x6a6e78), 0, 0.1, -3.3);
+    add(new THREE.BoxGeometry(0.3, 0.2, 6.4), M(0x6a6e78), 4.6, 0.1, 0); add(new THREE.BoxGeometry(0.3, 0.2, 6.4), M(0x6a6e78), -4.6, 0.1, 0);
+    CFG.BANNER.COLORS.forEach((c, i) => {
+      const x = (i - 1) * 2.8;
+      add(new THREE.CylinderGeometry(0.07, 0.09, 4.4, 6), M(0x4a301c), x, 2.3, -2.2);
+      add(new THREE.BoxGeometry(1.2, 1.5, 0.05), M(c), x + 0.65, 3.7, -2.2);
+      add(new THREE.BoxGeometry(1.0, 0.18, 0.06), M(0x2a2a30), x + 0.65, 2.85, -2.2);
+    });
+    add(new THREE.BoxGeometry(2.6, 0.45, 1.6), woodMat2, 0, 0.3, 0.4);                                           // 단상
+    add(new THREE.BoxGeometry(0.1, 1.5, 2.6), woodMat2, 3.6, 0.85, 1.2);                                         // 무기 걸이
+    for (const z of [0.4, 1.2, 2.0]) add(new THREE.BoxGeometry(0.06, 1.3, 0.06), M(0x9aa0aa), 3.5, 1.0, z);
+    for (const z of [-0.4, 0.4]) add(new THREE.CylinderGeometry(0.4, 0.4, 0.12, 12), M(0xb02a2a), 3.4, 0.9, 2.9 + z * 0).rotation.z = Math.PI / 2;
+  }
+  function penModel(add, seed) {                                             // 가축 우리: 나무 울타리 + 건초 + 양 (seed 로 마리 수가 조금 달라진다)
+    const w = 5.2, d = 4.2, post = M(0x6b4a2a), rnd = rngOf(seed || 7);
+    add(new THREE.BoxGeometry(w, 0.06, d), M(0x6f8a3a), 0, 0.03, 0);
+    for (const z of [-d / 2, d / 2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(w, 0.09, 0.09), post, 0, y, z);
+    for (const x of [-w / 2, w / 2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(0.09, 0.09, d), post, x, y, 0);
+    for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, -d / 2], [0, d / 2]]) add(new THREE.BoxGeometry(0.14, 1.1, 0.14), post, x, 0.55, z);
+    add(new THREE.BoxGeometry(1.2, 0.6, 0.9), M(0xd8b848), w / 2 - 1.0, 0.3, -d / 2 + 0.8);                      // 건초 더미
+    const n = 3 + Math.floor(rnd() * 3), wool = M(0xeeeeea), face = M(0x3a3430);
+    for (let i = 0; i < n; i++) {
+      const x = (rnd() - 0.5) * (w - 1.8) - 0.4, z = (rnd() - 0.5) * (d - 1.2), ry = rnd() * 6.28;
+      const b = add(new THREE.BoxGeometry(0.9, 0.55, 0.55), wool, x, 0.55, z); b.rotation.y = ry;
+      const h = add(new THREE.BoxGeometry(0.28, 0.28, 0.28), face, x + Math.cos(ry) * 0.55, 0.65, z - Math.sin(ry) * 0.55);
+      for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]]) add(new THREE.BoxGeometry(0.1, 0.3, 0.1), face, x + lx * Math.cos(ry) + lz * Math.sin(ry), 0.15, z - lx * Math.sin(ry) + lz * Math.cos(ry));
+    }
+  }
+
