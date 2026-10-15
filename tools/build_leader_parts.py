@@ -63,11 +63,16 @@ def weld(p):
     return pos[keep], nor[keep], uv[keep], remap[idx]
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
-# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP + (leg lengthening 0.08)
+# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP + (leg lengthening 0.12)
 ARM_UP = 0.07
-# the legs were too short: model height -> new height (knee 0.38 -> 0.43, hip 0.80 -> 0.88, everything above is moved up 8 cm; the leader is 1.88 m tall).
+# the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
 # keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
-LEG_WARP = ([0, 0.38, 0.80, 1.80], [0, 0.43, 0.88, 1.88])
+LEG_WARP = ([0, 0.38, 0.80, 1.80], [0, 0.45, 0.92, 1.92])
+
+def is_skirt(v):
+    """The two long pelvis guards (the chain skirt, parts 1 and 2): centre at hip height, near the middle, tall."""
+    c = (v.max(axis=0) + v.min(axis=0)) / 2
+    return 0.70 <= c[1] < 0.86 and abs(c[0]) < 0.24 and (v.max(axis=0) - v.min(axis=0))[1] > 0.30
 
 def assign(v):
     """One bone for a whole part, from the part's centre (metres, feet at y=0, model facing +z, x<0 is the rig's L side). Rules fitted to the skeleton in tools/build_models.py."""
@@ -75,7 +80,7 @@ def assign(v):
     if y >= 1.58 and ax < 0.15: return 'head'
     if ax >= 0.24 and y >= 0.5: return ('shoulder' if y >= 1.12 else 'elbow') + side         # upper arm and pauldron -> shoulder; forearm, bracer, hand -> elbow
     if y >= 1.3 and ax >= 0.12: return 'shoulder' + side                                       # shoulder pads follow the arm
-    if 0.70 <= y < 0.86 and ax < 0.24 and (v.max(axis=0) - v.min(axis=0))[1] > 0.30: return 'hips'     # the long pelvis guards (chain skirt) stay on the pelvis so they do not open when the legs split
+    if is_skirt(v): return 'hips'                                                              # the chain skirt: pelvis bone, plus a soft share of the thigh bone at the front (see skirt weights)
     if y < 0.86 and ax >= 0.05: return ('hip' if y >= 0.42 else 'knee') + side                # thigh -> hip; shin, boot -> knee
     if y < 0.7: return 'hips'
     if 0.70 <= y < 1.0 and ax < 0.24: return 'hips'                                           # pelvis guards, belt, pouches
@@ -95,6 +100,11 @@ def main():
     for k in range(len(parts)): bone_of[k] = BM.BONES.index(assign(pos[owner == k]))
     si = np.zeros((len(pos), 4), np.uint8); sw = np.zeros((len(pos), 4), np.uint8)
     si[:, 0] = bone_of[owner]; sw[:, 0] = 255
+    sk = np.isin(owner, [k for k in range(len(parts)) if is_skirt(pos[owner == k])])                     # skirt: the back stays on the pelvis (connected), the front follows the thigh, more towards the hem
+    if sk.any():
+        y, z, x = pos[sk, 1], pos[sk, 2], pos[sk, 0]; h = np.clip((y.max() - y) / (y.max() - y.min()), 0, 1)
+        w = np.clip((z + 0.02) / 0.12, 0, 1) * np.clip(np.abs(x) / 0.08, 0.35, 1) * h ** 0.8
+        si[sk, 1] = np.where(x < 0, BM.BONES.index('hipL'), BM.BONES.index('hipR')); sw[sk, 0] = np.round(255 * (1 - w)).astype(np.uint8); sw[sk, 1] = 255 - sw[sk, 0]
     im = Image.open(tex).convert('RGB').resize((size, size), Image.LANCZOS)
     if lift != 1.0: im = Image.fromarray((255 * (np.asarray(im, float) / 255) ** (1 / lift)).astype(np.uint8))
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)

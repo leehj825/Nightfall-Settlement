@@ -38,3 +38,7 @@ The classic animation was made for shoulders about 17 cm below the head bone, wh
 
 ## Legs (nf-v166)
 The legs looked short and the chain skirt opened at the back when the legs split. The build now lengthens the legs (`LEG_WARP` in `tools/build_leader_parts.py`: knee 0.38 -> 0.43 m, hip 0.80 -> 0.88 m, everything above moves up 8 cm; the leader is 1.88 m tall) and keeps the two long pelvis guards (the chain skirt, parts 1 and 2) on the pelvis bone instead of the thigh bones, so the skirt no longer opens when the legs swing. `LEADER_JOINTS` in `js/rig.js` follows the new heights (`shY` 1.51, `hipY` 0.88, `kneeDY` 0.45, `neckY` 1.58). Change the numbers in both files together.
+
+## Longer legs and a stretching skirt (nf-v167)
+- Legs: `LEG_WARP` now puts the hip at 0.92 m (was 0.88) and the knee at 0.45 m, everything above moves up 12 cm; the leader is 1.92 m tall. `LEADER_JOINTS` in `js/rig.js` follows (`shY` 1.55, `hipY` 0.92, `kneeDY` 0.47, `neckY` 1.62).
+- Skirt (the two chain pelvis guards, `is_skirt()` in `tools/build_leader_parts.py`) is now soft skinned instead of rigid: every vertex follows the pelvis bone and, at the front, also the thigh bone on its side. The thigh share grows towards the front (z), towards the hem (y) and away from the centre line (x), so the back panel stays joined and the front pieces swing with each thigh and stretch. The numbers are in the 'skirt' block of the builder (`0.12` front blend, `0.08` centre blend, `h ** 0.8` hem curve).

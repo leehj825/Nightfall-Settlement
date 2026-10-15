@@ -381,3 +381,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v165:** the third leader option (New model on classic body) is removed; Settings now offers Classic or New model (old saved choices map to New model). `js/leader_parts.js` is about 738 KB.
 
 **nf-v166:** the new leader model has longer legs (about 8 cm, the leader is 1.88 m tall) and its chain skirt stays on the pelvis so it no longer opens at the back while running (`LEG_WARP`, see `docs/LEADER_MODEL.md`).
+
+**nf-v167:** the new leader's legs are longer again (hip 0.92 m, the leader is 1.92 m tall) and the chain skirt is soft skinned: the back stays connected to the pelvis while the front follows the thighs and stretches (see `docs/LEADER_MODEL.md`).
