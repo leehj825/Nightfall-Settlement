@@ -14,12 +14,13 @@ Each stage needs **three things**, all shown as a checklist on the Town Hall pan
 
 | Stage | Min day | Resources | Goals |
 |---|---|---|---|
-| 2 Wooden Town | 2 | 80 wood | survive night 1; 4 houses built; 6 citizens |
-| 3 Stone Fortress | 5 | 200 wood, 150 stone, 15 iron | survive the first Blood Moon raid; Barracks and Archery Range built; 12 citizens |
-| 4 Walled City | 9 | 300 wood, 300 stone, 40 iron, 40 food | break any realm stronghold; second wall finished; 18 citizens |
+| 2 Wooden Town | 2 | 80 wood | 3 houses built (the Tent Village plan has 3 lots); 3 citizens |
+| 3 Stone Fortress | 5 | 200 wood, 150 stone, 15 iron | survive the first Blood Moon raid; Barracks and Archery Range built; village of 8 people (soldiers and citizens count) |
+| 4 Walled City | 9 | 300 wood, 300 stone, 40 iron, 40 food | break any realm stronghold; second wall finished; village of 12 people |
 | 5 Seat of Power | 14 | 500 stone, 100 iron, 100 food | take any realm castle; a Siege Workshop built |
 
 - Perk choice stays at each stage (a fourth and fifth perk list is needed).
+- The population goals count everyone in the village, because the population cap (3 + homes + wells) is shared with soldiers (fixed in `nf-v133` and `nf-v134` after the first numbers could not be reached).
 - Stage 3 to 5 numbers will be tuned from the balance reports (`balance report` in the game).
 - Existing saves keep their stage (additive fields only; no loss).
 

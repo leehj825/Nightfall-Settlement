@@ -5,7 +5,7 @@ Status: **phases 1 to 4 built (`nf-v86` to `nf-v91`)**; the rest is still plan. 
 ## 1. What exists today that the map builds on
 - **Sites**: `CFG.EXPEDITIONS` has 26 entries: forays (quarry, forest, tower, mine, citadel...), chapter sites (ch 2 to 6, unlocked by relics/story), night sites, and three **raids** (Raider Outpost 1 band, Bandit Camp 2, Bandit Stronghold 3). Each is a playable zone built by `buildZone` in `src/game/16-expeditions-story-journal.js`.
 - **Clock rule**: a day journey starts after 06:00 (latest 13:00) and you are called home at 17:30; the game clock runs at half speed while away (`EXP_TIME_MULT`), so one journey is about 4 minutes of real time. Night sites run 20:00 to 04:30.
-- **Party**: up to 1/2/3 warbands by Age (`bandMax`), journey power from the warbands brought (`powerOf`, `powerFor`), soldiers walk home on return.
+- **Party**: up to 1/2/3 warbands by Stage (`bandMax`), journey power from the warbands brought (`powerOf`, `powerFor`), soldiers walk home on return.
 - **Effects that already persist**: `story.campFx` (a broken camp makes raids smaller for some days), supply camps (`story.camps`, daily income), `story.cleared`.
 - **UI**: Journal with Journeys and Raids tabs, a warband bar and window, journey HUD line, a fade between village and zone.
 - **Saves**: `makeSnapshot` / `applySnapshot`; additive fields with fallbacks.

@@ -84,7 +84,7 @@ After the Winter Crown the story continues: a tolling bell and a road the Crown 
 - Press the red Attack button (or `F`) to attack; tapping the screen no longer attacks on touch devices. Journal, Map View and Town Hall sit above the move stick; Rest / Orders / Smithy appear in a small column next to the action buttons and keep their slot when hidden.
 - Settings: left-handed layout, button size (small / normal / large), text size, vibration, volumes.
 
-- Stone walls are no longer built by hand: from Age 3 your workers and soldiers replace wooden fences with stone on their own (5 stone each, taken from your stock), after repairs and building plans. The Stone Wall button and `U` key are gone.
+- Stone walls are no longer built by hand: from Stage 3 your workers and soldiers replace wooden fences with stone on their own (5 stone each, taken from your stock), after repairs and building plans. The Stone Wall button and `U` key are gone.
 
 ## Terrain
 The village stays on flat ground; beyond the walls the land rolls into hills, and a river runs along the south-east with one wooden bridge. Wading through the river slows the hero and raiders to 60% speed; the bridge is full speed. Trees and rocks do not grow in the water.
@@ -99,7 +99,7 @@ Chord-based synthesized music (bright day arpeggios, slow minor night pads, puls
 ## Hands-off village (latest)
 - **Village Plan:** one button replaces the two planning buttons. Workers plan fences and town buildings themselves whenever the resources allow; you only pick the priority (Defense first / Balanced / Economy first).
 - **Foreman:** once the village has 5+ people the most experienced villager becomes foreman (+25% work speed, everyone else +12%). The morning report lists walls fortified and repaired.
-- **Upgrades by workers:** from Age 3 workers replace wooden fences with stone; each morning they also level up one building, tower (more damage, faster) or gate (stone pillars; soldiers near it hit 7% harder per level).
+- **Upgrades by workers:** from Stage 3 workers replace wooden fences with stone; each morning they also level up one building, tower (more damage, faster) or gate (stone pillars; soldiers near it hit 7% harder per level).
 - **Autosave** when you leave the app (skipped while raiders are attacking).
 
 ## Terrain, river and roads
