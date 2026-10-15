@@ -1,7 +1,7 @@
   // ---------- 메인 루프 ----------
   const SPEED = 6;
   // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
-  const WX_N = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
+  const WX_N = 1600, WX_BASE = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
   for (let i = 0; i < WX_N; i++) { const x = rand(-16, 16), y = rand(0, 14), z = rand(-16, 16); wxPos.set([x, y, z, x, y + 0.7, z], i * 6); wxVel[i] = rand(0.8, 1.2); }
   wxLines.geometry.setAttribute('position', new THREE.BufferAttribute(wxPos, 3)); wxLines.frustumCulled = false; scene.add(wxLines);
   let wx = { kind: 'none', day: -1, lvl: 0, target: 0, snd: 0 };
@@ -16,9 +16,11 @@
     const show = wx.lvl > 0.03, snow = !storm && wx.kind === 'snow';
     wxLines.visible = show; if (!show) return;
     const mat = wxLines.material; mat.color.setHex(snow ? 0xffffff : 0xaec6ff); mat.opacity = Math.min(0.55, wx.lvl * 0.6);
+    const zoom = Math.min(3.2, Math.max(1, DIST / 12)), live = Math.min(WX_N, Math.round(WX_BASE * zoom * zoom * 0.5 + WX_BASE * 0.5));        // 카메라를 멀리 당기면 비 구역도 함께 커진다 (마을 전체에 내린다)
+    wxLines.scale.set(zoom, zoom, zoom); wxLines.geometry.setDrawRange(0, Math.max(WX_BASE, live) * 2);
     wxLines.position.set(player.position.x, player.position.y, player.position.z);
     const a = wxLines.geometry.attributes.position.array, fall = snow ? 2.2 : 16, len = snow ? 0.12 : 0.75;
-    for (let i = 0; i < WX_N; i++) {
+    for (let i = 0, n = Math.max(WX_BASE, live); i < n; i++) {
       const o = i * 6; let y = a[o + 1] - fall * wxVel[i] * dt; if (y < 0) y += 14;
       a[o + 1] = y; a[o + 4] = y + len; a[o] = a[o + 3] += (snow ? Math.sin(y * 2 + i) * 0.4 : -2.0) * dt; if (a[o] < -16) a[o] = a[o + 3] += 32; a[o + 2] = a[o + 5];
     }

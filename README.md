@@ -339,3 +339,5 @@ During an attack the great sword is held with both hands: a two-bone arm solver 
 At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart banner (up to 3 warbands each). Orders go to the whole banner, **Bring whole banner** adds its warbands to the next journey, the party cap is one larger, and soldiers of one banner fight +6% harder and take 6% less damage while another of its warbands is within 18 paces. Plan: `docs/BANNERS_PLAN.md`.
 
 **nf-v145:** the warband window has a Whole host order row, Rally Cry reaches banner soldiers anywhere, and the Training Field parade groups by banner (banner soldiers get +1 drill XP).
+
+**nf-v146:** rain and snow follow the camera zoom: the weather box grows (up to 3.2x) and gets more drops when you zoom out, so the whole town is covered. `__nf.setWeather("rain")` forces weather for tests.
