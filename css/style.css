@@ -374,3 +374,13 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
 #wbPanel .wbn { display: flex; gap: 4px; margin: 6px 0 2px; } #wbPanel .wbn button { flex: 1; font-size: 12px; padding: 6px 4px; border-radius: 8px; border: 2px solid rgba(232,192,64,.5); background: rgba(0,0,0,.35); color: #fff; } #wbPanel .wbn button.on { border-color: #e8c040; background: rgba(232,192,64,.25); }
 #wbPanel .word.host small { flex: 1 1 100%; color: #e8c040; }
 #wbPanel .word.host .wbord { border-color: rgba(232,192,64,.5); }
+
+#victory { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 40%, rgba(255,214,120,.22), rgba(8,6,14,.88)); }
+#victory.show { display: flex; }
+#victory .vcard { max-width: min(92vw, 420px); padding: 22px 24px; border-radius: 16px; border: 2px solid #e0b43c; background: rgba(22,16,10,.94); color: #f4e8cc; text-align: center; box-shadow: 0 0 40px rgba(224,180,60,.35); }
+#victory h2 { margin: 0 0 8px; color: #ffd27a; font-size: 26px; letter-spacing: 1px; }
+#victory p { margin: 0 0 10px; font-size: 14px; color: #d8c8a6; }
+#victory ul { list-style: none; margin: 8px 0 14px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; font-size: 13px; text-align: left; }
+#victory li b { color: #ffd27a; float: right; }
+#victory .vbtns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+#victory .vbtns button { padding: 8px 14px; border-radius: 10px; border: 2px solid #e0b43c; background: rgba(224,180,60,.18); color: #fff; font: inherit; font-size: 14px; }

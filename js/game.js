@@ -546,6 +546,7 @@
     } else if (kind === 'windmill') { windmillModel(add, g);
     } else if (kind === 'infirmary') { infirmaryModel(add);
     } else if (kind === 'monument') { monumentModel(add, g);
+    } else if (kind === 'trainyard') { trainyardModel(add, g);
     } else if (kind === 'stable') { g.userData.sheep = stableModel(add, g.userData.seed, (o) => g.add(o));
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
       barracksModel(add);
@@ -862,7 +863,7 @@
     return best || (strict ? null : { x: near.x, z: near.z });
   }
   // 길 막힘 방지: 움직여도 되는 건물(벌목장·채석장·마구간·풍차·병원·집결장·우리·기념비)이 다른 건물과 겹치거나 성벽에 너무 붙어 사람이 지나갈 틈이 없으면 가까운 빈 자리로 옮긴다
-  const MOVABLE = ['lumber', 'quarry', 'stable', 'windmill', 'infirmary', 'muster', 'pen', 'monument'];
+  const MOVABLE = ['lumber', 'quarry', 'stable', 'windmill', 'infirmary', 'muster', 'pen', 'monument', 'trainyard'];
   function fixTightBuildings() {
     const B = obstacles.filter(o => o.userData.type === 'building'), F = obstacles.filter(o => o.userData.type === 'fence'), now = performance.now();
     for (const o of B) {
@@ -933,7 +934,7 @@
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument', stable: 'Stables' };
+  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument', stable: 'Stables', trainyard: 'Training Yard' };
   // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
@@ -1329,6 +1330,22 @@
     grp.position.set(gate.x, 0, gate.z); grp.rotation.y = Math.atan2(gate.nx, gate.nz); scene.add(grp); doormats.push(grp);
     return grp;
   }
+  function trainyardModel(add, g) {                                          // 훈련소: 모래 마당 + 나무 울타리 + 짚 인형 셋 + 과녁 + 무기 걸이 + 깃발. 아침 훈련 때 인형이 흔들린다
+    const post = M(0x6b4a2a);
+    add(new THREE.BoxGeometry(7, 0.1, 5.6), M(0xc8b080), 0, 0.05, 0);
+    for (const z of [-2.8, 2.8]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(7, 0.08, 0.08), post, 0, y, z);
+    for (const x of [-3.5, 3.5]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(0.08, 0.08, 5.6), post, x, y, 0);
+    for (const [x, z] of [[-3.5, -2.8], [3.5, -2.8], [-3.5, 2.8], [3.5, 2.8], [0, -2.8], [0, 2.8]]) add(new THREE.BoxGeometry(0.14, 1.1, 0.14), post, x, 0.55, z);
+    g.userData.dummies = [-2, 0, 2].map(x => {
+      const d = new THREE.Group(), mk = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; d.add(o); };
+      mk(new THREE.CylinderGeometry(0.07, 0.09, 1.6, 6), post, 0, 0.8, 0); mk(new THREE.BoxGeometry(1.0, 0.1, 0.1), post, 0, 1.25, 0); mk(new THREE.BoxGeometry(0.5, 0.7, 0.3), M(0xd8c070), 0, 1.15, 0); mk(new THREE.SphereGeometry(0.22, 8, 6), M(0xe0cc88), 0, 1.75, 0);
+      d.position.set(x, 0, -1.0); g.add(d); return d;
+    });
+    add(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 5), post, 2.9, 0.9, 1.6);                                    // 활 과녁
+    for (const [r, c, y] of [[0.7, 0xf0f0e8, 0], [0.48, 0xc0302a, 0.02], [0.24, 0xf0f0e8, 0.04]]) add(new THREE.CylinderGeometry(r, r, 0.1, 18), M(c), 2.9, 1.7, 1.6 + y).rotation.x = Math.PI / 2;
+    add(new THREE.BoxGeometry(1.6, 0.9, 0.1), woodMat2, -2.3, 0.6, 2.4); for (const x of [-2.8, -2.3, -1.8]) add(new THREE.BoxGeometry(0.06, 1.1, 0.06), M(0x9aa0aa), x, 1.2, 2.4);       // 무기 걸이
+    add(new THREE.CylinderGeometry(0.05, 0.06, 3.2, 6), post, 3.3, 1.6, -2.4); add(new THREE.BoxGeometry(0.9, 0.7, 0.04), M(0xb02a2a), 3.75, 2.9, -2.4);
+  }
   // ---------- 5단계 마을의 활기: 손수레 두 대가 큰길을 오가고, 광장 분수 곁에 마을 사람들이 서 있다 (보기용, 충돌 없음. 낮에만 보인다) ----------
   const townLife = { done: false, carts: [], folk: [] };
   function cartModel() {                                                       // 수레: 나무 짐칸 + 바퀴 둘 + 짐(자루·통) + 짐 끄는 말
@@ -1366,7 +1383,7 @@
   }
   let mountBtnT = 0;
   function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다. 기병은 말이 달리고 돌격 힘이 쌓인다. 깃발도 여기서 갱신
-    townLifeTick(t, dt); bannerFlagTick(t); leaderRideTick(t, dt); if ((mountBtnT -= dt) <= 0) { mountBtnT = 0.5; updateMountBtn(); }
+    victoryTick(); townLifeTick(t, dt); bannerFlagTick(t); leaderRideTick(t, dt); if ((mountBtnT -= dt) <= 0) { mountBtnT = 0.5; updateMountBtn(); }
     for (const n of npcs) {
       if (!n.horse) continue;
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
@@ -1377,8 +1394,9 @@
       n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); n.rider.position.y = 0.8 + n.horse.position.y;
     }
     for (const o of obstacles) {
-      const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants)) continue;
+      const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;
       if ((o.position.x - player.position.x) ** 2 + (o.position.z - player.position.z) ** 2 > 3600) continue;        // 60칸보다 멀면 움직임을 건너뛴다 (폰 성능)
+      if (u.dummies) u.dummies.forEach((d, i) => { d.rotation.z = Math.sin(t * 2.2 + i * 1.7) * 0.035 * (nowHour >= 7 && nowHour < 18 ? 1 : 0.3); });
       if (u.sails) u.sails.rotation.z -= dt * (0.6 + 0.4 * Math.sin(t * 0.3));
       if (u.pennants) u.pennants.forEach((p, i) => { const id = CFG.REALMS[i].id, held = realmHeld(id) > 0, done = realmHeld(id) >= realmSites(id).length; p.visible = held; p.scale.y = done ? 1 : 0.6; p.rotation.y = Math.sin(t * 3 + i * 2) * 0.25; });
       if (!u.sheep) continue;
@@ -2810,7 +2828,7 @@
     return false;
   }
   // 병사 수 상한: 기본 6명 + 병영 1채당 6명 + 사격장 1채당 3명
-  function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length; }
+  function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length + CFG.WARBAND.CAP_YARD * builtBuildings('trainyard').length; }
   // 병사 직업(class)은 두 개다: 마을에서 쓰는 직업(clsHome)과 원정에서 쓰는 직업(clsTrip, 없으면 마을 직업과 같다). n.cls 는 지금 쓰는 직업이다.
   // 출발할 때 n.cls = 원정 직업, 돌아오면 n.cls = 마을 직업. 원정 중에 카드에서 바꾸면 원정 직업만, 마을에서 바꾸면 마을 직업만 바뀐다.
   function clsName(c) { return { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[c] || 'Swordsman'; }
@@ -5699,6 +5717,8 @@
   function woundsMorning() {                                                 // 아침: 부상이 줄어든다 (마을에 치료사가 있으면 하루 더), 불려 온 농민병은 돌아간다, 용기는 조금씩 되돌아온다
     const medic = Math.min(2, npcs.filter(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic').length) * CFG.WOUND.MEDIC_EXTRA;
     for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic - (builtBuildings('infirmary').length ? 1 : 0));       // 병원이 있으면 하루 더 빨리 낫는다
+    { const seats = CFG.YARD_SEATS * builtBuildings('trainyard').length;                                    // 훈련소: 집에 있는 병사가 아침마다 숙련 +1
+      if (seats) { const pool = npcs.filter(n => n.role !== 'citizen' && !n.levy && !n.escort && !n.down && !(n.woundDays > 0)).slice(0, seats); let up = 0; for (const n of pool) { const b = vetLv(n); n.vxp = (n.vxp || 0) + CFG.YARD_XP; if (vetLv(n) > b) up++; } if (pool.length) setTimeout(() => toast(`Yard drills: ${pool.length} soldiers trained${up ? ` · ${up} new veteran rank${up > 1 ? 's' : ''}` : ''}`), 2500); } }
     { const mills = builtBuildings('windmill').length; if (mills) res.food += CFG.WINDMILL_FOOD * mills; }       // 풍차는 아침마다 식량
     for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
     const c = courageOf(), K = CFG.COURAGE.START + (hasPerk('banneret') ? 10 : 0), D = CFG.COURAGE.DRIFT * (hasPerk('banneret') ? 1.6 : 1); story.courage = c < K ? Math.min(K, c + D) : c > K ? Math.max(K, c - D) : c;
@@ -5725,7 +5745,7 @@
   }
   const realmStrength = (id) => Math.max(0.4, 1 - 0.2 * realmHeld(id));      // 점령지가 많을수록 그 세력이 되찾으러 오는 힘도 약해진다
   function realmBar() {                                                    // 일지: 세력별 점령 현황 한 줄
-    return `<div class="jrealm">${CFG.REALMS.map(r => `<span style="color:${r.color}">&#9679; ${r.short} ${realmHeld(r.id)}/${realmSites(r.id).length}</span>`).join('')}</div>`;
+    return `<div class="jrealm">${CFG.REALMS.map(r => `<span style="color:${r.color}">&#9679; ${r.short} ${realmHeld(r.id)}/${realmSites(r.id).length}</span>`).join('')}</div>` + throneLine();
   }
   function realmCheck() {                                                  // 한 세력을 모두 점령하면 한 번 알린다
     story.realmDone = story.realmDone || {};
@@ -5810,6 +5830,35 @@
     });
   }
   document.getElementById('trainBar').addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); e.stopPropagation(); const k = b.dataset.tr; if (k === 'clear') trainClear(); else if (k === 'drill') trainDrill(); else if (k === 'leave') endTraining(); else trainSpawn(k); });
+  // ---------- 끝맺음 (Endgame): 철의 왕좌를 무너뜨리면(story.campaignWon) 승리 화면이 한 번 뜬다. 계속 다스리거나 New Game+ 로 갈 수 있다 ----------
+  function throneLine() {                                                   // 일지의 마지막 목표 줄: 세 성을 모두 꺾으면 철의 왕좌로 진군할 수 있다
+    const d = CFG.EXPEDITIONS.find(x => x.id === 'ironthrone'); if (!d) return '';
+    const need = [].concat(d.after || []), done = need.filter(id => story.cleared && story.cleared[id]).length;
+    const txt = story.campaignWon ? 'Iron Throne: taken' : done >= need.length ? 'Iron Throne: open - march when ready' : `Iron Throne: break the three castles (${done}/${need.length})`;
+    return `<div class="jrealm"><span style="color:#ffd27a">&#9813; ${txt}</span></div>`;
+  }
+  const victoryEl = document.getElementById('victory');
+  function showVictory() {
+    story.victoryShown = true; uiPause = true;
+    const broken = CFG.REALMS.filter(r => story.realmDone && story.realmDone[r.id]).length, bld = obstacles.filter(o => o.userData.type === 'building').length;
+    document.getElementById('vText').textContent = 'The Iron Warlord is dead and the three realms are broken. The night will never be the same.';
+    const rows = [['Days', dayNow()], ['Hero level', pl.lvl], ['Foes defeated', totalKills], ['Population', npcs.length], ['Soldiers', soldierCount()], ['Sites held', holdCount()], ['Realms broken', `${broken}/${CFG.REALMS.length}`], ['Buildings', bld], ['Stage', CFG.STAGES[stage - 1].name], ['Difficulty', CFG.DIFFS[diff].label + (ngLevel ? ' NG+' + ngLevel : '')]];
+    document.getElementById('vStats').innerHTML = rows.map(([k, v]) => `<li>${k}<b>${v}</b></li>`).join('');
+    victoryEl.classList.add('show'); Snd.play('victory'); try { saveGame(); } catch (e) { /* ignore */ }
+  }
+  function victoryTick() {                                                  // 원정에서 돌아와 마을에 있을 때 한 번만 띄운다
+    if (!story.campaignWon || story.victoryShown || exActive || exEnding || dead || eventOpen || uiPause) return;
+    showVictory();
+  }
+  document.getElementById('vKeep').addEventListener('click', () => { victoryEl.classList.remove('show'); uiPause = false; toast('Endless rule begins: the night still comes'); });
+  document.getElementById('vNG').addEventListener('click', () => {
+    try { localStorage.setItem('nf_carry', JSON.stringify({ ng: ngLevel + 1, lvl: pl.lvl, st: { ...pl.st } })); sessionStorage.setItem('nf_intent', 'ng'); } catch (e) { /* ignore */ }
+    location.reload();
+  });
+  document.getElementById('vMenu').addEventListener('click', () => {
+    try { saveGame(); localStorage.setItem('nf_carry', JSON.stringify({ ng: ngLevel + 1, lvl: pl.lvl, st: { ...pl.st } })); sessionStorage.setItem('nf_intent', 'title'); } catch (e) { /* ignore */ }
+    location.reload();
+  });
   // ---------- 메인 루프 ----------
   const SPEED = 6;
   // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
@@ -6292,6 +6341,6 @@
   });
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

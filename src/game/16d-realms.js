@@ -18,7 +18,7 @@
   }
   const realmStrength = (id) => Math.max(0.4, 1 - 0.2 * realmHeld(id));      // 점령지가 많을수록 그 세력이 되찾으러 오는 힘도 약해진다
   function realmBar() {                                                    // 일지: 세력별 점령 현황 한 줄
-    return `<div class="jrealm">${CFG.REALMS.map(r => `<span style="color:${r.color}">&#9679; ${r.short} ${realmHeld(r.id)}/${realmSites(r.id).length}</span>`).join('')}</div>`;
+    return `<div class="jrealm">${CFG.REALMS.map(r => `<span style="color:${r.color}">&#9679; ${r.short} ${realmHeld(r.id)}/${realmSites(r.id).length}</span>`).join('')}</div>` + throneLine();
   }
   function realmCheck() {                                                  // 한 세력을 모두 점령하면 한 번 알린다
     story.realmDone = story.realmDone || {};

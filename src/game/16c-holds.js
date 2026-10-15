@@ -78,6 +78,8 @@
   function woundsMorning() {                                                 // 아침: 부상이 줄어든다 (마을에 치료사가 있으면 하루 더), 불려 온 농민병은 돌아간다, 용기는 조금씩 되돌아온다
     const medic = Math.min(2, npcs.filter(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic').length) * CFG.WOUND.MEDIC_EXTRA;
     for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic - (builtBuildings('infirmary').length ? 1 : 0));       // 병원이 있으면 하루 더 빨리 낫는다
+    { const seats = CFG.YARD_SEATS * builtBuildings('trainyard').length;                                    // 훈련소: 집에 있는 병사가 아침마다 숙련 +1
+      if (seats) { const pool = npcs.filter(n => n.role !== 'citizen' && !n.levy && !n.escort && !n.down && !(n.woundDays > 0)).slice(0, seats); let up = 0; for (const n of pool) { const b = vetLv(n); n.vxp = (n.vxp || 0) + CFG.YARD_XP; if (vetLv(n) > b) up++; } if (pool.length) setTimeout(() => toast(`Yard drills: ${pool.length} soldiers trained${up ? ` · ${up} new veteran rank${up > 1 ? 's' : ''}` : ''}`), 2500); } }
     { const mills = builtBuildings('windmill').length; if (mills) res.food += CFG.WINDMILL_FOOD * mills; }       // 풍차는 아침마다 식량
     for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
     const c = courageOf(), K = CFG.COURAGE.START + (hasPerk('banneret') ? 10 : 0), D = CFG.COURAGE.DRIFT * (hasPerk('banneret') ? 1.6 : 1); story.courage = c < K ? Math.min(K, c + D) : c > K ? Math.max(K, c - D) : c;

@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v156`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v157`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement` (use the dev branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. Play Store release is documented in `RELEASE.md` but is the owner's task. A medieval setting: avoid modern words (see the terms table in the roadmap).
@@ -60,7 +60,7 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 Balance tuning is **not** a step: the owner plays the debug build on a phone all along and reports problems in chat (blocked paths, layout, performance, balance). Fix them as they come, and keep numbers in `js/config.js`.
 1. **Banners and the host: done through nf-v152** (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, `CFG.CAV`, banner, cavalry and leader-horse blocks in `10b-warbands.js`; Marshal column in `08-enemies.js`). Orders, raids, the campaign map, realms, sieges and wounds/courage/levies are done too; see `docs/ROADMAP.md`.
 2. **Stage 5 town: done through nf-v156** (plaza, muster yard, pens, windmill, infirmary, monument, stables, gatehouses, corner torches, outer homes, town life, path safety net).
-3. **Next:** a Training Yard (soldier cap, veteran training) and the endgame (final campaign flow, victory screen).
+3. **Training Yard and endgame: done in nf-v157** (`trainyardModel`, `CFG.YARD_*`, `16f-endgame.js`: `throneLine`, `showVictory`, `victoryTick`). Nothing planned is left except models and polish.
 4. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
 5. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
 
