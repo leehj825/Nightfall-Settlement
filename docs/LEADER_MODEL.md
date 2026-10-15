@@ -70,3 +70,6 @@ Only skin weights change; the part meshes are untouched. Numbers are in that fun
 ## nf-v174: joint-only under layer, collar pads fixed to the vest
 - The under layer is now only short pieces at the joints (waist band, upper back, across the shoulders, neck, shoulder/elbow/hip/knee balls), fitted inside the armour (factor 0.8). Long limb and body pills were removed, so nothing can bulge out of the arms.
 - Shoulder/collar pads near the neck (|x| < 0.22) follow the vest 100 % (they floated off the back when the arm was raised); the outer shoulder armour 60 %.
+
+## nf-v175: shoulder armour follows the vest near the joint
+The upper-arm shoulder armour (bone shoulder, centre below the collar) was getting no part-level weight, so it swung away from the back when the arm rose. The per-vertex shoulder→vest blend now reaches 0.24 m around the joint (max 0.9), so the armour keeps its seam with the back.

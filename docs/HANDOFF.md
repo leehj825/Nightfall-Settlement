@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v174`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v175`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement` (use the dev branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. Play Store release is documented in `RELEASE.md` but is the owner's task. A medieval setting: avoid modern words (see the terms table in the roadmap).
