@@ -62,3 +62,7 @@ Only skin weights change; the part meshes are untouched. Numbers are in that fun
 - The under layer (options 3/4) is now fitted to the armour: `leaderSections` measures the armour's cross section per body part and height, and every pill/ball is centred in it with radii capped at 68 % of the armour's half size, so it no longer bulges out of the arms or legs.
 - Soft joints (options 2/4) got a third pass: around the shoulders and the neck, bone weights are averaged with the vertices of neighbouring parts within 5 cm (50/50 with the vertex's own weights, top 4 bones kept), so collar, pauldrons and neck follow each other.
 - Verified headless only; phone check pending.
+
+## nf-v173: shoulder-to-body weights and a thicker under layer
+- Shoulder pads/pauldrons hang more on the vest (0.85 / 0.5), the shoulder-to-vest blend radius is 0.17 m (max 0.7), and the neighbour-diffusion pass uses 7 cm radius, 65 % neighbours, over a 0.22 m zone around each shoulder: closes the back shoulder/back gap.
+- Under layer: fit factor 0.9 (was 0.68) and larger pill/ball radii, with a deeper across-the-shoulders pill, so it shows through any remaining gap.
