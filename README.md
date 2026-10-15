@@ -375,3 +375,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v162:** Settings has **Leader model (test)** (Classic / New parts model; saves, stores `nf_leader` in localStorage and reloads), so the Android app can test the parts model without an address flag (`?leader=0` forces classic). The warband bar (chips plus order strip) is now limited in width so it can never cover the sound and settings buttons (it did on wide screens after nf-v158), and the portrait rule keeps its own width.
 
 **nf-v163:** three leader options in Settings: Classic, **New model (own joints)** (the stick-man's shoulders, elbows, hips, knees and neck are moved to the model's joints, which stops the parts flying apart) and **New model on classic body** (parts stretched to the classic joints, same movement as the classic leader). See `docs/LEADER_MODEL.md`.
+
+**nf-v164:** the leader model now comes from `Leader2.glb` (coloured texture; `python3 tools/build_leader_parts.py Leader2.glb`; the FBX route and `tools/dump_fbx_parts.js` are gone), and the shoulders and arms are lifted next to the neck (`ARM_UP`). `js/leader_parts.js` is about 825 KB.

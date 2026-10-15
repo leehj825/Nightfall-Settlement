@@ -2,8 +2,8 @@
 """Builds js/leader_parts.js: the leader model made of separate parts (rigid segments) bound to the game's stick-man skeleton.
 
 usage:
-  node tools/dump_fbx_parts.js <three-r128-dir> Leader.fbx /tmp/parts.json
-  python3 tools/build_leader_parts.py /tmp/parts.json Leader_basecolor.png [texture-size] [lift]
+  python3 tools/build_leader_parts.py Leader2.glb [texture-size] [lift]
+(a .glb file holds the parts and the base colour texture)
   (lift = optional brightening of the colour texture, 1.0 = as is, 1.6 = noticeably lighter; the original is very dark)
 
 Every FBX mesh ("tripo_part_N") keeps its own geometry. Each part is bound to ONE bone (weight 255): the bone that the part belongs to by the
@@ -11,11 +11,45 @@ same rules as tools/build_models.py (distance to the bone segments, arms/legs by
 So the animation moves whole segments (a sleeve, a boot, a shoulder pad) instead of blending by the area around a bone.
 Two ways to match the animation: mode 1 moves the stick-man's joints to the model's joints (js/rig.js, LEADER_JOINTS); mode 2 uses 'pos3', the same parts stretched to the stick-man's joints.
 The model is used with Settings > Leader model, or ?leader=1 / ?leader=2 (see js/rig.js). Output: LEADER_PARTS = same layout as CHAR_MODELS entries plus 'parts' (name, bone, vertex range)."""
-import sys, os, json, io, base64
+import sys, os, json, io, base64, struct
 import numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
 import build_models as BM
+
+GLTF_COMP = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
+GLTF_N = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4}
+
+def load_glb(path):
+    """Reads a .glb (no libraries): every mesh node -> one part (positions with the node transform applied, normals, uvs, indices) and the base colour image bytes."""
+    d = open(path, 'rb').read(); cl = struct.unpack('<I', d[12:16])[0]; j = json.loads(d[20:20 + cl]); off = 20 + cl; bl = struct.unpack('<I', d[off:off + 4])[0]; blob = d[off + 8:off + 8 + bl]
+    def acc(i):
+        a = j['accessors'][i]; bv = j['bufferViews'][a['bufferView']]; n = GLTF_N[a['type']]; dt = np.dtype(GLTF_COMP[a['componentType']]); start = bv.get('byteOffset', 0) + a.get('byteOffset', 0)
+        stride = bv.get('byteStride', 0) or n * dt.itemsize
+        if stride == n * dt.itemsize: arr = np.frombuffer(blob, dt, a['count'] * n, start).reshape(-1, n)
+        else: arr = np.stack([np.frombuffer(blob, dt, n, start + k * stride) for k in range(a['count'])])
+        return arr.astype(np.float64) if dt.kind == 'f' else arr.astype(np.int64)
+    def quat(q):
+        x, y, z, w = q; return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)], [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)], [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+    def world(i, M):
+        n = j['nodes'][i]; T = np.eye(4)
+        if 'matrix' in n: T = np.array(n['matrix']).reshape(4, 4).T
+        else:
+            R = quat(n.get('rotation', [0, 0, 0, 1])) * np.array(n.get('scale', [1, 1, 1])); T[:3, :3] = R; T[:3, 3] = n.get('translation', [0, 0, 0])
+        M = M @ T; out = []
+        if 'mesh' in n: out.append((n.get('name', 'part%d' % i), n['mesh'], M))
+        for c in n.get('children', []): out += world(c, M)
+        return out
+    parts = []
+    for r in j['scenes'][0]['nodes']:
+        for name, mi, M in world(r, np.eye(4)):
+            for pr in j['meshes'][mi]['primitives']:
+                P = acc(pr['attributes']['POSITION']); N = acc(pr['attributes']['NORMAL']); U = acc(pr['attributes']['TEXCOORD_0']).copy(); U[:, 1] = 1 - U[:, 1]       # glTF uv v points down; the game uses v up
+                I = acc(pr['indices']).ravel() if 'indices' in pr else np.arange(len(P))
+                P = P @ M[:3, :3].T + M[:3, 3]; N = N @ np.linalg.inv(M[:3, :3]); N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9)
+                parts.append({'name': name, 'pos': P.ravel().tolist(), 'nor': N.ravel().tolist(), 'uv': U.ravel().tolist(), 'idx': I.tolist()})
+    mat = j['materials'][0]['pbrMetallicRoughness']; im = j['images'][j['textures'][mat['baseColorTexture']['index']]['source']]; bv = j['bufferViews'][im['bufferView']]
+    return parts, blob[bv.get('byteOffset', 0):bv.get('byteOffset', 0) + bv['byteLength']]
 
 def weld(p):
     pos = np.array(p['pos'], float).reshape(-1, 3); nor = np.array(p['nor'], float).reshape(-1, 3); uv = np.array(p['uv'], float).reshape(-1, 2); idx = np.array(p['idx'], int)
@@ -29,6 +63,8 @@ def weld(p):
     return pos[keep], nor[keep], uv[keep], remap[idx]
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
+# arms and shoulders are lifted by this much (metres) in mode 1 (own joints) and mode 2 (classic body, before the warp); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP[0]
+ARM_UP = (0.07, 0.03)
 WARP = ([0, 0.38, 0.80, 1.36, 1.50, 1.80], [0, 0.41, 0.86, 1.53, 1.64, 1.94])
 
 def assign(v):
@@ -43,8 +79,9 @@ def assign(v):
     return 'spine'
 
 def main():
-    src, tex = sys.argv[1], sys.argv[2]; size = int(sys.argv[3]) if len(sys.argv) > 3 else 1024; lift = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
-    parts = json.load(open(src))['parts']; P, N, U, I, owner, names = [], [], [], [], [], []
+    src = sys.argv[1]; parts, tex = load_glb(src); tex = io.BytesIO(tex); rest = sys.argv[2:]
+    size = int(rest[0]) if len(rest) > 0 else 1024; lift = float(rest[1]) if len(rest) > 1 else 1.0
+    P, N, U, I, owner, names = [], [], [], [], [], []
     for k, p in enumerate(parts):
         pos, nor, uv, idx = weld(p); base = sum(len(a) for a in P)
         P.append(pos); N.append(nor); U.append(uv); I.append(idx + base); owner.append(np.full(len(pos), k)); names.append(p['name'])
@@ -59,7 +96,9 @@ def main():
     if lift != 1.0: im = Image.fromarray((255 * (np.asarray(im, float) / 255) ** (1 / lift)).astype(np.uint8))
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
     b64 = lambda a: base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
-    pos3 = pos.copy(); pos3[:, 1] = np.interp(pos[:, 1], WARP[0], WARP[1])           # 'parts on the classic body': the same parts, stretched so the model's joints land on the stick-man's joints
+    arm = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])         # arms and shoulder pieces sit a bit higher, next to the neck (the animation was made for higher shoulders)
+    pos3 = pos.copy(); pos3[arm, 1] += ARM_UP[1]; pos[arm, 1] += ARM_UP[0]
+    pos3[:, 1] = np.interp(pos3[:, 1], WARP[0], WARP[1])           # 'parts on the classic body': the same parts, stretched so the model's joints land on the stick-man's joints
     nn = nor / np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
     info = [{'name': names[k], 'bone': BM.BONES[bone_of[k]], 'verts': int((owner == k).sum())} for k in range(len(parts))]
     out = {'n': len(pos), 'pos': b64(np.round(pos * 10000).astype(np.int16)), 'pos3': b64(np.round(pos3 * 10000).astype(np.int16)), 'uv': b64(np.round(uv * 65535).astype(np.uint16)), 'nor': b64(np.round(nn * 127).astype(np.int8)),

@@ -3,9 +3,11 @@
 Try it: **Settings > Leader model (test) > New parts model** (works in the Android app too; the game saves and reloads), or add `?leader=1` to the address (`?leader=0` forces the classic leader). The choice is stored in `localStorage` (`nf_leader`). When it is off the extra file is not downloaded by the browser (the Android app bundles it, about 0.6 MB).
 
 ## What it is
-The owner's Tripo model (`Leader.fbx`, 45 separate meshes `tripo_part_N`, 9,724 triangles, three 4096x4096 PNG textures). Rebuilt for the game by two tools:
-1. `node tools/dump_fbx_parts.js <three-r128-dir> Leader.fbx /tmp/parts.json` dumps every part (world positions, normals, uvs) as JSON (same three@0.128 folder that `retarget_mixamo.js` uses).
-2. `python3 tools/build_leader_parts.py /tmp/parts.json Leader_basecolor.png [size] [lift]` welds the vertices, scales to 1.8 m, binds each part to one bone and writes `js/leader_parts.js` (`LEADER_PARTS`). The FBX and PNG files are not in the repo (16 MB); keep the originals.
+The owner's Tripo model, exported as **`Leader2.glb`** (45 separate meshes `tripo_part_N`, 9,724 triangles, a coloured base texture; the old black-and-white FBX is no longer needed and its dump tool was removed). Build it with one command (the `.glb` is not in the repo, keep your copy):
+
+    python3 tools/build_leader_parts.py Leader2.glb [texture-size] [lift]
+
+`build_leader_parts.py` reads the glb itself (no libraries), welds the vertices, scales the model to 1.8 m, binds each part to ONE bone (weight 100%) and writes `js/leader_parts.js` (`LEADER_PARTS`).
 
 ## Three leader options (Settings > Leader model, or `?leader=0|1|2`)
 0. **Classic**: the polygon stick-man.
@@ -18,10 +20,10 @@ The owner's Tripo model (`Leader.fbx`, 45 separate meshes `tripo_part_N`, 9,724 
 ## Sizes (measured)
 | | Original | In the game |
 |---|---|---|
-| Files | 15.7 MB zip: FBX 8.4 MB + base colour 4.5 MB + normal 2.5 MB + roughness 0.9 MB | `js/leader_parts.js` about 706 KB (it now holds two sets of positions for the two modes) |
-| Vertices | 29,172 (nothing shared) | 11,173 after welding |
+| Files | Leader2.glb 12.4 MB (three 4096x4096 JPEGs: base colour 3.7 MB, normal 4.0 MB, metal/roughness 4.3 MB, plus the mesh) | `js/leader_parts.js` about 825 KB (two sets of positions for the two modes, and the better coloured texture, 265 KB) |
+| Vertices | 11,172 | 11,172 |
 | Triangles | 9,724 | 9,724 (nothing removed) |
-| Texture | three 4096x4096 (about 250 MB of video memory with mip maps) | one 1024x1024 JPEG, 176 KB (about 5 MB of video memory) |
+| Texture | three 4096x4096 (about 250 MB of video memory with mip maps) | one 1024x1024 base colour JPEG, 265 KB (about 5 MB of video memory) |
 Only the base colour is used (no normal or roughness map). For comparison the old leader in `models.js` is 189 KB (3,390 vertices, 512 px texture). Everything is loaded only with `?leader=1`, so the default game size is unchanged (one small inline script in `index.html`).
 
 ## Ideas to make it smaller or faster
@@ -31,3 +33,6 @@ Only the base colour is used (no normal or roughness map). For comparison the ol
 - Use the stick-man (or a far LOD) when the camera is far away, as in the town view.
 - Per-part colour tint (cloth, leather, metal) instead of painting the texture; this is possible now because the parts are separate.
 - Soft weights only for the few parts that cross a joint (forearm bracer, thigh) to hide seams.
+
+## Arms and shoulders
+The classic animation was made for shoulders about 17 cm below the head bone, while this model has a long neck and low shoulders, so in the first builds the arms and shoulder pieces sat too low next to the neck and head. The build now lifts every shoulder and arm part (`ARM_UP` in `tools/build_leader_parts.py`: 7 cm in mode 1, 3 cm before the warp in mode 2) and mode 1's shoulder joint moved up with them (`LEADER_JOINTS.shY` in `js/rig.js` = 1.36 + 0.07). Tune both numbers together if you want more or less.
