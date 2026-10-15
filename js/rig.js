@@ -422,14 +422,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const s of [-1, 1]) {
       const side = s < 0 ? 'L' : 'R', arm = 'arm' + side, leg = 'leg' + side, S = [s * J.shX, J.shY - 0.03], E = [s * (J.shX + J.elX), J.shY - J.elDY + 0.02];
       const H = [s * J.hipX, J.hipY], Kn = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
-      ball([S[0], S[1], 0], 0.11, 0.12, 0.13, 'spine', 'shoulder' + side, 0.5, arm);                                              // shoulder
+      ball([S[0] - s * 0.03, S[1] + 0.01, -0.01], 0.12, 0.13, 0.14, 'spine', 'shoulder' + side, 0.6);                                              // shoulder
       ball([E[0], E[1], 0], 0.065, 0.085, 0.065, 'shoulder' + side, 'elbow' + side, 0.5, arm);                                    // elbow
       ball([H[0], H[1], 0], 0.11, 0.12, 0.11, 'hips', 'hip' + side, 0.5, leg);                                                   // hip
       ball([Kn[0], Kn[1], 0], 0.085, 0.1, 0.085, 'hip' + side, 'knee' + side, 0.5, leg);                                          // knee
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(SI), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(SW), 4));
     g.setIndex(IX); g.computeVertexNormals();
-    const m = new THREE.MeshStandardMaterial({ color: 0x4a2a1e, roughness: 0.9, metalness: 0 }); m.skinning = true;       // leather brown, close to the vest, so a gap looks like cloth and not like a hole
+    const m = new THREE.MeshStandardMaterial({ color: 0x6e3322, roughness: 0.9, metalness: 0 }); m.skinning = true;       // leather brown, close to the vest, so a gap looks like cloth and not like a hole
     const mesh = new THREE.SkinnedMesh(g, m); mesh.frustumCulled = false; mesh.castShadow = false; mesh.bind(skeleton, new THREE.Matrix4());
     return mesh;
   }

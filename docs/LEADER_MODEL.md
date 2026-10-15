@@ -73,3 +73,6 @@ Only skin weights change; the part meshes are untouched. Numbers are in that fun
 
 ## nf-v175: shoulder armour follows the vest near the joint
 The upper-arm shoulder armour (bone shoulder, centre below the collar) was getting no part-level weight, so it swung away from the back when the arm rose. The per-vertex shoulder→vest blend now reaches 0.24 m around the joint (max 0.9), so the armour keeps its seam with the back.
+
+## nf-v176: shoulder filler matches the vest
+Weights alone cannot close a gap between separate shells, so the shoulder ball of the under layer is no longer fitted to the arm section (it covers the armpit/back-of-shoulder where the arm leaves the vest), and the under layer colour is now vest red-brown (0x6e3322) so a filled gap reads as cloth, not as a dark hole.
