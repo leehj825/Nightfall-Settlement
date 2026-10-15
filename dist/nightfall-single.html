@@ -196,7 +196,7 @@
 #setBtn { position: fixed; left: 220px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 17px; padding: 0; cursor: pointer; }
 #tutor { box-sizing: border-box; display: none; align-items: center; justify-content: center; gap: 8px; width: fit-content; max-width: 100%; margin: 3px auto 0; pointer-events: auto; padding: 1px 10px; border-radius: 12px; background: rgba(20,10,30,.6); border: 1px solid rgba(255,210,122,.6); color: #ffe7a8; font-size: 12.5px; font-weight: 700; }
 #tutor span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #tutor b { cursor: pointer; color: #fff; padding: 0 2px; }
-#setPanel, #startPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); z-index: 30; padding: 12px; }
+#setPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); z-index: 30; padding: 12px; }
 .scard2 { background: rgba(28,22,16,.97); border: 2px solid #c8923a; border-radius: 16px; padding: 16px 20px; width: min(360px, 100%); max-height: 92%; overflow: auto; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
 .scard2 h3 { margin: 0 0 10px; color: #ffd27a; font-size: 22px; text-align: center; } .scard2 p { text-align: center; font-size: 14px; margin: 6px 0 12px; } .scard2 p.shint { font-size: 11px; color: #a9a49a; }
 .scard2 label { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; font-size: 14px; } .scard2 input[type=range] { width: 150px; } .scard2 select { font: inherit; font-size: 13px; padding: 3px 6px; }
@@ -365,6 +365,23 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #trainBar { position: fixed; top: 124px; left: 50%; transform: translateX(-50%); z-index: 22; gap: 8px; } #trainBar button { font: inherit; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 14px; border: 2px solid #c8923a; background: rgba(40, 28, 16, .88); color: #ffe7a8; }
 #trainBar { flex-wrap: wrap; justify-content: center; max-width: 92vw; } #trainBar button { font-size: 12px; padding: 7px 10px; }
 .dbgStart { margin-top: 12px; border-top: 1px solid #5a4630; padding-top: 8px; font-size: 13px; color: #cdb88f; } .dbgStart summary { cursor: pointer; text-align: center; } .dbgStart .tbtns { margin-top: 8px; } .dbgStart select { font: inherit; padding: 7px; border-radius: 8px; }
+
+/* ---------- 시작 화면 ---------- */
+#startPanel { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 30; padding: 12px; transition: opacity .35s; background: radial-gradient(ellipse at 50% 55%, rgba(10,6,20,0) 0%, rgba(10,6,20,.15) 55%, rgba(10,6,20,.65) 100%), linear-gradient(180deg, rgba(10,6,24,.7) 0%, rgba(10,6,24,0) 30%, rgba(10,6,24,0) 60%, rgba(10,6,24,.75) 100%); }
+#startPanel.out { opacity: 0; pointer-events: none; }
+body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !important; } body.titlemode #joy { display: none !important; }
+.titleBox { width: min(520px, 100%); height: 100%; text-align: center; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; padding: 5vh 0 7vh; box-sizing: border-box; }
+.tMenu { margin-top: auto; }
+.tLogo small { display: block; letter-spacing: 4px; text-transform: uppercase; font-size: 12px; color: #ffd9a0; text-shadow: 0 2px 6px #000; margin-bottom: 6px; }
+.tLogo h1 { margin: 0; font-size: clamp(30px, 6.5vw, 54px); line-height: 1; letter-spacing: 2px; text-transform: uppercase; color: #ffd27a; text-shadow: 0 3px 0 #8a4a14, 0 6px 14px rgba(0,0,0,.8), 0 0 34px rgba(255,150,40,.45); }
+#startInfo { margin: 4px 0 2px; font-size: 14px; color: #ffe7c8; text-shadow: 0 2px 6px #000; }
+.tMenu { display: flex; flex-direction: column; gap: 10px; width: min(260px, 80%); }
+.tMenu button { font: inherit; font-size: 18px; font-weight: 800; letter-spacing: 1px; padding: 12px 18px; border-radius: 14px; border: 2px solid #c8923a; color: #3a1d06; background: linear-gradient(#ffd27a, #e0953a); cursor: pointer; box-shadow: 0 4px 0 #8a4a14, 0 8px 18px rgba(0,0,0,.5); }
+.tMenu button:active { transform: translateY(2px); box-shadow: 0 2px 0 #8a4a14; }
+.tMenu button#startNew { background: linear-gradient(#ffe7a8, #f0b050); }
+.tMenu button#startNG { background: linear-gradient(#b8d4ff, #6a9ae0); border-color: #4a6aa0; color: #10203a; box-shadow: 0 4px 0 #2a4070, 0 8px 18px rgba(0,0,0,.5); }
+#startPanel .dbgStart { position: absolute; right: 10px; bottom: 10px; margin: 0; padding: 6px 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; background: rgba(20,14,10,.7); max-width: 300px; }
+#startPanel .dbgStart summary { opacity: .7; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -399,7 +416,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 <div id="repPanel" style="display:none"><div class="scard2"><h3>Balance report</h3><p class="jhint">Copy this and send it along when something felt too easy or too hard.</p><textarea id="repText" readonly rows="12" style="width:100%;box-sizing:border-box;font:11px/1.35 monospace;background:#17120d;color:#e8dcc4;border:1px solid #6b5a3a;border-radius:8px;padding:6px"></textarea><div class="tbtns"><button id="repCopy">Copy</button><button id="repClose">Close</button></div></div></div>
 <div id="treePanel"><div class="scard2 tree"><h3>Hero skills</h3><p class="jhint" id="treeHead"></p><div id="treeCols"></div><div class="tbtns"><button id="treeClose">Close</button></div></div></div>
 <div id="achPanel"><div class="scard2"><h3>Achievements</h3><p id="achCount"></p><div id="achList"></div><div class="tbtns"><button id="achClose">Close</button></div></div></div>
-<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div><details class="dbgStart"><summary>Debug start</summary><div class="tbtns"><select id="startStage"><option value="1">Stage 1 · Camp</option><option value="2">Stage 2 · Wooden Town</option><option value="3">Stage 3 · Stone Fortress</option><option value="4">Stage 4 · Walled City</option><option value="5">Stage 5 · Seat of Power</option></select><button id="startDbg">New game at stage</button></div><p class="shint">Builds every structure, fills the population and meets the stage requirements.</p></details></div></div>
+<div id="startPanel"><div class="titleBox"><div class="tLogo"><small>A village defense saga</small><h1>Nightfall Settlement</h1></div><div class="tMenu"><p id="startInfo"></p><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div></div><details class="dbgStart"><summary>Debug</summary><div class="tbtns"><select id="startStage"><option value="1">Stage 1 · Camp</option><option value="2">Stage 2 · Wooden Town</option><option value="3">Stage 3 · Stone Fortress</option><option value="4">Stage 4 · Walled City</option><option value="5">Stage 5 · Seat of Power</option></select><button id="startDbg">New game at stage</button></div><p class="shint">Builds every structure, fills the population and meets the stage requirements.</p></details></div>
 <div id="setPanel"><div class="scard2"><h3>Settings</h3>
   <label>Music<input type="range" id="setMusic" min="0" max="100"></label>
   <label>Sound effects<input type="range" id="setSfx" min="0" max="100"></label>
@@ -6161,6 +6178,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // ---------- 카메라 (Orbit + Lerp) ----------
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   let yaw = 0, pitch = 0.45;
+  let titleMode = false, titleAng = 0.6;                                 // 시작 화면: 완성된 성 마을 둘레를 천천히 도는 카메라
   let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
   function setCamMax() { DIST_MAX = stage >= 4 ? 34 : stage >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
   let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
@@ -11540,8 +11558,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
 
     // 카메라 Lerp 추적
     const k = 1 - Math.exp(-6 * dt);
-    camera.position.lerp(goalPos(camGoal), k);
-    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
+    if (titleMode) {                                                       // 시작 화면: 성 마을 둘레를 도는 카메라, 시간은 해질녘에 고정
+      titleAng += rawDt * 0.06; invincibleT = 1e9; gameMin = 3 * 1440 + 17 * 60 + 40;
+      for (const e of enemies.slice()) removeEnemy(e);
+      camera.position.set(Math.cos(titleAng) * 50, 21 + Math.sin(titleAng * 0.7) * 2.5, Math.sin(titleAng) * 50); lookAt.set(0, 3.5, 0);
+    } else {
+      camera.position.lerp(goalPos(camGoal), k);
+      lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
+    }
     { const gy = terrH(camera.position.x, camera.position.z) + 1.3; if (camera.position.y < gy) camera.position.y = gy; }
     camera.lookAt(lookAt);
     { // 활: 화살이 날아갈 쪽에 작은 조준 십자선 (적이 그 선 위에 있으면 붉게)
@@ -11771,22 +11795,31 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function bootGame() {
     const d = readSave(), carry = readCarry();
-    if (!DEBUG || /[?&]load/.test(location.search)) {
-      const p = document.getElementById('startPanel'); uiPause = true;
-      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Defend the settlement through the night';
-      document.getElementById('startContinue').style.display = d ? '' : 'none';
-      const ngBtn = document.getElementById('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
-      p.style.display = 'flex';
-      const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
-      document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
-      document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
-      document.getElementById('startDbg').addEventListener('click', () => { const n = +document.getElementById('startStage').value; ngLevel = 0; p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); });
-      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); });
-      return;
+    let intent = null; try { intent = sessionStorage.getItem('nf_intent'); sessionStorage.removeItem('nf_intent'); } catch (e) { /* 저장소 사용 불가 */ }
+    const begin = () => { uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
+    if (intent) {                                                          // 시작 화면에서 고른 항목을 새로 고친 깨끗한 세계에서 실행한다
+      if (intent === 'continue' && d) { saveReady = true; loadSave(d); return; }
+      if (intent === 'new') { ngLevel = 0; begin(); return; }
+      if (intent === 'ng' && carry) { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); return; }
+      if (/^dbg/.test(intent)) { const n = +intent.slice(3); ngLevel = 0; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); return; }
     }
+    if (!DEBUG || /[?&]load/.test(location.search)) { showTitle(d, carry); return; }
     saveReady = true;
     if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openDifficultyChoice, 700);
     saveCheckpoint('Day 1 start');
+  }
+  function showTitle(d, carry) {                                           // 시작 화면: 뒤에는 완성된 5단계 성 마을이 천천히 돈다 (저장은 건드리지 않는다)
+    const p = document.getElementById('startPanel'), $ = (id) => document.getElementById(id);
+    $('startInfo').textContent = d ? `Saved game · Day ${d.day} · ${new Date(d.ts).toLocaleDateString()}` : 'Hold the night. Build the realm.';
+    $('startContinue').style.display = d ? '' : 'none';
+    const ngBtn = $('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
+    document.body.classList.add('titlemode'); p.style.display = 'flex';
+    const go = (intent) => { try { sessionStorage.setItem('nf_intent', intent); } catch (e) { /* ignore */ } p.classList.add('out'); setTimeout(() => location.reload(), 380); };
+    $('startContinue').addEventListener('click', () => go('continue'));
+    $('startNew').addEventListener('click', () => go('new'));
+    ngBtn.addEventListener('click', () => go('ng'));
+    $('startDbg').addEventListener('click', () => go('dbg' + $('startStage').value));
+    setTimeout(() => { titleMode = true; debugJump(5); }, 120);            // 화면이 먼저 뜬 뒤 배경 마을을 짓는다
   }
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)

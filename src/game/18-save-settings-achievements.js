@@ -196,22 +196,31 @@
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function bootGame() {
     const d = readSave(), carry = readCarry();
-    if (!DEBUG || /[?&]load/.test(location.search)) {
-      const p = document.getElementById('startPanel'); uiPause = true;
-      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Defend the settlement through the night';
-      document.getElementById('startContinue').style.display = d ? '' : 'none';
-      const ngBtn = document.getElementById('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
-      p.style.display = 'flex';
-      const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
-      document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
-      document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
-      document.getElementById('startDbg').addEventListener('click', () => { const n = +document.getElementById('startStage').value; ngLevel = 0; p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); });
-      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); });
-      return;
+    let intent = null; try { intent = sessionStorage.getItem('nf_intent'); sessionStorage.removeItem('nf_intent'); } catch (e) { /* 저장소 사용 불가 */ }
+    const begin = () => { uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
+    if (intent) {                                                          // 시작 화면에서 고른 항목을 새로 고친 깨끗한 세계에서 실행한다
+      if (intent === 'continue' && d) { saveReady = true; loadSave(d); return; }
+      if (intent === 'new') { ngLevel = 0; begin(); return; }
+      if (intent === 'ng' && carry) { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); return; }
+      if (/^dbg/.test(intent)) { const n = +intent.slice(3); ngLevel = 0; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); return; }
     }
+    if (!DEBUG || /[?&]load/.test(location.search)) { showTitle(d, carry); return; }
     saveReady = true;
     if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openDifficultyChoice, 700);
     saveCheckpoint('Day 1 start');
+  }
+  function showTitle(d, carry) {                                           // 시작 화면: 뒤에는 완성된 5단계 성 마을이 천천히 돈다 (저장은 건드리지 않는다)
+    const p = document.getElementById('startPanel'), $ = (id) => document.getElementById(id);
+    $('startInfo').textContent = d ? `Saved game · Day ${d.day} · ${new Date(d.ts).toLocaleDateString()}` : 'Hold the night. Build the realm.';
+    $('startContinue').style.display = d ? '' : 'none';
+    const ngBtn = $('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
+    document.body.classList.add('titlemode'); p.style.display = 'flex';
+    const go = (intent) => { try { sessionStorage.setItem('nf_intent', intent); } catch (e) { /* ignore */ } p.classList.add('out'); setTimeout(() => location.reload(), 380); };
+    $('startContinue').addEventListener('click', () => go('continue'));
+    $('startNew').addEventListener('click', () => go('new'));
+    ngBtn.addEventListener('click', () => go('ng'));
+    $('startDbg').addEventListener('click', () => go('dbg' + $('startStage').value));
+    setTimeout(() => { titleMode = true; debugJump(5); }, 120);            // 화면이 먼저 뜬 뒤 배경 마을을 짓는다
   }
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
