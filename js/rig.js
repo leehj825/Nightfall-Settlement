@@ -319,6 +319,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.09) * 0.5; }
       else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.10) * 0.5, wh = near(s * J.hipX, J.hipY, 0.07) * 0.35; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
       else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.10) * 0.5; }
+      else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis a little; neck: the collar follows the head a little
+        const wy = J.hipY + 0.10, ww = 0.55 * (1 - smooth01(wy - 0.04, wy + 0.10, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
+        if (ww >= wn) { nb = 'hips'; w = ww; } else { nb = 'head'; w = wn; }
+      }
+      else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }        // belt and pouches follow the vest a little
+      else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
       if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
     }
     SI.needsUpdate = SW.needsUpdate = true;
@@ -349,7 +355,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(SI), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(SW), 4));
     g.setIndex(IX); g.computeVertexNormals();
-    const m = new THREE.MeshStandardMaterial({ color: 0x2b1d17, roughness: 0.9, metalness: 0 }); m.skinning = true;
+    const m = new THREE.MeshStandardMaterial({ color: 0x4a2a1e, roughness: 0.9, metalness: 0 }); m.skinning = true;       // leather brown, close to the vest, so a gap looks like cloth and not like a hole
     const mesh = new THREE.SkinnedMesh(g, m); mesh.frustumCulled = false; mesh.castShadow = false; mesh.bind(skeleton, new THREE.Matrix4());
     return mesh;
   }

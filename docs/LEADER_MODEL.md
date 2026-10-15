@@ -12,8 +12,8 @@ The owner's Tripo model, exported as **`Leader2.glb`** (45 separate meshes `trip
 ## Leader options (Settings > Leader model, or `?leader=0..4`)
 0. **Classic**: the polygon stick-man.
 1. **New model**: the parts model as built (rigid parts, joints of the stick-man moved to the model's joints, `LEADER_JOINTS` in `js/rig.js`).
-2. **New model + soft joints**: vertices near a joint also follow the bone on the other side (`softenLeaderJoints` in `js/rig.js`: 50% at the joint fading to 0 at 7 to 10 cm, 35% at shoulder and hip tops), so a sleeve end or a boot top stretches to the next piece. Only weights change, not the parts.
-3. **New model + under layer**: a simple dark body (tubes between the joints, 11 soft skinned tubes, `leaderUnderlayer`) under the armour, so what shows through a gap is clothing, not the ground.
+2. **New model + soft joints**: vertices near a joint also follow the bone on the other side (`softenLeaderJoints` in `js/rig.js`: 50% at the joint fading to 0 at 7 to 10 cm, 35% at shoulder and hip tops; since nf-v169 also the waist, where the bottom of the vest follows the pelvis by up to 55% and the belt follows the vest by up to 50%, and the neck, where the collar and the head share up to 40%), so a sleeve end or a boot top stretches to the next piece. Only weights change, not the parts.
+3. **New model + under layer**: a simple leather-brown body (tubes between the joints, 11 soft skinned tubes, `leaderUnderlayer`) under the armour, so what shows through a gap is clothing, not the ground.
 4. **New model + both**.
 These are for comparing on the phone; once one is chosen the others and the unused code can be removed.
 
