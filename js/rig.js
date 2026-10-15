@@ -290,7 +290,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         const m = modelMesh(key, skel, mat0); root.add(m); out.skin = m; out.model = key; out.setHand(key);
       };
       out.setModel(mk);
-      if (mk === 'leaderParts' && LEADER_UNDER) { out.under = leaderUnderlayer(skel); root.add(out.under); }
+      if (mk === 'leaderParts' && LEADER_UNDER) { out.under = leaderUnderlayer(skel, leaderSections(modelGeos.leaderParts)); root.add(out.under); }
     } else for (const g of groups.values()) { const mesh = new THREE.Mesh(mergeGeos(g.items), g.m); mesh.castShadow = !enemy || g.b.name === 'spine'; mesh.receiveShadow = false; g.b.add(mesh); }
     out.clips = STICK_CLIPS;
     return out;
@@ -345,11 +345,46 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
       if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
     }
+    // 3. shoulders and neck: weights diffuse between the vertices of different parts that lie close together (so the neighbours move together)
+    const R = 0.05, cell = new Map(), key = (x, y, z) => Math.floor(x / R) + ',' + Math.floor(y / R) + ',' + Math.floor(z / R), zone = i => {
+      const x = P.getX(i), y = P.getY(i), s = x < 0 ? -1 : 1;
+      return Math.hypot(x - s * J.shX, y - J.shY) < 0.16 || (Math.abs(x) < 0.16 && y > J.neckY - 0.16 && y < J.neckY + 0.1);
+    };
+    for (let i = 0; i < n; i++) { const k = key(P.getX(i), P.getY(i), P.getZ(i)); (cell.get(k) || cell.set(k, []).get(k)).push(i); }
+    const upd = [];
+    for (let i = 0; i < n; i++) {
+      if (!zone(i)) continue;
+      const x = P.getX(i), y = P.getY(i), z = P.getZ(i), acc = {}; let tot = 0;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+        const l = cell.get((Math.floor(x / R) + dx) + ',' + (Math.floor(y / R) + dy) + ',' + (Math.floor(z / R) + dz)); if (!l) continue;
+        for (const j of l) { if (Math.hypot(P.getX(j) - x, P.getY(j) - y, P.getZ(j) - z) > R) continue; tot++; for (let c = 0; c < 4; c++) { const w = [SW.getX(j), SW.getY(j), SW.getZ(j), SW.getW(j)][c]; if (w > 0) { const b = [SI.getX(j), SI.getY(j), SI.getZ(j), SI.getW(j)][c]; acc[b] = (acc[b] || 0) + w; } } }
+      }
+      const cur = {}; [[SI.getX(i), SW.getX(i)], [SI.getY(i), SW.getY(i)], [SI.getZ(i), SW.getZ(i)], [SI.getW(i), SW.getW(i)]].forEach(([b, w]) => { if (w > 0) cur[b] = (cur[b] || 0) + w; });
+      const m = {}; for (const b in cur) m[b] = cur[b] * 0.5; for (const b in acc) m[b] = (m[b] || 0) + 0.5 * acc[b] / tot;
+      const top = Object.entries(m).sort((u, v) => v[1] - u[1]).slice(0, 4), sum = top.reduce((q, e) => q + e[1], 0);
+      upd.push([i, top.map(e => +e[0]), top.map(e => e[1] / sum)]);
+    }
+    for (const [i, bs, ws] of upd) { for (let c = 0; c < 4; c++) { const b = bs[c] || 0, w = ws[c] || 0; [SI.setX, SI.setY, SI.setZ, SI.setW][c].call(SI, i, b); [SW.setX, SW.setY, SW.setZ, SW.setW][c].call(SW, i, w); } }
     SI.needsUpdate = SW.needsUpdate = true;
   }
-  function leaderUnderlayer(skeleton) {                      // a simple leather-brown body under the armour (pills between the joints, balls at the joints), soft skinned: what shows through a gap is clothing, not the ground
-    const J = LEADER_JOINTS, bi = n => BONES.indexOf(n), V = [], SI = [], SW = [], IX = [];
-    const ring = (cx, cy, cz, ux, uy, rx, rz, f, own, ws, wsB, we, weB) => {                  // one ring; (ux, uy) = in-plane direction across the axis
+  function leaderSections(geo) {                              // cross sections of the armour per body part and height (centre and half sizes), so the under layer can stay inside it
+    const P = geo.attributes.position, SI = geo.attributes.skinIndex, n = P.count, BIN = 0.04, NB = 64;
+    const G = { armL: ['shoulderL', 'elbowL'], armR: ['shoulderR', 'elbowR'], legL: ['hipL', 'kneeL'], legR: ['hipR', 'kneeR'], torso: ['spine', 'hips'], head: ['head'] }, T = {};
+    for (const g in G) T[g] = { x0: new Float32Array(NB).fill(1e9), x1: new Float32Array(NB).fill(-1e9), z0: new Float32Array(NB).fill(1e9), z1: new Float32Array(NB).fill(-1e9) };
+    for (let i = 0; i < n; i++) {
+      const b = BONES[SI.getX(i)]; let g = null; for (const k in G) if (G[k].includes(b)) { g = k; break; } if (!g) continue;
+      const x = P.getX(i), y = P.getY(i), z = P.getZ(i), k0 = Math.floor(y / BIN), t = T[g];
+      for (let k = Math.max(0, k0 - 1); k <= Math.min(NB - 1, k0 + 1); k++) { if (x < t.x0[k]) t.x0[k] = x; if (x > t.x1[k]) t.x1[k] = x; if (z < t.z0[k]) t.z0[k] = z; if (z > t.z1[k]) t.z1[k] = z; }
+    }
+    return (g, y) => {
+      const t = T[g], k0 = Math.max(0, Math.min(NB - 1, Math.floor(y / BIN)));
+      for (let d = 0; d < 6; d++) for (const k of [k0 - d, k0 + d]) if (k >= 0 && k < NB && t.x1[k] > t.x0[k]) return { cx: (t.x0[k] + t.x1[k]) / 2, cz: (t.z0[k] + t.z1[k]) / 2, hx: (t.x1[k] - t.x0[k]) / 2, hz: (t.z1[k] - t.z0[k]) / 2 };
+      return null;
+    };
+  }
+  function leaderUnderlayer(skeleton, sec) {                 // a simple leather-brown body under the armour (pills between the joints, balls at the joints), soft skinned and fitted to the armour so it stays inside
+    const J = LEADER_JOINTS, bi = n => BONES.indexOf(n), V = [], SI = [], SW = [], IX = [], K = 0.68;
+    const ring = (cx, cy, cz, ux, uy, rx, rz, f, own, ws, wsB, we, weB) => {
       for (let k = 0; k < 10; k++) {
         const th = k / 10 * Math.PI * 2, ex = Math.cos(th) * rx * f, ez = Math.sin(th) * rz * f;
         V.push(cx + ex * ux, cy + ex * uy, cz + ez);
@@ -357,18 +392,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
     };
     const stitch = (base, rings) => { for (let r = 0; r < rings - 1; r++) for (let k = 0; k < 10; k++) { const p = base + r * 10 + k, q = base + r * 10 + (k + 1) % 10; IX.push(p, q, p + 10, q, q + 10, p + 10); } };
-    const pill = (A, B, rx, rz, own, start, end) => {           // capsule: round ends, so a bend never opens a slit
-      const len = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1, a = [(B[0] - A[0]) / len, (B[1] - A[1]) / len], cap = Math.max(rx, rz), base = V.length / 3, steps = [];
+    const fit = (g, y, rx, rz) => { const q = g && sec(g, y); return q ? { cx: q.cx, cz: q.cz, rx: Math.max(0.02, Math.min(rx, K * q.hx)), rz: Math.max(0.02, Math.min(rz, K * q.hz)) } : null; };
+    const pill = (A, B, rx, rz, own, start, end, g) => {          // capsule: round ends, so a bend never opens a slit
+      const len = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1, a = [(B[0] - A[0]) / len, (B[1] - A[1]) / len], cap = Math.max(rx, rz) * 0.8, base = V.length / 3, steps = [];
       for (let i = 0; i <= 4; i++) { const ph = (1 - i / 4) * Math.PI / 2; steps.push([-cap * Math.sin(ph), Math.cos(ph)]); }
       steps.push([len * 0.5, 1]);
       for (let i = 0; i <= 4; i++) { const ph = (i / 4) * Math.PI / 2; steps.push([len + cap * Math.sin(ph), Math.cos(ph)]); }
       for (const [sv, f] of steps) {
-        const t = Math.max(0, Math.min(1, sv / len)), ws = start ? (1 - smooth01(0, 0.25, t)) * 0.5 : 0, we = end ? smooth01(0.75, 1, t) * 0.5 : 0;
-        ring(A[0] + a[0] * sv, A[1] + a[1] * sv, 0, a[1], -a[0], rx, rz, Math.max(f, 0.02), own, ws, start ? bi(start) : 0, we, end ? bi(end) : 0);
+        const t = Math.max(0, Math.min(1, sv / len)), ws = start ? (1 - smooth01(0, 0.25, t)) * 0.5 : 0, we = end ? smooth01(0.75, 1, t) * 0.5 : 0, y = A[1] + a[1] * sv;
+        const q = fit(g, Math.max(0.02, Math.min(A[1], B[1]) + 0.0 + (y - Math.min(A[1], B[1]))), rx, rz);
+        ring(q ? q.cx : A[0] + a[0] * sv, y, q ? q.cz : 0, a[1], -a[0], q ? q.rx : rx, q ? q.rz : rz, Math.max(f, 0.02), own, ws, start ? bi(start) : 0, we, end ? bi(end) : 0);
       }
       stitch(base, steps.length);
     };
-    const ball = (C, rx, ry, rz, a, b, wa) => {                 // ellipsoid at a joint, shared between two bones (wa for bone a)
+    const ball = (C, rx, ry, rz, a, b, wa, g) => {                 // ellipsoid at a joint, shared between two bones (wa for bone a)
+      const q = fit(g, C[1], rx, rz); if (q) { C = [q.cx, C[1], q.cz]; rx = q.rx; rz = q.rz; ry = Math.min(ry, Math.max(rx, rz) * 1.15); }
       const base = V.length / 3, rings = 9;
       for (let r = 0; r < rings; r++) {
         const ph = -Math.PI / 2 + (r / (rings - 1)) * Math.PI, f = Math.max(Math.cos(ph), 0.02), cy = C[1] + Math.sin(ph) * ry;
@@ -376,24 +414,24 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       stitch(base, rings);
     };
-    pill([0, J.hipY - 0.08], [0, J.hipY + 0.05], 0.17, 0.12, 'hips', null, 'spine');                                       // pelvis
-    pill([0, J.hipY + 0.02], [0, J.neckY - 0.1], 0.18, 0.13, 'spine', 'hips', null);                                        // chest and belly
-    pill([-J.shX, J.shY - 0.05], [J.shX, J.shY - 0.05], 0.075, 0.1, 'spine', 'shoulderL', 'shoulderR');                      // across the shoulders: fills the armpits and the tops
-    pill([0, J.neckY - 0.1], [0, J.neckY + 0.02], 0.055, 0.055, 'head', 'spine', null);                                     // neck
-    ball([0, J.neckY + 0.1, 0.01], 0.105, 0.125, 0.115, 'head', 'head', 1);                                                  // head
+    pill([0, J.hipY - 0.08], [0, J.hipY + 0.05], 0.2, 0.15, 'hips', null, 'spine', 'torso');                                  // pelvis
+    pill([0, J.hipY + 0.02], [0, J.neckY - 0.1], 0.2, 0.15, 'spine', 'hips', null, 'torso');                                   // chest and belly
+    pill([-J.shX + 0.04, J.shY - 0.07], [J.shX - 0.04, J.shY - 0.07], 0.06, 0.09, 'spine', 'shoulderL', 'shoulderR');          // across the shoulders: fills the armpits and the tops
+    pill([0, J.neckY - 0.1], [0, J.neckY + 0.02], 0.055, 0.055, 'head', 'spine', null, 'head');                               // neck
+    ball([0, J.neckY + 0.1, 0.0], 0.105, 0.125, 0.115, 'head', 'head', 1, 'head');                                              // head
     for (const s of [-1, 1]) {
-      const side = s < 0 ? 'L' : 'R', S = [s * J.shX, J.shY], E = [s * (J.shX + J.elX), J.shY - J.elDY], W = [E[0] + s * 0.03, E[1] - 0.22], Hd = [E[0] + s * 0.04, E[1] - 0.30];
-      const H = [s * J.hipX, J.hipY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY], Ak = [K[0] + s * 0.02, 0.1];
-      ball([S[0], S[1], 0], 0.085, 0.085, 0.09, 'spine', 'shoulder' + side, 0.5);                                              // shoulder ball
-      pill(S, E, 0.06, 0.06, 'shoulder' + side, 'spine', 'elbow' + side);                                                      // upper arm
-      ball([E[0], E[1], 0], 0.065, 0.065, 0.065, 'shoulder' + side, 'elbow' + side, 0.5);                                      // elbow ball
-      pill(E, W, 0.055, 0.055, 'elbow' + side, 'shoulder' + side, null);                                                       // forearm
-      ball([Hd[0], Hd[1], 0.01], 0.05, 0.065, 0.04, 'elbow' + side, 'elbow' + side, 1);                                        // hand
-      ball([H[0], H[1], 0], 0.1, 0.1, 0.1, 'hips', 'hip' + side, 0.5);                                                         // hip ball
-      pill(H, K, 0.09, 0.09, 'hip' + side, 'hips', 'knee' + side);                                                             // thigh
-      ball([K[0], K[1], 0], 0.078, 0.078, 0.078, 'hip' + side, 'knee' + side, 0.5);                                            // knee ball
-      pill(K, Ak, 0.07, 0.07, 'knee' + side, 'hip' + side, null);                                                              // shin
-      ball([Ak[0], 0.06, 0.05], 0.075, 0.06, 0.13, 'knee' + side, 'knee' + side, 1);                                           // foot
+      const side = s < 0 ? 'L' : 'R', arm = 'arm' + side, leg = 'leg' + side, S = [s * J.shX, J.shY - 0.03], E = [s * (J.shX + J.elX), J.shY - J.elDY + 0.02], W = [s * 0.41, E[1] - 0.2], Hd = [s * 0.425, E[1] - 0.33];
+      const H = [s * J.hipX, J.hipY], Kn = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY], Ak = [Kn[0] + s * 0.02, 0.1];
+      ball([S[0], S[1], 0], 0.08, 0.08, 0.09, 'spine', 'shoulder' + side, 0.5, arm);                                              // shoulder ball
+      pill(S, E, 0.055, 0.06, 'shoulder' + side, 'spine', 'elbow' + side, arm);                                                  // upper arm
+      ball([E[0], E[1], 0], 0.05, 0.05, 0.05, 'shoulder' + side, 'elbow' + side, 0.5, arm);                                      // elbow ball
+      pill(E, W, 0.045, 0.05, 'elbow' + side, 'shoulder' + side, null, arm);                                                     // forearm
+      ball([Hd[0], Hd[1], 0.0], 0.04, 0.055, 0.035, 'elbow' + side, 'elbow' + side, 1, arm);                                     // hand
+      ball([H[0], H[1], 0], 0.09, 0.09, 0.09, 'hips', 'hip' + side, 0.5, leg);                                                   // hip ball
+      pill(H, Kn, 0.08, 0.08, 'hip' + side, 'hips', 'knee' + side, leg);                                                         // thigh
+      ball([Kn[0], Kn[1], 0], 0.07, 0.07, 0.07, 'hip' + side, 'knee' + side, 0.5, leg);                                          // knee ball
+      pill(Kn, Ak, 0.06, 0.065, 'knee' + side, 'hip' + side, null, leg);                                                         // shin
+      ball([Ak[0], 0.06, 0.03], 0.065, 0.055, 0.1, 'knee' + side, 'knee' + side, 1);                                             // foot
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(SI), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(SW), 4));
     g.setIndex(IX); g.computeVertexNormals();

@@ -57,3 +57,8 @@ Only skin weights change; the part meshes are untouched. Numbers are in that fun
 
 ## Under layer, second version (nf-v171)
 `leaderUnderlayer` (`js/rig.js`) is now a leather-brown mannequin made of pills (capsules with round ends) and balls (ellipsoids), all soft skinned: pelvis, chest and belly, a pill across the shoulders (fills the armpits and the shoulder tops), neck, head, and per side a shoulder ball, upper arm, elbow ball, forearm, hand, hip ball, thigh, knee ball, shin and foot. Round ends and joint balls mean a bend never opens a slit. About 1,900 vertices, built at load time, no data file.
+
+## Under layer fitted to the armour, soft joints for shoulders and neck (nf-v172)
+- The under layer (options 3/4) is now fitted to the armour: `leaderSections` measures the armour's cross section per body part and height, and every pill/ball is centred in it with radii capped at 68 % of the armour's half size, so it no longer bulges out of the arms or legs.
+- Soft joints (options 2/4) got a third pass: around the shoulders and the neck, bone weights are averaged with the vertices of neighbouring parts within 5 cm (50/50 with the vertex's own weights, top 4 bones kept), so collar, pauldrons and neck follow each other.
+- Verified headless only; phone check pending.
