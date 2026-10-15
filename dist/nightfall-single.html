@@ -5456,26 +5456,28 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
       if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
     }
-    // 3. shoulders and neck: weights diffuse between the vertices of different parts that lie close together (so the neighbours move together)
-    const R = 0.07, cell = new Map(), key = (x, y, z) => Math.floor(x / R) + ',' + Math.floor(y / R) + ',' + Math.floor(z / R), zone = i => {
+    // 3. whole body: weights diffuse between the vertices of different parts that lie close together (twice), strongest at shoulders and neck, so neighbouring shells move together
+    const R = 0.06, cell = new Map(), key = (x, y, z) => Math.floor(x / R) + ',' + Math.floor(y / R) + ',' + Math.floor(z / R), zone = i => {
       const x = P.getX(i), y = P.getY(i), s = x < 0 ? -1 : 1;
       return Math.hypot(x - s * J.shX, y - J.shY) < 0.22 || (Math.abs(x) < 0.16 && y > J.neckY - 0.16 && y < J.neckY + 0.1);
     };
     for (let i = 0; i < n; i++) { const k = key(P.getX(i), P.getY(i), P.getZ(i)); (cell.get(k) || cell.set(k, []).get(k)).push(i); }
+    for (let it = 0; it < 2; it++) {
     const upd = [];
     for (let i = 0; i < n; i++) {
-      if (!zone(i)) continue;
+      const mix = zone(i) ? 0.65 : 0.45;
       const x = P.getX(i), y = P.getY(i), z = P.getZ(i), acc = {}; let tot = 0;
       for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
         const l = cell.get((Math.floor(x / R) + dx) + ',' + (Math.floor(y / R) + dy) + ',' + (Math.floor(z / R) + dz)); if (!l) continue;
         for (const j of l) { if (Math.hypot(P.getX(j) - x, P.getY(j) - y, P.getZ(j) - z) > R) continue; tot++; for (let c = 0; c < 4; c++) { const w = [SW.getX(j), SW.getY(j), SW.getZ(j), SW.getW(j)][c]; if (w > 0) { const b = [SI.getX(j), SI.getY(j), SI.getZ(j), SI.getW(j)][c]; acc[b] = (acc[b] || 0) + w; } } }
       }
       const cur = {}; [[SI.getX(i), SW.getX(i)], [SI.getY(i), SW.getY(i)], [SI.getZ(i), SW.getZ(i)], [SI.getW(i), SW.getW(i)]].forEach(([b, w]) => { if (w > 0) cur[b] = (cur[b] || 0) + w; });
-      const m = {}; for (const b in cur) m[b] = cur[b] * 0.35; for (const b in acc) m[b] = (m[b] || 0) + 0.65 * acc[b] / tot;
+      const m = {}; for (const b in cur) m[b] = cur[b] * (1 - mix); for (const b in acc) m[b] = (m[b] || 0) + mix * acc[b] / tot;
       const top = Object.entries(m).sort((u, v) => v[1] - u[1]).slice(0, 4), sum = top.reduce((q, e) => q + e[1], 0);
       upd.push([i, top.map(e => +e[0]), top.map(e => e[1] / sum)]);
     }
     for (const [i, bs, ws] of upd) { for (let c = 0; c < 4; c++) { const b = bs[c] || 0, w = ws[c] || 0; [SI.setX, SI.setY, SI.setZ, SI.setW][c].call(SI, i, b); [SW.setX, SW.setY, SW.setZ, SW.setW][c].call(SW, i, w); } }
+    }
     SI.needsUpdate = SW.needsUpdate = true;
   }
   function leaderSections(geo) {                              // cross sections of the armour per body part and height (centre and half sizes), so the under layer can stay inside it

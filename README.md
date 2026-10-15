@@ -396,3 +396,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v174: under layer reduced to joint pieces; collar pads follow the vest fully.
 - nf-v175: shoulder armour stays attached to the back when the arm is raised.
 - nf-v176: shoulder filler of the under layer enlarged and recoloured to match the vest.
+- nf-v177: soft connection applied to all joints of the leader (option 2/4).

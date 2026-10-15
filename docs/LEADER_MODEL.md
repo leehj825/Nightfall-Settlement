@@ -76,3 +76,6 @@ The upper-arm shoulder armour (bone shoulder, centre below the collar) was getti
 
 ## nf-v176: shoulder filler matches the vest
 Weights alone cannot close a gap between separate shells, so the shoulder ball of the under layer is no longer fitted to the arm section (it covers the armpit/back-of-shoulder where the arm leaves the vest), and the under layer colour is now vest red-brown (0x6e3322) so a filled gap reads as cloth, not as a dark hole.
+
+## nf-v177: whole-body soft connection
+The weight diffusion pass now runs over every vertex (twice, 6 cm radius, 45 % neighbours, 65 % at shoulders/neck), not only around the shoulders: neighbouring shells of every joint (waist, hips, knees, elbows, shoulders, neck) get similar weights and move together. Works in option 2 without the under layer.
