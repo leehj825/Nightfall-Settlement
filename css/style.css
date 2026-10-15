@@ -384,3 +384,12 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
 #victory li b { color: #ffd27a; float: right; }
 #victory .vbtns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 #victory .vbtns button { padding: 8px 14px; border-radius: 10px; border: 2px solid #e0b43c; background: rgba(224,180,60,.18); color: #fff; font: inherit; font-size: 14px; }
+
+.wbchip.pick { outline: 3px solid #fff; outline-offset: 1px; transform: translateY(-3px); }
+.wbq { display: flex; gap: 4px; align-items: center; padding: 3px 4px; border-radius: 12px; background: rgba(24,18,12,.82); border: 2px solid rgba(255,255,255,.2); }
+.wbq button { font: inherit; font-size: 12px; padding: 6px 8px; border-radius: 9px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.4); color: #fff; }
+.wbq button.on { border-color: #ffd27a; background: rgba(255,210,122,.28); }
+.wbq .wball { border-color: rgba(232,192,64,.6); color: #ffd27a; }
+.wdests { display: grid; gap: 6px; margin: 8px 0; } .wbdest { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: #fff; font: inherit; font-size: 14px; text-align: left; }
+.wbdest i { width: 14px; height: 18px; background: var(--c); border-radius: 2px 2px 8px 8px; } .wbdest b { flex: 1; font-weight: 600; } .wbdest span { font-size: 12px; color: #d8c8a6; } .wbdest.here { opacity: .55; }
+.wbulk { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; } .wbulk .wbact { flex: 1 1 45%; }

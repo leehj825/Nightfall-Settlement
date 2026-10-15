@@ -397,6 +397,15 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
 #victory li b { color: #ffd27a; float: right; }
 #victory .vbtns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 #victory .vbtns button { padding: 8px 14px; border-radius: 10px; border: 2px solid #e0b43c; background: rgba(224,180,60,.18); color: #fff; font: inherit; font-size: 14px; }
+
+.wbchip.pick { outline: 3px solid #fff; outline-offset: 1px; transform: translateY(-3px); }
+.wbq { display: flex; gap: 4px; align-items: center; padding: 3px 4px; border-radius: 12px; background: rgba(24,18,12,.82); border: 2px solid rgba(255,255,255,.2); }
+.wbq button { font: inherit; font-size: 12px; padding: 6px 8px; border-radius: 9px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.4); color: #fff; }
+.wbq button.on { border-color: #ffd27a; background: rgba(255,210,122,.28); }
+.wbq .wball { border-color: rgba(232,192,64,.6); color: #ffd27a; }
+.wdests { display: grid; gap: 6px; margin: 8px 0; } .wbdest { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: #fff; font: inherit; font-size: 14px; text-align: left; }
+.wbdest i { width: 14px; height: 18px; background: var(--c); border-radius: 2px 2px 8px 8px; } .wbdest b { flex: 1; font-weight: 600; } .wbdest span { font-size: 12px; color: #d8c8a6; } .wbdest.here { opacity: .55; }
+.wbulk { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; } .wbulk .wbact { flex: 1 1 45%; }
 </style>
 </head>
 <body>
@@ -9007,29 +9016,59 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     markRing.userData.cone.position.y = 2.6 * (u.boss ? 1.8 : 1) + Math.sin(t * 6) * 0.15;
   }
   const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
-  let wbOpen = -1, wbBarHtml = '';
+  let wbOpen = -1, wbBarHtml = '', wbSel = -1, wbAll = false, wbMoveFor = -1;
   function renderWbBar() {
     const show = !dead && !uiPause;                                  // 원정 중에도 보인다 (함께 간 전투단만)
     let html = '';
     if (show) for (let i = 0; i < CFG.WARBAND.MAX; i++) {
       const m = warbandMembers(i).filter(n => !exActive || n.escort); if (!m.length) continue;
       const hurt = m.filter(n => n.down).length, sel = !exActive && bringing(i);
-      html += `<button class="wbchip${sel ? ' sel' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${bannerOf(i) >= 0 ? `<s style="color:${CFG.BANNER.COLORS[bannerOf(i)]}">${CFG.BANNER.NAMES[bannerOf(i)][0]}</s>` : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
+      html += `<button class="wbchip${sel ? ' sel' : ''}${wbSel === i ? ' pick' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${bannerOf(i) >= 0 ? `<s style="color:${CFG.BANNER.COLORS[bannerOf(i)]}">${CFG.BANNER.NAMES[bannerOf(i)][0]}</s>` : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
     }
     if (html) html += `<button class="wbmark${markedFoe ? ' on' : ''}" data-mark="1" title="Mark the foe (Y)">&#9678; Mark</button>`;
+    if (html) {                                                          // 명령 띠: 고른 전투단(없거나 All 이면 전체)에게 바로 내린다. 창을 열 필요가 없다
+      const tgt = wbOrderTargets(), cur = tgt.length && tgt.every(b => warbandOrder(b) === warbandOrder(tgt[0])) ? warbandOrder(tgt[0]) : '';
+      html += `<div class="wbq"><button class="wball${wbAll || wbSel < 0 ? ' on' : ''}" data-all="1" title="Orders go to the whole host">All</button>${WB_ORDERS.map(o => `<button class="wbqo${o === cur ? ' on' : ''}" data-ordq="${o}" title="${WB_ORDER_HINT[o]}">${WB_ORDER_SHORT[o]}</button>`).join('')}</div>`;
+    }
     if (html === wbBarHtml) return; wbBarHtml = html; wbBar.innerHTML = html; wbBar.style.display = html ? 'flex' : 'none';
   }
-  wbBar.addEventListener('pointerdown', e => { if (e.target.closest('.wbmark')) { e.preventDefault(); e.stopPropagation(); toggleMark(); return; } const b = e.target.closest('.wbchip'); if (!b) return; e.preventDefault(); e.stopPropagation(); openWbPanel(+b.dataset.wb); });
+  const WB_ORDER_SHORT = { forward: '&#10148; Go', stand: '&#9632; Hold', withdraw: '&#8630; Back', charge: '&#9876; Charge' };
+  function wbOrderTargets() { const all = []; for (let i = 0; i < CFG.WARBAND.MAX; i++) if (warbandMembers(i).filter(n => !exActive || n.escort).length) all.push(i); return wbAll || wbSel < 0 || !all.includes(wbSel) ? all : [wbSel]; }
+  function issueOrder(o) {
+    const tgt = wbOrderTargets(); if (!tgt.length) return;
+    const done = new Set(); for (const b of tgt) { if (done.has(b)) continue; const bn = bannerOf(b); if (bn >= 0) { setBannerOrder(bn, o); bannerBands(bn).forEach(x => done.add(x)); } else { setWarbandOrder(b, o); done.add(b); } }
+    toast(`${tgt.length === 1 ? wbi(tgt[0]).name : 'The whole host'}: ${WB_ORDER_LABEL[o]}`); Snd.play('click'); wbBarHtml = ''; renderWbBar();
+  }
+  wbBar.addEventListener('pointerdown', e => {
+    if (e.target.closest('.wbmark')) { e.preventDefault(); e.stopPropagation(); toggleMark(); return; }
+    const q = e.target.closest('[data-ordq]'); if (q) { e.preventDefault(); e.stopPropagation(); issueOrder(q.dataset.ordq); return; }
+    if (e.target.closest('[data-all]')) { e.preventDefault(); e.stopPropagation(); wbAll = !wbAll; if (wbAll) wbSel = -1; wbBarHtml = ''; renderWbBar(); return; }
+    const b = e.target.closest('.wbchip'); if (!b) return; e.preventDefault(); e.stopPropagation();
+    const i = +b.dataset.wb; if (wbSel === i) { openWbPanel(i); return; }                                  // 한 번 누르면 고르고, 고른 것을 다시 누르면 창이 열린다
+    wbSel = i; wbAll = false; Snd.play('click'); wbBarHtml = ''; renderWbBar();
+  });
   function renderWbPanel() {
     const i = wbOpen; if (i < 0) return;
     const m = warbandMembers(i), info = wbi(i);
     if (!m.length) { closeWbPanel(); return; }
+    if (wbMoveFor >= 0) {                                                  // 옮길 전투단 고르기: 한 번 눌러 바로 옮긴다 (꽉 찬 곳은 서로 자리를 바꾼다)
+      const mv = npcs[wbMoveFor];
+      if (mv && mv.role !== 'citizen') {
+        const list = []; for (let b = 0; b < CFG.WARBAND.MAX; b++) { const mem = warbandMembers(b).length, full = mem >= CFG.WARBAND.SIZE, here = mv.warband === b;
+          list.push(`<button class="wbdest${here ? ' here' : ''}" data-dest="${b}" style="--c:${wbi(b).color}"><i></i><b>${wbi(b).name}</b><span>${mem}/${CFG.WARBAND.SIZE}${here ? ' · here' : full ? ' · swap' : ''}</span></button>`); }
+        wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><b>Move ${mv.name} to…</b></div><div class="wdests">${list.join('')}</div><button id="wbMoveCancel">Cancel</button>`;
+        return;
+      }
+      wbMoveFor = -1;
+    }
     const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
     const rows = m.map((n, k) => { const ix = npcs.indexOf(n);
       return `<li data-n="${ix}"><div class="wr1"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></div>
-      <div class="wr2">${n.role === 'melee' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${canMount(n) && bannersOpen() ? `<button class="wbact" data-act="mount" data-ix="${ix}">${n.mounted ? 'Dismount' : 'Mount'}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move band</button>`}</div></li>`; }).join('');
+      <div class="wr2">${n.role === 'melee' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${canMount(n) && bannersOpen() ? `<button class="wbact" data-act="mount" data-ix="${ix}">${n.mounted ? 'Dismount' : 'Mount'}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move to…</button>`}</div></li>`; }).join('');
+    const mel = m.filter(n => n.role === 'melee'), uni = (f) => mel.length && mel.every(n => f(n) === f(mel[0])) ? clsName(f(mel[0])) : 'Mixed';
+    const bulk = mel.length > 1 ? `<div class="wbulk"><button class="wbact" data-bulk="home">All at home: ${uni(homeCls)} &#8594;</button><button class="wbact" data-bulk="trip">All journey: ${uni(tripCls)} &#8594;</button></div>` : '';
     wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
-      <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
+      <div class="wsw">${sw}</div>${bulk}<ul class="wlist">${rows}</ul>
       ${exActive ? '' : `<button id="wbBring" class="${bringing(i) ? 'on' : ''}">${bringing(i) ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>`}
       ${bannersOpen() ? `<div class="wbn"><button id="wbBanner">${bannerOf(i) >= 0 ? bannerName(bannerOf(i)) + ' (' + bannerBands(bannerOf(i)).length + ' bands)' : 'No banner'}</button>${bannerOf(i) >= 0 && !exActive ? `<button id="wbBannerBring" class="${bannerBands(bannerOf(i)).every(bringing) ? 'on' : ''}">Bring whole banner</button>` : ''}</div>` : ''}
       ${bannersOpen() ? `<div class="word host"><small>Whole host:</small>${WB_ORDERS.map(o => `<button class="wbord" data-hord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div>` : ''}
@@ -9037,14 +9076,19 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       <small>${m.length}/${CFG.WARBAND.SIZE} soldiers</small><button id="wbClose">Close</button>`;
   }
   function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
-  function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }
+  function closeWbPanel() { wbOpen = -1; wbMoveFor = -1; wbPanel.style.display = 'none'; }
   wbPanel.addEventListener('pointerdown', e => {
     if (e.target === wbPanel) { closeWbPanel(); return; }
     const t = e.target, i = wbOpen; if (i < 0) return;
     if (t.dataset && t.dataset.hord) { setHostOrder(t.dataset.hord); toast(`The whole host: ${WB_ORDER_LABEL[t.dataset.hord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
     if (t.dataset && t.dataset.ord) { if (bannerOf(i) >= 0) setBannerOrder(bannerOf(i), t.dataset.ord); else setWarbandOrder(i, t.dataset.ord); toast(`${wbi(i).name}: ${WB_ORDER_LABEL[t.dataset.ord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
+    if (t.id === 'wbMoveCancel') { wbMoveFor = -1; renderWbPanel(); e.stopPropagation(); return; }
+    { const d = t.closest('[data-dest]'); if (d && wbMoveFor >= 0) { const n = npcs[wbMoveFor], to = +d.dataset.dest; wbMoveFor = -1; if (n && !n.escort && to !== n.warband) { const mem = warbandMembers(to).filter(x => !x.escort);
+          if (warbandMembers(to).length < CFG.WARBAND.SIZE) { n.warband = to; toast(`${n.name} joins ${warbandName(to)}`); } else if (mem.length) { const o = mem[mem.length - 1]; o.warband = n.warband; n.warband = to; toast(`${n.name} and ${o.name} swap places`); } else toast('That band is full'); }
+        if (n) { n.labelText = ''; } wbBarHtml = ''; renderWbBar(); const left = warbandMembers(i).length; if (!left) closeWbPanel(); else renderWbPanel(); e.stopPropagation(); return; } }
+    { const bk = t.dataset && t.dataset.bulk; if (bk) { const mel = warbandMembers(i).filter(n => n.role === 'melee'); if (mel.length) { const f = bk === 'home' ? homeCls : tripCls, nx = CLS_LIST[(CLS_LIST.indexOf(f(mel[0])) + 1) % CLS_LIST.length]; for (const n of mel) { if (bk === 'home') setHomeCls(n, nx); else setTripCls(n, nx); } toast(`${wbi(i).name}: all ${bk === 'home' ? 'at home' : 'on journeys'} are ${clsName(nx)}s`); } renderWbPanel(); e.stopPropagation(); return; } }
     if (t.dataset && t.dataset.act) { const n = npcs[+t.dataset.ix];
-      if (n) { if (t.dataset.act === 'home' && n.role === 'melee') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role === 'melee') cycleTripCls(n); else if (t.dataset.act === 'mount') { toggleMount(n); renderWbPanel(); } else if (t.dataset.act === 'band' && !n.escort) { if (cycleWarband(n)) toast(`${n.name} joins ${warbandName(n.warband)}`); else toast('All warbands are full'); wbBarHtml = ''; renderWbBar(); } renderWbPanel(); }
+      if (n) { if (t.dataset.act === 'home' && n.role === 'melee') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role === 'melee') cycleTripCls(n); else if (t.dataset.act === 'mount') { toggleMount(n); renderWbPanel(); } else if (t.dataset.act === 'band' && !n.escort) { wbMoveFor = npcs.indexOf(n); } renderWbPanel(); }
       e.stopPropagation(); return; }
     if (t.id === 'wbClose') { closeWbPanel(); }
     else if (t.id === 'wbBanner') { const b = cycleBanner(i); toast(b >= 0 ? `${warbandName(i)} joins the ${bannerName(b)}` : `${warbandName(i)} leaves its banner`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
