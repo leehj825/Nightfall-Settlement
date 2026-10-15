@@ -349,3 +349,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v149:** Stage 5 "Plan Great Works" (120 wood, 150 stone): Windmill (`windmillModel`, sails turn), Infirmary, Victory Monument, all visual only, placed by `findSpotNear` (grid search near a target). The Muster Yard is smaller and sits in the outer (third) layer. Sheep in the pens walk around (`lifeTick` in `04b-models.js`). Every wall ring gets four corner torch posts that light at night (`cornerLampsSync`, glow sprite and ground pool, no real lights so phones stay fast).
 
 **nf-v150:** Stage 5 finishing touches: gatehouses (`gatehouseModel`) on the gates of the second and third wall (visual only, made in `cornerLampsSync`), a "Plan Stables" step (`stableModel`, two horses wander in the paddock, 100 wood 40 stone), and the Victory Monument shows one pennant per realm you hold a site in (full size when the realm is broken).
+
+**nf-v151:** Stage 5 plan step "Plan Outer Homes (3rd ring)" (160 wood): 8 more houses inside the third wall (`findSpotNear`, ring 27 to 36), so the population cap rises by 8 (house = +1 max population). Debug start at Stage 5 now has 23 houses.

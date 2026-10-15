@@ -49,6 +49,8 @@
       { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 21, z: 3.5 }, { kind: 'pen', x: -22, z: 3.5 }] },
       // 5단계 대공사: 풍차, 병원, 승전 기념비 (보기용)
       { stage: 5, label: 'Plan Great Works', cost: { wood: 120, stone: 150 }, lots: [{ kind: 'windmill', near: { x: 22, z: -17, min: 15, max: 26 } }, { kind: 'infirmary', near: { x: -14, z: -17, min: 15, max: 26 } }, { kind: 'monument', near: { x: -3.5, z: 11, min: 7, max: 14 } }] },
+      // 5단계 주택가: 셋째 성벽 안쪽에 집 8채 (집 1채 = 최대 인구 +1)
+      { stage: 5, label: 'Plan Outer Homes (3rd ring)', cost: { wood: 160 }, lots: [{ kind: 'house', near: { x: -33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: -33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: 33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: 33, min: 27, max: 36 } }] },
       { stage: 5, label: 'Plan Stables', cost: { wood: 100, stone: 40 }, lots: [{ kind: 'stable', near: { x: 22, z: 17, min: 15, max: 26 } }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
