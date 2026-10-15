@@ -5,42 +5,58 @@
     const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(0, h); sh.closePath();
     const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return g;
   }
-  function houseModel(g, lvl) {                                              // 2단계: 목골 집 / 3단계 이상: 돌집 (정면은 +z)
-    const add = (geo, m, px, py, pz, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; g.add(o); return o; };
-    const stone = lvl >= 3, wallM = stone ? M(0x9a9da4) : M(0xd8bf90), beamM = M(0x4a301c), roofM = stone ? M(0x4a4f5c) : M(0xa34a2a), baseM = M(0x6f7078), doorM = M(0x3a2414);
-    const W = stone ? 3.0 : 2.8, H = stone ? 2.3 : 1.8;
+  function rngOf(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+  function houseModel(g, lvl) {                                              // 2단계: 목골 집 / 3단계 이상: 돌집 (정면은 +z). g.userData.seed 로 집마다 색·크기·지붕 방향·문 위치·부속 건물이 달라진다
+    const R = rngOf(g.userData.seed || 1), pick = (a) => a[Math.floor(R() * a.length)];
+    const inner = new THREE.Group(); inner.scale.set(0.9 + R() * 0.3, 0.92 + R() * 0.2, 0.88 + R() * 0.25); g.add(inner);
+    const add = (geo, m, px, py, pz, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; inner.add(o); return o; };
+    const stone = lvl >= 3;
+    const wallM = M(stone ? pick([0x9a9da4, 0xa8a294, 0x8f969e, 0xb0a898]) : pick([0xd8bf90, 0xe6d8b8, 0xcfa97c, 0xd9cfae, 0xbfa27a])), beamM = M(pick([0x4a301c, 0x3a2a1c, 0x5a3a22])),
+      roofM = M(stone ? pick([0x4a4f5c, 0x5c4a42, 0x3f5a52, 0x5a3f4a]) : pick([0xa34a2a, 0x8c5a34, 0x6b7d4a, 0xb5651d, 0x7a3a2a])), baseM = M(0x6f7078), doorM = M(pick([0x3a2414, 0x4a2a1a, 0x2f3a4a, 0x5a2a2a])),
+      flowerM = M(pick([0x4f8a3a, 0xc0504a, 0xd8a02a, 0x8a5ab0]));
+    const W = stone ? 3.0 : 2.8, H = (stone ? 2.3 : 1.8) + (R() < 0.3 ? 0.5 : 0);
+    const ridgeX = R() < 0.5, dOff = R() < 0.5 ? 0 : (R() < 0.5 ? -1 : 1) * W * 0.17;                              // 용마루 방향 / 문 위치 어긋남
     add(new THREE.BoxGeometry(W + 0.3, 0.3, W + 0.3), baseM, 0, 0.15, 0);                                       // 돌 기초
     add(new THREE.BoxGeometry(W, H, W), wallM, 0, 0.3 + H / 2, 0);
     const top = 0.3 + H;
     if (!stone) {                                                                                               // 목골: 모서리 기둥, 가로 들보, 가새
       for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) add(new THREE.BoxGeometry(0.16, H, 0.16), beamM, sx * W / 2, 0.3 + H / 2, sz * W / 2);
       for (const y of [0.3, top - 0.08]) { add(new THREE.BoxGeometry(W + 0.1, 0.12, 0.12), beamM, 0, y, W / 2); add(new THREE.BoxGeometry(W + 0.1, 0.12, 0.12), beamM, 0, y, -W / 2); add(new THREE.BoxGeometry(0.12, 0.12, W + 0.1), beamM, W / 2, y, 0); add(new THREE.BoxGeometry(0.12, 0.12, W + 0.1), beamM, -W / 2, y, 0); }
-      for (const sx of [-1, 1]) { const br = add(new THREE.BoxGeometry(0.1, 1.3, 0.1), beamM, sx * W * 0.32, 0.3 + H * 0.5, W / 2 + 0.02); br.rotation.z = -sx * 0.6; }
+      if (H > 2) add(new THREE.BoxGeometry(W + 0.12, 0.14, W + 0.12), beamM, 0, 0.3 + H * 0.5, 0);               // 2층 허리 들보
+      if (R() < 0.6) for (const sx of [-1, 1]) { const br = add(new THREE.BoxGeometry(0.1, 1.3, 0.1), beamM, sx * W * 0.32, 0.3 + H * 0.5, W / 2 + 0.02); br.rotation.z = -sx * 0.6; }
     } else {                                                                                                    // 돌집: 모서리 돌(쐐기돌)
       for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) add(new THREE.BoxGeometry(0.34, H, 0.34), M(0xb4b6bc), sx * W / 2, 0.3 + H / 2, sz * W / 2);
       add(new THREE.BoxGeometry(W + 0.12, 0.14, W + 0.12), M(0xb4b6bc), 0, top, 0);
     }
-    const rw = W + 0.7, rh = stone ? 1.7 : 1.45;
-    add(gableGeo(rw, rh, W + 0.7), roofM, 0, top, 0);                                                           // 박공 지붕 (처마가 벽보다 튀어나온다)
-    for (const z of [-1, 1]) add(gableGeo(W * 0.94, rh * 0.84, 0.06), wallM, 0, top + 0.02, z * (W + 0.7) / 2 + z * 0.02);   // 박공 벽면
-    add(new THREE.BoxGeometry(0.16, 0.14, W + 0.8), M(0x3a2414), 0, top + rh, 0);                              // 용마루
-    add(new THREE.BoxGeometry(0.55, 1.0, 0.55), M(0x7a5a4a), W * 0.28, top + rh * 0.62, -W * 0.18);            // 굴뚝
-    add(new THREE.BoxGeometry(0.7, 0.12, 0.7), M(0x5a4a40), W * 0.28, top + rh * 0.62 + 0.55, -W * 0.18);
-    add(new THREE.BoxGeometry(0.7, 1.25, 0.1), doorM, 0, 0.3 + 0.62, W / 2 + 0.04);                            // 문 + 문틀 + 처마
-    add(new THREE.BoxGeometry(0.9, 0.12, 0.12), beamM, 0, 0.3 + 1.28, W / 2 + 0.07);
-    add(new THREE.BoxGeometry(0.1, 0.12, 0.34), beamM, 0.45, 0.3 + 1.3, W / 2 + 0.14); add(new THREE.BoxGeometry(0.1, 0.12, 0.34), beamM, -0.45, 0.3 + 1.3, W / 2 + 0.14);
-    add(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 6), M(0xc8a040), 0.22, 0.3 + 0.62, W / 2 + 0.1).rotation.x = Math.PI / 2;
+    const rw = W + 0.7, rh = (stone ? 1.7 : 1.45) * (0.9 + R() * 0.35);
+    const roof = add(gableGeo(rw, rh, W + 0.7), roofM, 0, top, 0); if (ridgeX) roof.rotation.y = Math.PI / 2;      // 박공 지붕 (처마가 벽보다 튀어나온다)
+    for (const k of [-1, 1]) { const gw = add(gableGeo(W * 0.94, rh * 0.84, 0.06), wallM, ridgeX ? k * (W + 0.7) / 2 + k * 0.02 : 0, top + 0.02, ridgeX ? 0 : k * (W + 0.7) / 2 + k * 0.02); if (ridgeX) gw.rotation.y = Math.PI / 2; }
+    const ridge = add(new THREE.BoxGeometry(0.16, 0.14, W + 0.8), M(0x3a2414), 0, top + rh, 0); if (ridgeX) ridge.rotation.y = Math.PI / 2;
+    if (R() < 0.85) { const cx = (R() < 0.5 ? -1 : 1) * W * 0.28, cz = (R() < 0.5 ? -1 : 1) * W * 0.18;           // 굴뚝
+      add(new THREE.BoxGeometry(0.55, 1.0, 0.55), M(0x7a5a4a), cx, top + rh * 0.62, cz); add(new THREE.BoxGeometry(0.7, 0.12, 0.7), M(0x5a4a40), cx, top + rh * 0.62 + 0.55, cz); }
+    add(new THREE.BoxGeometry(0.7, 1.25, 0.1), doorM, dOff, 0.3 + 0.62, W / 2 + 0.04);                          // 문 + 문틀 + 처마
+    add(new THREE.BoxGeometry(0.9, 0.12, 0.12), beamM, dOff, 0.3 + 1.28, W / 2 + 0.07);
+    add(new THREE.BoxGeometry(0.1, 0.12, 0.34), beamM, dOff + 0.45, 0.3 + 1.3, W / 2 + 0.14); add(new THREE.BoxGeometry(0.1, 0.12, 0.34), beamM, dOff - 0.45, 0.3 + 1.3, W / 2 + 0.14);
+    add(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 6), M(0xc8a040), dOff + 0.22, 0.3 + 0.62, W / 2 + 0.1).rotation.x = Math.PI / 2;
     for (const sx of [-1, 1]) {                                                                                 // 덧문 달린 창 + 화단
-      const wx = sx * W * 0.32, wy = 0.3 + H * 0.58;
+      const wx = sx * W * 0.32, wy = 0.3 + H * 0.58; if (Math.abs(wx - dOff) < 0.75) continue;
       add(new THREE.BoxGeometry(0.52, 0.52, 0.06), windowGlow, wx, wy, W / 2 + 0.03);
       add(new THREE.BoxGeometry(0.62, 0.08, 0.1), beamM, wx, wy + 0.3, W / 2 + 0.06); add(new THREE.BoxGeometry(0.62, 0.08, 0.1), beamM, wx, wy - 0.3, W / 2 + 0.06);
       add(new THREE.BoxGeometry(0.16, 0.5, 0.05), beamM, wx - 0.36, wy, W / 2 + 0.06); add(new THREE.BoxGeometry(0.16, 0.5, 0.05), beamM, wx + 0.36, wy, W / 2 + 0.06);
-      add(new THREE.BoxGeometry(0.6, 0.14, 0.22), M(0x6b4a2a), wx, wy - 0.42, W / 2 + 0.15); add(new THREE.BoxGeometry(0.5, 0.12, 0.16), M(0x4f8a3a), wx, wy - 0.32, W / 2 + 0.15);
+      add(new THREE.BoxGeometry(0.6, 0.14, 0.22), M(0x6b4a2a), wx, wy - 0.42, W / 2 + 0.15); add(new THREE.BoxGeometry(0.5, 0.12, 0.16), flowerM, wx, wy - 0.32, W / 2 + 0.15);
     }
-    for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.06, 0.5, 0.5), windowGlow, sx2(W), 0.3 + H * 0.58, sz * W * 0.22);               // 옆 창
-    if (stone) { add(new THREE.BoxGeometry(0.7, 0.6, 0.7), M(0x4a4f5c), 0, top + rh * 0.35, W * 0.45); add(new THREE.BoxGeometry(0.4, 0.4, 0.05), windowGlow, 0, top + rh * 0.35, W * 0.45 + 0.37); }   // 지붕창
+    if (H > 2) for (const wx of [-0.7, 0.7]) add(new THREE.BoxGeometry(0.46, 0.46, 0.06), windowGlow, wx, 0.3 + H * 0.82, W / 2 + 0.03);    // 2층 창
+    for (const sz of [-1, 1]) for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.06, 0.5, 0.5), windowGlow, sx * (W / 2 + 0.03), 0.3 + H * 0.58, sz * W * 0.22);   // 옆 창
+    if (stone && R() < 0.65) { add(new THREE.BoxGeometry(0.7, 0.6, 0.7), M(0x4a4f5c), 0, top + rh * 0.35, W * 0.45); add(new THREE.BoxGeometry(0.4, 0.4, 0.05), windowGlow, 0, top + rh * 0.35, W * 0.45 + 0.37); }   // 지붕창
+    const side = R() < 0.5 ? -1 : 1;
+    if (R() < 0.5) {                                                                                            // 한쪽에 덧붙인 헛간 (경사 지붕)
+      add(new THREE.BoxGeometry(1.3, 1.1, W * 0.65), wallM, side * (W / 2 + 0.6), 0.3 + 0.55, -0.2);
+      const sh = add(new THREE.BoxGeometry(1.8, 0.1, W * 0.75), roofM, side * (W / 2 + 0.55), 0.3 + 1.25, -0.2); sh.rotation.z = -side * 0.35;
+    } else if (R() < 0.8) {                                                                                     // 문 옆의 통과 장작더미 / 통
+      if (R() < 0.5) { for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.14, 0.14, 0.9, 6), M(0x7a4f2a), -side * (W / 2 - 0.1) - side * (i % 2) * 0.1, 0.4 + (i > 1 ? 0.25 : 0), W / 2 + 0.4 + (i % 2) * 0.3).rotation.z = Math.PI / 2; }
+      else { add(new THREE.CylinderGeometry(0.28, 0.3, 0.6, 8), M(0x6b4a2a), side * (W / 2 - 0.2), 0.6, W / 2 + 0.45); add(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8), M(0x3a78c8), side * (W / 2 - 0.2), 0.92, W / 2 + 0.45); }
+    }
   }
-  const sx2 = (W) => W / 2 + 0.03;
   function keepModel(add, stage) {                                           // 석조 성채: 3단계 키프, 4단계 큰 성채, 5단계 금빛 왕좌의 방
     const gold = stage >= 5, big = stage >= 4, W = big ? 7.4 : 6.0, H = big ? 3.8 : 3.3, stoneM = M(0x8d9098), darkM = M(0x6a6e78), lightM = M(0xa9acb4), roofM = gold ? new THREE.MeshStandardMaterial({ color: 0xe0b040, flatShading: true, roughness: 0.55, metalness: 0.3 }) : M(0x6b2a2a), dark = M(0x1e1a16);
     add(new THREE.BoxGeometry(W + 0.9, 0.45, W + 0.9), darkM, 0, 0.22, 0);                                       // 기단

@@ -13,8 +13,14 @@
   const bMat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
   const houseWall = bMat(0xc9a46a), houseRoof = bMat(0xa34a2a), barrackMat = bMat(0x7b808a), barrackTop = bMat(0x585d66);
   const woodMat2 = bMat(0x8a5a34), tgtRed = new THREE.MeshStandardMaterial({ color: 0xd23a2a, roughness: 1 }), tgtWhite = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 });
-  function doorOf(b) {                 // 건물 앞(중앙 쪽) 출입 지점
-    const d = Math.hypot(b.position.x, b.position.z) || 1, off = b.userData.radius + 0.9;
+  function faceOf(x, z) {              // 가장 가까운 큰길(x=0 또는 z=0 십자 길)을 향하는 방향
+    if (Math.abs(x) < Math.abs(z)) return { x: x > 0 ? -1 : 1, z: 0 };
+    return { x: 0, z: z > 0 ? -1 : 1 };
+  }
+  function doorOf(b) {                 // 건물 앞 출입 지점: 길을 향한 쪽
+    const f = b.userData.face, off = b.userData.radius + 0.9;
+    if (f) return { x: b.position.x + f.x * off, z: b.position.z + f.z * off };
+    const d = Math.hypot(b.position.x, b.position.z) || 1;
     return { x: b.position.x - b.position.x / d * off, z: b.position.z - b.position.z / d * off };
   }
   const windowGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 }), lampGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 });        // 밤이 되면 따뜻하게 켜진다 (tick)
@@ -39,7 +45,8 @@
   function createBuilding(kind, x, z) {
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
-    g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null };
+    g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null, seed: Math.abs(Math.floor(x * 73.1 + z * 131.7) * 2654435761 | 0) || 7 };
+    if (['house', 'barracks', 'smith', 'range', 'market', 'siegeshop'].includes(kind)) g.userData.face = faceOf(x, z);
     if (CFG.LEVELED.includes(kind)) g.userData.level = 1;
     const sm = (kind === 'well' || kind === 'smith' || kind === 'range') && structMesh(kind);        // 모델이 있으면 모델 건물
     if (sm) g.add(sm);
@@ -116,9 +123,10 @@
       g.userData.shootCd = rand(0, 1);
     }
     g.position.set(x, 0, z);
+    if (g.userData.face) g.rotation.y = Math.atan2(g.userData.face.x, g.userData.face.z);
     scene.add(g);
     obstacles.push(g);
-    if (kind !== 'farm' && kind !== 'tower' && kind !== 'lumber' && kind !== 'quarry') { const dr = doorOf(g); addPath(dr.x, dr.z, 1.5); }      // 문 앞에서 중앙 광장까지 흙길
+    if (kind !== 'farm' && kind !== 'tower' && kind !== 'lumber' && kind !== 'quarry') { const dr = doorOf(g); if (g.userData.face) addPathToRoad(dr.x, dr.z, 1.5); else addPath(dr.x, dr.z, 1.5); }      // 문 앞에서 중앙 광장까지 흙길
     return g;
   }
   // 선반에 완성품 진열 (재고 수만큼 칼/활을 걸어 둔다)
@@ -164,6 +172,12 @@
     const geo = new THREE.PlaneGeometry(w, len); geo.rotateX(-Math.PI / 2);
     const m = new THREE.Mesh(geo, pathMat);
     m.position.set(ux * (a + len / 2), 0.012, uz * (a + len / 2)); m.rotation.y = Math.atan2(ux, uz); m.receiveShadow = true;
+    scene.add(m); doormats.push(m);
+  }
+  function addPathToRoad(x, z, w) {                                 // 문 앞에서 가장 가까운 큰길(x=0 / z=0)까지 짧은 흙길
+    const f = faceOf(x, z), len = f.x ? Math.abs(x) : Math.abs(z); if (len < 0.6) return;
+    const geo = new THREE.PlaneGeometry(f.x ? len : w, f.x ? w : len); geo.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(geo, pathMat); m.position.set(f.x ? x / 2 : x, 0.012, f.x ? z : z / 2); m.receiveShadow = true;
     scene.add(m); doormats.push(m);
   }
   function addLamp(x, z) {                                          // 가로등: 밤이 되면 불이 켜진다
@@ -316,8 +330,9 @@
     let best = null, bd = Infinity;
     for (let i = 0; i < 400; i++) {
       const x = rand(-13, 13), z = rand(-13, 13), d = Math.hypot(x, z);
-      if (cheb(x, z) > 13.2 || Math.abs(x) < rad + 1.2 || Math.abs(z) < rad + 1.2 || d < FIRE_R + rad + 3.2) continue;
+      if (cheb(x, z) > 10.5 || Math.abs(x) < rad + 1.2 || Math.abs(z) < rad + 1.2 || d < FIRE_R + rad + 3.2) continue;
       if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.0)) continue;
+      if ([[-12.3, -12.3], [12.3, -12.3], [-12.3, 12.3], [12.3, 12.3]].some(([tx, tz]) => Math.hypot(x - tx, z - tz) < rad + 4.5)) continue;       // 예정된 모서리 타워 자리와 겹치지 않게
       if (d < bd) { bd = d; best = { x, z }; }
     }
     return best || { x: 7, z: -4 };
