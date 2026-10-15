@@ -367,9 +367,9 @@
     return { x: 9, z: -4 };
   }
   // 목표 위치 근처의 빈 자리 (바깥 구역용): 이미 있는 건물·계획·성벽·큰길과 겹치지 않는, 목표에서 가장 가까운 칸. near = { x, z, min, max } (min~max 는 마을 중심에서의 체비쇼프 거리)
-  function findSpotNear(kind, near) {
+  function findSpotNear(kind, near, ignore, strict) {
     const rad = CFG.BUILDING[kind].radius;
-    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 1.5 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 충돌 반지름 1.5. 건물 가장자리와 사이에 사람이 지나갈 틈(넉넉히 1.6)을 남긴다
+    const others = obstacles.filter(o => o !== ignore && (o.userData.type === 'building' || o.userData.type === 'fence')).map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 1.5 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 충돌 반지름 1.5. 건물 가장자리와 사이에 사람이 지나갈 틈(넉넉히 1.6)을 남긴다
     let best = null, bd = Infinity;
     for (let x = -40; x <= 40; x += 1) for (let z = -40; z <= 40; z += 1) {
       const c = cheb(x, z); if (c < near.min || c > near.max || Math.abs(x) < rad + 1.4 || Math.abs(z) < rad + 1.4) continue;
@@ -377,7 +377,21 @@
       if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.6)) continue;
       bd = d; best = { x, z };
     }
-    return best || { x: near.x, z: near.z };
+    return best || (strict ? null : { x: near.x, z: near.z });
+  }
+  // 길 막힘 방지: 움직여도 되는 건물(벌목장·채석장·마구간·풍차·병원·집결장·우리·기념비)이 다른 건물과 겹치거나 성벽에 너무 붙어 사람이 지나갈 틈이 없으면 가까운 빈 자리로 옮긴다
+  const MOVABLE = ['lumber', 'quarry', 'stable', 'windmill', 'infirmary', 'muster', 'pen', 'monument'];
+  function fixTightBuildings() {
+    const B = obstacles.filter(o => o.userData.type === 'building'), F = obstacles.filter(o => o.userData.type === 'fence'), now = performance.now();
+    for (const o of B) {
+      const u = o.userData; if (!MOVABLE.includes(u.kind) || (u.noSpotT && now < u.noSpotT)) continue;
+      const r = u.radius || 2;
+      const bad = B.some(q => q !== o && Math.hypot(q.position.x - o.position.x, q.position.z - o.position.z) - r - (q.userData.radius || 2) < 0.2) || F.some(f => Math.hypot(f.position.x - o.position.x, f.position.z - o.position.z) - r - 1.5 < 0.6);
+      if (!bad) continue;
+      const c = cheb(o.position.x, o.position.z), pos = findSpotNear(u.kind, { x: o.position.x, z: o.position.z, min: Math.max(8, c - 8), max: c + 8 }, o, true);
+      if (!pos) { u.noSpotT = now + 60000; continue; }
+      clearArea(pos.x, pos.z, r + 1.4); o.position.x = pos.x; o.position.z = pos.z; dust(pos.x, pos.z);
+    }
   }
   // 성채가 커지면(3 → 4 → 5단계) 이미 지은 건물(예전 저장 포함)이 성채와 겹칠 수 있다: 겹친 건물은 빈 자리로 옮긴다
   function keepOverlap(o) {
@@ -462,7 +476,7 @@
     planCd -= dt; if (planCd > 0) return; planCd = 2.5;
     updatePlanBtn();
     if (dead || exActive || eventOpen || uiPause || !saveReady) return;
-    fixKeepOverlaps(); cornerLampsSync(); trimMounts();
+    fixKeepOverlaps(); fixTightBuildings(); cornerLampsSync(); trimMounts();
     const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
     if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
     const n = nextPlan(); if (n && canPay(n.cost)) n.run();

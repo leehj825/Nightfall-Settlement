@@ -363,15 +363,16 @@
   function townLifeTick(t, dt) {
     townLifeSync(); if (!townLife.done) return;
     const day = nowHour >= 7 && nowHour < 19;
+    const far = (o) => (o.position.x - player.position.x) ** 2 + (o.position.z - player.position.z) ** 2 > 3600;
     for (const c of townLife.carts) {
       const r = c.userData.run; c.visible = day;
-      if (!day) continue;
+      if (!day || far(c)) continue;
       if (r.wait > 0) { r.wait -= dt; } else { r.x += r.dir * 1.4 * dt; if (r.x > r.x1) { r.x = r.x1; r.dir = -1; r.wait = 3; } else if (r.x < r.x0) { r.x = r.x0; r.dir = 1; r.wait = 3; } }
       c.position.set(r.x, 0, r.z); c.rotation.y = r.dir > 0 ? 0 : Math.PI;
       const mv = r.wait > 0 ? 0 : 1; for (const w of c.userData.wheels) w.rotation.y += mv * dt * 3.3 * r.dir * -1;
       const h = c.userData.horse, legs = h.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mv; }); h.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mv;
     }
-    for (const f of townLife.folk) { f.g.visible = day; if (day) f.anim.update(dt); }
+    for (const f of townLife.folk) { f.g.visible = day; if (day && !far(f.g)) f.anim.update(dt); }
   }
   let mountBtnT = 0;
   function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다. 기병은 말이 달리고 돌격 힘이 쌓인다. 깃발도 여기서 갱신
@@ -386,7 +387,8 @@
       n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); n.rider.position.y = 0.8 + n.horse.position.y;
     }
     for (const o of obstacles) {
-      const u = o.userData; if (u.type !== 'building') continue;
+      const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants)) continue;
+      if ((o.position.x - player.position.x) ** 2 + (o.position.z - player.position.z) ** 2 > 3600) continue;        // 60칸보다 멀면 움직임을 건너뛴다 (폰 성능)
       if (u.sails) u.sails.rotation.z -= dt * (0.6 + 0.4 * Math.sin(t * 0.3));
       if (u.pennants) u.pennants.forEach((p, i) => { const id = CFG.REALMS[i].id, held = realmHeld(id) > 0, done = realmHeld(id) >= realmSites(id).length; p.visible = held; p.scale.y = done ? 1 : 0.6; p.rotation.y = Math.sin(t * 3 + i * 2) * 0.25; });
       if (!u.sheep) continue;

@@ -77,8 +77,10 @@
   }
   function woundsMorning() {                                                 // 아침: 부상이 줄어든다 (마을에 치료사가 있으면 하루 더), 불려 온 농민병은 돌아간다, 용기는 조금씩 되돌아온다
     const medic = Math.min(2, npcs.filter(n => n.role === 'melee' && !n.escort && !n.down && !n.levy && homeCls(n) === 'medic').length) * CFG.WOUND.MEDIC_EXTRA;
-    for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic);
+    for (const n of npcs) if (n.woundDays > 0) n.woundDays = Math.max(0, n.woundDays - 1 - medic - (builtBuildings('infirmary').length ? 1 : 0));       // 병원이 있으면 하루 더 빨리 낫는다
+    { const mills = builtBuildings('windmill').length; if (mills) res.food += CFG.WINDMILL_FOOD * mills; }       // 풍차는 아침마다 식량
     for (const n of npcs.filter(x => x.levy && !x.escort)) dismissLevy(n);
     const c = courageOf(), K = CFG.COURAGE.START + (hasPerk('banneret') ? 10 : 0), D = CFG.COURAGE.DRIFT * (hasPerk('banneret') ? 1.6 : 1); story.courage = c < K ? Math.min(K, c + D) : c > K ? Math.max(K, c - D) : c;
     if (res.food <= 0 && npcs.some(n => n.role !== 'citizen')) addCourage(-CFG.COURAGE.HUNGRY);
+    if (builtBuildings('monument').length) addCourage(CFG.MONUMENT_COURAGE);                // 승전 기념비: 아침마다 사기 +3 (드리프트 뒤에 더한다)
   }

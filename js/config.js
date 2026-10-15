@@ -266,6 +266,7 @@
     BUILD_TIME_BUILDING: 3,
     STANDARD: { RADIUS: 12, DMG: 0.15, GUARD: 0.15, RANK_RADIUS: 0.2, RANK_DMG: 0.04, RANK_GUARD: 0.03 },      // 지휘관의 깃발: 곁의 병사가 더 세게 치고 덜 맞는다 (기본값은 추정, 기술로 강해진다)
     EXP_NEED_SCALE: 0.8,      // EXP_NEED 는 원래 병사 전원(전부 100%) 기준이었다. 이제 데려가는 전투단 100% + 남은 병사 35% 이므로 0.8배 (추정값, 폰 테스트 후 조정)
+    WINDMILL_FOOD: 4, MONUMENT_COURAGE: 3,      // 5단계 건물 효과(추정값): 풍차 1채당 아침 식량 +4, 승전 기념비 아침마다 사기 +3, 병원은 부상 회복 하루 단축
     CAV: { PER_STABLE: 3, SPEED: 1.45, DMG: 1.12, CHARGE: 0.45, CHARGE_T: 0.8 },      // 기병(말 탄 병사): 마구간 1채당 3기, 이동 x1.45, 피해 x1.12, 달려오다 치는 첫 일격 +45% (추정값)
     BANNER: { STAGE: 5, MAX: 3, MAX_BANDS: 3, MIN_BANDS: 2, RADIUS: 18, DMG: 0.06, GUARD: 0.06, HOST_BONUS: 1, DRILL_XP: 1,      // 깃발(banner, 전투단 2~3개 묶음): 해금 시대 / 깃발 수 / 깃발당 전투단 수 / 보너스에 필요한 전투단 수 / 같은 깃발 전투단이 가까운 거리 / 보너스(추정값) / 시대 5의 원정 전투단 추가 수
       NAMES: ['Dragon', 'Griffin', 'Hart'], COLORS: ['#e8c040', '#c8d0e0', '#d07a3a'] },
