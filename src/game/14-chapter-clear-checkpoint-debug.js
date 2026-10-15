@@ -170,6 +170,41 @@
     updateHud();
     toast('DEBUG: Day 7 17:30 - defenses, town, and troops ready');
   }
+  // 디버그: 새 게임을 n단계에서 시작한다. 단계 조건(건물·성벽·인구·점령·날짜)을 모두 채우고 능력도 고른다 (시작 화면의 Debug start)
+  function debugFinishAll() {
+    for (const b of blueprints.slice()) {
+      blueprints.splice(blueprints.indexOf(b), 1); scene.remove(b);
+      if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
+      else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
+    }
+  }
+  function debugJump(n) {
+    n = Math.max(1, Math.min(CFG.STAGES.length, n | 0)); if (n < 2 || dead) return;
+    res.wood += 4000; res.stone += 4000; res.iron += 600; res.food += 600;
+    if (!playerClass) setClass('warrior');
+    for (let st = 1; st <= n; st++) {
+      if (st > 1) setStage(st);
+      if (!perks[st]) choosePerk(st, CFG.PERKS[st][0].id);
+      let guard = 0;
+      while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].stage || stage >= CFG.DESIGN[designTier].stage) && guard++ < 6) designDefense();
+      debugFinishAll();
+      for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && CFG.TOWN_GROUPS[townStage].stage <= stage && g < 10; g++) designTown(); debugFinishAll(); }
+    }
+    if (n >= 4) story.cleared.legionfort = true;                                 // 4단계 조건: 거점 점령
+    if (n >= 5) story.cleared.legioncastle = true;                               // 5단계 조건: 성 점령
+    for (let i = 0; i < 8; i++) morningTown();                                   // 시민 입주 → 병영/사격장 전직
+    for (const c of npcs.filter(x => x.promote)) setRole(c, c.promote.to);
+    const sm = smiths()[0];
+    if (sm) { for (const id in sm.userData.stock) sm.userData.stock[id] += 2; refreshRack(sm); }
+    for (const e of enemies.slice()) removeEnemy(e);
+    healPlayer(pMaxHp()); fireHp = fireMax();
+    const need = CFG.STAGE_GATES[n] ? CFG.STAGE_GATES[n].day : 1;
+    wave.day = 0; wave.bossLeft = 0; chapterCleared = false;
+    gameMin = (Math.max(need, 4) - 1) * 1440 + 8 * 60; lastWarnDay = dayNow() - 1; lastRespawnDay = dayNow();
+    tut.done = true; player.position.set(0, 0, CFG.HALL_RADIUS[n - 1] + 5);
+    updateHud(); refreshTech && refreshTech();
+    toast(`DEBUG start: Stage ${n} - ${npcs.length} people, ${builtBuildings('house').length} homes, day ${dayNow()}`);
+  }
   function debugBoss() { debugSetup(); gameMin = (CFG.BOSS_DAY - 1) * 1440 + 21 * 60 + 40; }   // Day 7 21:40 → 곧 보스 등장
   addEventListener('keydown', e => { if (e.shiftKey && e.code === 'KeyB') debugSetup(); if (e.shiftKey && e.code === 'KeyN') debugBoss(); });
   if (/[?&]debug/.test(location.search)) {

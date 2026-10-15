@@ -351,3 +351,4 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 
 #trainBar { position: fixed; top: 124px; left: 50%; transform: translateX(-50%); z-index: 22; gap: 8px; } #trainBar button { font: inherit; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 14px; border: 2px solid #c8923a; background: rgba(40, 28, 16, .88); color: #ffe7a8; }
 #trainBar { flex-wrap: wrap; justify-content: center; max-width: 92vw; } #trainBar button { font-size: 12px; padding: 7px 10px; }
+.dbgStart { margin-top: 12px; border-top: 1px solid #5a4630; padding-top: 8px; font-size: 13px; color: #cdb88f; } .dbgStart summary { cursor: pointer; text-align: center; } .dbgStart .tbtns { margin-top: 8px; } .dbgStart select { font: inherit; padding: 7px; border-radius: 8px; }

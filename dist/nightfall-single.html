@@ -364,6 +364,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 
 #trainBar { position: fixed; top: 124px; left: 50%; transform: translateX(-50%); z-index: 22; gap: 8px; } #trainBar button { font: inherit; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 14px; border: 2px solid #c8923a; background: rgba(40, 28, 16, .88); color: #ffe7a8; }
 #trainBar { flex-wrap: wrap; justify-content: center; max-width: 92vw; } #trainBar button { font-size: 12px; padding: 7px 10px; }
+.dbgStart { margin-top: 12px; border-top: 1px solid #5a4630; padding-top: 8px; font-size: 13px; color: #cdb88f; } .dbgStart summary { cursor: pointer; text-align: center; } .dbgStart .tbtns { margin-top: 8px; } .dbgStart select { font: inherit; padding: 7px; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -398,7 +399,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 <div id="repPanel" style="display:none"><div class="scard2"><h3>Balance report</h3><p class="jhint">Copy this and send it along when something felt too easy or too hard.</p><textarea id="repText" readonly rows="12" style="width:100%;box-sizing:border-box;font:11px/1.35 monospace;background:#17120d;color:#e8dcc4;border:1px solid #6b5a3a;border-radius:8px;padding:6px"></textarea><div class="tbtns"><button id="repCopy">Copy</button><button id="repClose">Close</button></div></div></div>
 <div id="treePanel"><div class="scard2 tree"><h3>Hero skills</h3><p class="jhint" id="treeHead"></p><div id="treeCols"></div><div class="tbtns"><button id="treeClose">Close</button></div></div></div>
 <div id="achPanel"><div class="scard2"><h3>Achievements</h3><p id="achCount"></p><div id="achList"></div><div class="tbtns"><button id="achClose">Close</button></div></div></div>
-<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div></div></div>
+<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div><details class="dbgStart"><summary>Debug start</summary><div class="tbtns"><select id="startStage"><option value="1">Stage 1 · Camp</option><option value="2">Stage 2 · Wooden Town</option><option value="3">Stage 3 · Stone Fortress</option><option value="4">Stage 4 · Walled City</option><option value="5">Stage 5 · Seat of Power</option></select><button id="startDbg">New game at stage</button></div><p class="shint">Builds every structure, fills the population and meets the stage requirements.</p></details></div></div>
 <div id="setPanel"><div class="scard2"><h3>Settings</h3>
   <label>Music<input type="range" id="setMusic" min="0" max="100"></label>
   <label>Sound effects<input type="range" id="setSfx" min="0" max="100"></label>
@@ -10112,6 +10113,41 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     updateHud();
     toast('DEBUG: Day 7 17:30 - defenses, town, and troops ready');
   }
+  // 디버그: 새 게임을 n단계에서 시작한다. 단계 조건(건물·성벽·인구·점령·날짜)을 모두 채우고 능력도 고른다 (시작 화면의 Debug start)
+  function debugFinishAll() {
+    for (const b of blueprints.slice()) {
+      blueprints.splice(blueprints.indexOf(b), 1); scene.remove(b);
+      if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
+      else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
+    }
+  }
+  function debugJump(n) {
+    n = Math.max(1, Math.min(CFG.STAGES.length, n | 0)); if (n < 2 || dead) return;
+    res.wood += 4000; res.stone += 4000; res.iron += 600; res.food += 600;
+    if (!playerClass) setClass('warrior');
+    for (let st = 1; st <= n; st++) {
+      if (st > 1) setStage(st);
+      if (!perks[st]) choosePerk(st, CFG.PERKS[st][0].id);
+      let guard = 0;
+      while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].stage || stage >= CFG.DESIGN[designTier].stage) && guard++ < 6) designDefense();
+      debugFinishAll();
+      for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && CFG.TOWN_GROUPS[townStage].stage <= stage && g < 10; g++) designTown(); debugFinishAll(); }
+    }
+    if (n >= 4) story.cleared.legionfort = true;                                 // 4단계 조건: 거점 점령
+    if (n >= 5) story.cleared.legioncastle = true;                               // 5단계 조건: 성 점령
+    for (let i = 0; i < 8; i++) morningTown();                                   // 시민 입주 → 병영/사격장 전직
+    for (const c of npcs.filter(x => x.promote)) setRole(c, c.promote.to);
+    const sm = smiths()[0];
+    if (sm) { for (const id in sm.userData.stock) sm.userData.stock[id] += 2; refreshRack(sm); }
+    for (const e of enemies.slice()) removeEnemy(e);
+    healPlayer(pMaxHp()); fireHp = fireMax();
+    const need = CFG.STAGE_GATES[n] ? CFG.STAGE_GATES[n].day : 1;
+    wave.day = 0; wave.bossLeft = 0; chapterCleared = false;
+    gameMin = (Math.max(need, 4) - 1) * 1440 + 8 * 60; lastWarnDay = dayNow() - 1; lastRespawnDay = dayNow();
+    tut.done = true; player.position.set(0, 0, CFG.HALL_RADIUS[n - 1] + 5);
+    updateHud(); refreshTech && refreshTech();
+    toast(`DEBUG start: Stage ${n} - ${npcs.length} people, ${builtBuildings('house').length} homes, day ${dayNow()}`);
+  }
   function debugBoss() { debugSetup(); gameMin = (CFG.BOSS_DAY - 1) * 1440 + 21 * 60 + 40; }   // Day 7 21:40 → 곧 보스 등장
   addEventListener('keydown', e => { if (e.shiftKey && e.code === 'KeyB') debugSetup(); if (e.shiftKey && e.code === 'KeyN') debugBoss(); });
   if (/[?&]debug/.test(location.search)) {
@@ -11735,15 +11771,16 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function bootGame() {
     const d = readSave(), carry = readCarry();
-    if ((d || carry) && (!DEBUG || /[?&]load/.test(location.search))) {
+    if (!DEBUG || /[?&]load/.test(location.search)) {
       const p = document.getElementById('startPanel'); uiPause = true;
-      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Welcome back';
+      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Defend the settlement through the night';
       document.getElementById('startContinue').style.display = d ? '' : 'none';
       const ngBtn = document.getElementById('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
       p.style.display = 'flex';
       const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
       document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
       document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
+      document.getElementById('startDbg').addEventListener('click', () => { const n = +document.getElementById('startStage').value; ngLevel = 0; p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); });
       ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); });
       return;
     }

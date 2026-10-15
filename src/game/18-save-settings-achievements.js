@@ -196,15 +196,16 @@
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function bootGame() {
     const d = readSave(), carry = readCarry();
-    if ((d || carry) && (!DEBUG || /[?&]load/.test(location.search))) {
+    if (!DEBUG || /[?&]load/.test(location.search)) {
       const p = document.getElementById('startPanel'); uiPause = true;
-      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Welcome back';
+      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Defend the settlement through the night';
       document.getElementById('startContinue').style.display = d ? '' : 'none';
       const ngBtn = document.getElementById('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
       p.style.display = 'flex';
       const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
       document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
       document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
+      document.getElementById('startDbg').addEventListener('click', () => { const n = +document.getElementById('startStage').value; ngLevel = 0; p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); });
       ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); });
       return;
     }
