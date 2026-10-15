@@ -63,7 +63,8 @@
     } else if (kind === 'pen') { g.userData.sheep = penModel(add, g.userData.seed, (o) => g.add(o));
     } else if (kind === 'windmill') { windmillModel(add, g);
     } else if (kind === 'infirmary') { infirmaryModel(add);
-    } else if (kind === 'monument') { monumentModel(add);
+    } else if (kind === 'monument') { monumentModel(add, g);
+    } else if (kind === 'stable') { g.userData.sheep = stableModel(add, g.userData.seed, (o) => g.add(o));
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
       barracksModel(add);
     } else if (kind === 'range' && sm) {
@@ -210,6 +211,7 @@
       if (cornerLit[t]) continue; cornerLit[t] = true;
       const h = CFG.DESIGN[t].half - 0.4; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addCornerLamp(sx * h, sz * h);
     }
+    if (stage >= 5) for (const g of gateWaypoints) if (g.r >= 25 && !g.house) g.house = gatehouseModel(null, g);      // 5단계: 둘째·셋째 성벽의 성문에 문루
   }
   // 성문 조명: 문마다 실제 점광원 + 바닥에 퍼지는 따뜻한 빛 웅덩이 (밤에 문 앞이 충분히 밝도록)
   const haloMat = (() => {
@@ -435,7 +437,7 @@
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument' };
+  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument', stable: 'Stables' };
   // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
