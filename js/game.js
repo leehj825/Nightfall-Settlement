@@ -2556,6 +2556,7 @@
     return new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false, fog: false });
   })();
   function applyGear(n) {                         // 역할과 보유 장비에 맞춰 손에 쥔 무기 메쉬를 바꾼다
+    syncClassRole(n);
     if (n.rig.setModel) { const k = modelKeyFor(n.role, n.rig.seed || 0, false); if (k !== n.rig.model) n.rig.setModel(k); n.baseColor = 0xffffff; n.mat.color.set(0xffffff); }       // 직업이 바뀌면 모델도 바뀐다 (시민 → 병사)
     const cls = n.role === 'melee' ? (n.cls || 'sword') : null;
     n.rig.brawl = n.role === 'citizen';
@@ -2766,7 +2767,7 @@
   // ---------- 주민 카드: 주민을 누르면 이름, 직업, 성격, 기분, 하는 일을 보여 준다 ----------
   const ncEl = document.getElementById('npcCard'); let cardNpc = null, cardT = 0, cardBackWb = -1;       // cardBackWb: 전투단 창에서 열었으면 닫을 때 그 창으로 돌아간다
   const ROLE_TITLE = { melee: 'Soldier', archer: 'Archer', citizen: 'Citizen' };
-  const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic'], CLS_INFO = { sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
+  const CLS_ORDER = ['sword', 'spear', 'greatsword', 'medic', 'archer'], CLS_INFO = { archer: 'Archer: shoots from range, weak up close', sword: 'Swordsman: wide sweep', greatsword: 'Great Swordsman: long two-handed blade, slow heavy cleaves and a spinning slash', spear: 'Spearman: long thrust, holds the line', medic: 'Medic: heals allies nearby, fights weakly' };
   const clsTitle = (n) => n.role === 'melee' ? n.mounted && ((n.cls || 'sword') === 'sword' || n.cls === 'spear') ? (n.cls === 'spear' ? 'Lancer' : 'Horseman') : { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[n.cls || 'sword'] : ROLE_TITLE[n.role];
   function renderCard() {
     const n = cardNpc;
@@ -2787,14 +2788,14 @@
       const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
-    { const cb = document.getElementById('ncClass'); cb.style.display = n.role === 'melee' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role === 'melee' ? '' : 'none'; for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === (n.cls || 'sword')); if (n.role === 'melee') rows.push(CLS_INFO[n.cls || 'sword']); }
+    { const cb = document.getElementById('ncClass'); cb.style.display = n.role !== 'citizen' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role !== 'citizen' ? '' : 'none'; const cur = n.role === 'archer' ? 'archer' : (n.cls || 'sword'); for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === cur); if (n.role !== 'citizen') rows.push(CLS_INFO[cur]); }
     { const sb = document.getElementById('ncWarband'); sb.style.display = isSoldier(n) ? '' : 'none'; sb.textContent = n.warband >= 0 ? `${warbandName(n.warband)} (${warbandMembers(n.warband).length}/${CFG.WARBAND.SIZE}) - tap to change` : 'No warband - tap to join one'; if (isSoldier(n) && n.warband >= 0) sb.style.boxShadow = `0 2px 0 #a8480f, inset 0 0 0 3px ${warbandColor(n.warband)}`; }
     const jb = document.getElementById('ncJob'); jb.style.display = n.role === 'citizen' ? '' : 'none'; jb.textContent = `Job: ${PREF_LABEL(n.pref)} (tap to change)`;
     document.getElementById('ncInfo').innerHTML = rows.map(r => `<li>${r}</li>`).join('');
   }
   function openNpcCard(n) { cardBackWb = -1; cardNpc = n; renderCard(); ncEl.style.display = 'flex'; Snd.play('click'); }
-  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.cls || 'sword') + 1) % CLS_ORDER.length]); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
-  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role === 'melee') { setClassFor(cardNpc, c); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
+  document.getElementById('ncClass').addEventListener('click', () => { if (cardNpc && cardNpc.role !== 'citizen') { setClassFor(cardNpc, CLS_ORDER[(CLS_ORDER.indexOf(cardNpc.role === 'archer' ? 'archer' : (cardNpc.cls || 'sword')) + 1) % CLS_ORDER.length]); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
+  document.getElementById('ncPick').addEventListener('click', e => { const c = e.target.dataset && e.target.dataset.cls; if (c && cardNpc && cardNpc.role !== 'citizen') { setClassFor(cardNpc, c); renderCard(); toast(`${cardNpc.name} is now a ${clsTitle(cardNpc)}${cardNpc.escort ? ' for this journey' : ' at home'}`); } });
   document.getElementById('ncWarband').addEventListener('click', () => { if (cardNpc && isSoldier(cardNpc)) { if (!cycleWarband(cardNpc)) toast('All warbands are full'); renderCard(); } });
   document.getElementById('ncJob').addEventListener('click', () => { if (cardNpc && cardNpc.role === 'citizen') { nextPref(cardNpc); renderCard(); } });
   function closeNpcCard() { cardNpc = null; ncEl.style.display = 'none'; if (cardBackWb >= 0) { const i = cardBackWb; cardBackWb = -1; openWbPanel(i); } }
@@ -2831,13 +2832,20 @@
   function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length + CFG.WARBAND.CAP_YARD * builtBuildings('trainyard').length; }
   // 병사 직업(class)은 두 개다: 마을에서 쓰는 직업(clsHome)과 원정에서 쓰는 직업(clsTrip, 없으면 마을 직업과 같다). n.cls 는 지금 쓰는 직업이다.
   // 출발할 때 n.cls = 원정 직업, 돌아오면 n.cls = 마을 직업. 원정 중에 카드에서 바꾸면 원정 직업만, 마을에서 바꾸면 마을 직업만 바뀐다.
-  function clsName(c) { return { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[c] || 'Swordsman'; }
-  function homeCls(n) { return n.clsHome || n.cls || 'sword'; }
+  // 궁수도 하나의 '직업'이다: 직업을 궁수로 바꾸면 병사의 역할(role)이 archer 로, 다른 직업으로 바꾸면 melee 로 바뀐다 (체력 비율·장비·숙련은 그대로). applyGear 가 매번 맞춰 준다
+  function syncClassRole(n) {
+    if (!n.clsSet || n.role === 'citizen') return;
+    const want = n.cls === 'archer' ? 'archer' : 'melee'; if (n.role === want) return;
+    const ratio = n.maxHp > 0 ? n.hp / n.maxHp : 1; n.role = want; n.archer = want === 'archer';
+    n.baseColor = ROLE[want].color; n.maxHp = npcMaxHp(want, n.trait); n.hp = Math.max(1, Math.round(n.maxHp * ratio)); n.mat.color.set(n.baseColor); n.labelText = ''; n.hold = null; n.target = null;
+  }
+  function clsName(c) { return { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic', archer: 'Archer' }[c] || 'Swordsman'; }
+  function homeCls(n) { return n.clsHome || (n.role === 'archer' ? 'archer' : n.cls) || 'sword'; }
   function tripCls(n) { return n.clsTrip || homeCls(n); }
-  function setClassFor(n, c) { if (n.escort) n.clsTrip = c; else { n.clsHome = c; n.cls = c; } if (n.escort) n.cls = c; applyGear(n); }
-  const CLS_LIST = ['sword', 'spear', 'greatsword', 'medic'];
-  function setHomeCls(n, c) { n.clsHome = c; if (!n.escort) { n.cls = c; applyGear(n); } }
-  function setTripCls(n, c) { n.clsTrip = c; if (n.escort) { n.cls = c; applyGear(n); } }
+  function setClassFor(n, c) { n.clsSet = true; n.clsHome = n.clsHome || homeCls(n); n.clsTrip = n.clsTrip || tripCls(n); if (n.escort) n.clsTrip = c; else { n.clsHome = c; n.cls = c; } if (n.escort) n.cls = c; applyGear(n); }
+  const CLS_LIST = ['sword', 'spear', 'greatsword', 'medic', 'archer'];
+  function setHomeCls(n, c) { n.clsSet = true; n.clsTrip = n.clsTrip || tripCls(n); n.clsHome = c; if (!n.escort) { n.cls = c; applyGear(n); } }
+  function setTripCls(n, c) { n.clsSet = true; n.clsHome = n.clsHome || homeCls(n); n.clsTrip = c; if (n.escort) { n.cls = c; applyGear(n); } }
   function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
   function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   // 원정에 데려가는 전투단: 시대에 따라 최대 1(시대 1) / 2(시대 2) / 3(시대 3)개. 다시 누르면 뺀다
@@ -3076,8 +3084,8 @@
     const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
     const rows = m.map((n, k) => { const ix = npcs.indexOf(n);
       return `<li data-n="${ix}"><div class="wr1"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></div>
-      <div class="wr2">${n.role === 'melee' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${canMount(n) && bannersOpen() ? `<button class="wbact" data-act="mount" data-ix="${ix}">${n.mounted ? 'Dismount' : 'Mount'}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move to…</button>`}</div></li>`; }).join('');
-    const mel = m.filter(n => n.role === 'melee'), uni = (f) => mel.length && mel.every(n => f(n) === f(mel[0])) ? clsName(f(mel[0])) : 'Mixed';
+      <div class="wr2">${n.role !== 'citizen' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${canMount(n) && bannersOpen() ? `<button class="wbact" data-act="mount" data-ix="${ix}">${n.mounted ? 'Dismount' : 'Mount'}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move to…</button>`}</div></li>`; }).join('');
+    const mel = m.filter(n => n.role !== 'citizen'), uni = (f) => mel.length && mel.every(n => f(n) === f(mel[0])) ? clsName(f(mel[0])) : 'Mixed';
     const bulk = mel.length > 1 ? `<div class="wbulk"><button class="wbact" data-bulk="home">All at home: ${uni(homeCls)} &#8594;</button><button class="wbact" data-bulk="trip">All journey: ${uni(tripCls)} &#8594;</button></div>` : '';
     wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
       <div class="wsw">${sw}</div>${bulk}<ul class="wlist">${rows}</ul>
@@ -3098,9 +3106,9 @@
     { const d = t.closest('[data-dest]'); if (d && wbMoveFor >= 0) { const n = npcs[wbMoveFor], to = +d.dataset.dest; wbMoveFor = -1; if (n && !n.escort && to !== n.warband) { const mem = warbandMembers(to).filter(x => !x.escort);
           if (warbandMembers(to).length < CFG.WARBAND.SIZE) { n.warband = to; toast(`${n.name} joins ${warbandName(to)}`); } else if (mem.length) { const o = mem[mem.length - 1]; o.warband = n.warband; n.warband = to; toast(`${n.name} and ${o.name} swap places`); } else toast('That band is full'); }
         if (n) { n.labelText = ''; } wbBarHtml = ''; renderWbBar(); const left = warbandMembers(i).length; if (!left) closeWbPanel(); else renderWbPanel(); e.stopPropagation(); return; } }
-    { const bk = t.dataset && t.dataset.bulk; if (bk) { const mel = warbandMembers(i).filter(n => n.role === 'melee'); if (mel.length) { const f = bk === 'home' ? homeCls : tripCls, nx = CLS_LIST[(CLS_LIST.indexOf(f(mel[0])) + 1) % CLS_LIST.length]; for (const n of mel) { if (bk === 'home') setHomeCls(n, nx); else setTripCls(n, nx); } toast(`${wbi(i).name}: all ${bk === 'home' ? 'at home' : 'on journeys'} are ${clsName(nx)}s`); } renderWbPanel(); e.stopPropagation(); return; } }
+    { const bk = t.dataset && t.dataset.bulk; if (bk) { const mel = warbandMembers(i).filter(n => n.role !== 'citizen'); if (mel.length) { const f = bk === 'home' ? homeCls : tripCls, nx = CLS_LIST[(CLS_LIST.indexOf(f(mel[0])) + 1) % CLS_LIST.length]; for (const n of mel) { if (bk === 'home') setHomeCls(n, nx); else setTripCls(n, nx); } toast(`${wbi(i).name}: all ${bk === 'home' ? 'at home' : 'on journeys'} are ${clsName(nx)}s`); } renderWbPanel(); e.stopPropagation(); return; } }
     if (t.dataset && t.dataset.act) { const n = npcs[+t.dataset.ix];
-      if (n) { if (t.dataset.act === 'home' && n.role === 'melee') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role === 'melee') cycleTripCls(n); else if (t.dataset.act === 'mount') { toggleMount(n); renderWbPanel(); } else if (t.dataset.act === 'band' && !n.escort) { wbMoveFor = npcs.indexOf(n); } renderWbPanel(); }
+      if (n) { if (t.dataset.act === 'home' && n.role !== 'citizen') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role !== 'citizen') cycleTripCls(n); else if (t.dataset.act === 'mount') { toggleMount(n); renderWbPanel(); } else if (t.dataset.act === 'band' && !n.escort) { wbMoveFor = npcs.indexOf(n); } renderWbPanel(); }
       e.stopPropagation(); return; }
     if (t.id === 'wbClose') { closeWbPanel(); }
     else if (t.id === 'wbBanner') { const b = cycleBanner(i); toast(b >= 0 ? `${warbandName(i)} joins the ${bannerName(b)}` : `${warbandName(i)} leaves its banner`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
@@ -4524,7 +4532,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.filter(n => !n.levy).map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, mounted: !!n.mounted, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.filter(n => !n.levy).map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, clsSet: !!n.clsSet, mounted: !!n.mounted, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -4579,7 +4587,7 @@
     if (sn.wbInfo) warbandInfo = sn.wbInfo.map(x => ({ ...x }));
     for (const d of sn.npcs) {
       const n = makeNpc(d.role, d.home, d.born, 0, { name: d.name, trait: d.trait, mood: d.mood, xp: d.xp, pref: d.pref, sick: d.sick }); n.vxp = d.vxp || 0; n.position.set(d.x, 0, d.z); n.hp = d.hp; n.px = d.x; n.pz = d.z;
-      n.cls = d.cls || 'sword'; n.clsHome = n.cls; if (d.mounted) { n.mounted = true; applyMount(n); } n.clsTrip = d.clsTrip || null; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
+      n.cls = d.cls || 'sword'; n.clsHome = n.cls; n.clsSet = !!d.clsSet; if (d.mounted) { n.mounted = true; applyMount(n); } n.clsTrip = d.clsTrip || null; { const wb = d.warband ?? d.squad; if (n.role !== 'citizen' && wb !== undefined && wb !== null) n.warband = wb; }       // 예전 저장(squad)도 읽는다
       if (d.gear) { n.gear = { armor: 'armor_none', ...d.gear }; applyGear(n); } else if (n.role === 'melee') applyGear(n);
       n.hungry = !!d.hungry;
       if (d.promoteTo) n.promote = { to: d.promoteTo, target: builtBuildings(d.promoteTo === 'melee' ? 'barracks' : 'range')[0] };

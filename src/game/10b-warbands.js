@@ -22,13 +22,20 @@
   function soldierCap() { return CFG.WARBAND.CAP_BASE + CFG.WARBAND.CAP_BARRACKS * builtBuildings('barracks').length + CFG.WARBAND.CAP_RANGE * builtBuildings('range').length + CFG.WARBAND.CAP_YARD * builtBuildings('trainyard').length; }
   // 병사 직업(class)은 두 개다: 마을에서 쓰는 직업(clsHome)과 원정에서 쓰는 직업(clsTrip, 없으면 마을 직업과 같다). n.cls 는 지금 쓰는 직업이다.
   // 출발할 때 n.cls = 원정 직업, 돌아오면 n.cls = 마을 직업. 원정 중에 카드에서 바꾸면 원정 직업만, 마을에서 바꾸면 마을 직업만 바뀐다.
-  function clsName(c) { return { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic' }[c] || 'Swordsman'; }
-  function homeCls(n) { return n.clsHome || n.cls || 'sword'; }
+  // 궁수도 하나의 '직업'이다: 직업을 궁수로 바꾸면 병사의 역할(role)이 archer 로, 다른 직업으로 바꾸면 melee 로 바뀐다 (체력 비율·장비·숙련은 그대로). applyGear 가 매번 맞춰 준다
+  function syncClassRole(n) {
+    if (!n.clsSet || n.role === 'citizen') return;
+    const want = n.cls === 'archer' ? 'archer' : 'melee'; if (n.role === want) return;
+    const ratio = n.maxHp > 0 ? n.hp / n.maxHp : 1; n.role = want; n.archer = want === 'archer';
+    n.baseColor = ROLE[want].color; n.maxHp = npcMaxHp(want, n.trait); n.hp = Math.max(1, Math.round(n.maxHp * ratio)); n.mat.color.set(n.baseColor); n.labelText = ''; n.hold = null; n.target = null;
+  }
+  function clsName(c) { return { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic', archer: 'Archer' }[c] || 'Swordsman'; }
+  function homeCls(n) { return n.clsHome || (n.role === 'archer' ? 'archer' : n.cls) || 'sword'; }
   function tripCls(n) { return n.clsTrip || homeCls(n); }
-  function setClassFor(n, c) { if (n.escort) n.clsTrip = c; else { n.clsHome = c; n.cls = c; } if (n.escort) n.cls = c; applyGear(n); }
-  const CLS_LIST = ['sword', 'spear', 'greatsword', 'medic'];
-  function setHomeCls(n, c) { n.clsHome = c; if (!n.escort) { n.cls = c; applyGear(n); } }
-  function setTripCls(n, c) { n.clsTrip = c; if (n.escort) { n.cls = c; applyGear(n); } }
+  function setClassFor(n, c) { n.clsSet = true; n.clsHome = n.clsHome || homeCls(n); n.clsTrip = n.clsTrip || tripCls(n); if (n.escort) n.clsTrip = c; else { n.clsHome = c; n.cls = c; } if (n.escort) n.cls = c; applyGear(n); }
+  const CLS_LIST = ['sword', 'spear', 'greatsword', 'medic', 'archer'];
+  function setHomeCls(n, c) { n.clsSet = true; n.clsTrip = n.clsTrip || tripCls(n); n.clsHome = c; if (!n.escort) { n.cls = c; applyGear(n); } }
+  function setTripCls(n, c) { n.clsSet = true; n.clsHome = n.clsHome || homeCls(n); n.clsTrip = c; if (n.escort) { n.cls = c; applyGear(n); } }
   function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
   function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   // 원정에 데려가는 전투단: 시대에 따라 최대 1(시대 1) / 2(시대 2) / 3(시대 3)개. 다시 누르면 뺀다
@@ -267,8 +274,8 @@
     const sw = WB_COLORS.map(c => `<button class="wbsw${c === info.color ? ' on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('');
     const rows = m.map((n, k) => { const ix = npcs.indexOf(n);
       return `<li data-n="${ix}"><div class="wr1"><b>${clsTitle(n)}</b> ${n.name} <span>${n.down ? 'Down' : `HP ${n.hp}/${n.maxHp}`}${vetLv(n) ? ' · vet ' + vetLv(n) : ''}</span></div>
-      <div class="wr2">${n.role === 'melee' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${canMount(n) && bannersOpen() ? `<button class="wbact" data-act="mount" data-ix="${ix}">${n.mounted ? 'Dismount' : 'Mount'}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move to…</button>`}</div></li>`; }).join('');
-    const mel = m.filter(n => n.role === 'melee'), uni = (f) => mel.length && mel.every(n => f(n) === f(mel[0])) ? clsName(f(mel[0])) : 'Mixed';
+      <div class="wr2">${n.role !== 'citizen' ? `<button class="wbact" data-act="home" data-ix="${ix}">At home: ${clsName(homeCls(n))}</button><button class="wbact" data-act="trip" data-ix="${ix}">Journey: ${clsName(tripCls(n))}</button>` : ''}${canMount(n) && bannersOpen() ? `<button class="wbact" data-act="mount" data-ix="${ix}">${n.mounted ? 'Dismount' : 'Mount'}</button>` : ''}${n.escort ? '' : `<button class="wbact" data-act="band" data-ix="${ix}">Move to…</button>`}</div></li>`; }).join('');
+    const mel = m.filter(n => n.role !== 'citizen'), uni = (f) => mel.length && mel.every(n => f(n) === f(mel[0])) ? clsName(f(mel[0])) : 'Mixed';
     const bulk = mel.length > 1 ? `<div class="wbulk"><button class="wbact" data-bulk="home">All at home: ${uni(homeCls)} &#8594;</button><button class="wbact" data-bulk="trip">All journey: ${uni(tripCls)} &#8594;</button></div>` : '';
     wbPanel.querySelector('.wcard').innerHTML = `<div class="whead"><i style="background:${info.color}"></i><b>${info.name}</b><button id="wbRename">Rename</button></div>
       <div class="wsw">${sw}</div>${bulk}<ul class="wlist">${rows}</ul>
@@ -289,9 +296,9 @@
     { const d = t.closest('[data-dest]'); if (d && wbMoveFor >= 0) { const n = npcs[wbMoveFor], to = +d.dataset.dest; wbMoveFor = -1; if (n && !n.escort && to !== n.warband) { const mem = warbandMembers(to).filter(x => !x.escort);
           if (warbandMembers(to).length < CFG.WARBAND.SIZE) { n.warband = to; toast(`${n.name} joins ${warbandName(to)}`); } else if (mem.length) { const o = mem[mem.length - 1]; o.warband = n.warband; n.warband = to; toast(`${n.name} and ${o.name} swap places`); } else toast('That band is full'); }
         if (n) { n.labelText = ''; } wbBarHtml = ''; renderWbBar(); const left = warbandMembers(i).length; if (!left) closeWbPanel(); else renderWbPanel(); e.stopPropagation(); return; } }
-    { const bk = t.dataset && t.dataset.bulk; if (bk) { const mel = warbandMembers(i).filter(n => n.role === 'melee'); if (mel.length) { const f = bk === 'home' ? homeCls : tripCls, nx = CLS_LIST[(CLS_LIST.indexOf(f(mel[0])) + 1) % CLS_LIST.length]; for (const n of mel) { if (bk === 'home') setHomeCls(n, nx); else setTripCls(n, nx); } toast(`${wbi(i).name}: all ${bk === 'home' ? 'at home' : 'on journeys'} are ${clsName(nx)}s`); } renderWbPanel(); e.stopPropagation(); return; } }
+    { const bk = t.dataset && t.dataset.bulk; if (bk) { const mel = warbandMembers(i).filter(n => n.role !== 'citizen'); if (mel.length) { const f = bk === 'home' ? homeCls : tripCls, nx = CLS_LIST[(CLS_LIST.indexOf(f(mel[0])) + 1) % CLS_LIST.length]; for (const n of mel) { if (bk === 'home') setHomeCls(n, nx); else setTripCls(n, nx); } toast(`${wbi(i).name}: all ${bk === 'home' ? 'at home' : 'on journeys'} are ${clsName(nx)}s`); } renderWbPanel(); e.stopPropagation(); return; } }
     if (t.dataset && t.dataset.act) { const n = npcs[+t.dataset.ix];
-      if (n) { if (t.dataset.act === 'home' && n.role === 'melee') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role === 'melee') cycleTripCls(n); else if (t.dataset.act === 'mount') { toggleMount(n); renderWbPanel(); } else if (t.dataset.act === 'band' && !n.escort) { wbMoveFor = npcs.indexOf(n); } renderWbPanel(); }
+      if (n) { if (t.dataset.act === 'home' && n.role !== 'citizen') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role !== 'citizen') cycleTripCls(n); else if (t.dataset.act === 'mount') { toggleMount(n); renderWbPanel(); } else if (t.dataset.act === 'band' && !n.escort) { wbMoveFor = npcs.indexOf(n); } renderWbPanel(); }
       e.stopPropagation(); return; }
     if (t.id === 'wbClose') { closeWbPanel(); }
     else if (t.id === 'wbBanner') { const b = cycleBanner(i); toast(b >= 0 ? `${warbandName(i)} joins the ${bannerName(b)}` : `${warbandName(i)} leaves its banner`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); }
