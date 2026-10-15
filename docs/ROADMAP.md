@@ -105,7 +105,7 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 
 | Today | What it becomes |
 |---|---|
-| **Ages** (Camp, Wooden Town, Stone Fortress) | The army tech tiers. Stage 1: forays only (one warband). Stage 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Stage 3: the campaign map, a siege workshop and companies (several warbands). |
+| **Stages** (Camp, Wooden Town, Stone Fortress, Walled City, Seat of Power) | The army tech tiers. Stage 1: forays only (one warband). Stage 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Stage 3: the campaign map, a siege workshop and companies (several warbands). |
 | **Village Plan / town stages** | New plan steps: a training yard (raises the soldier cap and veteran training), a siege workshop, stables later. They use the same outer ring and wall rules as the outer fields. |
 | **Journey (expeditions)** | Stays as the **foray** level: same zones, chests, timer and escort, but you bring a warband. The chapter expeditions become the first nodes on the campaign map, so story progress and relics unlock nodes. |
 | **Night raid defense** | Unchanged at its core. Attacked realms send revenge raids; neglected defense invites bigger ones. Warbands you take away weaken the village, so the plan is to keep at least one warband home or rely on towers and walls. |
