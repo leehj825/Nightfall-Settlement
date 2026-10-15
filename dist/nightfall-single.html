@@ -455,6 +455,7 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
   <button class="btn" id="actBtn">Gather<small>G</small></button>
   <button class="btn" id="ultBtn">Ultimate<small id="ultCd">E</small></button>
   <button class="btn" id="dashBtn">Dash<small>R</small></button>
+  <button class="btn" id="mountBtn" style="display: none"><span id="mountLbl">Mount</span><small>M</small></button>
   <button class="btn" id="jumpBtn">Jump<small>Space</small></button>
   <button class="btn" id="blockBtn">Block<small>Hold Shift</small></button>
   <button class="btn" id="atkBtn">Attack<small>F</small></button>
@@ -6301,6 +6302,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jump(); }
     if (e.code === 'KeyR' && !e.repeat) dash();
+    if (e.code === 'KeyM' && !e.repeat) toggleLeaderMount();
     if (e.code === 'KeyG' && !e.repeat) gather();
     if (e.code === 'KeyE' && !e.repeat) ultimate();
     if (e.code === 'KeyF' && !e.repeat) attack();
@@ -6331,11 +6333,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const scaleHp = (h) => Math.round((h * dm().hp + (dm().hp - 1) * 1.2) * 10) / 10;
   const hasPerk = (id) => Object.values(perks).includes(id);
   const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
-  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1) * (dashBonusT > 0 ? 1 + 0.25 * pl.st.vault : 1);
+  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1) * (dashBonusT > 0 ? 1 + 0.25 * pl.st.vault : 1) * leaderMountMul();
   const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0) + (pl.st.forage >= 3 ? 1 : 0) + (pl.st.forage >= 5 ? 1 : 0);
   const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1) * (hasPerk('bastion') ? 1.25 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
-  const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd) * (pl.st.stride && !enemyWithin(player.position.x, player.position.z, 20) ? 1 + 0.08 * pl.st.stride : 1);       // Long Stride: 적이 가까이 없을 때만
+  const spdMul = () => (playerMounted ? CFG.CAV.SPEED * (1 + 0.08 * pl.st.horsemaster) : 1) * (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd) * (pl.st.stride && !enemyWithin(player.position.x, player.position.z, 20) ? 1 + 0.08 * pl.st.stride : 1);       // Long Stride: 적이 가까이 없을 때만
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
@@ -6382,6 +6384,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 플레이어 채집: 버튼을 누르면 CFG.PLAYER_GATHER_TIME초 동안 들썩이며 진행 바가 차고, 이동하면 취소된다 (NPC와 같은 템포)
   let gathering = null;
   function gather() {
+    if (playerMounted) leaderDismount();
     if (dead || gathering) return;
     let best = null, bestD = GATHER_RANGE;
     for (const o of (exActive ? exObjs : obstacles)) {
@@ -7261,8 +7264,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     grp.position.set(gate.x, 0, gate.z); grp.rotation.y = Math.atan2(gate.nx, gate.nz); scene.add(grp); doormats.push(grp);
     return grp;
   }
+  let mountBtnT = 0;
   function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다. 기병은 말이 달리고 돌격 힘이 쌓인다. 깃발도 여기서 갱신
-    bannerFlagTick(t);
+    bannerFlagTick(t); leaderRideTick(t, dt); if ((mountBtnT -= dt) <= 0) { mountBtnT = 0.5; updateMountBtn(); }
     for (const n of npcs) {
       if (!n.horse) continue;
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
@@ -7417,6 +7421,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   bindBtn('hallBtn', () => openTech());
   bindBtn('atkBtn', attack);
   bindBtn('dashBtn', dash);
+  bindBtn('mountBtn', toggleLeaderMount);
   bindBtn('jumpBtn', jump);
   { const bb = document.getElementById('blockBtn'), off = () => { blockBtn = false; bb.classList.remove('held'); };         // 막기: 누르고 있는 동안
     bb.addEventListener('pointerdown', e => { e.preventDefault(); blockBtn = true; bb.classList.add('held'); });
@@ -8783,6 +8788,42 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     n.mounted = !n.mounted; applyMount(n); return true;
   }
   function trimMounts() { let extra = mountedCount() - mountCap(); for (const n of npcs) { if (n.mounted && !canMount(n)) { n.mounted = false; applyMount(n); } else if (extra > 0 && n.mounted) { n.mounted = false; applyMount(n); extra--; } } }
+  // ---------- 지휘관의 말: 마구간이 하나라도 있으면 5단계에서 주인공도 말을 탈 수 있다 (M 키 / Mount 버튼). 빨라지고 달려가며 치는 첫 일격이 세다. 채집하면 자동으로 내린다 ----------
+  let playerMounted = false, pHorse = null, pRider = null, pCharge = 0, pBonusT = 0;
+  const leaderCanRide = () => stage >= CFG.BANNER.STAGE && builtBuildings('stable').length > 0;
+  function leaderMountMul() { return playerMounted ? 1.05 + (pBonusT > 0 ? CFG.CAV.CHARGE * (1 + 0.25 * pl.st.horsemaster) : 0) : 1; }
+  function leaderRideApply() {
+    if (playerMounted && !pHorse) {
+      const horse = new THREE.Group(), body = horseModel(() => 0.7), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+    } else if (!playerMounted && pHorse) {
+      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); pHorse = pRider = null;
+    }
+    pCharge = 0; pBonusT = 0;
+  }
+  function leaderChargeStrike() { if (!playerMounted) return; if (pCharge > CFG.CAV.CHARGE_T) { pBonusT = 0.9; floatText('Charge!', player.position.x, 3.2, player.position.z); } pCharge = 0; }
+  function leaderDismount() { if (playerMounted) { playerMounted = false; leaderRideApply(); updateMountBtn(); } }
+  function toggleLeaderMount() {
+    if (dead) return;
+    if (!playerMounted && !leaderCanRide()) return toast(stage < CFG.BANNER.STAGE ? 'Horses come with Stage 5' : 'Build Stables to ride');
+    playerMounted = !playerMounted; gathering = null; leaderRideApply(); updateMountBtn(); toast(playerMounted ? 'Mounted' : 'Dismounted');
+  }
+  function updateMountBtn() {
+    const b = document.getElementById('mountBtn'); if (!b) return;
+    const show = leaderCanRide() || playerMounted; if (b.style.display !== (show ? '' : 'none')) b.style.display = show ? '' : 'none';
+    const l = playerMounted ? 'Dismount' : 'Mount'; if (document.getElementById('mountLbl').textContent !== l) document.getElementById('mountLbl').textContent = l;
+  }
+  function leaderRideTick(t, dt) {
+    if (dead && playerMounted) leaderDismount();
+    if (!playerMounted || !pHorse) return;
+    const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
+    const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
+    pBonusT = Math.max(0, pBonusT - dt);
+    const sw = Math.min(1, v / 6) * 0.55, ph = t * 11, legs = pHorse.userData.legs || [];
+    legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
+    pHorse.position.y = Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 6); pRider.position.y = 0.8 + pHorse.position.y;
+  }
+  let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------
   function bannerFlagTick(t) {
     const bearers = new Map();
@@ -9887,7 +9928,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: use the red Attack button (or press F) to attack'), 600); }
     if (dead || atkCd > 0 || dashT > 0 || blocking) return;
-    gathering = null;
+    gathering = null; leaderChargeStrike();
     if (weaponMode === 'bow') {
       playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
       later(playerAnim.hitIn, () => { if (dead) return; shake = Math.max(shake, 0.08); Snd.play('bow'); fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch)); });
@@ -12143,7 +12184,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   });
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 

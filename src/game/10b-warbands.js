@@ -98,6 +98,42 @@
     n.mounted = !n.mounted; applyMount(n); return true;
   }
   function trimMounts() { let extra = mountedCount() - mountCap(); for (const n of npcs) { if (n.mounted && !canMount(n)) { n.mounted = false; applyMount(n); } else if (extra > 0 && n.mounted) { n.mounted = false; applyMount(n); extra--; } } }
+  // ---------- 지휘관의 말: 마구간이 하나라도 있으면 5단계에서 주인공도 말을 탈 수 있다 (M 키 / Mount 버튼). 빨라지고 달려가며 치는 첫 일격이 세다. 채집하면 자동으로 내린다 ----------
+  let playerMounted = false, pHorse = null, pRider = null, pCharge = 0, pBonusT = 0;
+  const leaderCanRide = () => stage >= CFG.BANNER.STAGE && builtBuildings('stable').length > 0;
+  function leaderMountMul() { return playerMounted ? 1.05 + (pBonusT > 0 ? CFG.CAV.CHARGE * (1 + 0.25 * pl.st.horsemaster) : 0) : 1; }
+  function leaderRideApply() {
+    if (playerMounted && !pHorse) {
+      const horse = new THREE.Group(), body = horseModel(() => 0.7), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+    } else if (!playerMounted && pHorse) {
+      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); pHorse = pRider = null;
+    }
+    pCharge = 0; pBonusT = 0;
+  }
+  function leaderChargeStrike() { if (!playerMounted) return; if (pCharge > CFG.CAV.CHARGE_T) { pBonusT = 0.9; floatText('Charge!', player.position.x, 3.2, player.position.z); } pCharge = 0; }
+  function leaderDismount() { if (playerMounted) { playerMounted = false; leaderRideApply(); updateMountBtn(); } }
+  function toggleLeaderMount() {
+    if (dead) return;
+    if (!playerMounted && !leaderCanRide()) return toast(stage < CFG.BANNER.STAGE ? 'Horses come with Stage 5' : 'Build Stables to ride');
+    playerMounted = !playerMounted; gathering = null; leaderRideApply(); updateMountBtn(); toast(playerMounted ? 'Mounted' : 'Dismounted');
+  }
+  function updateMountBtn() {
+    const b = document.getElementById('mountBtn'); if (!b) return;
+    const show = leaderCanRide() || playerMounted; if (b.style.display !== (show ? '' : 'none')) b.style.display = show ? '' : 'none';
+    const l = playerMounted ? 'Dismount' : 'Mount'; if (document.getElementById('mountLbl').textContent !== l) document.getElementById('mountLbl').textContent = l;
+  }
+  function leaderRideTick(t, dt) {
+    if (dead && playerMounted) leaderDismount();
+    if (!playerMounted || !pHorse) return;
+    const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
+    const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
+    pBonusT = Math.max(0, pBonusT - dt);
+    const sw = Math.min(1, v / 6) * 0.55, ph = t * 11, legs = pHorse.userData.legs || [];
+    legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
+    pHorse.position.y = Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 6); pRider.position.y = 0.8 + pHorse.position.y;
+  }
+  let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------
   function bannerFlagTick(t) {
     const bearers = new Map();
