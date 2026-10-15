@@ -1,6 +1,6 @@
 # Banners and the host - plan
 
-Status: **phases 1 to 3 built (`nf-v144` to `nf-v152`)**. Unlocked at Stage 5 (`CFG.BANNER.STAGE`). Numbers live in `CFG.BANNER` and are guesses to tune after phone play.
+Status: **phases 1 to 3 built (`nf-v144` to `nf-v152`)**. Unlocked at Stage 5 (`CFG.BANNER.STAGE`). Numbers live in `CFG.BANNER` and are guesses that get adjusted from the owner's phone reports.
 
 ## Terms
 - **Banner**: 2 to 3 warbands under one standard (Dragon, Griffin, Hart). Up to 3 banners.
@@ -24,4 +24,4 @@ Status: **phases 1 to 3 built (`nf-v144` to `nf-v152`)**. Unlocked at Stage 5 (`
 - **Banner flags:** one soldier per banner (first warband's first member) carries a large flag in the banner colour (`bannerFlagTick`).
 
 ## Later (not built)
-- Cavalry-specific animations (the rider uses the standing clips), horse armour and gear, cavalry in the Training Field parade rows; retune all numbers from phone play.
+- Cavalry-specific animations (the rider uses the standing clips), horse armour and gear, cavalry in the Training Field parade rows.

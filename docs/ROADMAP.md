@@ -37,14 +37,13 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
 
 **Not done**
-- Banners and the host, extra unit types, audio, formations.
-- Tuning after phone testing (world performance, stage gates, raids, sieges, wounds and courage).
+- Training Yard, the endgame (final campaign flow and victory screen), extra unit types, audio, formations.
 - More building models: archery range, farm, gates, market and siege workshop; custom skinned characters.
 
-**Next steps, in order**
-1. **Phone tuning pass:** the owner has played the debug build on a phone; collect the findings and tune world performance, stage gates, raid and siege strength, wounds and courage, and the other guessed numbers (all in `js/config.js`).
-2. **Banners and the host:** phases 1 and 2 built in `nf-v144` and `nf-v145` (`BANNERS_PLAN.md`); next the Marshal skill extras, banner flags in the field and phone tuning.
-3. **Stage 5 town (nf-v147 done):** a last Village Plan step "Plan Seat of Power" builds a fountain plaza, a Muster Yard (banner flags) and two animal pens; the keep gets a stair and gold flags. nf-v149 adds a second step "Plan Great Works" (windmill with turning sails, infirmary, victory monument), a smaller Muster Yard in the third layer, walking sheep, and torch posts at every wall corner. nf-v150 adds gatehouses on the second and third wall gates, a Stables step with two walking horses, and monument pennants that rise for each realm you hold sites in. nf-v152 adds cavalry (mounted soldiers), the Marshal skill column and banner flags (see BANNERS_PLAN.md). nf-v155 adds a seated riding pose (`Anim._seat`), horse coats by soldier, saddle blankets in the warband colour, barding for lancers and a white armoured horse for the leader, two handcarts on the roads and villagers at the fountain (day only). nf-v156: `fixTightBuildings` moves lumber camps, quarries and the new Stage 5 buildings that overlap others or hug a wall, an Unstick button in Settings, far-away animation skipping, and real effects (windmill +4 food a morning, infirmary heals wounds a day faster, monument +3 courage a morning). Next: phone tuning from your play notes, then a Training Yard and the endgame.
+**Next steps, in order** (balance tuning is not a step: the owner plays on a phone all along and reports findings in chat, which are fixed as they arrive)
+1. **Stage 5 town (done):** a last Village Plan step "Plan Seat of Power" builds a fountain plaza, a Muster Yard (banner flags) and two animal pens; the keep gets a stair and gold flags. nf-v149 adds a second step "Plan Great Works" (windmill with turning sails, infirmary, victory monument), a smaller Muster Yard in the third layer, walking sheep, and torch posts at every wall corner. nf-v150 adds gatehouses on the second and third wall gates, a Stables step with two walking horses, and monument pennants that rise for each realm you hold sites in. nf-v152 adds cavalry (mounted soldiers), the Marshal skill column and banner flags (see BANNERS_PLAN.md). nf-v155 adds a seated riding pose (`Anim._seat`), horse coats by soldier, saddle blankets in the warband colour, barding for lancers and a white armoured horse for the leader, two handcarts on the roads and villagers at the fountain (day only). nf-v156: `fixTightBuildings` moves lumber camps, quarries and the new Stage 5 buildings that overlap others or hug a wall, an Unstick button in Settings, far-away animation skipping, and real effects (windmill +4 food a morning, infirmary heals wounds a day faster, monument +3 courage a morning). Next: the Training Yard and the endgame.
+2. **Banners and the host (done through `nf-v152`, see `BANNERS_PLAN.md`):** banners, host orders, army rally, cavalry, the leader's horse, the Marshal skill column and banner flags.
+3. **Training Yard** (raises the soldier cap, veteran training) and the **endgame** (final campaign flow, victory screen).
 4. **Models:** archery range, farm, gates, market, siege workshop; later custom skinned characters.
 5. **Polish:** audio, formations, cavalry and siege crews.
 
@@ -158,4 +157,3 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 ## Other backlog (smaller)
 - Custom character models (leader, soldiers, citizens, raiders) and more weapon/building models; the current skinned models are disabled and several kinds (houses, towers, gates, wolves, great sword, staff, armor) have none.
 - More captured animations as needed from `js/anims_lib.js` (all received Mixamo clips are already stored retargeted).
-- Tune balance numbers marked as guesses in the README (great sword skills, unarmed damage, citizen defense, block strength), using the owner's phone findings.

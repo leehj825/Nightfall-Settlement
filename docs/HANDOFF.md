@@ -44,7 +44,7 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - Citizens fighting back and the roaming day enemies are lightly tested.
 - Journey power requirements are scaled by `CFG.EXP_NEED_SCALE` (0.8, a guess) since power became warband-based; check on a real run.
 - Custom skinned character models are disabled. Houses, the Stage 2 hall, the Stage 3 to 5 keep, barracks, lumber camp, quarry and tower are detailed procedural models in `src/game/04b-models.js` (`houseModel` varies per lot from `userData.seed`). The archery range, farm, gates, wolves, great sword, staff and armour still have no custom model.
-- Needs tuning from phone play (numbers are still guesses): World v2 performance, the stage gates (3 homes / 3 citizens for Stage 2, 8 and 12 villagers for Stages 3 and 4), raid and siege strength, wounds and courage, the title screen.
+- Numbers are still guesses and get adjusted as the owner reports from phone play: World v2 performance, the stage gates, raid and siege strength, wounds and courage, banner and cavalry values.
 
 - **Gear slots**: `sword`, `great`, `spear`, `bow`, `armor` (`CFG.GEAR`); hero helpers `weaponDef(mode)`, `gearAtTier`; soldiers use `soldierWeaponDef(n)` (best of class slot and sword).
 - **Two classes per soldier**: `n.clsHome` (town) and `n.clsTrip` (journey, optional); `n.cls` is the active one, swapped on departure/return in `16-expeditions-story-journal.js`. Helpers `homeCls`, `tripCls`, `setClassFor` in `10b-warbands.js`.
@@ -57,10 +57,12 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - **Headless test tips:** call `__nf.pause(false)`, dismiss the tutorial coach and "Morning event" dialogs, set the clock with `setMin` and wait about 500 ms (`nowHour` only updates in the main loop), and run long scripts in the background. Camera views for screenshots: `__nf.camTest(dist, pitch, front)` with the player moved next to the building.
 
 ## Next steps (also in the roadmap)
-1. **Phone tuning pass:** collect the owner's findings from phone play, then tune the guessed numbers listed under "Known gaps" (all live in `js/config.js`).
-2. **Banners and the host:** phases 1 and 2 done in nf-v144 and nf-v145 (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, banner block in `10b-warbands.js`); next Marshal extras, banner flags in the field, phone tuning. Orders, raids, the campaign map (phases 1 to 4), realms, sieges and wounds/courage/levies are all done; see `docs/ROADMAP.md`.
-3. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
-4. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
+Balance tuning is **not** a step: the owner plays the debug build on a phone all along and reports problems in chat (blocked paths, layout, performance, balance). Fix them as they come, and keep numbers in `js/config.js`.
+1. **Banners and the host: done through nf-v152** (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, `CFG.CAV`, banner, cavalry and leader-horse blocks in `10b-warbands.js`; Marshal column in `08-enemies.js`). Orders, raids, the campaign map, realms, sieges and wounds/courage/levies are done too; see `docs/ROADMAP.md`.
+2. **Stage 5 town: done through nf-v156** (plaza, muster yard, pens, windmill, infirmary, monument, stables, gatehouses, corner torches, outer homes, town life, path safety net).
+3. **Next:** a Training Yard (soldier cap, veteran training) and the endgame (final campaign flow, victory screen).
+4. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
+5. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
 
 ## Conventions worth remembering
 - `js/game.js` is generated; edit parts in `src/game/`. Parts run in file-name order; the first opens the IIFE, the last closes it. A part loaded early must not call `const` helpers from a later part at load time (use `function` declarations; see `10b-warbands.js`).
