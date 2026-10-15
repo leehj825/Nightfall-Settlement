@@ -46,3 +46,11 @@ The legs looked short and the chain skirt opened at the back when the legs split
 ## Longer legs and a stretching skirt (nf-v167)
 - Legs: `LEG_WARP` now puts the hip at 0.92 m (was 0.88) and the knee at 0.45 m, everything above moves up 12 cm; the leader is 1.92 m tall. `LEADER_JOINTS` in `js/rig.js` follows (`shY` 1.55, `hipY` 0.92, `kneeDY` 0.47, `neckY` 1.62).
 - Skirt (the two chain pelvis guards, `is_skirt()` in `tools/build_leader_parts.py`) is now soft skinned instead of rigid: every vertex follows the pelvis bone and, at the front, also the thigh bone on its side. The thigh share grows towards the front (z), towards the hem (y) and away from the centre line (x), so the back panel stays joined and the front pieces swing with each thigh and stretch. The numbers are in the 'skirt' block of the builder (`0.12` front blend, `0.08` centre blend, `h ** 0.8` hem curve).
+
+## Soft joints, second version (nf-v170)
+The first soft joints left many gaps at the waist and shoulders because the parts there rotate against each other. `softenLeaderJoints` (`js/rig.js`) now works in two steps: whole parts first, then vertices near a joint.
+- Shoulder pads (centre closer than 22 cm to the body line) follow the vest 65% and the shoulder bone 35%; the pauldron follows the vest 30%.
+- The belt and pouches follow the vest 75%.
+- The top of the chain skirt follows the vest (80% at the top, fading to 0 at half of the skirt height); the hem follows the thighs as before.
+- Joint ends blend up to 55% (radius 11 to 12 cm) at the elbow, hip and knee, up to 50% (radius 9 to 10 cm) at the shoulder top and hip top; the bottom of the vest follows the pelvis up to 60%.
+Only skin weights change; the part meshes are untouched. Numbers are in that function.

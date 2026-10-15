@@ -307,23 +307,41 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const unb64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
   // ----- Leader parts: close the gaps that open at the joints (the parts themselves are not changed) -----
   const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  function softenLeaderJoints(geo) {                        // vertices near a joint also follow the bone on the other side of it (0.5 at the joint, 0 at the radius), so a sleeve end stretches to the next piece
+  function softenLeaderJoints(geo, parts) {                  // closes the gaps at the joints by weights only (the parts themselves are not changed)
     const J = LEADER_JOINTS, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bi = n => BONES.indexOf(n), n = P.count;
+    const done = new Uint8Array(n), spine = bi('spine');
+    // 1. whole parts: the shoulder pads and the belt hang on the vest; the pauldron mostly on the vest; the top of the skirt on the vest, the hem on the thighs
+    let off = 0, sy0 = 1e9, sy1 = -1e9;
+    for (let i = 0; i < n; i++) if (SW.getX(i) < 0.99) { const y = P.getY(i); if (y < sy0) sy0 = y; if (y > sy1) sy1 = y; }
+    for (const part of parts) {
+      let cx = 0, cy = 0; for (let i = off; i < off + part.verts; i++) { cx += Math.abs(P.getX(i)); cy += P.getY(i); } cx /= part.verts; cy /= part.verts;
+      let ws = 0;
+      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.10) ws = cx < 0.22 ? 0.65 : 0.3;
+      else if (part.bone === 'hips' && SW.getX(off) >= 0.99 && cy >= J.hipY - 0.08) ws = 0.75;
+      if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; }
+      off += part.verts;
+    }
     for (let i = 0; i < n; i++) {
-      if (SW.getX(i) < 0.99) continue;                      // already soft (the skirt)
+      if (SW.getX(i) >= 0.99 || done[i]) continue;                                    // the skirt (already soft): add the vest at the top
+      const h = Math.max(0, Math.min(1, (sy1 - P.getY(i)) / (sy1 - sy0))), sp = 0.8 * (1 - smooth01(0, 0.5, h)), a = SW.getX(i), b = SW.getY(i);
+      SI.setZ(i, spine); SW.setX(i, a * (1 - sp)); SW.setY(i, b * (1 - sp)); SW.setZ(i, sp); done[i] = 1;
+    }
+    // 2. the other vertices near a joint also follow the bone on the other side (up to 0.5 at the joint, 0 at the radius)
+    for (let i = 0; i < n; i++) {
+      if (done[i]) continue;
       const b = BONES[SI.getX(i)], side = b.endsWith('L') ? 'L' : b.endsWith('R') ? 'R' : '', s = side === 'L' ? -1 : 1, x = P.getX(i), y = P.getY(i);
       const near = (jx, jy, r) => 1 - smooth01(0, r, Math.hypot(x - jx, y - jy));
       const E = [s * (J.shX + J.elX), J.shY - J.elDY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
       let nb = null, w = 0;
-      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.09) * 0.5, ws = near(s * J.shX, J.shY, 0.06) * 0.35; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
-      else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.09) * 0.5; }
-      else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.10) * 0.5, wh = near(s * J.hipX, J.hipY, 0.07) * 0.35; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
-      else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.10) * 0.5; }
-      else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis a little; neck: the collar follows the head a little
-        const wy = J.hipY + 0.10, ww = 0.55 * (1 - smooth01(wy - 0.04, wy + 0.10, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
+      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.11) * 0.55, ws = near(s * J.shX, J.shY, 0.10) * 0.5; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
+      else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.11) * 0.55; }
+      else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.12) * 0.55, wh = near(s * J.hipX, J.hipY, 0.09) * 0.5; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
+      else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.12) * 0.55; }
+      else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis; neck: the collar follows the head
+        const wy = J.hipY + 0.10, ww = 0.6 * (1 - smooth01(wy - 0.04, wy + 0.12, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
         if (ww >= wn) { nb = 'hips'; w = ww; } else { nb = 'head'; w = wn; }
       }
-      else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }        // belt and pouches follow the vest a little
+      else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }
       else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
       if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
     }
@@ -372,7 +390,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
       geo.setAttribute('skinWeight', new THREE.BufferAttribute(W, 4)); geo.setAttribute('skinIndex', new THREE.BufferAttribute(I, 4));
       geo.setIndex(new THREE.BufferAttribute(d.idx32 ? unb64(d.idx, Uint32Array) : unb64(d.idx, Uint16Array), 1));
-      if (key === 'leaderParts' && LEADER_SOFT) softenLeaderJoints(geo);
+      if (key === 'leaderParts' && LEADER_SOFT) softenLeaderJoints(geo, d.parts);
     }
     let tex = modelTexs[key];
     if (!tex) { tex = modelTexs[key] = new THREE.TextureLoader().load(d.tex); tex.flipY = true; tex.anisotropy = 2; }
