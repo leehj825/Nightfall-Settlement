@@ -9,7 +9,7 @@
   }
   const moodAll = (x) => npcs.forEach(n => { n.mood = Math.max(0, Math.min(100, n.mood + x)); });
   const dayNow = () => Math.floor(gameMin / 1440) + 1;
-  const tinkerTarget = () => CFG.LEVELED.flatMap(k => builtBuildings(k)).find(o => lvOf(o) < age);
+  const tinkerTarget = () => CFG.LEVELED.flatMap(k => builtBuildings(k)).find(o => lvOf(o) < stage);
   const EVENTS = [
     { id: 'merchant', title: 'Wandering Merchant', text: 'A cart rolls up to the gate. The merchant offers a few fair trades.', opts: [
       { label: 'Trade 12 Food for 4 Iron', ok: () => res.food >= 12, run: () => { res.food -= 12; res.iron += 4; return 'Deal done: +4 Iron'; } },
@@ -190,7 +190,7 @@
     let n = 0;
     for (const kind of CFG.LEVELED) for (const o of builtBuildings(kind)) {
       const lv = lvOf(o), cost = CFG.BUILD_UPGRADE[lv + 1];
-      if (n >= CFG.BUILD_UPGRADES_PER_MORNING || lv >= age || !cost) continue;
+      if (n >= CFG.BUILD_UPGRADES_PER_MORNING || lv >= stage || !cost) continue;
       if (!Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
       payCost(cost); setBuildingLevel(o, lv + 1); n++; report.upgraded++;
       dust(o.position.x, o.position.z); sfxAt('build', o.position.x, o.position.z); floatText(`${BUILDING_NAME[kind]} Lv${lv + 1}!`, o.position.x, 3.6, o.position.z);
@@ -260,14 +260,14 @@
     let n = 0;
     for (const h of builtBuildings('house')) {
       const lv = h.userData.level || 1, cost = CFG.HOUSE_UPGRADE[lv + 1];
-      if (n >= CFG.HOUSE_UPGRADES_PER_MORNING || lv >= age || !cost) continue;
+      if (n >= CFG.HOUSE_UPGRADES_PER_MORNING || lv >= stage || !cost) continue;
       if (!Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;     // 여유가 있을 때만 (비축분을 다 쓰지 않는다)
       payCost(cost); h.userData.level = lv + 1; setHouseModel(h); n++; report.upgraded++;
       dust(h.position.x, h.position.z); sfxAt('build', h.position.x, h.position.z); floatText('House upgraded!', h.position.x, 3.6, h.position.z);
     }
     if (n) updateHud();
   }
-  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + (hasPerk('steward') ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
+  const maxPop = () => (story.wide ? 2 : 0) + CFG.BASE_POP + builtBuildings('house').length + builtBuildings('well').length + ((hasPerk('steward') || hasPerk('crown')) ? 1 : 0) + prosBonus;      // 거주지 1채당 최대 인구 +1, 번영도가 높으면 이주민 추가
   const countRole = (r) => npcs.filter(n => n.role === r).length;
   const popEl = document.getElementById('popN'), popJobsEl = document.getElementById('popJobs');
   function updatePopUi() {
@@ -337,7 +337,7 @@
     const soldiers = npcs.filter(n => n.role !== 'citizen');
     let best = null;
     for (const [id, d] of Object.entries(CFG.GEAR)) {
-      if (!d.cost || (d.age || 1) > age || (d.req && !story[d.req]) || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
+      if (!d.cost || (d.stage || 1) > stage || (d.req && !story[d.req]) || (site.userData.stock[id] || 0) > 0 || npcs.some(n => n.carryGear === id) || !canPay(gearCost(d))) continue;
       const need = soldiers.some(n => (d.slot === 'armor' || d.slot === (n.role === 'melee' ? 'sword' : 'bow')) && d.tier > gearDef(n.gear[d.slot]).tier);
       if (need && (!best || d.tier < best.tier)) best = d;                         // 낮은 등급부터 차례로
     }
@@ -412,7 +412,7 @@
   const faceTo = (x, z) => { npc.face = Math.atan2(x - npc.position.x, z - npc.position.z); npc.rotation.y = npc.face; };
   // 집·병영이 생긴 뒤(2시대~)에는 모닥불(회관) 둘레가 아니라, 시민은 각자 집 앞 계단에, 병사는 병영·사격장 앞에 앉아 쉰다. 점심은 시장·우물 앞.
   function restSpot(n, purpose) {
-    if (age < 2) return null;
+    if (stage < 2) return null;
     const cits = npcs.filter(x => x.role === 'citizen'), sold = npcs.filter(x => x.role !== 'citizen');
     let b = null, slot = 0;
     if (n.role === 'citizen') {

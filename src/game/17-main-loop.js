@@ -41,7 +41,7 @@
 
     // 시간 / 조명
     { const h0 = (gameMin / 60) % 24, isNight = h0 >= 18 || h0 < 6;
-      gameMin += dt * MIN_PER_SEC * (exActive ? CFG.EXP_TIME_MULT : isNight ? (resting ? CFG.REST_SPEED : CFG.NIGHT_SPEED) : 1); }          // 원정 중에는 천천히, 밤에는 빠르게(쉬는 중에는 아주 빠르게)
+      gameMin += dt * MIN_PER_SEC * (exActive ? (exActive.training ? 0 : CFG.EXP_TIME_MULT) : isNight ? (resting ? CFG.REST_SPEED : CFG.NIGHT_SPEED) : 1); }          // 원정 중에는 천천히, 밤에는 빠르게(쉬는 중에는 아주 빠르게)
     const hour = (gameMin / 60) % 24;
     const night = hour >= 20 || hour < 5;
     const nf = nightFactor(hour);
@@ -59,7 +59,8 @@
     weatherStep(dt, night, hour); updateMark(t); updateStandard(t);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
-    if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; }                            // 버드아이 뷰에서는 안개가 멀리 밀려난다
+    if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; ambient.intensity += 0.2 * nf; }       // 버드아이 뷰에서는 안개가 멀리 밀려나고 밤에도 마을이 보인다
+    { const dF = camera.position.distanceTo(lookAt); scene.fog.near += dF; scene.fog.far += dF; }     // 안개는 카메라가 아니라 보는 곳(주인공) 기준: 멀리 물러나도 어두워지지 않는다
     { const g = Math.max(0, Math.min(1, (nf - 0.2) / 0.45)), fl = 0.94 + 0.06 * Math.sin(t * 9); windowGlow.color.setRGB(0.16 + 0.84 * g * fl, 0.16 + 0.62 * g * fl, 0.2 + 0.2 * g); lampGlow.color.copy(windowGlow.color); lampLevel = g * fl; updateGateLights(t); }      // 창문·가로등은 밤에 켜진다                      // 붉은 달의 밤에는 화면 전체가 붉게 물든다
     torch.intensity = nf * (exActive ? 3.4 : 2.4); torch.distance = exActive ? 34 : 18;   // 횃불: 밤에 켜지고 낮에 꺼짐 (원정 지역에서는 더 넓게)
     const hh = Math.floor(hour), mm = Math.floor(gameMin % 60);
@@ -73,7 +74,7 @@
     const waveDay = hour < 5 ? dayNo - 1 : dayNo;      // 자정이 지나도 같은 밤의 웨이브로 취급
     if (!dead && hour >= 18 && lastWarnDay !== dayNo) { lastWarnDay = dayNo; 
       if (dayNo === CFG.BOSS_DAY && !chapterCleared) { showWarning('WARNING: A massive threat approaches!'); bossShakeT = 3; }
-      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid! Prepare your defenses!` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
+      else if (isRaid(dayNo)) showWarning(`Night ${dayNo} - Blood Moon raid: ${realmDef(realmOfNight(dayNo)).short}` + (dayNo === CFG.BOSS_DAY - 1 && !chapterCleared ? ' (An even greater threat comes tomorrow night)' : ''));
       else showWarning(`Night ${dayNo} - A quiet night. Beasts prowl nearby`);
     }
     if (bossShakeT > 0) { bossShakeT -= dt; shake = Math.max(shake, 0.55); }       // 보스 경고: 강한 화면 흔들림
@@ -82,13 +83,13 @@
       const guards = npcs.filter(n => n.role === 'melee').length, gates = gateWaypoints.length;
       if (gates > guards) toast(`Only ${guards} soldier${guards === 1 ? '' : 's'} for ${gates} gates - some entrances will be unguarded tonight`);
     }
-    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); upgradeGates(); caravanMorning(dayNo); assignForeman(); campIncome(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); fishingTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
+    if (!dead && hour >= CFG.RESPAWN_HOUR && hour < 18 && lastRespawnDay !== dayNo) { lastRespawnDay = dayNo; respawnResources(); morningTown(); feedCitizens(); checkDepartures(); marketTrade(); upgradeHouses(); upgradeBuildings(); upgradeGates(); caravanMorning(dayNo); assignForeman(); campIncome(); holdsMorning(); checkStoryAll(); if (dayNo > 1) giveXp(20 + 5 * dayNo); endlessMilestone(dayNo); if (dayNo > 1 && wave.type === 'storm') unlockAch('storm'); if (dayNo > 1 && wave.type === 'hunt') unlockAch('hunt'); seasonTick(dayNo); fishingTick(dayNo); rollSickness(dayNo); updateProsperity(); if (dayNo > 1) { if (isRaid(dayNo + 1)) setTimeout(() => showWarning(`Warning: a raid comes tomorrow night - ${forecast(dayNo + 1)}`), 3000); showReport(dayNo); if (dayNo >= 2) storyIntro(); rollEvent(dayNo); merchantVisit(dayNo); } else report = freshReport(); if (hp < pMaxHp()) { healPlayer(pMaxHp()); toast('Morning has come. Your health is fully restored'); } saveCheckpoint(`Day ${dayNo} morning`); }
     updateEnemies(dt, night, Math.max(1, waveDay));
     const danger = enemies.some(e => !e.userData.sinking && (e.userData.boss || Math.hypot(e.position.x, e.position.z) < 34));
     peaceT = danger ? 0 : peaceT + dt; peaceful = peaceT > 2.5;
     if (peaceful && night && !exActive && !dead) {                                   // 병영·사격장 곁에서 병사와 함께 훈련하면 경험치를 얻는다
       const camp = builtBuildings('barracks').concat(builtBuildings('range')).find(b => Math.hypot(b.position.x - player.position.x, b.position.z - player.position.z) < b.userData.radius + 5);
-      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + age * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
+      if (camp && (sparT += dt) >= 6) { sparT = 0; giveXp(5 + stage * 2); floatText('Sparring: +XP', player.position.x, 3.0, player.position.z); }
     }
     nightActivities(dt, hour, night);
     updateNpcs(dt, hour, t);
@@ -203,8 +204,14 @@
 
     // 카메라 Lerp 추적
     const k = 1 - Math.exp(-6 * dt);
-    camera.position.lerp(goalPos(camGoal), k);
-    lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
+    if (titleMode) {                                                       // 시작 화면: 성 마을 둘레를 도는 카메라, 시간은 해질녘에 고정
+      titleAng += rawDt * 0.06; invincibleT = 1e9; gameMin = 3 * 1440 + 17 * 60 + 40;
+      for (const e of enemies.slice()) removeEnemy(e);
+      camera.position.set(Math.cos(titleAng) * 50, 21 + Math.sin(titleAng * 0.7) * 2.5, Math.sin(titleAng) * 50); lookAt.set(0, 3.5, 0);
+    } else {
+      camera.position.lerp(goalPos(camGoal), k);
+      lookAt.lerp(new THREE.Vector3(camFocus().x, bird ? 0 : LOOK_H + player.position.y, camFocus().z), k);
+    }
     { const gy = terrH(camera.position.x, camera.position.z) + 1.3; if (camera.position.y < gy) camera.position.y = gy; }
     camera.lookAt(lookAt);
     { // 활: 화살이 날아갈 쪽에 작은 조준 십자선 (적이 그 선 위에 있으면 붉게)

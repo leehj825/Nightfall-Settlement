@@ -1,5 +1,6 @@
   // ---------- 전투단 (Warband, 군대 확장 1단계): 병사를 최대 6명씩 묶는다. 전투단이 원정에 함께 나가는 단위다 ----------
   // (이 파일의 것은 모두 function 선언이다: 10-npcs 의 초기 병사 생성이 이 파일보다 먼저 실행되기 때문)
+  const inParty = (n) => escortBands.includes(n.warband) || !!n.levy;           // 원정에 가는 병사: 고른 전투단 + 소집한 농민병
   function isSoldier(n) { return n.role !== 'citizen'; }
   function warbandMembers(i) { return npcs.filter(n => isSoldier(n) && n.warband === i); }
   function warbandName(i) { return wbi(i).name; }
@@ -31,16 +32,16 @@
   function cycleHomeCls(n) { setHomeCls(n, CLS_LIST[(CLS_LIST.indexOf(homeCls(n)) + 1) % CLS_LIST.length]); }
   function cycleTripCls(n) { setTripCls(n, CLS_LIST[(CLS_LIST.indexOf(tripCls(n)) + 1) % CLS_LIST.length]); }
   // 원정에 데려가는 전투단: 시대에 따라 최대 1(시대 1) / 2(시대 2) / 3(시대 3)개. 다시 누르면 뺀다
-  const bandMax = () => age >= 3 ? 3 : age >= 2 ? 2 : 1;
+  const bandMax = () => (stage >= 3 ? 3 : stage >= 2 ? 2 : 1) + (hasPerk('warhost') ? 1 : 0);
   const bringing = (i) => escortBands.includes(i);
   function toggleBring(i) {
     if (bringing(i)) { escortBands = escortBands.filter(x => x !== i); return true; }
     const mx = bandMax();
     if (mx === 1) { escortBands = [i]; return true; }
-    if (escortBands.length >= mx) { toast(`You can bring ${mx} warbands at this age${age < 3 ? ' (more in the next age)' : ''}`); return false; }
+    if (escortBands.length >= mx) { toast(`Max ${mx} warband${mx > 1 ? 's' : ''} at this stage`); return false; }
     escortBands.push(i); return true;
   }
-  function soldierCount() { return npcs.filter(n => isSoldier(n) || n.promote).length; }
+  function soldierCount() { return npcs.filter(n => (isSoldier(n) && !n.levy) || n.promote).length + holdCount(); }
 
   // ---------- 전투단 이름·색(플레이어가 바꿀 수 있음)과 화면 아래 띠, 전투단 창 ----------
   let warbandInfo = null;                                       // [{ name, color }] - 저장됨. 처음 쓸 때 기본값으로 만든다
@@ -54,8 +55,8 @@
   function warbandOrder(i) { const o = i >= 0 && warbandInfo && warbandInfo[i] ? warbandInfo[i].order : null; return WB_ORDERS.includes(o) ? o : 'forward'; }
   function setWarbandOrder(i, o) { if (i < 0 || i >= CFG.WARBAND.MAX || !WB_ORDERS.includes(o)) return false; wbi(i); warbandInfo[i].order = o; for (const n of warbandMembers(i)) n.hold = null; return true; }
   const WB_ORDER_LABEL = { forward: 'Forward', stand: 'Stand firm', withdraw: 'Withdraw', charge: 'Charge' };
-  const WB_ORDER_HINT = { forward: 'Fight as usual: take on foes near the village or follow you.', stand: 'Hold the ground: fight only foes that come close, do not chase.', withdraw: 'Fall back: melee men do not engage; on a journey they stay by your side.', charge: 'Rush the foe: notice enemies from further away and chase them harder.' };
-  const orderOf = (n) => n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
+  const WB_ORDER_HINT = { forward: 'Fight as usual.', stand: 'Hold ground, no chasing.', withdraw: 'Fall back, no melee.', charge: 'Rush the foe.' };
+  const orderOf = (n) => exActive && courageOf() <= 0 && n && n.role === 'melee' ? 'withdraw' : n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
   // ---------- 지휘관의 깃발 (Leader's standard): 주인공(지휘관)의 곁에 있는 병사는 더 세게 치고 덜 맞는다. 지휘관이 쓰러지면 사라진다 ----------
   function standardRadius() { const S = CFG.STANDARD; return S.RADIUS * (1 + S.RANK_RADIUS * pl.st.standard) * (playerClass === 'commander' ? 1.25 : 1); }
   function standardMods(n) {
@@ -76,7 +77,7 @@
     }
     const m = standardRing.material; m.opacity += ((near ? 0.45 : 0) - m.opacity) * 0.1; standardRing.visible = m.opacity > 0.02;
     standardFlag.visible = !dead && !bird && m.opacity > 0.12; standardFlag.userData.cloth.rotation.y = Math.sin(t * 4) * 0.35;       // 깃발은 병사와 함께 싸울 때만 보인다 (마을에서는 숨김)
-    if (standardRing.visible) { standardRing.position.x = player.position.x; standardRing.position.z = player.position.z; standardRing.scale.setScalar(standardRadius()); }
+    if (standardRing.visible) { standardRing.position.x = player.position.x; standardRing.position.z = player.position.z; standardRing.position.y = groundY(player.position.x, player.position.z, standardRadius() * 0.6) + 0.1; standardRing.scale.setScalar(standardRadius()); }
   }
   // ---------- 적 표시 (Mark the foe): 가장 가까운(앞쪽 우선) 적에 표시를 달면 모든 전투단이 그 적을 먼저 노린다. 한 번 더 누르면 해제 ----------
   let markedFoe = null, markRing = null;
@@ -96,7 +97,7 @@
     const t = pickMarkTarget();
     if (!t) { if (markedFoe) { markedFoe = null; toast('Mark cleared'); } else toast('No foe in sight to mark'); }
     else if (t === markedFoe) { markedFoe = null; toast('Mark cleared'); }
-    else { markedFoe = t; toast(`Foe marked: ${FOE_NAME[t.userData.kind] || 'Foe'} - your warbands focus it`); Snd.play('click'); }
+    else { markedFoe = t; toast(`Marked: ${FOE_NAME[t.userData.kind] || 'Foe'}`); Snd.play('click'); }
     wbBarHtml = ''; renderWbBar();
   }
   function updateMark(t) {
@@ -139,8 +140,7 @@
       <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
       ${exActive ? '' : `<button id="wbBring" class="${bringing(i) ? 'on' : ''}">${bringing(i) ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>`}
       <div class="word">${WB_ORDERS.map(o => `<button class="wbord${o === warbandOrder(i) ? ' on' : ''}" data-ord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div><small>${WB_ORDER_HINT[warbandOrder(i)]}</small>
-      <small>Your standard: soldiers within ${Math.round(standardRadius())} paces of you deal +${Math.round((standardMods({ role: 'melee', position: player.position }).dmg - 1) * 100)}% damage and take ${Math.round((1 - standardMods({ role: 'melee', position: player.position }).guard) * 100)}% less.</small>
-      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers. At home sets the class in town; Journey sets the class on journeys. Tap a soldier's name to open their card; the card's Close button brings you back here.</small><button id="wbClose">Close</button>`;
+      <small>${m.length}/${CFG.WARBAND.SIZE} soldiers</small><button id="wbClose">Close</button>`;
   }
   function openWbPanel(i) { wbOpen = i; renderWbPanel(); wbPanel.style.display = 'flex'; Snd.play('click'); }
   function closeWbPanel() { wbOpen = -1; wbPanel.style.display = 'none'; }

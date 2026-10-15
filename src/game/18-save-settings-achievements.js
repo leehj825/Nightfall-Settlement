@@ -41,12 +41,12 @@
   setInterval(() => {
     if (settings.gfx === 'lo' && !settings.auto2 && saveReady && !uiPause && !eventOpen && !document.hidden && window.__nfFps) {          // 낮음에서도 느리면 한 단계 더: 가장 낮음
       fpsLo.push(window.__nfFps); if (fpsLo.length > 10) fpsLo.shift();
-      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics set to Lowest for old phones (change it in Settings)'); }
+      if (fpsLo.length === 10 && fpsLo.reduce((a, b) => a + b, 0) / 10 < 18) { settings.gfx = 'min'; settings.auto2 = true; saveSettings(); applySettings(); toast('Graphics: Lowest (Settings)'); }
     }
     if (settings.auto || settings.gfx === 'lo' || settings.gfx === 'min' || !saveReady || uiPause || eventOpen || document.hidden || !window.__nfFps) return;
     fpsLog.push(window.__nfFps); if (fpsLog.length > 8) fpsLog.shift();
     if (fpsLog.length === 8 && (/[?&]autoq/.test(location.search) || matchMedia('(pointer: coarse)').matches) && fpsLog.reduce((a, b) => a + b, 0) / 8 < 26) {
-      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics set to Low for smoother play (change it in Settings)');
+      settings.gfx = 'lo'; settings.auto = true; saveSettings(); applySettings(); toast('Graphics: Low (Settings)');
     }
   }, 1000);
   function saveSettings() { try { localStorage.setItem('nf_settings', JSON.stringify(settings)); } catch (e) {} }
@@ -81,19 +81,19 @@
   // 팁: 첫 며칠 동안 지금 할 일을 한 줄로 알려 주고, 처음 만나는 시스템은 한 번만 안내한다
   const tutEl = document.getElementById('tutor'), tutTxt = document.getElementById('tutorTxt');
   const TUT = [
-    { text: 'Gather wood: the village plan sets up a fence by itself and soldiers build it', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
+    { text: 'Gather wood for the fence', done: () => designTier > 0 || blueprints.length > 0 || obstacles.some(o => o.userData.type === 'fence') },
     { text: 'Survive the night near the campfire', done: () => gameMin >= 1440 + CFG.RESPAWN_HOUR * 60 },
-    { text: 'Defeat raiders to level up, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
-    { text: 'Keep gathering: the village plan adds town buildings once you can afford them', done: () => townStage > 0 },
-    { text: 'Raise your Age at the Town Hall (T)', done: () => age >= 2 },
+    { text: 'Defeat raiders, then pick an upgrade', done: () => pl.lvl >= 2 && pl.pend === 0 },
+    { text: 'Gather more to build the town', done: () => townStage > 0 },
+    { text: 'Advance your Stage at the Town Hall (T)', done: () => stage >= 2 },
   ];
   // ---------- 첫 날 길잡이: 핵심 요소를 하나씩 강조하며 설명한다 (한 번만, 설정의 Replay tips로 다시 볼 수 있다) ----------
   const COACH = [
-    { sel: '#joy', text: 'Drag the stick to move. Press the red Attack button to attack.' },
-    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather to collect wood and stone. Your villagers gather too.' },
-    { sel: '#planBtn', text: 'The Village Plan builds fences and houses by itself once you have the resources. Tap it to change what comes first.' },
-    { sel: '#hudBar', text: 'Your health, level and resources are up here. Tap it for the full stats.' },
-    { sel: null, text: 'Raiders come at night - stay near the fire with your soldiers. A big raid is announced a day ahead. Good luck, Keeper!' },
+    { sel: '#joy', text: 'Drag to move. The red button attacks.' },
+    { sel: '#actBtn', text: 'Next to a tree or rock, tap Gather.' },
+    { sel: '#planBtn', text: 'The Village Plan builds for you. Tap to change what comes first.' },
+    { sel: '#hudBar', text: 'Health, level, resources. Tap for stats.' },
+    { sel: null, text: 'Raiders come at night. Stay near the fire. Good luck, Keeper!' },
   ];
   let coachStep = -1, coachSeen = false; try { coachSeen = !!localStorage.getItem('nf_coach'); } catch (e) {}
   const coachEl = document.createElement('div'); coachEl.id = 'coach'; coachEl.innerHTML = '<p id="coachTxt"></p><div class="tbtns"><button id="coachNext">Next</button><button id="coachSkip">Skip</button></div>'; document.body.appendChild(coachEl);
@@ -129,8 +129,8 @@
     { id: 'night1', name: 'First Dawn', desc: 'Survive the first night', test: () => dayNow() >= 2 },
     { id: 'week', name: 'A Whole Week', desc: 'Reach Day 7', test: () => dayNow() >= 7 },
     { id: 'boss', name: 'Behemoth Slayer', desc: 'Defeat the Behemoth', test: () => chapterCleared },
-    { id: 'age2', name: 'Wooden Town', desc: 'Reach Age 2', test: () => age >= 2 },
-    { id: 'age3', name: 'Stone Keep', desc: 'Reach Age 3', test: () => age >= 3 },
+    { id: 'stage2', name: 'Wooden Town', desc: 'Reach Stage 2', test: () => stage >= 2 },
+    { id: 'stage3', name: 'Stone Keep', desc: 'Reach Stage 3', test: () => stage >= 3 },
     { id: 'pop10', name: 'Busy Streets', desc: 'Have 10 villagers', test: () => npcs.length >= 10 },
     { id: 'smith', name: 'Hammer and Anvil', desc: 'Build a Blacksmith', test: () => smiths().length > 0 },
     { id: 'armed', name: 'Armed to the Teeth', desc: 'Have 3 soldiers wearing armor', test: () => npcs.filter(n => n.role !== 'citizen' && n.gear.armor !== 'armor_none').length >= 3 },
@@ -141,6 +141,7 @@
     { id: 'winter', name: 'Through the Cold', desc: 'Live through a whole winter', test: () => CFG.SEASONS_ON && dayNow() >= CFG.SEASON_DAYS * 4 + 1 },
     { id: 'merchant', name: 'Good Business', desc: 'Trade with a travelling merchant' },
     { id: 'clear', name: 'Site Cleared', desc: 'Clear an expedition site completely' },
+    { id: 'won', name: 'Warlord Fallen', desc: 'Take the Iron Throne and win the campaign' },
     { id: 'escort', name: 'Never Alone', desc: 'Return from an expedition with an escort' },
     { id: 'camp1', name: 'Outpost', desc: 'Build a camp', test: () => Object.keys(story.camps).length >= 1 },
     { id: 'camp3', name: 'Supply Line', desc: 'Build 3 camps', test: () => Object.keys(story.camps).length >= 3 },
@@ -195,24 +196,39 @@
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function bootGame() {
     const d = readSave(), carry = readCarry();
-    if ((d || carry) && (!DEBUG || /[?&]load/.test(location.search))) {
-      const p = document.getElementById('startPanel'); uiPause = true;
-      document.getElementById('startInfo').textContent = d ? `Saved game: Day ${d.day} - ${new Date(d.ts).toLocaleString()}` : 'Welcome back';
-      document.getElementById('startContinue').style.display = d ? '' : 'none';
-      const ngBtn = document.getElementById('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
-      p.style.display = 'flex';
-      const begin = () => { p.style.display = 'none'; uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
-      document.getElementById('startContinue').addEventListener('click', () => { p.style.display = 'none'; uiPause = false; saveReady = true; loadSave(d); });
-      document.getElementById('startNew').addEventListener('click', () => { ngLevel = 0; begin(); });
-      ngBtn.addEventListener('click', () => { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); });
-      return;
+    let intent = null; try { intent = sessionStorage.getItem('nf_intent'); sessionStorage.removeItem('nf_intent'); } catch (e) { /* 저장소 사용 불가 */ }
+    const begin = () => { uiPause = false; clearSave(); saveReady = true; setTimeout(openDifficultyChoice, 700); saveCheckpoint('Day 1 start'); };
+    if (intent) {                                                          // 시작 화면에서 고른 항목을 새로 고친 깨끗한 세계에서 실행한다
+      if (intent === 'continue' && d) { saveReady = true; loadSave(d); return; }
+      if (intent === 'new') { ngLevel = 0; begin(); return; }
+      if (intent === 'ng' && carry) { ngLevel = carry.ng; Object.assign(pl, { lvl: carry.lvl, xp: 0, pend: 0 }); pl.st = Object.assign(ST0(), carry.st || {}); updateLvlUi(); begin(); return; }
+      if (/^dbg/.test(intent)) { const n = +intent.slice(3); ngLevel = 0; clearSave(); saveReady = true; if (n > 1) debugJump(n); else setTimeout(openDifficultyChoice, 700); saveCheckpoint(`Debug start: stage ${n}`); return; }
     }
+    if (!DEBUG || intent === 'title' || /[?&]load/.test(location.search)) { showTitle(d, carry); return; }
     saveReady = true;
     if (DEBUG) { setClass('warrior'); choosePerk(1, 'forager'); } else setTimeout(openDifficultyChoice, 700);
     saveCheckpoint('Day 1 start');
   }
-  updateAgeUi(); updateTownBtn(); updateRaidUi(8, 1);
+  function showTitle(d, carry) {                                           // 시작 화면: 뒤에는 완성된 5단계 성 마을이 천천히 돈다 (저장은 건드리지 않는다)
+    const p = document.getElementById('startPanel'), $ = (id) => document.getElementById(id);
+    $('startInfo').textContent = d ? `Saved game · Day ${d.day} · ${new Date(d.ts).toLocaleDateString()}` : 'Hold the night. Build the realm.';
+    $('startContinue').style.display = d ? '' : 'none';
+    const ngBtn = $('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
+    document.body.classList.add('titlemode'); p.style.display = 'flex';
+    const go = (intent) => { try { sessionStorage.setItem('nf_intent', intent); } catch (e) { /* ignore */ } p.classList.add('out'); setTimeout(() => location.reload(), 380); };
+    $('startContinue').addEventListener('click', () => go('continue'));
+    $('startNew').addEventListener('click', () => go('new'));
+    ngBtn.addEventListener('click', () => go('ng'));
+    $('startDbg').addEventListener('click', () => go('dbg' + $('startStage').value));
+    setTimeout(() => { titleMode = true; debugJump(5); }, 120);            // 화면이 먼저 뜬 뒤 배경 마을을 짓는다
+  }
+  document.getElementById('setMenu').addEventListener('click', () => {      // 설정 → 시작 화면으로 (아침마다 저장되며, 지금 저장도 시도한다)
+    if (!confirm('Return to the title screen? Your progress is saved each morning.')) return;
+    try { saveGame(); sessionStorage.setItem('nf_intent', 'title'); } catch (e) { /* ignore */ }
+    location.reload();
+  });
+  updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get age() { return age; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();

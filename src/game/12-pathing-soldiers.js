@@ -183,7 +183,7 @@
     let damaged = null, bs = Infinity;                                      // 가장 많이 다친 성벽부터 (거리는 조금만 반영)
     for (const o of obstacles) { if (o.userData.type !== 'fence' || o.userData.hp >= o.userData.maxHp || !unclaimed(o)) continue; const sc = o.userData.hp / o.userData.maxHp + Math.hypot(o.position.x - npc.position.x, o.position.z - npc.position.z) / 120; if (sc < bs) { bs = sc; damaged = o; } }
     if (damaged) return { kind: 'repair', target: damaged };
-    if (age >= CFG.UPGRADE_FENCE_AGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
+    if (stage >= CFG.UPGRADE_FENCE_STAGE && res.stone - reserved.stone >= CFG.FENCE_UPGRADE_STONE) {      // 돌 시대가 되면 일꾼이 알아서 목책을 돌 성벽으로 바꾼다
       const wf = nearestOf(obstacles, o => o.userData.type === 'fence' && o.userData.level === 'wood' && unclaimed(o));
       if (wf) { if (!fortifyTold) { fortifyTold = true; toast('Your workers will now rebuild the wooden fences in stone'); } return { kind: 'fortify', target: wf }; }
     }
@@ -208,7 +208,7 @@
   function taskValid(tk) {
     if (tk.kind === 'build') return blueprints.includes(tk.target);
     if (!obstacles.includes(tk.target)) return false;
-    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && age >= CFG.UPGRADE_FENCE_AGE;
+    if (tk.kind === 'fortify') return tk.target.userData.level === 'wood' && stage >= CFG.UPGRADE_FENCE_STAGE;
     return tk.kind !== 'repair' || tk.target.userData.hp < tk.target.userData.maxHp;
   }
   // 궁수 야간 AI: 모닥불 곁(안전지대)을 지키며 인식 거리 안의 가장 가까운 적에게 일정 간격으로 화살 발사 (돌진하지 않음)
@@ -236,6 +236,7 @@
       const ang = enemies.includes(foe) ? Math.atan2(foe.position.x - n.position.x, foe.position.z - n.position.z) : n.rotation.y;
       if (spear) {
         if (n.anim.variant === 'slash') { spawnSlash(n.position.x, n.position.z, ang, { ...base, slash: 1.3 }); sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.1, half: Math.PI / 2.8, rangeMul: 1.3, slash: 1.3 }); }
+        else if (n.anim.variant === 'lunge') sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 2.2, half: Math.PI / 8, rangeMul: 1.8, slash: 1.5, stun: 0.5 });
         else sectorHit(n.position.x, n.position.z, ang, false, { ...base, dmg: base.dmg * soldierMult(n) * 1.2, half: Math.PI / 9, rangeMul: 1.5, slash: 1.2 });
         return;
       }
@@ -330,7 +331,9 @@
     if (npc.escort) { escortStep(dt); return; }                       // 원정에 동행 중인 병사
     const isDay = hour >= 6 && hour < 18;
     if (npc.down) {
-      if (isDay) reviveNpc(); else { setLabel('Down'); return; }
+      if (isDay && !(npc.woundDays > 0)) { npc.woundDays = 0; npc.sitting = false; reviveNpc(); }
+      else if (npc.woundDays > 0) { if (!npc.sitting) { npc.sitting = true; npc.anim.revive(); } npc.anim.base('sit', 0); setLabel(`Wounded ${npc.woundDays}d`); return; }       // 부상병은 바닥에 눕지 않고 앉아서 쉰다
+      else { setLabel('Down'); return; }
     }
     npc.atkCd -= dt; npc.atkLock = (npc.atkLock || 0) - dt;
     npc.graceT -= dt;

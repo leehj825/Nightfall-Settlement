@@ -43,7 +43,7 @@
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, age, chapterCleared, lastWarnDay, lastRespawnDay,
+      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, stage, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -54,7 +54,7 @@
       }),
       bps: blueprints.map(b => ({ res: b.userData.res, bkind: b.userData.bkind, ...pos(b), rot: b.rotation.y })),
       gates: gateWaypoints.map(g => ({ ...g })),
-      npcs: npcs.map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
+      npcs: npcs.filter(n => !n.levy).map(n => ({ role: n.role, born: n.born, home: { ...n.home }, ...pos(n), hp: n.hp, name: n.name, trait: n.trait, mood: n.mood, gear: { ...n.gear }, hungry: n.hungry, xp: { ...n.xp }, pref: n.pref, sick: n.sick || 0, vxp: n.vxp || 0, cls: homeCls(n), clsTrip: n.clsTrip || null, warband: n.warband ?? null, promoteTo: n.promote ? n.promote.to : null })),
       boss: enemies.filter(e => e.userData.boss).map(e => ({ ...pos(e), hp: e.userData.hp })),
     };
   }
@@ -88,7 +88,7 @@
   function applySnapshot(sn) {
     clearWorld();
     if (exActive) { cleanupZone(); exActive = null; } exEnding = false; updateExUi(); closeJournal();
-    Object.assign(story, { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
+    Object.assign(story, { stats: [], roads: [], relics: {}, said: {}, log: [], intro: false, exps: 0, beacon: false, dawn: false, crown: false, hollow: false, finale: false, road: false, wide: false, eclipse: false, dusk: false, champs: 0, camps: {}, cleared: {}, tales: {}, taleDay: 0, ms: {}, campFx: [], holds: {}, clearedDay: {} }, JSON.parse(JSON.stringify(sn.story || {}))); setBeacon(!!story.beacon); rebuildCamps();
     rebuildRoads(); totalKills = sn.tk || 0; Object.assign(pl, { lvl: 1, xp: 0, pend: 0 }, sn.pl || {}); pl.st = Object.assign(ST0(), (sn.pl && sn.pl.st) || {}); updateLvlUi();
     gameMin = sn.gameMin; res.wood = sn.res.wood; res.stone = sn.res.stone; res.food = sn.res.food || 0; res.iron = sn.res.iron || 0; res.shard = sn.res.shard || 0;
     for (const k of Object.keys(perks)) delete perks[k]; Object.assign(perks, sn.perks || {});
@@ -96,10 +96,10 @@
     order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `O · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' }, sn.playerGear || {}); if (!(sn.playerGear && sn.playerGear.great)) playerGear.great = gearAtTier('great', gearDef(playerGear.sword).tier); if (!(sn.playerGear && sn.playerGear.spear)) playerGear.spear = gearAtTier('spear', gearDef(playerGear.sword).tier); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
-    designTier = sn.designTier; townStage = sn.townStage || 0; age = sn.age || 1; chapterCleared = sn.chapterCleared;
-    buildHall(); updateAgeUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
+    designTier = sn.designTier; townStage = sn.townStage || 0; stage = sn.stage || 1; chapterCleared = sn.chapterCleared;
+    buildHall(); updateStageUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
-    dead = false; fireAlive = true; flame.visible = true; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
+    dead = false; fireAlive = true; flame.visible = stage === 1; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
     dashBonusT = dashT = dashCd = invincibleT = ultCd = atkT = atkCd = 0; gathering = null; replenishCd = 0;
     for (const n of sn.nodes) { const o = n.t === 'wood' ? makeTree() : makeRock(); o.position.set(n.x, 0, n.z); o.rotation.y = n.rot; scene.add(o); obstacles.push(o); }
     for (const f of sn.fences) { const o = f.level === 'stone' ? createWall(f.x, f.z, f.rot) : createFence(f.x, f.z, f.rot); o.userData.hp = f.hp; }
@@ -145,7 +145,7 @@
   function debugSetup() {
     if (dead) return;
     res.wood += 400; res.stone += 400; res.iron += 60;
-    setAge(3);                                                // 디버그: 3시대(석조 요새)로
+    setStage(3);                                                // 디버그: 3시대(석조 요새)로
     if (!playerClass) setClass('warrior');
     for (const a of [1, 2, 3]) if (!perks[a]) choosePerk(a, CFG.PERKS[a][0].id);
     const finishAll = () => { for (const b of blueprints.slice()) {                // 도면을 즉시 완성
@@ -153,7 +153,7 @@
       if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
       else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
     } };
-    while (CFG.DESIGN[designTier]) designDefense();
+    while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].stage || stage >= CFG.DESIGN[designTier].stage)) designDefense();
     finishAll();                                              // 바깥 성벽이 먼저 완성되어야 바깥 구역 계획을 세울 수 있다
     for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && g < 10; g++) designTown(); finishAll(); }          // 둘째 주택 묶음은 첫 묶음이 지어진 뒤에 계획된다
     morningTown();                                            // 시민 스폰 → 병영/사격장 전직 즉시 완료
@@ -169,6 +169,41 @@
     lastWarnDay = CFG.BOSS_DAY - 1; lastRespawnDay = CFG.BOSS_DAY;
     updateHud();
     toast('DEBUG: Day 7 17:30 - defenses, town, and troops ready');
+  }
+  // 디버그: 새 게임을 n단계에서 시작한다. 단계 조건(건물·성벽·인구·점령·날짜)을 모두 채우고 능력도 고른다 (시작 화면의 Debug start)
+  function debugFinishAll() {
+    for (const b of blueprints.slice()) {
+      blueprints.splice(blueprints.indexOf(b), 1); scene.remove(b);
+      if (b.userData.bkind) createBuilding(b.userData.bkind, b.position.x, b.position.z);
+      else createStructure(b.userData.res, b.position.x, b.position.z, b.rotation.y);
+    }
+  }
+  function debugJump(n) {
+    n = Math.max(1, Math.min(CFG.STAGES.length, n | 0)); if (n < 2 || dead) return;
+    res.wood += 4000; res.stone += 4000; res.iron += 600; res.food += 600;
+    if (!playerClass) setClass('warrior');
+    for (let st = 1; st <= n; st++) {
+      if (st > 1) setStage(st);
+      if (!perks[st]) choosePerk(st, CFG.PERKS[st][0].id);
+      let guard = 0;
+      while (CFG.DESIGN[designTier] && (!CFG.DESIGN[designTier].stage || stage >= CFG.DESIGN[designTier].stage) && guard++ < 6) designDefense();
+      debugFinishAll();
+      for (let r = 0; r < 3; r++) { for (let g = 0; townStage < CFG.TOWN_GROUPS.length && CFG.TOWN_GROUPS[townStage].stage <= stage && g < 10; g++) designTown(); debugFinishAll(); }
+    }
+    if (n >= 4) story.cleared.legionfort = true;                                 // 4단계 조건: 거점 점령
+    if (n >= 5) story.cleared.legioncastle = true;                               // 5단계 조건: 성 점령
+    for (let i = 0; i < 8; i++) morningTown();                                   // 시민 입주 → 병영/사격장 전직
+    for (const c of npcs.filter(x => x.promote)) setRole(c, c.promote.to);
+    const sm = smiths()[0];
+    if (sm) { for (const id in sm.userData.stock) sm.userData.stock[id] += 2; refreshRack(sm); }
+    for (const e of enemies.slice()) removeEnemy(e);
+    healPlayer(pMaxHp()); fireHp = fireMax();
+    const need = CFG.STAGE_GATES[n] ? CFG.STAGE_GATES[n].day : 1;
+    wave.day = 0; wave.bossLeft = 0; chapterCleared = false;
+    gameMin = (Math.max(need, 4) - 1) * 1440 + 8 * 60; lastWarnDay = dayNow() - 1; lastRespawnDay = dayNow();
+    tut.done = true; player.position.set(0, 0, CFG.HALL_RADIUS[n - 1] + 5);
+    updateHud(); refreshTech && refreshTech();
+    toast(`DEBUG start: Stage ${n} - ${npcs.length} people, ${builtBuildings('house').length} homes, day ${dayNow()}`);
   }
   function debugBoss() { debugSetup(); gameMin = (CFG.BOSS_DAY - 1) * 1440 + 21 * 60 + 40; }   // Day 7 21:40 → 곧 보스 등장
   addEventListener('keydown', e => { if (e.shiftKey && e.code === 'KeyB') debugSetup(); if (e.shiftKey && e.code === 'KeyN') debugBoss(); });
@@ -186,13 +221,14 @@
       if (t.userData.shootCd > 0) continue;
       let foe = null, bd = CFG.TOWER_RANGE * (hasPerk('engineer') ? 1.25 : 1);
       for (const e of enemies) {
-        if (e.userData.sinking || e.userData.prowl) continue;
+        if (e.userData.sinking || e.userData.ex) continue;                   // 떠돌이(prowl)와 낮에 어슬렁거리는 적도 쏜다
         const d = Math.hypot(e.position.x - t.position.x, e.position.z - t.position.z);
         if (d < bd) { bd = d; foe = e; }
       }
       if (!foe) continue;
       t.userData.shootCd = CFG.TOWER_INTERVAL * (1 - 0.12 * (lvOf(t) - 1));
-      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1) * (1 + 0.35 * (lvOf(t) - 1)), 4.9);
+      sfxAt('bow', t.position.x, t.position.z);
+      fireArrow(t.position.x, t.position.z, Math.atan2(foe.position.x - t.position.x, foe.position.z - t.position.z), false, CFG.TOWER_DMG * (hasPerk('engineer') ? 1.5 : 1) * (1 + 0.35 * (lvOf(t) - 1)), 4.9, bd);
     }
   }
   let eatCd = 0;

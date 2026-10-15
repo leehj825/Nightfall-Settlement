@@ -12,7 +12,7 @@
   const archerMat = mat(0xc9731d), healerMat = mat(0x2fbf8f), sapperMat = mat(0xd6b02a);
   function spawnEnemy(kind = 'normal', at = null) {
     const brute = kind === 'brute', shield = kind === 'shield', siege = kind === 'siege', boss = kind === 'boss', beast = kind === 'beast', archer = kind === 'archer', healer = kind === 'healer', sapper = kind === 'sapper';
-    const a = rand(0, Math.PI * 2), r = MAP - 1;    // 맵 외곽 (안개 속 먼 곳)
+    const a = rand(0, Math.PI * 2), r = Math.min(MAP - 1, 86);    // 맵 외곽 (안개 속 먼 곳)
     const sc = beast ? 0.75 : boss ? CFG.BOSS_SCALE : brute ? CFG.BRUTE_SCALE : siege ? 1.15 : sapper ? 0.9 : healer ? 1.05 : 1;
     const eMat = beast ? beastMat : boss ? bossMat.clone() : brute ? bruteMat : shield ? shieldMat : siege ? siegeMat : archer ? archerMat : healer ? healerMat : sapper ? sapperMat : enemyMat;
     const rig = beast ? makeRig('beast', 0, { bodyMat: eMat, enemy: true }) : makeRig('enemy', 0, { bodyMat: eMat, enemy: true, scale: 0.88, seed: Math.floor(Math.random() * 1e6) });       // 스틱맨/네발 리그 (몸통 색 = 적 종류)
@@ -181,13 +181,14 @@
     later(e.userData.anim.hitIn ?? 0.3, () => {
       if (e.userData.sinking || !enemies.includes(e)) return;
       const sx = e.position.x, sz = e.position.z, a = Math.atan2(tx - sx, tz - sz), m = new THREE.Mesh(eArrowGeo, eArrowMat);
-      m.rotation.set(Math.PI / 2, a, 0, 'YXZ'); m.position.set(sx, e.position.y + 0.9, sz); scene.add(m);
-      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, life: 1.6 }); sfxAt('bow', sx, sz);
+      const sy = e.position.y + 0.9, td = Math.hypot(tx - sx, tz - sz), vy = sy > 2.5 ? (0.9 - sy) / Math.max(0.3, td / 11) : 0;       // 탑 위 궁수: 화살이 표적 높이로 내려온다
+      m.rotation.set(Math.PI / 2 + Math.atan2(-vy, 11), a, 0, 'YXZ'); m.position.set(sx, sy, sz); scene.add(m);
+      enemyArrows.push({ m, vx: Math.sin(a) * 11, vz: Math.cos(a) * 11, vy, life: 1.6 }); sfxAt('bow', sx, sz);
     });
   }
   function updateEnemyArrows(dt) {
     for (let i = enemyArrows.length - 1; i >= 0; i--) {
-      const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; a.life -= dt;
+      const a = enemyArrows[i], p = a.m.position; p.x += a.vx * dt; p.z += a.vz * dt; if (a.vy) p.y = Math.max(0.1, p.y + a.vy * dt); a.life -= dt;
       let hit = false;
       if (!dead && invincibleT <= 0 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < 0.75) { damage(CFG.ENEMY_CONTACT_DMG * 0.8); hurtCd = Math.max(hurtCd, 0.3); hit = true; }
       if (!hit) for (const n of npcs) if (!n.down && Math.hypot(n.position.x - p.x, n.position.z - p.z) < 0.7) { if (n.escort) damageEscort(n, CFG.ENEMY_CONTACT_DMG * 0.8); else damageNpc(n, CFG.ENEMY_CONTACT_DMG * 0.8); hit = true; break; }

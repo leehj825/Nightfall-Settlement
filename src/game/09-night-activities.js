@@ -21,9 +21,9 @@
   }
   // ---------- 밤사냥: 조용한 밤에는 성벽 밖을 떠도는 '밤 방랑자'가 나온다 (처치하면 경험치 2배 + 전리품, 마을은 공격하지 않는다) ----------
   function spawnProwlers(day) {
-    const n = Math.min(6, 2 + Math.floor(day / 2));
+    const n = Math.min(12, 3 + Math.floor(day * 0.8));
     for (let i = 0; i < n; i++) {
-      const a = rand(0, Math.PI * 2), r = rand(39, 47), kind = day >= 4 && Math.random() < 0.3 ? 'normal' : 'beast';
+      const a = rand(0, Math.PI * 2), r = rand(40, 80), kind = day >= 4 && Math.random() < 0.3 ? 'normal' : 'beast';
       spawnEnemy(kind, { x: Math.cos(a) * r, z: Math.sin(a) * r });
       const e = enemies[enemies.length - 1]; e.userData.ex = false; e.userData.prowl = true; frostTint(e, 'night'); addGlow(e, 0x8f9cff, 1.5, 1.1);
     }
@@ -47,7 +47,7 @@
   function roamerTick(dt) {
     if (dead || exActive || uiPause || eventOpen) return;
     roamT -= dt; if (roamT > 0) return;
-    const day = Math.max(1, dayNow()), want = Math.min(6, 2 + Math.floor(day / 3));
+    const day = Math.max(1, dayNow()), want = Math.min(12, 3 + Math.floor(day / 2));
     let n = 0; for (const e of enemies) if (e.userData.roam && !e.userData.sinking) n++;
     roamT = n < want / 2 ? 2 : 7; if (n >= want) return;
     for (let k = 0; k < 10; k++) {
@@ -78,7 +78,7 @@
     }
   }
   // ---------- 밤 활동 2: 모닥불 이야기 / 등불 상인 / 밤 손님 ----------
-  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, age2: () => age >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide, eclipse: () => story.eclipse };
+  const TALE_REQ = { any: () => true, exp: () => story.exps >= 1, stage2: () => stage >= 2, winter: () => CFG.SEASONS_ON && season().id === 'winter', beacon: () => story.beacon, dawn: () => story.dawn, crown: () => story.crown, hollow: () => story.hollow, finale: () => story.finale, road: () => story.road, wide: () => story.wide, eclipse: () => story.eclipse };
   const nightDayNo = () => { const h = (gameMin / 60) % 24; return h < 5 ? dayNow() - 1 : dayNow(); };
   let taleT = 0, nmActive = null, nmLantern = null, lastNightEvDay = 0;
   function nextTale() { return CFG.TALES.find(t => !story.tales[t.id] && TALE_REQ[t.req]()); }
@@ -145,7 +145,8 @@
   ];
   let lastNmDay = 0;
   function killEnemy(e) {                      // 즉시 사라지지 않고 쓰러지는 애니메이션을 보여 준 뒤 땅으로 꺼진다
-    const u = e.userData;
+    const u = e.userData; if (exActive && u.ex) exStats.kills++;
+    if (exActive && exActive.training && u.ex) { burst(e.position, 10); sfxAt('die', e.position.x, e.position.z); hideTelegraph(e); u.sinking = true; u.dying = 1.0; e.position.y = u.baseY + (u.gy || 0); u.anim.die(); if (u.guardian && exCamp) campBroken(e); return; }       // 훈련장: 경험치·전리품 없음 (공성 연습에서는 우두머리를 쓰러뜨리면 끝)
     burst(e.position, u.boss ? 60 : 12);
     sfxAt(u.boss ? 'roar' : 'die', e.position.x, e.position.z); report.kills++; totalKills++;
     giveXp(((XP_KIND[u.kind] || 8) + (u.guardian ? 50 : 0)) * ((u.prowl && !u.roam) || (u.ex && exActive && exActive.night) ? 2 : u.roam ? 1.3 : 1));
@@ -177,6 +178,10 @@
       dmg *= CFG.STUN_DMG_MULT;
       if (u.critT <= 0) { u.critT = 0.45; floatText('CRITICAL x2!', e.position.x, e.position.y + 5.2, e.position.z); }
     }
+    if (!byPlayer && exActive && exCamp && !exCamp.broken) {                        // 습격지: 지휘관(주인공)이 곁에 없으면 병사만으로는 우두머리를 못 쓰러뜨린다
+      const pd = Math.hypot(player.position.x - e.position.x, player.position.z - e.position.z);
+      if (u.guardian) dmg *= pd > 16 ? 0.2 : pd > 10 ? 0.6 : 1; else if (pd > 28) dmg *= 0.7;
+    }
     if (byPlayer && !exActive) { const hi = player.position.y - (u.gy || 0); if (hi > 0.3) dmg *= 1 + Math.min(0.25, hi * 0.2); }       // 높은 곳에서 내려치면 최대 +25%
     if (byPlayer && u.boss) u.lureT = CFG.BOSS_LURE_TIME;      // 플레이어가 때리면 10초간 플레이어만 쫓는다
     u.hp -= dmg;
@@ -202,6 +207,7 @@
       if (d > range + e.userData.r) continue;
       if (d < 0.9 || (dx * fx + dz * fz) / d > Math.cos(half)) { hitEnemy(e, def.dmg, x, z, def.tier > 0, null, byPlayer); n++; if (def.stun && !e.userData.boss && enemies.includes(e)) e.userData.stunT = Math.max(e.userData.stunT || 0, def.stun); }
     }
+    if (exActive && exCamp && exCamp.gate && !exCamp.gate.broken && gateInReach(x, z, ang, range, half)) gateHit((def.dmg || 1) * (byPlayer ? 0.5 : 0.25), !!def.siege);                   // 성문도 맞는다
     return n;
   }
 
@@ -223,26 +229,27 @@
   let nightEase = false;
   // 습격 예보: 다가오는 큰 습격의 규모를 미리 알려 준다 (startWave와 같은 식으로 어림한 값)
   function forecast(day) {
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));
     const boss = day === CFG.BOSS_DAY && !chapterCleared;
     let n = Math.ceil((CFG.WAVE_BASE + day * CFG.WAVE_PER_DAY) * threat * dm().n); if (boss) n = Math.ceil(n / 2);
     const brutes = day >= CFG.BRUTE_FROM_DAY ? 1 + Math.floor((day - CFG.BRUTE_FROM_DAY) / 3) : 0, siege = day >= CFG.SIEGE_FROM_DAY ? 1 : 0;
-    return `about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
+    const rn = realmOfNight(day);
+    return `${rn ? realmDef(rn).short + ': ' : ''}about ${n} raiders${brutes ? `, ${brutes} brute${brutes > 1 ? 's' : ''}` : ''}${siege ? ', siege throwers' : ''}${boss ? ', and the Behemoth' : ''}`;
   }
   function defenseSummary() {
     const fences = obstacles.filter(o => o.userData.type === 'fence'), wallPct = fences.length ? Math.round(100 * fences.reduce((a, f) => a + f.userData.hp / f.userData.maxHp, 0) / fences.length) : 0;
     const weak = fences.filter(f => f.userData.hp / f.userData.maxHp < 0.5).length;
-    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}`;
+    return `Walls ${wallPct}%${weak ? ` (${weak} weak)` : ''} · Soldiers ${npcs.filter(n => n.role !== 'citizen').length} · Towers ${builtBuildings('tower').length}${campRelief(dayNow()) > 0 ? ` · Raids -${Math.round(campRelief(dayNow()) * 100)}%` : ''}`;
   }
   function startWave(day) {
     wave.day = day;
     wave.quiet = !isRaid(day);
-    wave.type = nightTypeOf(day);
+    wave.type = nightTypeOf(day); wave.realm = realmOfNight(day);
     const extraRaiders = pendingRaiders; pendingRaiders = 0;
     const ease = nightEase ? 0.75 : 1; nightEase = false;                  // 정찰병의 경고에 대비했다면 오늘 밤 적이 25% 줄어든다               // 아침 이벤트 선택의 대가
-    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1);                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
+    const threat = (1 + Math.max(0, prosScore - 40) / 120) * (story.beacon ? 0.85 : 1) * (story.finale ? 0.85 : 1) * (1 - campRelief(day));                   // 번영한 마을일수록 약탈자가 더 많이 몰려온다 (번영도 70 → +25%)
     if (wave.quiet) {                          // 조용한 밤: 짐승 / 소수의 적만 - 문명 발전에 집중할 시간
-      wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 2 + Math.floor(day / 2));
+      wave.remaining = day <= 2 ? CFG.QUIET_BASE + day : Math.min(CFG.QUIET_MAX, 3 + Math.floor(day / 2));
       if (wave.type === 'calm') wave.remaining = Math.max(1, Math.floor(wave.remaining * 0.5));            // 평범한 밤은 정말 조용하다
       if (wave.type === 'plunder') wave.remaining = Math.ceil(wave.remaining * 1.5) + 1;
       if (wave.type === 'hunt') wave.remaining = Math.ceil(wave.remaining * 1.6) + 1;
@@ -300,13 +307,15 @@
         } else {
           const kind = wave.quiet ? (wave.type === 'hunt' ? 'beast' : wave.type === 'plunder' ? 'normal' : waveDay <= 2 || Math.random() < 0.6 ? 'beast' : 'normal')
             : wave.remaining <= wave.brutes ? 'brute'
-            : (waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE ? 'shield' : specialKind(waveDay));
+            : (wave.realm === 'clan' && Math.random() < 0.3 && enemies.filter(x => x.userData.kind === 'archer' && !x.userData.sinking).length < 6 ? 'archer' : waveDay >= CFG.SHIELD_FROM_DAY && Math.random() < CFG.SHIELD_CHANCE * (wave.realm === 'legion' ? 1.8 : 1) ? 'shield' : specialKind(waveDay));
           spawnEnemy(kind);
           wave.remaining--;
         }
         spawnCd = rand(0.8, 1.2) * Math.max(CFG.MIN_SPAWN_INTERVAL, CFG.SPAWN_INTERVAL_BASE / (1 + CFG.SPAWN_RATE_GROWTH * (waveDay - 1)));
       }
     }
+    if (exActive && exCamp && (exCamp.ram || exCamp.oil || exCamp.cat)) castleTick(dt);
+    if (exActive && exActive.training) trainTick(dt);
     for (const e of enemies.slice()) {
       const u = e.userData, er = u.r;
       u.anim.update(dt);
@@ -382,7 +391,7 @@
           const pulse = 0.5 + 0.5 * Math.sin(u.castT * 24);
           if (e.material.emissive) { e.material.emissive.setHex(0xff2000); e.material.emissiveIntensity = 0.25 + 0.75 * pulse; }
           if (u.tele) u.tele.children.forEach(c => c.material.opacity = 0.15 + 0.25 * pulse);
-          u.tele && u.tele.position.set(e.position.x, 0.1, e.position.z);
+          u.tele && u.tele.position.set(e.position.x, groundY(e.position.x, e.position.z, 2) + 0.1, e.position.z);
           if (u.castT <= 0) { hideTelegraph(e); u.slamT = CFG.BOSS_JUMP_TIME; }
         } else if (u.slamCd <= 0) { u.castT = CFG.BOSS_CAST_TIME; u.slamCd = CFG.BOSS_SLAM_INTERVAL; showTelegraph(e); }
       }

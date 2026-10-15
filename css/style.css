@@ -183,7 +183,7 @@
 #setBtn { position: fixed; left: 220px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 17px; padding: 0; cursor: pointer; }
 #tutor { box-sizing: border-box; display: none; align-items: center; justify-content: center; gap: 8px; width: fit-content; max-width: 100%; margin: 3px auto 0; pointer-events: auto; padding: 1px 10px; border-radius: 12px; background: rgba(20,10,30,.6); border: 1px solid rgba(255,210,122,.6); color: #ffe7a8; font-size: 12.5px; font-weight: 700; }
 #tutor span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #tutor b { cursor: pointer; color: #fff; padding: 0 2px; }
-#setPanel, #startPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); z-index: 30; padding: 12px; }
+#setPanel { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); z-index: 30; padding: 12px; }
 .scard2 { background: rgba(28,22,16,.97); border: 2px solid #c8923a; border-radius: 16px; padding: 16px 20px; width: min(360px, 100%); max-height: 92%; overflow: auto; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
 .scard2 h3 { margin: 0 0 10px; color: #ffd27a; font-size: 22px; text-align: center; } .scard2 p { text-align: center; font-size: 14px; margin: 6px 0 12px; } .scard2 p.shint { font-size: 11px; color: #a9a49a; }
 .scard2 label { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; font-size: 14px; } .scard2 input[type=range] { width: 150px; } .scard2 select { font: inherit; font-size: 13px; padding: 3px 6px; }
@@ -331,3 +331,41 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
   #smithPanel .shead { margin: 12px 2px 2px; font-size: 13px; font-weight: 700; color: #ffd27a; border-bottom: 1px solid rgba(255,210,122,.3); }
 #actions #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; width: 70px; height: 70px; font-size: 14px; margin-top: 6px; }
 @media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #actions #atkBtn { width: 60px; height: 60px; font-size: 12px; } }
+#jExp .jtabs { display: flex; gap: 6px; margin: 4px 0 6px; } #jExp .jtabs button { flex: 1; background: rgba(255,255,255,.1); color: #d8cfbc; box-shadow: none; } #jExp .jtabs button.on { background: linear-gradient(#ffd27a, #ff9a3c); color: #3a1408; box-shadow: 0 2px 0 #a8480f; }
+#jExp .jmap { display: block; width: 100%; margin: 6px 0 2px; background: radial-gradient(ellipse at 20% 50%, #34502f, #1f2c20 70%); border: 1px solid #5a4a30; border-radius: 10px; touch-action: manipulation; }
+#jExp .jmap .roads line { stroke: #b99a62; stroke-width: 0.7; stroke-dasharray: 1.6 1.2; opacity: .8; }
+#jExp .jmap text { fill: #fff; font-size: 3.4px; text-anchor: middle; pointer-events: none; font-weight: 700; } #jExp .jmap text.nm { fill: #ffe7a8; font-size: 3px; paint-order: stroke; stroke: #1b1209; stroke-width: 0.7px; } #jExp .jmap text.ok { fill: #8fd49a; font-size: 3px; }
+#jExp .jmap g[data-node] { cursor: pointer; } #jExp .jmap g.lk { opacity: .45; } #jExp .jmap .hit { fill: transparent; }
+#jExp .jleg { display: block; font-size: 10.5px; color: #a9a49a; margin: 0 0 4px; line-height: 1.4; }
+#jExp .jfar { margin: 2px 0 6px; font-size: 12px; color: #d8cfbc; } #jExp .jfar button.farchip { margin: 4px 6px 0 0; padding: 6px 10px; font-size: 12px; background: rgba(255,255,255,.12); color: #fff; box-shadow: none; border: 1px solid #5a4a30; } #jExp .jfar button.farchip.on { border-color: #ffe7a8; background: rgba(255,210,122,.25); } #jExp .jfar button.farchip.lk { opacity: .5; }
+#jExp .jmap text.flag { fill: #ffd27a; font-size: 3.6px; } #jExp .holdBtn { margin: 4px 0 2px; font-size: 12px; padding: 6px 10px; }
+#jExp .jrealm { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; margin: 0 0 6px; }
+/* the button columns are wide boxes that overlapped each other (the Orders / Rest / Smithy buttons could not be tapped): only the buttons themselves take taps */
+#actions, #leftActions, #ctxActions, #planBox { pointer-events: none; }
+#actions > *, #leftActions > *, #ctxActions > *, #planBox > * { pointer-events: auto; }
+#ctxActions .btn[style*="display: none"], #leftActions .btn[style*="display: none"] { pointer-events: none; }
+
+#jExp .jmap .roads path.far { fill: none; stroke: #8a7a52; stroke-width: 0.9; stroke-dasharray: 2.2 1.6; opacity: .8; }
+#jExp .jmap .roads line.far { stroke: #8a7a52; stroke-dasharray: 2.4 1.6; }
+#jExp .jtabs { display: flex; gap: 6px; margin: 6px 0 2px; } #jExp .jtabs button { flex: 1; padding: 7px 4px; font-size: 13px; border-radius: 8px; border: 1px solid #5a4a30; background: #2a2118; color: #d8c8a0; } #jExp .jtabs button.on { background: #7a5a2a; color: #fff; border-color: #c8923a; }
+
+#trainBar { position: fixed; top: 124px; left: 50%; transform: translateX(-50%); z-index: 22; gap: 8px; } #trainBar button { font: inherit; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 14px; border: 2px solid #c8923a; background: rgba(40, 28, 16, .88); color: #ffe7a8; }
+#trainBar { flex-wrap: wrap; justify-content: center; max-width: 92vw; } #trainBar button { font-size: 12px; padding: 7px 10px; }
+.dbgStart { margin-top: 12px; border-top: 1px solid #5a4630; padding-top: 8px; font-size: 13px; color: #cdb88f; } .dbgStart summary { cursor: pointer; text-align: center; } .dbgStart .tbtns { margin-top: 8px; } .dbgStart select { font: inherit; padding: 7px; border-radius: 8px; }
+
+/* ---------- 시작 화면 ---------- */
+#startPanel { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 30; padding: 12px; transition: opacity .35s; background: radial-gradient(ellipse at 50% 55%, rgba(10,6,20,0) 0%, rgba(10,6,20,.15) 55%, rgba(10,6,20,.65) 100%), linear-gradient(180deg, rgba(10,6,24,.7) 0%, rgba(10,6,24,0) 30%, rgba(10,6,24,0) 60%, rgba(10,6,24,.75) 100%); }
+#startPanel.out { opacity: 0; pointer-events: none; }
+body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !important; } body.titlemode #joy { display: none !important; }
+.titleBox { width: min(520px, 100%); height: 100%; text-align: center; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; padding: 5vh 0 7vh; box-sizing: border-box; }
+.tMenu { margin-top: auto; }
+.tLogo small { display: block; letter-spacing: 4px; text-transform: uppercase; font-size: 12px; color: #ffd9a0; text-shadow: 0 2px 6px #000; margin-bottom: 6px; }
+.tLogo h1 { margin: 0; font-size: clamp(30px, 6.5vw, 54px); line-height: 1; letter-spacing: 2px; text-transform: uppercase; color: #ffd27a; text-shadow: 0 3px 0 #8a4a14, 0 6px 14px rgba(0,0,0,.8), 0 0 34px rgba(255,150,40,.45); }
+#startInfo { margin: 4px 0 2px; font-size: 14px; color: #ffe7c8; text-shadow: 0 2px 6px #000; }
+.tMenu { display: flex; flex-direction: column; gap: 10px; width: min(260px, 80%); }
+.tMenu button { font: inherit; font-size: 18px; font-weight: 800; letter-spacing: 1px; padding: 12px 18px; border-radius: 14px; border: 2px solid #c8923a; color: #3a1d06; background: linear-gradient(#ffd27a, #e0953a); cursor: pointer; box-shadow: 0 4px 0 #8a4a14, 0 8px 18px rgba(0,0,0,.5); }
+.tMenu button:active { transform: translateY(2px); box-shadow: 0 2px 0 #8a4a14; }
+.tMenu button#startNew { background: linear-gradient(#ffe7a8, #f0b050); }
+.tMenu button#startNG { background: linear-gradient(#b8d4ff, #6a9ae0); border-color: #4a6aa0; color: #10203a; box-shadow: 0 4px 0 #2a4070, 0 8px 18px rgba(0,0,0,.5); }
+#startPanel .dbgStart { position: absolute; right: 10px; bottom: 10px; margin: 0; padding: 6px 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; background: rgba(20,14,10,.7); max-width: 300px; }
+#startPanel .dbgStart summary { opacity: .7; font-size: 12px; }

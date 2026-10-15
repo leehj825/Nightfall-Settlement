@@ -16,7 +16,7 @@
 <canvas id="game"></canvas>
 <h1 id="title">Nightfall Settlement</h1>
 <div id="hudBar" title="Tap for all stats (I)"><span id="barA"></span><small id="barB"></small></div>
-<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display: none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Age: <b id="ageN">Age 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
+<div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display: none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Stage: <b id="stageN">Stage 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <div id="planBox">
 <button id="planBtn"><span id="planLbl">Village Plan: Balanced</span><small id="planNext">Next: ...</small></button>
 <button id="designBtn" style="display: none"><span id="designLbl">Defense Line: Tier 1</span><small id="designCost">Costs 30 Wood</small></button>
@@ -24,7 +24,7 @@
 </div>
 <div id="clock">Day 1 - 08:00</div>
 <div id="raidInfo"><span id="raidTxt"></span><div id="tutor"><span id="tutorTxt"></span><b id="tutorX" title="Hide tips">✕</b></div></div>
-<div id="techPanel"><div class="tcard"><h3 id="techTitle">Age Progression</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">Advance Age</button><button id="techClose">Close</button></div></div></div>
+<div id="techPanel"><div class="tcard"><h3 id="techTitle">Stage Progression</h3><p id="techCur"></p><p id="techNext"></p><div class="tbtns"><button id="techUp">Advance Stage</button><button id="techClose">Close</button></div></div></div>
 <div id="smithPanel"><div class="scard"><h3>Blacksmith</h3><p id="smithRes"></p><div id="smithList"></div><p class="shint">Crafted gear is displayed on the rack. Soldiers walk over and equip it on their own - you can take pieces yourself with Equip.</p><div class="tbtns"><button id="smithClose">Close</button></div></div></div>
 <div id="dbg"><button id="dbgSetup">Day 7 Prep</button><button id="dbgBoss">Spawn Boss</button></div>
 <div id="bossBar"><span id="bossName">Behemoth</span><div class="track"><div id="bossFill"></div></div></div>
@@ -44,7 +44,7 @@
 <div id="repPanel" style="display:none"><div class="scard2"><h3>Balance report</h3><p class="jhint">Copy this and send it along when something felt too easy or too hard.</p><textarea id="repText" readonly rows="12" style="width:100%;box-sizing:border-box;font:11px/1.35 monospace;background:#17120d;color:#e8dcc4;border:1px solid #6b5a3a;border-radius:8px;padding:6px"></textarea><div class="tbtns"><button id="repCopy">Copy</button><button id="repClose">Close</button></div></div></div>
 <div id="treePanel"><div class="scard2 tree"><h3>Hero skills</h3><p class="jhint" id="treeHead"></p><div id="treeCols"></div><div class="tbtns"><button id="treeClose">Close</button></div></div></div>
 <div id="achPanel"><div class="scard2"><h3>Achievements</h3><p id="achCount"></p><div id="achList"></div><div class="tbtns"><button id="achClose">Close</button></div></div></div>
-<div id="startPanel"><div class="scard2"><h3>Nightfall Settlement</h3><p id="startInfo"></p><div class="tbtns"><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div></div></div>
+<div id="startPanel"><div class="titleBox"><div class="tLogo"><small>A village defense saga</small><h1>Nightfall Settlement</h1></div><div class="tMenu"><p id="startInfo"></p><button id="startContinue">Continue</button><button id="startNew">New game</button><button id="startNG" style="display: none"></button></div></div><details class="dbgStart"><summary>Debug</summary><div class="tbtns"><select id="startStage"><option value="1">Stage 1 · Camp</option><option value="2">Stage 2 · Wooden Town</option><option value="3">Stage 3 · Stone Fortress</option><option value="4">Stage 4 · Walled City</option><option value="5">Stage 5 · Seat of Power</option></select><button id="startDbg">New game at stage</button></div><p class="shint">Builds every structure, fills the population and meets the stage requirements.</p></details></div>
 <div id="setPanel"><div class="scard2"><h3>Settings</h3>
   <label>Music<input type="range" id="setMusic" min="0" max="100"></label>
   <label>Sound effects<input type="range" id="setSfx" min="0" max="100"></label>
@@ -56,6 +56,7 @@
   <label>Graphics<select id="setGfx"><option value="hi">High</option><option value="lo">Low (faster)</option><option value="min">Lowest (old phones)</option></select></label>
   <p class="shint" id="setSaveInfo"></p>
   <div class="tbtns"><button id="setAch">Achievements</button><button id="setRep">Balance report</button></div>
+  <div class="tbtns"><button id="setMenu">Main menu</button></div>
   <div class="tbtns"><button id="setTips">Replay tips</button><button id="setDel">Delete save</button><button id="setClose">Close</button></div></div></div>
 <div id="xhair"><svg viewBox="0 0 26 26" width="26" height="26"><g stroke="#000" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"><path d="M13 2v6M13 18v6M2 13h6M18 13h6"/></g><g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M13 2v6M13 18v6M2 13h6M18 13h6"/></g><circle cx="13" cy="13" r="1.3" fill="#fff"/></svg></div>
 <canvas id="joy" width="150" height="150"></canvas>
@@ -64,6 +65,7 @@
   <button class="btn" id="expBtn">Journal<small>J</small></button>
   <button class="btn" id="birdBtn">Map View<small>B</small></button>
 </div>
+<div id="trainBar" style="display: none"><button data-tr="raiders">Raiders</button><button data-tr="mixed">Archers+Brutes</button><button data-tr="shields">Shield line</button><button data-tr="drill">Drill</button><button data-tr="clear">Clear</button><button data-tr="leave">Leave</button></div>
 <div id="ctxActions">
   <button class="btn" id="restBtn" style="display: none">Rest<small>Z</small></button>
   <button class="btn" id="ordBtn" style="display: none">Orders<small id="ordSub">O · Guard</small></button>

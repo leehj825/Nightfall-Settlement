@@ -13,8 +13,14 @@
   const bMat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
   const houseWall = bMat(0xc9a46a), houseRoof = bMat(0xa34a2a), barrackMat = bMat(0x7b808a), barrackTop = bMat(0x585d66);
   const woodMat2 = bMat(0x8a5a34), tgtRed = new THREE.MeshStandardMaterial({ color: 0xd23a2a, roughness: 1 }), tgtWhite = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 });
-  function doorOf(b) {                 // 건물 앞(중앙 쪽) 출입 지점
-    const d = Math.hypot(b.position.x, b.position.z) || 1, off = b.userData.radius + 0.9;
+  function faceOf(x, z) {              // 가장 가까운 큰길(x=0 또는 z=0 십자 길)을 향하는 방향
+    if (Math.abs(x) < Math.abs(z)) return { x: x > 0 ? -1 : 1, z: 0 };
+    return { x: 0, z: z > 0 ? -1 : 1 };
+  }
+  function doorOf(b) {                 // 건물 앞 출입 지점: 길을 향한 쪽
+    const f = b.userData.face, off = b.userData.radius + 0.9;
+    if (f) return { x: b.position.x + f.x * off, z: b.position.z + f.z * off };
+    const d = Math.hypot(b.position.x, b.position.z) || 1;
     return { x: b.position.x - b.position.x / d * off, z: b.position.z - b.position.z / d * off };
   }
   const windowGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 }), lampGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 });        // 밤이 되면 따뜻하게 켜진다 (tick)
@@ -31,32 +37,29 @@
     else if (lvl <= 1) {
       add(new THREE.ConeGeometry(1.9, 2.6, 8), tentMat, 0, 1.3, 0);
       add(new THREE.BoxGeometry(0.7, 1.1, 0.12), windowGlow, 0, 0.55, 1.6).rotation.x = -0.35;
-    } else if (lvl === 2) {
-      add(new THREE.BoxGeometry(2.6, 1.8, 2.6), houseWall, 0, 0.9, 0);
-      add(new THREE.ConeGeometry(2.3, 1.4, 4), houseRoof, 0, 2.5, 0).rotation.y = Math.PI / 4;
-      add(new THREE.BoxGeometry(0.5, 0.5, 0.06), windowGlow, 0.6, 1.0, 1.32); add(new THREE.BoxGeometry(0.5, 0.5, 0.06), windowGlow, -0.6, 1.0, 1.32);
-    } else {
-      add(new THREE.BoxGeometry(2.8, 2.1, 2.8), stoneWall, 0, 1.05, 0);
-      add(new THREE.ConeGeometry(2.5, 1.5, 4), slateRoof, 0, 2.85, 0).rotation.y = Math.PI / 4;
-      add(new THREE.BoxGeometry(0.5, 1.2, 0.5), chimneyMat, 0.8, 3.0, 0.6);
-      add(new THREE.BoxGeometry(0.5, 0.6, 0.06), windowGlow, 0.7, 1.2, 1.42); add(new THREE.BoxGeometry(0.5, 0.6, 0.06), windowGlow, -0.7, 1.2, 1.42);
+    } else {                                                           // 2단계 목골 집 / 3단계 이상 돌집 (04b-models.js)
+      houseModel(g, lvl);
     }
   }
   function refreshHouses() { for (const h of obstacles) if (h.userData.type === 'building' && h.userData.kind === 'house') setHouseModel(h); }
   function createBuilding(kind, x, z) {
     const g = new THREE.Group();
     const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
-    g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null };
+    g.userData = { type: 'building', kind, radius: CFG.BUILDING[kind].radius, worker: null, seed: Math.abs(Math.floor(x * 73.1 + z * 131.7) * 2654435761 | 0) || 7 };
+    if (['house', 'barracks', 'smith', 'range', 'market', 'siegeshop'].includes(kind)) g.userData.face = faceOf(x, z);
     if (CFG.LEVELED.includes(kind)) g.userData.level = 1;
     const sm = (kind === 'well' || kind === 'smith' || kind === 'range') && structMesh(kind);        // 모델이 있으면 모델 건물
     if (sm) g.add(sm);
     if (kind === 'house') {
-      g.userData.level = age;                                          // 새 집은 현재 시대의 모습으로 지어진다
+      g.userData.level = stage;                                          // 새 집은 현재 시대의 모습으로 지어진다
       setHouseModel(g);
+    } else if (kind === 'siegeshop') {                                   // 공성 작업장: 열린 헛간, 안에 망치 뼈대와 사다리 걸이
+      for (const [px, pz] of [[-2.6, -1.8], [2.6, -1.8], [-2.6, 1.8], [2.6, 1.8]]) add(new THREE.BoxGeometry(0.28, 2.6, 0.28), woodMat2, px, 1.3, pz);
+      add(new THREE.BoxGeometry(6.2, 0.22, 4.6), houseRoof, 0, 2.7, 0).rotation.z = 0.06;
+      add(new THREE.BoxGeometry(1.5, 0.5, 3.4), woodMat2, -0.6, 0.55, 0); add(new THREE.CylinderGeometry(0.3, 0.3, 3.8, 8), logPile, -0.6, 1.1, 0).rotation.x = Math.PI / 2;
+      for (const lz of [-1.4, 1.4]) add(new THREE.BoxGeometry(0.1, 2.4, 0.1), woodMat2, 2.2, 1.2, lz);
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
-      add(new THREE.BoxGeometry(6.4, 1.6, 4.4), barrackMat, 0, 0.8, 0);
-      add(new THREE.BoxGeometry(6.6, 0.25, 4.6), barrackTop, 0, 1.72, 0);
-      for (const wx of [-2, 0, 2]) add(new THREE.BoxGeometry(0.6, 0.4, 0.06), windowGlow, wx, 1.0, 2.23);
+      barracksModel(add);
     } else if (kind === 'range' && sm) {
     } else if (kind === 'well' && sm) {
     } else if (kind === 'smith' && sm) {
@@ -82,13 +85,9 @@
       }
       g.userData.growth = 0.3;
     } else if (kind === 'lumber') {                                      // 벌목장: 나무 오두막 + 통나무 더미
-      add(new THREE.BoxGeometry(2.2, 1.5, 1.8), woodMat2, 0, 0.75, 0);
-      add(new THREE.BoxGeometry(2.6, 0.2, 2.2), houseRoof, 0, 1.6, 0);
-      for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.25, 0.25, 1.6, 8), logPile, 1.7, 0.25 + (i === 2 ? 0.4 : 0), -0.5 + (i % 2) * 0.55).rotation.z = Math.PI / 2;
+      lumberModel(add);
     } else if (kind === 'quarry') {                                      // 채석장: 바위 더미 + 곡괭이 틀
-      for (let i = 0; i < 4; i++) add(new THREE.DodecahedronGeometry(0.5 + i * 0.12, 0), rockPile, -0.9 + i * 0.7, 0.4, (i % 2) * 0.8);
-      add(new THREE.BoxGeometry(0.15, 1.6, 0.15), woodMat2, 1.4, 0.8, 0);
-      add(new THREE.BoxGeometry(1.0, 0.15, 0.15), woodMat2, 1.4, 1.6, 0);
+      quarryModel(add);
     } else if (kind === 'well') {                                        // 우물: 돌 테두리 + 물 + 작은 지붕
       add(new THREE.CylinderGeometry(1.0, 1.1, 0.7, 12), stoneWall, 0, 0.35, 0);
       add(new THREE.CylinderGeometry(0.78, 0.78, 0.05, 12), new THREE.MeshStandardMaterial({ color: 0x3a78c8, roughness: 0.3 }), 0, 0.7, 0);
@@ -120,15 +119,14 @@
       g.userData.stock = {};
       for (const id in CFG.GEAR) if (CFG.GEAR[id].cost) g.userData.stock[id] = 0;
     } else {                                                             // 방어 타워: 돌 원기둥 + 흉벽
-      add(new THREE.CylinderGeometry(1.2, 1.5, 4, 10), towerStone, 0, 2, 0);
-      add(new THREE.CylinderGeometry(1.7, 1.7, 0.5, 10), towerTop, 0, 4.25, 0);
-      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; add(new THREE.BoxGeometry(0.5, 0.5, 0.5), towerTop, Math.cos(a) * 1.55, 4.75, Math.sin(a) * 1.55); }
+      towerModel(add);
       g.userData.shootCd = rand(0, 1);
     }
     g.position.set(x, 0, z);
+    if (g.userData.face) g.rotation.y = Math.atan2(g.userData.face.x, g.userData.face.z);
     scene.add(g);
     obstacles.push(g);
-    if (kind !== 'farm' && kind !== 'tower' && kind !== 'lumber' && kind !== 'quarry') { const dr = doorOf(g); addPath(dr.x, dr.z, 1.5); }      // 문 앞에서 중앙 광장까지 흙길
+    if (kind !== 'farm' && kind !== 'tower' && kind !== 'lumber' && kind !== 'quarry') { const dr = doorOf(g); if (g.userData.face) addPathToRoad(dr.x, dr.z, 1.5); else addPath(dr.x, dr.z, 1.5); }      // 문 앞에서 중앙 광장까지 흙길
     return g;
   }
   // 선반에 완성품 진열 (재고 수만큼 칼/활을 걸어 둔다)
@@ -176,6 +174,12 @@
     m.position.set(ux * (a + len / 2), 0.012, uz * (a + len / 2)); m.rotation.y = Math.atan2(ux, uz); m.receiveShadow = true;
     scene.add(m); doormats.push(m);
   }
+  function addPathToRoad(x, z, w) {                                 // 문 앞에서 가장 가까운 큰길(x=0 / z=0)까지 짧은 흙길
+    const f = faceOf(x, z), len = f.x ? Math.abs(x) : Math.abs(z); if (len < 0.6) return;
+    const geo = new THREE.PlaneGeometry(f.x ? len : w, f.x ? w : len); geo.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(geo, pathMat); m.position.set(f.x ? x / 2 : x, 0.012, f.x ? z : z / 2); m.receiveShadow = true;
+    scene.add(m); doormats.push(m);
+  }
   function addLamp(x, z) {                                          // 가로등: 밤이 되면 불이 켜진다
     const g = new THREE.Group();
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.3, 6), lampPostMat); post.position.y = 1.15; post.castShadow = true;
@@ -220,7 +224,7 @@
   function upgradeGates() {
     for (const g of gateWaypoints) {
       const lv = g.lv || 1, cost = CFG.BUILD_UPGRADE[lv + 1];
-      if (lv >= age || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
+      if (lv >= stage || !cost || !Object.entries(cost).every(([k, v]) => res[k] >= v * 1.5)) continue;
       payCost(cost); setGateLevel(g, lv + 1); report.upgraded++; updateHud();
       dust(g.x, g.z); sfxAt('build', g.x, g.z); floatText(`Gate Lv${lv + 1}!`, g.x, 3.6, g.z); return;
     }
@@ -284,14 +288,14 @@
     }
     const [type, n] = Object.entries(cfg.cost)[0];
     document.getElementById('designLbl').textContent = cfg.label;
-    document.getElementById('designCost').textContent = cfg.age && age < cfg.age ? `Requires Age ${cfg.age} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
+    document.getElementById('designCost').textContent = cfg.stage && stage < cfg.stage ? `Requires Stage ${cfg.stage} · ${n} ${type === 'wood' ? 'Wood' : 'Stone'}` : `Costs ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`;
     designBtnEl.classList.toggle('stone', cfg.kind === 'stone');
   }
   function designDefense() {
     if (dead) return;
     const cfg = CFG.DESIGN[designTier];
     if (!cfg) return;
-    if (cfg.age && age < cfg.age) return toast(`Available from Age ${cfg.age} (${CFG.AGES[cfg.age - 1].name})`);
+    if (cfg.stage && stage < cfg.stage) return toast(`Available from Stage ${cfg.stage} (${CFG.STAGES[cfg.stage - 1].name})`);
     const [type, n] = Object.entries(cfg.cost)[0];
     if (res[type] < n) return toast(`Need ${n} ${type === 'wood' ? 'Wood' : 'Stone'}`);
     res[type] -= n;
@@ -326,14 +330,16 @@
     let best = null, bd = Infinity;
     for (let i = 0; i < 400; i++) {
       const x = rand(-13, 13), z = rand(-13, 13), d = Math.hypot(x, z);
-      if (cheb(x, z) > 13.2 || Math.abs(x) < rad + 1.2 || Math.abs(z) < rad + 1.2 || d < FIRE_R + rad + 3.2) continue;
+      if (cheb(x, z) > 10.5 || Math.abs(x) < rad + 1.2 || Math.abs(z) < rad + 1.2 || d < FIRE_R + rad + 3.2) continue;
       if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.0)) continue;
+      if ([[-12.3, -12.3], [12.3, -12.3], [-12.3, 12.3], [12.3, 12.3]].some(([tx, tz]) => Math.hypot(x - tx, z - tz) < rad + 4.5)) continue;       // 예정된 모서리 타워 자리와 겹치지 않게
       if (d < bd) { bd = d; best = { x, z }; }
     }
     return best || { x: 7, z: -4 };
   }
   // 둘째(바깥) 방어선이 계획되었고, 그 성벽 청사진이 하나도 남지 않았으면 완성
   const homesBuilt = () => !blueprints.some(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house');       // 지을 집 청사진이 남아 있지 않다
+  const thirdWallDone = () => designTier >= 3 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   const outerWallDone = () => designTier >= 2 && !blueprints.some(b => b.userData.type === 'blueprint' && !b.userData.bkind && b.userData.res === 'stone');
   // 바깥 구역(첫 목책~둘째 성벽 사이): 이미 지은 농장·사격장은 그대로 옮기고(레벨·일꾼 유지) 모자란 농장은 새로 짓는다
   function planOuterFields(g) {
@@ -354,9 +360,10 @@
     if (dead) return;
     const g = CFG.TOWN_GROUPS[townStage];
     if (!g) return;
-    if (age < g.age) return toast(`Available in Age ${g.age} (${CFG.AGES[g.age - 1].name})`);
+    if (stage < g.stage) return toast(`Available in Stage ${g.stage} (${CFG.STAGES[g.stage - 1].name})`);
     if (!canPay(g.cost)) return toast(`Need ${costText(g.cost)}`);
     if (g.needsOuterWall && !outerWallDone()) return toast('Finish the second wall first');
+    if (g.needsThirdWall && !thirdWallDone()) return toast('Finish the Great Wall first');
     if (g.needsHomesBuilt && !homesBuilt()) return toast('Finish building the first outer homes first');
     payCost(g.cost);
     townStage++;
@@ -371,22 +378,22 @@
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower' };
+  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop' };
   // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
   function planCandidates() {
-    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, age: D.age || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, age: T.age, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
+    const D = CFG.DESIGN[designTier], T = CFG.TOWN_GROUPS[townStage], dd = D && { kind: 'defense', cost: D.cost, stage: D.stage || 1, label: D.label, run: designDefense }, tt = T && { kind: 'town', cost: T.cost, stage: T.stage, label: T.label, run: designTown, ok: () => (!T.needsOuterWall || outerWallDone()) && (!T.needsHomesBuilt || homesBuilt()) };
     const m = settings.plan || 'balanced';
     const order = m === 'defense' ? [dd, tt] : m === 'economy' ? [tt, dd] : (designTier <= townStage ? [dd, tt] : [tt, dd]);
     return order.filter(Boolean);
   }
-  function nextPlan() { const c = planCandidates(); return c.find(x => age >= x.age && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
+  function nextPlan() { const c = planCandidates(); return c.find(x => stage >= x.stage && (!x.ok || x.ok())) || null; }          // 나이 조건을 만족하는 첫 계획 (자원이 모자라면 기다린다)
   function updatePlanBtn() {
     const b = document.getElementById('planBtn'); if (!b) return;
     const n = nextPlan(), lbl = `Village Plan: ${planModeNow()[1]}`;
     if (document.getElementById('planLbl').textContent !== lbl) document.getElementById('planLbl').textContent = lbl;
-    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && age >= x.age) ? 'Waiting for walls / homes to be finished' : `Waiting for Age ${planCandidates()[0].age}`) : 'Everything is planned';
+    const nt = n ? `Next: ${n.label} (${costText(n.cost)})` : planCandidates().length ? (planCandidates().some(x => x.ok && !x.ok() && stage >= x.stage) ? 'Waiting for walls / homes to be finished' : `Waiting for Stage ${planCandidates()[0].stage}`) : 'Everything is planned';
     if (document.getElementById('planNext').textContent !== nt) document.getElementById('planNext').textContent = nt;
     b.classList.toggle('done', !planCandidates().length);
   }
@@ -404,11 +411,11 @@
     const g = CFG.TOWN_GROUPS[townStage], b = document.getElementById('townBtn');
     b.classList.toggle('done', !g);
     document.getElementById('townLbl').textContent = g ? g.label : 'Town Planning Complete';
-    document.getElementById('townCost').textContent = g ? (age < g.age ? `Requires Age ${g.age}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
+    document.getElementById('townCost').textContent = g ? (stage < g.stage ? `Requires Stage ${g.stage}` : g.needsOuterWall && !outerWallDone() ? 'Requires the second wall' : g.needsHomesBuilt && !homesBuilt() ? 'Requires the first outer homes built' : `Costs ${costText(g.cost)}`) : 'All buildings planned';
   }
   function upgradeFence() {
     if (dead) return;
-    if (age < CFG.UPGRADE_FENCE_AGE) return toast(`Stone walls unlock in Age ${CFG.UPGRADE_FENCE_AGE} (${CFG.AGES[CFG.UPGRADE_FENCE_AGE - 1].name})`);
+    if (stage < CFG.UPGRADE_FENCE_STAGE) return toast(`Stone walls unlock in Stage ${CFG.UPGRADE_FENCE_STAGE} (${CFG.STAGES[CFG.UPGRADE_FENCE_STAGE - 1].name})`);
     const f = nearestFence('wood');
     if (!f) return toast(nearestFence() ? 'Already a stone wall' : 'No wooden fence nearby to upgrade');
     if (res.stone < CFG.FENCE_UPGRADE_STONE) return toast(`Need ${CFG.FENCE_UPGRADE_STONE} Stone`);

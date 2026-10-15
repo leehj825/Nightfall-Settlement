@@ -32,6 +32,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 사람마다 피부색·머리색·머리 모양·체형·옷 장식이 다르고(seed), 역할별 복장(병사: 사슬 + 튜닉 + 견갑 + 투구 / 궁수: 후드 + 화살통 + 가죽 조끼 / 시민: 튜닉 + 모자 / 주인공: 망토 + 머리띠 / 적: 두건 + 복면 + 누더기)이 붙는다.
   const skinMat = mat(0xf1c9a0), darkMat = mat(0x3a2a22), eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3a1a }), visorMat = mat(0x2a2a30);
   const sm = (c, rough = 0.88, metal = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal });
+  const PLAYER_SKIN = (() => { const m = sm(0xe7ae88, 0.8); m.flatShading = true; return m; })(), PLAYER_HAIR = sm(0x5a2d1e, 0.65);       // 지휘관: 따뜻한 살구빛 피부와 붉은 밤색 머리
   const SKINS = [0xf1c9a0, 0xe3b48a, 0xc88b63, 0x8d5a3b, 0xf4d6b8].map(c => { const m = sm(c, 0.8); m.flatShading = true; return m; }), HAIRS = [0x2a1a10, 0x5a3a1e, 0x8a5a2b, 0xc9a23a, 0x9a9a9a, 0x151515, 0x7a2a1a].map(c => sm(c, 0.7));
   const bootMat = sm(0x2b1d14), beltMat = sm(0x4a3320), buckleMat = sm(0xc9a23a, 0.5, 0.3), steelMat = sm(0x9ca2ad, 0.55, 0.25), mailMat = sm(0x626874, 0.65, 0.2), eyeDark = new THREE.MeshBasicMaterial({ color: 0x1a1210 }), eyeWhite = new THREE.MeshBasicMaterial({ color: 0xf2eee6 });
   mailMat.map = (() => {                                       // 사슬 갑옷: 회색 바탕에 격자무늬
@@ -88,7 +89,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const makeRG = () => ({
     pelvis: cyl(0.2, 0.215, 0.22, 14), waist: cyl(0.2, 0.17, 0.28, 14), chest: cyl(0.275, 0.2, 0.38, 16), yoke: sph(0.16, 12, 8), belt: cyl(0.208, 0.208, 0.06, 14), buckle: new THREE.BoxGeometry(0.07, 0.06, 0.02),
     neck: cyl(0.068, 0.082, 0.14, 8), head: sph(0.19, 18, 14), headV: faceHeadGeo(11, 9), noseW: new THREE.ConeGeometry(0.028, 0.09, 4), browRidge: new THREE.BoxGeometry(0.17, 0.028, 0.05), cheek: sph(0.04, 6, 5), eyeBox: new THREE.BoxGeometry(0.042, 0.022, 0.012), irisBox: new THREE.BoxGeometry(0.022, 0.02, 0.012), beardJaw: new THREE.ConeGeometry(0.115, 0.17, 6), sideburn: new THREE.BoxGeometry(0.03, 0.1, 0.035), fringe: new THREE.BoxGeometry(0.2, 0.05, 0.07), finger: cyl(0.014, 0.012, 0.075, 5), pauldronBig: sph(0.17, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), helmCheek: new THREE.BoxGeometry(0.035, 0.15, 0.11), fur: cyl(0.3, 0.33, 0.1, 10), furBump: sph(0.07, 6, 5), kerchief: sph(0.205, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), dressSkirt: cyl(0.22, 0.36, 0.66, 12), tab: new THREE.BoxGeometry(0.09, 0.2, 0.015), robe: cyl(0.24, 0.36, 0.9, 12), cloakLong: new THREE.BoxGeometry(0.5, 0.95, 0.04), scarfRing: new THREE.TorusGeometry(0.12, 0.04, 6, 10), toe: sph(0.075, 8, 6), jaw: sph(0.13, 14, 10), ear: sph(0.035, 8, 6), eyeW: sph(0.033, 10, 8), pupil: sph(0.019, 8, 6), brow: new THREE.BoxGeometry(0.075, 0.016, 0.022), nose: sph(0.026, 8, 6), mouth: new THREE.BoxGeometry(0.07, 0.013, 0.01),
-    hairCap: sph(0.18, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairShell: hairShellGeo(), hairLong: cyl(0.16, 0.115, 0.42, 12), ball: sph(0.08, 10, 8), curl: sph(0.085, 8, 6), tail: new THREE.ConeGeometry(0.05, 0.32, 8), beard: sph(0.1, 10, 8), stache: new THREE.BoxGeometry(0.1, 0.022, 0.03),
+    hairCap: sph(0.18, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairShell: hairShellGeo(), hairLong: cyl(0.16, 0.115, 0.42, 12), ball: sph(0.08, 10, 8), curl: sph(0.085, 8, 6), quiff: sph(0.15, 12, 8), tail: new THREE.ConeGeometry(0.05, 0.32, 8), beard: sph(0.1, 10, 8), stache: new THREE.BoxGeometry(0.1, 0.022, 0.03),
     hood: sph(0.235, 20, 12, Math.PI / 2 + 0.8, Math.PI * 2 - 1.6, 0, Math.PI * 0.72), cowl: cyl(0.2, 0.29, 0.15, 14), mask: new THREE.BoxGeometry(0.2, 0.1, 0.06),
     shoulder: sph(0.08, 18, 12), pauldron: sph(0.145, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), spike: new THREE.ConeGeometry(0.04, 0.16, 6),
     upper: cyl(0.072, 0.058, 0.3, 10), elbow: sph(0.06, 14, 10), lower: cyl(0.056, 0.044, 0.3, 10), cuff: cyl(0.062, 0.062, 0.05, 10), bracer: cyl(0.065, 0.055, 0.15, 10), palm: sph(0.055, 12, 10), thumb: sph(0.022, 6, 5),
@@ -122,7 +123,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const kind = opts.kind || 'citizen', enemy = !!opts.enemy, seed = opts.seed ?? 0, bodyMat = opts.bodyMat || mat(color), root = new THREE.Group(), RG = enemy ? RG_LO : RG_HI;
     const R = (k) => ((Math.imul((seed | 0) ^ Math.imul(k + 1, 0x9e3779b1), 2654435761) >>> 0) % 1000) / 1000;            // 사람마다 고정된 0~1 난수
     if (!enemy) { bodyMat.flatShading = false; bodyMat.roughness = 0.88; bodyMat.needsUpdate = true; }
-    const skin = enemy ? sm(0xb59a84, 0.8) : SKINS[Math.floor(R(1) * SKINS.length)], hair = HAIRS[Math.floor(R(2) * HAIRS.length)], hstyle = Math.floor(R(3) * 6);
+    const skin = enemy ? sm(0xb59a84, 0.8) : kind === 'player' ? PLAYER_SKIN : SKINS[Math.floor(R(1) * SKINS.length)], hair = kind === 'player' ? PLAYER_HAIR : HAIRS[Math.floor(R(2) * HAIRS.length)], hstyle = Math.floor(R(3) * 6);
     const pants = PANTS[enemy ? 'enemy' : kind] || PANTS.citizen;
     const cloth2 = sm(bodyMat.color.clone().multiplyScalar(0.72), 0.9);        // 옷의 보조 색(칼라·소매 끝·모자)
     const W = enemy ? 1.05 : 0.93 + 0.14 * R(8), isPlayer = kind === 'player';          // 체형(어깨 너비)
@@ -155,10 +156,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     partH(RG.headV, skin, head, 0, 0.17, 0, 0, 0, 0, female ? 0.9 : 1, 1, 1);
     for (const sx of [-1, 1]) {
       partH(RG.ear, skin, head, sx * 0.172, 0.16, 0, 0, 0, 0, 0.5, 1, 0.8);
-      partH(RG.cheek, skin, head, sx * 0.1, 0.12, 0.13, 0, 0, 0, 1, 0.8, 0.6);
       if (enemy) partH(RG.eyeBox, eyeMat, head, sx * 0.067, 0.195, 0.168, 0, 0, 0, 1.15, 0.8, 1);
       else { partH(RG.eyeBox, eyeWhite, head, sx * 0.067, 0.195, 0.168); partH(RG.irisBox, eyeDark, head, sx * 0.067, 0.195, 0.175); }
-      partH(RG.brow, enemy ? ragMat : hair, head, sx * 0.067, 0.232, 0.174, 0, 0, -sx * (enemy ? 0.4 : 0.14), enemy ? 1.3 : 1.1, 1.3, 1);
+      partH(RG.brow, enemy ? ragMat : hair, head, sx * 0.067, isPlayer ? 0.236 : 0.232, 0.174, 0, 0, -sx * (enemy ? 0.4 : isPlayer ? 0.3 : 0.14), enemy ? 1.3 : isPlayer ? 1.55 : 1.1, isPlayer ? 2.0 : 1.3, 1);
     }
     partH(RG.browRidge, skin, head, 0, 0.225, 0.158); partH(RG.noseW, skin, head, 0, 0.145, 0.19, Math.PI / 2 + 0.25, 0, 0, 0.95, 1, 1.15);
     if (!enemy) partH(RG.mouth, mouthMat, head, 0, 0.082, 0.19, 0, 0, 0, female ? 0.8 : 1);
@@ -176,6 +176,17 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       partH(RG.hairLong, hair, head, 0, 0.0, -0.13, 0, 0, 0, 0.85, 0.5, 0.5);
     } else if (kind === 'citizen' && female) {
       partH(RG.hairShell, hair, head, 0, 0.17, -0.005); partH(RG.hairLong, hair, head, 0, 0.0, -0.12, 0, 0, 0, 0.9, 1, 0.6); partH(RG.kerchief, R(6) < 0.5 ? cottonMat : cloth2, head, 0, 0.2, -0.02, -0.28, 0, 0, 1, 1, 1.05); partH(RG.ball, cottonMat, head, 0, 0.2, -0.22, 0, 0, 0, 0.7, 0.7, 0.7);
+    } else if (isPlayer) {                                                  // 지휘관: 뒤로 쓸어 넘긴 풍성한 머리, 옆으로 흐르는 머리, 어깨 가까이 닿는 뒷머리, 턱까지 이어지는 수염
+      partH(RG.hairShell, hair, head, 0, 0.175, -0.01, 0, 0, 0, 1.03, 1.04, 1.05);
+      partH(RG.quiff, hair, head, 0, 0.3, 0.07, -0.75, 0, 0, 0.95, 0.5, 1.0); partH(RG.quiff, hair, head, 0, 0.3, -0.03, -0.35, 0, 0, 1.0, 0.55, 1.2);
+      for (const sx of [-1, 1]) {
+        partH(RG.quiff, hair, head, sx * 0.14, 0.24, 0.0, 0, 0, sx * 0.35, 0.4, 0.6, 0.95);
+        partH(RG.sideburn, hair, head, sx * 0.158, 0.1, 0.055, 0, 0, 0, 0.9, 1.7, 1.1);
+        partH(RG.beard, hair, head, sx * 0.095, 0.065, 0.075, 0, 0, sx * 0.3, 0.42, 0.9, 0.7);
+        partH(RG.stache, hair, head, sx * 0.055, 0.098, 0.195, 0, 0, sx * -0.5, 0.6, 1.3, 1);
+      }
+      partH(RG.beard, hair, head, 0, -0.02, 0.15, 0.3, 0, 0, 0.55, 0.5, 0.7);
+      partH(RG.hairLong, hair, head, 0, 0.1, -0.13, 0, 0, 0, 0.9, 0.55, 0.55);
     } else if (ev === 4 || (enemy && ev === 2)) {
       partH(RG.hairShell, hair, head, 0, 0.17, -0.005); partH(RG.fringe, hair, head, 0.03, 0.272, 0.12, -0.35, 0, 0.12); 
     } else {
@@ -365,6 +376,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       return { shoulderR: [-0.7 * wind - 1.55 * thr, 0.25 * wind], elbowR: [-1.7 * wind - 0.08 * thr], shoulderL: [-0.6 * wind - 1.2 * thr], elbowL: [-0.5 * wind - 0.25 * thr],
         spine: [0.18 * thr, -0.35 * wind + 0.3 * thr], head: [-0.05 * thr], hipL: [-0.55 * thr + 0.2 * wind], hipR: [0.35 * thr - 0.1 * wind], kneeL: [0.3 * thr], hipsY: 0.9 - 0.06 * thr, hipsZ: 0.12 * thr };
     }, false);
+    make('spearLunge', 0.85, 16, (ph, u) => {  // 창 돌진 찌르기: 몸을 크게 뒤로 젖혀 모음 → 뒷발로 박차고 온몸을 실어 한 걸음 깊이 내디디며 찌름 → 천천히 일어섬
+      const wind = kf(u, [[0, 0], [0.4, 1], [0.5, 1], [0.62, 0], [1, 0]]), thr = kf(u, [[0, 0], [0.48, 0], [0.62, 1], [0.78, 1], [1, 0]]);
+      return { shoulderR: [-0.5 * wind - 1.6 * thr, 0.3 * wind], elbowR: [-1.9 * wind - 0.05 * thr], shoulderL: [-0.5 * wind - 1.35 * thr], elbowL: [-0.7 * wind - 0.15 * thr],
+        spine: [-0.15 * wind + 0.45 * thr, -0.5 * wind + 0.35 * thr], hips: [0, -0.2 * wind + 0.2 * thr], head: [-0.2 * thr], hipL: [0.2 * wind - 1.0 * thr], hipR: [-0.1 * wind + 0.5 * thr],
+        kneeL: [0.1 * wind + 0.55 * thr], kneeR: [0.1 * wind], hipsY: 0.9 - 0.04 * wind - 0.2 * thr, hipsZ: -0.1 * wind + 0.4 * thr };
+    }, false);
     make('die', 0.9, 9, (ph, u) => {           // 뒤로 쓰러져 눕기
       const f = kf(u, [[0, 0], [0.7, 1], [1, 1]]);
       return { hips: [-1.5 * f], hipsY: 0.9 - 0.78 * f, hipsZ: -0.2 * f, shoulderL: [0.3 * f, 0, 0.5 * f], shoulderR: [0.3 * f, 0, -0.5 * f], kneeL: [0.25 * f], kneeR: [0.2 * f], head: [0.2 * f] };
@@ -463,6 +480,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     return { root, bodyMat, head, spine: null, handR: head, handL: head, baseScale: opts.scale ?? 1.5, clips: BEAST_CLIPS };
   }
+
+  // 창 공격 동작의 좌우를 바꾼다: 찌르기·휘두르기는 원래 동작 그대로, 마지막 돌진 찌르기만 두 팔의 좌우를 바꾼다 (엉덩이와 다리는 원래대로, 창은 오른손·방패는 왼손 그대로). 검·방패의 공격(ssAttack1)은 창 전용 복사본을 쓴다
+  (() => {
+    const mirror = (src, name, torso) => {                                 // 두 팔은 좌우를 맞바꾸고(축 반전), torso 가 true 면 척추·머리도 거울상으로 뒤집는다. 엉덩이·다리는 그대로
+      const tr = src.tracks.map(t => {
+        const m = /^(\w+)\.quaternion$/.exec(t.name); if (!m) return t.clone();
+        const b = m[1], isArm = /^(shoulder|elbow|hand)[LR]$/.test(b); if (!isArm && !(torso && /^(spine|head)$/.test(b))) return t.clone();
+        const v = t.values.slice(); for (let i = 0; i < v.length; i += 4) { v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
+        return new THREE.QuaternionKeyframeTrack(isArm ? b.replace(/[LR]$/, c => c === 'L' ? 'R' : 'L') + '.quaternion' : t.name, t.times.slice(), v);
+      });
+      return new THREE.AnimationClip(name, src.duration, tr);
+    };
+    if (STICK_CLIPS.ssAttack1) STICK_CLIPS.spearSlash1 = STICK_CLIPS.ssAttack2;
+    for (const n of ['spearFinal', 'spearLunge']) if (STICK_CLIPS[n]) STICK_CLIPS[n] = mirror(STICK_CLIPS[n], n, false);
+  })();
 
   // ----- 장비 메쉬 (손 뼈에 붙는다): 칼날이 팔 방향(+Z)으로 향하도록 inner.rotation.x = π/2 -----
   const gearMatCache = {};
@@ -615,7 +647,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       this.rig = rig; this.mixer = new THREE.AnimationMixer(rig.root); this.acts = {};
       for (const [n, clip] of Object.entries(rig.clips)) {
         const a = this.mixer.clipAction(clip);
-        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash)/.test(n) || /^(ss|gs)(Impact|Jump)/.test(n) || /^bow(Dodge|Block|React)/.test(n) || n === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n) || /Block/.test(n); }
+        if (n === 'attackSword' || n === 'attackBow' || n === 'attackSpear' || /^die/.test(n) || /^(ss|gs)(Attack|Block)/.test(n) || n === 'bowDraw' || /^spear(Stab|Slash|Lunge|Final)/.test(n) || /^(ss|gs)(Impact|Jump)/.test(n) || /^bow(Dodge|Block|React)/.test(n) || n === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = /^die/.test(n) || /Block/.test(n); }
         this.acts[n] = a;
       }
       this.cur = null; this.baseName = ''; this.shot = null; this.dead = false;
@@ -659,11 +691,12 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (a && !this.shot) a.timeScale = (name === 'walk' ? Math.min(1.6, Math.max(0.5, speed / 2.2)) : name === 'run' ? Math.min(1.4, Math.max(0.7, speed / 5.5)) : 1) * (this.moveDir === 'b' && (rs === 'walk' || rs === 'run') ? -1 : 1);       // 뒤로 걷기: 앞으로 걷는 동작을 거꾸로 재생
       if (a && (rs === 'mineMocap' || rs === 'chopMocap')) a.timeScale = a.getClip().duration / 1.0;                 // 곡괭이질 0.9초, 도끼질 1초에 한 번
     }
+    breakCombo() { this.atkI = 0; this.spI = 0; this.brI = 0; }                                                   // 회피·점프·방어·채집·무기 교체를 하면 콤보는 처음부터
     once(name) {
       if (this.dead || !this.acts[name]) return;
       let ts = 1;
       this.heavy = false; this.variant = ''; const wasBow = name === 'attackBow';
-      if (!this.shot && performance.now() - (this._ce || 0) > 1000) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
+      if (!this.shot && performance.now() - (this._ce || 0) > 800) { this.atkI = 0; this.spI = 0; this.brI = 0; }                  // 마지막 공격이 끝나고 1초 안에 이어 누르지 않으면 콤보는 처음부터
       if (name === 'attackSword' && this.rig.brawl && this.acts.brawlPunch) {                                                 // 맨손(주인공 무기 해제·일반 시민): 주먹과 발차기를 끊김 없이 이어 붙인다 (앞뒤의 느린 부분은 잘라 낸다)
         const nm = BRAWL_SEQ[this.brI = ((this.brI || 0) % BRAWL_SEQ.length)]; this.brI++;
         const act = this.acts[nm], cd = act.getClip().duration, meta = MIXAMO_CLIPS[nm], hit = meta ? meta.hit : 0.45, a0 = Math.max(0, hit - 0.28), a1 = Math.min(0.97, hit + 0.2);
@@ -671,23 +704,23 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         this.heavy = nm === 'brawlRound'; this.variant = /Kick|Round/.test(nm) ? 'kick' : 'punch'; act.timeScale = sc;
         this.shot = { t: 0, dur: target }; this.hitIn = (hit - a0) * cd / sc; this._play(nm, 0.07, true); act.time = a0 * cd; return;
       }
-      if (name === 'attackSpear' && this.acts.ssAttack1 && this.acts.spearStab) {                                                 // 창: 검처럼 쥐고 검 동작으로 찌르기(좁고 긴)와 휘두르기(넓은)를 번갈아
-        this.spI = ((this.spI || 0) + 1) % 2; const stab = this.spI === 1; name = stab ? 'spearStab' : 'ssAttack1'; this.variant = stab ? 'stab' : 'slash';
-        ts = this.acts[name].getClip().duration / (stab ? 1.1 : 0.7);
+      if (name === 'attackSpear' && this.acts.spearSlash1 && this.acts.spearStab) {                                              // 창: 찌르기 → 휘두르기(검 동작) → 온몸을 실은 돌진 찌르기
+        this.spI = ((this.spI || 0) % 3) + 1; const v = ['stab', 'slash', 'lunge'][this.spI - 1]; this.variant = v; this.heavy = v === 'lunge';
+        name = v === 'stab' ? 'spearStab' : v === 'slash' ? 'spearSlash1' : this.acts.spearFinal ? 'spearFinal' : 'spearLunge'; ts = this.acts[name].getClip().duration / (v === 'lunge' ? 0.9 : v === 'slash' ? 0.65 : 0.6);
       }
       if (wasBow && this.rig.style === 'bow' && this.acts.bowDraw) { name = 'bowDraw'; ts = this.acts.bowDraw.getClip().duration / 0.75; }              // 활: 화살을 뽑아 걸고 쏘는 동작을 0.75초로
       if (name === 'attackSword' && this.rig.style === 'ss' && this.acts.ssAttack1) {                 // 검·방패 공격: 세 번은 베기, 네 번째는 점프 내려찍기 (약 0.65초 / 1.15초 안에 끝나도록 빠르게)
-        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'ssAttack' + this.atkI; this.heavy = this.atkI === 4;
+        this.atkI = ((this.atkI || 0) % 3) + 1; name = ['ssAttack1', 'ssAttack2', 'ssAttack4'][this.atkI - 1]; this.heavy = this.atkI === 3;
         ts = this.acts[name].getClip().duration / (this.heavy ? 1.15 : 0.65);
       }
       if (name === 'attackSword' && this.rig.style === 'gs' && this.acts.gsAttack1) {                 // 대검: 세 번은 크게 베기, 네 번째는 제자리 회전 베기 (범위가 넓다)
-        this.atkI = ((this.atkI || 0) % 4) + 1; name = 'gsAttack' + this.atkI; this.heavy = this.atkI === 4;
-        ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 1.1);
+        this.atkI = ((this.atkI || 0) % 3) + 1; name = ['gsAttack2', 'gsAttack3', 'gsAttack4'][this.atkI - 1]; this.heavy = this.atkI === 3;       // 첫 동작(gsAttack1)은 칼자루로 치는 듯해서 뺐다: 빠르게 휘두르는 베기 둘을 번갈아 쓴다
+        ts = this.acts[name].getClip().duration / (this.heavy ? 1.7 : 0.9);
       }
       const act = this.acts[name]; act.timeScale = ts;
-      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name];
+      const dur = act.getClip().duration / ts, meta = typeof MIXAMO_CLIPS !== 'undefined' && MIXAMO_CLIPS[name === 'spearSlash1' ? 'ssAttack2' : name];
       this.shot = { t: 0, dur };
-      this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
+      this.hitIn = dur * (meta && meta.hit ? meta.hit : name === 'attackBow' ? 0.6 : name === 'attackSpear' ? 0.4 : name === 'spearLunge' ? 0.66 : 0.38);       // 타격 순간까지 걸리는 시간 (칼이 휘둘러지는 때)
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
@@ -699,12 +732,14 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
     jump() {
       if (this.dead || this.shot || this.guarding) return false;
+      this.breakCombo();
       const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
       return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
     }
     // 회피(대시): 이동 방향(f 앞 / b 뒤 / p,n 옆)에 맞는 구르기·회피 동작
     dodge(dir) {
       if (this.dead || this.guarding) return false;
+      this.breakCombo();
       const k = { f: 'bowDodgeF', b: 'bowDodgeB', p: 'bowDodgeP', n: 'bowDodgeN' }[dir] || 'bowDodgeF'; if (!this.acts[k]) return false;
       this.shot = null; return this._short(k, 0.5, 0.06);
     }
@@ -718,7 +753,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 막기: 방패 / 대검 / 활 팩의 막기 자세를 잡고 있는다 (끝 자세에서 멈춘다). 풀면 원래 동작으로
     guard(on) {
       on = !!on; if (on === !!this.guarding || this.dead) return;
-      this.guarding = on;
+      this.guarding = on; if (on) this.breakCombo();
       if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
       else this._play(this.baseName || 'idle', 0.15, true);
     }
@@ -806,9 +841,17 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       V.M.makeBasis(V.x, V.d, V.z); V.q.setFromRotationMatrix(V.M);                  // 모델: 자루 = +Y, 머리/날 = +Z
       R.handR.getWorldQuaternion(V.h).invert(); t.quaternion.copy(V.h).multiply(V.q);
     }
+    spearAim() {                                                       // 창이 지금 가리키는 수평 방향(라디안): 찌르기 판정을 보이는 창끝에 맞추려고 쓴다
+      const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.visible) return null;
+      sp.updateWorldMatrix(true, false); const q = sp.getWorldQuaternion(new THREE.Quaternion()), d = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+      return Math.hypot(d.x, d.z) < 0.3 ? null : Math.atan2(d.x, d.z);
+    }
+    spearOrigin() {                                                    // 창을 쥔 손의 수평 위치: 찌르기 판정이 몸 가운데가 아니라 창이 나가는 자리에서 시작하게 한다
+      const R = this.rig; if (!R.handR) return null; R.root.updateMatrixWorld(true); const p = R.handR.getWorldPosition(new THREE.Vector3()); return [p.x, p.z];
+    }
     _spear(dt) {
       const sp = this.rig.meshes && this.rig.meshes.spear; if (!sp || !sp.userData.spear || !sp.visible) return;
-      const stab = !!this.shot && this.variant === 'stab', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
+      const stab = !!this.shot && /^(stab|slash|lunge)$/.test(this.variant), swing = !!this.shot && this.variant === 'slash', idle = !this.shot && (this.baseName === 'idle' || !this.baseName), inn = sp.userData.inner;
       const tgt = stab ? 0 : Math.PI / 2; inn.rotation.x += (tgt - inn.rotation.x) * Math.min(1, dt / 0.08);
       const k = this._sk = Math.max(0, Math.min(1, (this._sk || 0) + (stab ? dt / 0.1 : -dt / 0.12)));
       if (k <= 0) { sp.quaternion.identity(); sp.position.set(0, 0, 0); return; }
@@ -817,7 +860,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const a = R.shoulderR.getWorldPosition(this._va || (this._va = new THREE.Vector3())), b = R.handR.getWorldPosition(this._vb || (this._vb = new THREE.Vector3()));
       const d = b.sub(a); if (d.lengthSq() < 0.01) return;
       const fw = (this._fw || (this._fw = new THREE.Vector3())).set(0, 0.06, 1).applyQuaternion(R.root.getWorldQuaternion(this._qr || (this._qr = new THREE.Quaternion())));       // 창끝은 팔 방향보다 적을 향해(캐릭터 정면, 수평) 길게 뻗는다
-      d.normalize().multiplyScalar(0.3).addScaledVector(fw.normalize(), 0.7).normalize();
+      d.normalize().multiplyScalar(swing ? 0.8 : 0.15).addScaledVector(fw.normalize(), swing ? 0.2 : 0.85).normalize();
       const inv = R.handR.getWorldQuaternion(this._qa || (this._qa = new THREE.Quaternion())).invert();
       d.applyQuaternion(inv);
       sp.quaternion.slerpQuaternions(this._qi || (this._qi = new THREE.Quaternion()), (this._qb || (this._qb = new THREE.Quaternion())).setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), k);

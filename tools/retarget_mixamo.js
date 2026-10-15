@@ -28,6 +28,7 @@ const WANT = {
   ssAttack1: ['sword and shield attack (4)', false], ssAttack2: ['sword and shield attack (2)', false], ssAttack3: ['sword and shield attack (3)', false], ssAttack4: ['sword and shield attack', false],
   ssBlock: ['sword and shield block', false], die: ['sword and shield death', false],
   spearStab: ['Bayonet_Stab', false], spearSlash: ['Slash_Advance', false],
+  spearFinal: ['Torch_Stab', false, 48, [4, 34, 5, 17]],       // Standing_Torch_Melee_Attack_Stab.fbx (renamed): the spear combo's last, full-body thrust
   // 전투 자세 이동: 활 (Pro Longbow Pack)
   bowIdle: ['standing idle 01', true], bowWalk: ['standing walk forward', true], bowWalkB: ['standing walk back', true], bowWalkP: ['standing walk right', true], bowWalkN: ['standing walk left', true],
   bowRun: ['standing run forward', true], bowRunB: ['standing run back', true], bowRunP: ['standing run right', true], bowRunN: ['standing run left', true],
