@@ -1,6 +1,6 @@
 # Banners and the host - plan
 
-Status: **phase 1 built in `nf-v144`**. Unlocked at Stage 5 (`CFG.BANNER.STAGE`). Numbers live in `CFG.BANNER` and are guesses to tune after phone play.
+Status: **phases 1 and 2 built (`nf-v144`, `nf-v145`)**. Unlocked at Stage 5 (`CFG.BANNER.STAGE`). Numbers live in `CFG.BANNER` and are guesses to tune after phone play.
 
 ## Terms
 - **Banner**: 2 to 3 warbands under one standard (Dragon, Griffin, Hart). Up to 3 banners.
@@ -13,8 +13,10 @@ Status: **phase 1 built in `nf-v144`**. Unlocked at Stage 5 (`CFG.BANNER.STAGE`)
 - **Cohesion bonus**: a soldier gets +6% damage and 6% less damage taken while a soldier of another warband of the same banner is within 18 paces (`bannerMods` in `10b-warbands.js`, combined with the leader's standard in `standardMods`).
 - Saved with the warband info (`banner` field, additive).
 
-## Phase 2 (not built)
-- Host orders: one set of order buttons for every warband, and an army rally (the Rally Cry reaches all banners).
-- Banner flags carried in the field (visual), banner names in the Training Field parade.
-- Banner veterans: drills train a whole banner.
-- Test on the Training Field, then retune the bonus and party cap from phone play.
+## Phase 2 (built in `nf-v145`)
+- **Host orders:** the warband window has a "Whole host" row of order buttons that set every warband at once (`setHostOrder`).
+- **Army rally:** Rally Cry heals soldiers of any banner wherever they are (`inBanner` in `13-combat-abilities-boss.js`); unbannered soldiers still need to be in range.
+- **Training Field:** the parade groups warbands by banner and the name tags show the banner. Drills give +1 extra drill XP (`CFG.BANNER.DRILL_XP`) to soldiers whose banner has another warband in the party (`drilledTogether`).
+
+## Later (not built)
+- Banner flags carried in the field (visual); Marshal skill extras; retune the bonuses and party cap from phone play.

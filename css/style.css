@@ -372,3 +372,5 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
 
 .wbchip s { text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
 #wbPanel .wbn { display: flex; gap: 4px; margin: 6px 0 2px; } #wbPanel .wbn button { flex: 1; font-size: 12px; padding: 6px 4px; border-radius: 8px; border: 2px solid rgba(232,192,64,.5); background: rgba(0,0,0,.35); color: #fff; } #wbPanel .wbn button.on { border-color: #e8c040; background: rgba(232,192,64,.25); }
+#wbPanel .word.host small { flex: 1 1 100%; color: #e8c040; }
+#wbPanel .word.host .wbord { border-color: rgba(232,192,64,.5); }

@@ -68,6 +68,9 @@
     let left = 0; for (const i of bands) if (!bringing(i)) { if (escortBands.length >= bandMax()) { left++; continue; } escortBands.push(i); }
     if (left) toast(`Only ${bandMax()} warbands fit in the host`); return true;
   }
+  function setHostOrder(o) { for (let i = 0; i < CFG.WARBAND.MAX; i++) if (warbandMembers(i).length) setWarbandOrder(i, o); }     // 모든 전투단에 같은 명령
+  const inBanner = (n) => !!n && n.warband >= 0 && bannerOf(n.warband) >= 0;                // 깃발 소속 병사 (군대 집결 나팔이 어디서든 들린다)
+  function drilledTogether(n) { const b = n.warband >= 0 ? bannerOf(n.warband) : -1; return b >= 0 && npcs.filter(m => m.escort && m.role !== 'citizen' && bannerOf(m.warband) === b && m.warband !== n.warband).length > 0; }
   function bannerMods(n) {                                       // 같은 깃발의 다른 전투단 병사가 가까이 있으면 보너스
     const B = CFG.BANNER, b = n && n.warband >= 0 ? bannerOf(n.warband) : -1; if (b < 0 || n.down) return { dmg: 1, guard: 1 };
     const bands = new Set([n.warband]);
@@ -165,6 +168,7 @@
       <div class="wsw">${sw}</div><ul class="wlist">${rows}</ul>
       ${exActive ? '' : `<button id="wbBring" class="${bringing(i) ? 'on' : ''}">${bringing(i) ? 'Coming on your next journey &#10003;' : 'Bring on your next journey'}</button>`}
       ${bannersOpen() ? `<div class="wbn"><button id="wbBanner">${bannerOf(i) >= 0 ? bannerName(bannerOf(i)) + ' (' + bannerBands(bannerOf(i)).length + ' bands)' : 'No banner'}</button>${bannerOf(i) >= 0 && !exActive ? `<button id="wbBannerBring" class="${bannerBands(bannerOf(i)).every(bringing) ? 'on' : ''}">Bring whole banner</button>` : ''}</div>` : ''}
+      ${bannersOpen() ? `<div class="word host"><small>Whole host:</small>${WB_ORDERS.map(o => `<button class="wbord" data-hord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div>` : ''}
       <div class="word">${WB_ORDERS.map(o => `<button class="wbord${o === warbandOrder(i) ? ' on' : ''}" data-ord="${o}">${WB_ORDER_LABEL[o]}</button>`).join('')}</div><small>${WB_ORDER_HINT[warbandOrder(i)]}${bannerOf(i) >= 0 ? ' Orders go to the whole banner.' : ''}</small>
       <small>${m.length}/${CFG.WARBAND.SIZE} soldiers</small><button id="wbClose">Close</button>`;
   }
@@ -173,6 +177,7 @@
   wbPanel.addEventListener('pointerdown', e => {
     if (e.target === wbPanel) { closeWbPanel(); return; }
     const t = e.target, i = wbOpen; if (i < 0) return;
+    if (t.dataset && t.dataset.hord) { setHostOrder(t.dataset.hord); toast(`The whole host: ${WB_ORDER_LABEL[t.dataset.hord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
     if (t.dataset && t.dataset.ord) { if (bannerOf(i) >= 0) setBannerOrder(bannerOf(i), t.dataset.ord); else setWarbandOrder(i, t.dataset.ord); toast(`${wbi(i).name}: ${WB_ORDER_LABEL[t.dataset.ord]}`); renderWbPanel(); wbBarHtml = ''; renderWbBar(); e.stopPropagation(); return; }
     if (t.dataset && t.dataset.act) { const n = npcs[+t.dataset.ix];
       if (n) { if (t.dataset.act === 'home' && n.role === 'melee') cycleHomeCls(n); else if (t.dataset.act === 'trip' && n.role === 'melee') cycleTripCls(n); else if (t.dataset.act === 'band' && !n.escort) { if (cycleWarband(n)) toast(`${n.name} joins ${warbandName(n.warband)}`); else toast('All warbands are full'); wbBarHtml = ''; renderWbBar(); } renderWbPanel(); }

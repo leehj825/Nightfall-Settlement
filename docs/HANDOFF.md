@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v143`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v145`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement` (use the dev branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. Play Store release is documented in `RELEASE.md` but is the owner's task. A medieval setting: avoid modern words (see the terms table in the roadmap).
@@ -58,7 +58,7 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 
 ## Next steps (also in the roadmap)
 1. **Phone tuning pass:** collect the owner's findings from phone play, then tune the guessed numbers listed under "Known gaps" (all live in `js/config.js`).
-2. **Banners and the host:** phase 1 done in nf-v144 (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, banner block in `10b-warbands.js`); next phase 2 (host orders, army rally, Training Field), Marshal extras. Orders, raids, the campaign map (phases 1 to 4), realms, sieges and wounds/courage/levies are all done; see `docs/ROADMAP.md`.
+2. **Banners and the host:** phases 1 and 2 done in nf-v144 and nf-v145 (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, banner block in `10b-warbands.js`); next Marshal extras, banner flags in the field, phone tuning. Orders, raids, the campaign map (phases 1 to 4), realms, sieges and wounds/courage/levies are all done; see `docs/ROADMAP.md`.
 3. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
 4. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
 
