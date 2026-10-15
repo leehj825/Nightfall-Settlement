@@ -316,7 +316,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const part of parts) {
       let cx = 0, cy = 0; for (let i = off; i < off + part.verts; i++) { cx += Math.abs(P.getX(i)); cy += P.getY(i); } cx /= part.verts; cy /= part.verts;
       let ws = 0;
-      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.10) ws = cx < 0.22 ? 0.85 : 0.5;
+      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.10) ws = cx < 0.22 ? 1 : 0.6;
       else if (part.bone === 'hips' && SW.getX(off) >= 0.99 && cy >= J.hipY - 0.08) ws = 0.75;
       if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; }
       off += part.verts;
@@ -383,7 +383,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     };
   }
   function leaderUnderlayer(skeleton, sec) {                 // a simple leather-brown body under the armour (pills between the joints, balls at the joints), soft skinned and fitted to the armour so it stays inside
-    const J = LEADER_JOINTS, bi = n => BONES.indexOf(n), V = [], SI = [], SW = [], IX = [], K = 0.9;
+    const J = LEADER_JOINTS, bi = n => BONES.indexOf(n), V = [], SI = [], SW = [], IX = [], K = 0.8;
     const ring = (cx, cy, cz, ux, uy, rx, rz, f, own, ws, wsB, we, weB) => {
       for (let k = 0; k < 10; k++) {
         const th = k / 10 * Math.PI * 2, ex = Math.cos(th) * rx * f, ez = Math.sin(th) * rz * f;
@@ -414,24 +414,18 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       stitch(base, rings);
     };
-    pill([0, J.hipY - 0.08], [0, J.hipY + 0.05], 0.24, 0.2, 'hips', null, 'spine', 'torso');                                  // pelvis
-    pill([0, J.hipY + 0.02], [0, J.neckY - 0.1], 0.24, 0.2, 'spine', 'hips', null, 'torso');                                   // chest and belly
-    pill([-J.shX + 0.04, J.shY - 0.07], [J.shX - 0.04, J.shY - 0.07], 0.09, 0.14, 'spine', 'shoulderL', 'shoulderR');          // across the shoulders: fills the armpits and the tops
+    // only at the joints (short pieces), not a whole body: waist, shoulders, neck, elbows, hips, knees
+    pill([0, J.hipY + 0.0], [0, J.hipY + 0.14], 0.22, 0.17, 'hips', null, 'spine', 'torso');                                   // waist band
+    pill([0, J.shY - 0.14], [0, J.shY - 0.02], 0.2, 0.15, 'spine', null, null, 'torso');                                       // upper back / chest top
+    pill([-J.shX + 0.04, J.shY - 0.07], [J.shX - 0.04, J.shY - 0.07], 0.09, 0.13, 'spine', 'shoulderL', 'shoulderR');          // across the shoulders: fills the armpits and the tops
     pill([0, J.neckY - 0.1], [0, J.neckY + 0.02], 0.07, 0.07, 'head', 'spine', null, 'head');                               // neck
-    ball([0, J.neckY + 0.1, 0.0], 0.105, 0.125, 0.115, 'head', 'head', 1, 'head');                                              // head
     for (const s of [-1, 1]) {
-      const side = s < 0 ? 'L' : 'R', arm = 'arm' + side, leg = 'leg' + side, S = [s * J.shX, J.shY - 0.03], E = [s * (J.shX + J.elX), J.shY - J.elDY + 0.02], W = [s * 0.41, E[1] - 0.2], Hd = [s * 0.425, E[1] - 0.33];
-      const H = [s * J.hipX, J.hipY], Kn = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY], Ak = [Kn[0] + s * 0.02, 0.1];
-      ball([S[0], S[1], 0], 0.11, 0.11, 0.12, 'spine', 'shoulder' + side, 0.5, arm);                                              // shoulder ball
-      pill(S, E, 0.07, 0.075, 'shoulder' + side, 'spine', 'elbow' + side, arm);                                                  // upper arm
-      ball([E[0], E[1], 0], 0.065, 0.065, 0.065, 'shoulder' + side, 'elbow' + side, 0.5, arm);                                      // elbow ball
-      pill(E, W, 0.058, 0.062, 'elbow' + side, 'shoulder' + side, null, arm);                                                     // forearm
-      ball([Hd[0], Hd[1], 0.0], 0.05, 0.065, 0.045, 'elbow' + side, 'elbow' + side, 1, arm);                                     // hand
-      ball([H[0], H[1], 0], 0.11, 0.11, 0.11, 'hips', 'hip' + side, 0.5, leg);                                                   // hip ball
-      pill(H, Kn, 0.1, 0.1, 'hip' + side, 'hips', 'knee' + side, leg);                                                         // thigh
-      ball([Kn[0], Kn[1], 0], 0.085, 0.085, 0.085, 'hip' + side, 'knee' + side, 0.5, leg);                                          // knee ball
-      pill(Kn, Ak, 0.075, 0.08, 'knee' + side, 'hip' + side, null, leg);                                                         // shin
-      ball([Ak[0], 0.06, 0.03], 0.065, 0.055, 0.1, 'knee' + side, 'knee' + side, 1);                                             // foot
+      const side = s < 0 ? 'L' : 'R', arm = 'arm' + side, leg = 'leg' + side, S = [s * J.shX, J.shY - 0.03], E = [s * (J.shX + J.elX), J.shY - J.elDY + 0.02];
+      const H = [s * J.hipX, J.hipY], Kn = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
+      ball([S[0], S[1], 0], 0.11, 0.12, 0.13, 'spine', 'shoulder' + side, 0.5, arm);                                              // shoulder
+      ball([E[0], E[1], 0], 0.065, 0.085, 0.065, 'shoulder' + side, 'elbow' + side, 0.5, arm);                                    // elbow
+      ball([H[0], H[1], 0], 0.11, 0.12, 0.11, 'hips', 'hip' + side, 0.5, leg);                                                   // hip
+      ball([Kn[0], Kn[1], 0], 0.085, 0.1, 0.085, 'hip' + side, 'knee' + side, 0.5, leg);                                          // knee
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(SI), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(SW), 4));
     g.setIndex(IX); g.computeVertexNormals();

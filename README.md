@@ -393,3 +393,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v171:** the under layer of the new leader (options 3 and 4) now covers every joint and gap with pills and balls (shoulders and armpits, elbows, hands, hips, knees, feet, neck, head). See `docs/LEADER_MODEL.md`.
 - nf-v172: under layer fitted inside the armour (no bulging); soft joints extended to shoulders and neck by weight diffusion.
 - nf-v173: stronger shoulder-to-body soft joints; thicker under layer.
+- nf-v174: under layer reduced to joint pieces; collar pads follow the vest fully.

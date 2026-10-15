@@ -66,3 +66,7 @@ Only skin weights change; the part meshes are untouched. Numbers are in that fun
 ## nf-v173: shoulder-to-body weights and a thicker under layer
 - Shoulder pads/pauldrons hang more on the vest (0.85 / 0.5), the shoulder-to-vest blend radius is 0.17 m (max 0.7), and the neighbour-diffusion pass uses 7 cm radius, 65 % neighbours, over a 0.22 m zone around each shoulder: closes the back shoulder/back gap.
 - Under layer: fit factor 0.9 (was 0.68) and larger pill/ball radii, with a deeper across-the-shoulders pill, so it shows through any remaining gap.
+
+## nf-v174: joint-only under layer, collar pads fixed to the vest
+- The under layer is now only short pieces at the joints (waist band, upper back, across the shoulders, neck, shoulder/elbow/hip/knee balls), fitted inside the armour (factor 0.8). Long limb and body pills were removed, so nothing can bulge out of the arms.
+- Shoulder/collar pads near the neck (|x| < 0.22) follow the vest 100 % (they floated off the back when the arm was raised); the outer shoulder armour 60 %.
