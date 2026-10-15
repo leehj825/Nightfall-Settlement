@@ -4653,7 +4653,9 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
       // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
-      { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', x: -20, z: 12 }, { kind: 'pen', x: 21, z: 3.5 }, { kind: 'pen', x: -22, z: 3.5 }] },
+      { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 21, z: 3.5 }, { kind: 'pen', x: -22, z: 3.5 }] },
+      // 5단계 대공사: 풍차, 병원, 승전 기념비 (보기용)
+      { stage: 5, label: 'Plan Great Works', cost: { wood: 120, stone: 150 }, lots: [{ kind: 'windmill', near: { x: 22, z: -17, min: 15, max: 26 } }, { kind: 'infirmary', near: { x: -14, z: -17, min: 15, max: 26 } }, { kind: 'monument', near: { x: -3.5, z: 11, min: 7, max: 14 } }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
@@ -4671,7 +4673,7 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
       well: { res: 'wood', cost: 6, radius: 1.3, size: [2.4, 2.4, 2.4] }, market: { res: 'wood', cost: 12, radius: 2.6, size: [5.2, 2.4, 3.4] },
       quarry: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] }, tower: { res: 'stone', cost: 10, radius: 1.7, size: [3.2, 4.5, 3.2] },
       siegeshop: { res: 'wood', cost: 14, radius: 3.4, size: [6, 3, 4.4] },
-      plaza: { res: 'stone', cost: 16, radius: 3.0, size: [6, 2.4, 6] }, muster: { res: 'wood', cost: 14, radius: 4.2, size: [9, 4.4, 6.4] }, pen: { res: 'wood', cost: 8, radius: 2.8, size: [5.2, 1.1, 4.2] },
+      plaza: { res: 'stone', cost: 16, radius: 3.0, size: [6, 2.4, 6] }, muster: { res: 'wood', cost: 12, radius: 3.2, size: [6.4, 3.8, 4.4] }, windmill: { res: 'wood', cost: 16, radius: 2.3, size: [4, 5.8, 4] }, infirmary: { res: 'wood', cost: 14, radius: 3.2, size: [5.6, 3.6, 3.8] }, monument: { res: 'stone', cost: 14, radius: 2.0, size: [4, 4.2, 4] }, pen: { res: 'wood', cost: 8, radius: 2.8, size: [5.2, 1.1, 4.2] },
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
@@ -6488,7 +6490,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       for (const lz of [-1.4, 1.4]) add(new THREE.BoxGeometry(0.1, 2.4, 0.1), woodMat2, 2.2, 1.2, lz);
     } else if (kind === 'plaza') { plazaModel(add);
     } else if (kind === 'muster') { musterModel(add);
-    } else if (kind === 'pen') { penModel(add, g.userData.seed);
+    } else if (kind === 'pen') { g.userData.sheep = penModel(add, g.userData.seed, (o) => g.add(o));
+    } else if (kind === 'windmill') { windmillModel(add, g);
+    } else if (kind === 'infirmary') { infirmaryModel(add);
+    } else if (kind === 'monument') { monumentModel(add);
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
       barracksModel(add);
     } else if (kind === 'range' && sm) {
@@ -6618,6 +6623,23 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const halo = new THREE.Sprite(haloMat); halo.scale.set(2.6, 2.6, 1); halo.position.y = 2.45; halo.renderOrder = 5;       // 등불 주변의 번지는 빛
     g.add(post, bulb, halo); g.position.set(x, 0, z); scene.add(g); doormats.push(g);
     lampHalos.push(halo);
+  }
+  // 성벽 모서리 횃불대: 성벽을 설계하면 네 모서리에 높은 횃불대를 세운다 (밤에 켜지고 바닥에 빛 웅덩이가 퍼진다. 점광원은 쓰지 않아 폰에서도 가볍다)
+  const cornerLit = [];
+  function addCornerLamp(x, z) {
+    const g = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 3.4, 6), lampPostMat); post.position.y = 1.7; post.castShadow = true;
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.26, 0.3, 8), lampPostMat); bowl.position.y = 3.5;
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 6), lampGlow); flame.position.y = 3.95;
+    const halo = new THREE.Sprite(haloMat); halo.scale.set(5.2, 5.2, 1); halo.position.y = 3.9; halo.renderOrder = 5;
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), poolMat); pool.rotation.x = -Math.PI / 2; pool.scale.set(11, 11, 1); pool.position.y = 0.06; pool.renderOrder = 4;
+    g.add(post, bowl, flame, halo, pool); g.position.set(x, 0, z); scene.add(g); doormats.push(g); lampHalos.push(halo);
+  }
+  function cornerLampsSync() {                                      // 설계한 성벽 줄마다 한 번씩 (예전 저장·디버그 시작도 여기서 채운다)
+    for (let t = 0; t < designTier && t < CFG.DESIGN.length; t++) {
+      if (cornerLit[t]) continue; cornerLit[t] = true;
+      const h = CFG.DESIGN[t].half - 0.4; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addCornerLamp(sx * h, sz * h);
+    }
   }
   // 성문 조명: 문마다 실제 점광원 + 바닥에 퍼지는 따뜻한 빛 웅덩이 (밤에 문 앞이 충분히 밝도록)
   const haloMat = (() => {
@@ -6772,6 +6794,19 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     return { x: 9, z: -4 };
   }
+  // 목표 위치 근처의 빈 자리 (바깥 구역용): 이미 있는 건물·계획·성벽·큰길과 겹치지 않는, 목표에서 가장 가까운 칸. near = { x, z, min, max } (min~max 는 마을 중심에서의 체비쇼프 거리)
+  function findSpotNear(kind, near) {
+    const rad = CFG.BUILDING[kind].radius;
+    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 0.1 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 폭이 얇아 반지름 0.1 로 본다 (두 성벽 사이 길이 좁다)
+    let best = null, bd = Infinity;
+    for (let x = -40; x <= 40; x += 1) for (let z = -40; z <= 40; z += 1) {
+      const c = cheb(x, z); if (c < near.min || c > near.max || Math.abs(x) < rad + 1.4 || Math.abs(z) < rad + 1.4) continue;
+      const d = Math.hypot(x - near.x, z - near.z); if (d >= bd) continue;
+      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 0.8)) continue;
+      bd = d; best = { x, z };
+    }
+    return best || { x: near.x, z: near.z };
+  }
   // 성채가 커지면(3 → 4 → 5단계) 이미 지은 건물(예전 저장 포함)이 성채와 겹칠 수 있다: 겹친 건물은 빈 자리로 옮긴다
   function keepOverlap(o) {
     const K = stage >= 4 ? KEEP_HALF : stage >= 3 ? 4.4 : 0; if (!K) return false;
@@ -6822,7 +6857,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const names = [];
     if (g.outer) names.push(...planOuterFields(g));
     for (const lot of g.lots) {
-      const pos = lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
+      const pos = lot.near ? findSpotNear(lot.kind, lot.near) : lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
       clearArea(pos.x, pos.z, CFG.BUILDING[lot.kind].radius + 1.4);
       addBuildingBlueprint(lot.kind, pos.x, pos.z);
       names.push(BUILDING_NAME[lot.kind]);
@@ -6830,7 +6865,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen' };
+  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument' };
   // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
@@ -6855,7 +6890,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     planCd -= dt; if (planCd > 0) return; planCd = 2.5;
     updatePlanBtn();
     if (dead || exActive || eventOpen || uiPause || !saveReady) return;
-    fixKeepOverlaps();
+    fixKeepOverlaps(); cornerLampsSync();
     const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
     if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
     const n = nextPlan(); if (n && canPay(n.cost)) n.run();
@@ -7108,34 +7143,87 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     for (const s of [-1, 1]) { add(new THREE.BoxGeometry(1.6, 0.12, 0.4), woodMat2, 0, 0.5, s * 2.15); for (const dx of [-0.65, 0.65]) add(new THREE.BoxGeometry(0.12, 0.4, 0.34), M(0x6a6e78), dx, 0.22, s * 2.15); }
   }
-  function musterModel(add) {                                                // 집결장: 다진 흙 마당 + 깃발 세 개(깃발 색) + 무기 걸이 + 단상
-    add(new THREE.BoxGeometry(9, 0.1, 6.4), M(0x8a6c48), 0, 0.05, 0);
-    add(new THREE.BoxGeometry(9.5, 0.2, 0.3), M(0x6a6e78), 0, 0.1, 3.3); add(new THREE.BoxGeometry(9.5, 0.2, 0.3), M(0x6a6e78), 0, 0.1, -3.3);
-    add(new THREE.BoxGeometry(0.3, 0.2, 6.4), M(0x6a6e78), 4.6, 0.1, 0); add(new THREE.BoxGeometry(0.3, 0.2, 6.4), M(0x6a6e78), -4.6, 0.1, 0);
+  function musterModel(add) {                                                // 집결장(작게): 다진 흙 마당 + 깃발 세 개(깃발 색) + 단상 + 무기 걸이
+    add(new THREE.BoxGeometry(6.2, 0.1, 4.4), M(0x8a6c48), 0, 0.05, 0);
+    for (const z of [-2.25, 2.25]) add(new THREE.BoxGeometry(6.5, 0.18, 0.22), M(0x6a6e78), 0, 0.09, z);
+    for (const x of [-3.15, 3.15]) add(new THREE.BoxGeometry(0.22, 0.18, 4.4), M(0x6a6e78), x, 0.09, 0);
     CFG.BANNER.COLORS.forEach((c, i) => {
-      const x = (i - 1) * 2.8;
-      add(new THREE.CylinderGeometry(0.07, 0.09, 4.4, 6), M(0x4a301c), x, 2.3, -2.2);
-      add(new THREE.BoxGeometry(1.2, 1.5, 0.05), M(c), x + 0.65, 3.7, -2.2);
-      add(new THREE.BoxGeometry(1.0, 0.18, 0.06), M(0x2a2a30), x + 0.65, 2.85, -2.2);
+      const x = (i - 1) * 1.9;
+      add(new THREE.CylinderGeometry(0.06, 0.08, 3.6, 6), M(0x4a301c), x, 1.9, -1.5);
+      add(new THREE.BoxGeometry(1.0, 1.2, 0.05), M(c), x + 0.55, 3.0, -1.5);
     });
-    add(new THREE.BoxGeometry(2.6, 0.45, 1.6), woodMat2, 0, 0.3, 0.4);                                           // 단상
-    add(new THREE.BoxGeometry(0.1, 1.5, 2.6), woodMat2, 3.6, 0.85, 1.2);                                         // 무기 걸이
-    for (const z of [0.4, 1.2, 2.0]) add(new THREE.BoxGeometry(0.06, 1.3, 0.06), M(0x9aa0aa), 3.5, 1.0, z);
-    for (const z of [-0.4, 0.4]) add(new THREE.CylinderGeometry(0.4, 0.4, 0.12, 12), M(0xb02a2a), 3.4, 0.9, 2.9 + z * 0).rotation.z = Math.PI / 2;
+    add(new THREE.BoxGeometry(1.8, 0.4, 1.1), woodMat2, 0, 0.25, 0.5);                                           // 단상
+    add(new THREE.BoxGeometry(0.1, 1.2, 1.8), woodMat2, 2.5, 0.7, 0.9);                                           // 무기 걸이
+    for (const z of [0.3, 0.9, 1.5]) add(new THREE.BoxGeometry(0.06, 1.0, 0.06), M(0x9aa0aa), 2.4, 0.85, z);
   }
-  function penModel(add, seed) {                                             // 가축 우리: 나무 울타리 + 건초 + 양 (seed 로 마리 수가 조금 달라진다)
+  function penModel(add, seed, add0) {                                       // 가축 우리: 나무 울타리 + 건초 + 양 (seed 로 마리 수가 조금 달라진다)
     const w = 5.2, d = 4.2, post = M(0x6b4a2a), rnd = rngOf(seed || 7);
     add(new THREE.BoxGeometry(w, 0.06, d), M(0x6f8a3a), 0, 0.03, 0);
     for (const z of [-d / 2, d / 2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(w, 0.09, 0.09), post, 0, y, z);
     for (const x of [-w / 2, w / 2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(0.09, 0.09, d), post, x, y, 0);
     for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, -d / 2], [0, d / 2]]) add(new THREE.BoxGeometry(0.14, 1.1, 0.14), post, x, 0.55, z);
     add(new THREE.BoxGeometry(1.2, 0.6, 0.9), M(0xd8b848), w / 2 - 1.0, 0.3, -d / 2 + 0.8);                      // 건초 더미
-    const n = 3 + Math.floor(rnd() * 3), wool = M(0xeeeeea), face = M(0x3a3430);
-    for (let i = 0; i < n; i++) {
-      const x = (rnd() - 0.5) * (w - 1.8) - 0.4, z = (rnd() - 0.5) * (d - 1.2), ry = rnd() * 6.28;
-      const b = add(new THREE.BoxGeometry(0.9, 0.55, 0.55), wool, x, 0.55, z); b.rotation.y = ry;
-      const h = add(new THREE.BoxGeometry(0.28, 0.28, 0.28), face, x + Math.cos(ry) * 0.55, 0.65, z - Math.sin(ry) * 0.55);
-      for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]]) add(new THREE.BoxGeometry(0.1, 0.3, 0.1), face, x + lx * Math.cos(ry) + lz * Math.sin(ry), 0.15, z - lx * Math.sin(ry) + lz * Math.cos(ry));
+    const n = 3 + Math.floor(rnd() * 3), wool = M(0xeeeeea), face = M(0x3a3430), sheep = [];
+    for (let i = 0; i < n; i++) {                                                                                 // 양: 그룹 하나 = 몸 + 머리 + 다리 (우리 안을 돌아다닌다)
+      const s = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.55), wool), head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.28), face);
+      body.position.y = 0.55; head.position.set(0.55, 0.65, 0); body.castShadow = head.castShadow = true; s.add(body, head);
+      for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.1), face); l.position.set(lx, 0.15, lz); s.add(l); }
+      s.position.set((rnd() - 0.5) * (w - 1.8) - 0.4, 0, (rnd() - 0.5) * (d - 1.2)); s.rotation.y = rnd() * 6.28;
+      s.userData = { tx: s.position.x, tz: s.position.z, wait: rnd() * 3, ph: rnd() * 6 }; sheep.push(s); add0(s);
+    }
+    return sheep;
+  }
+  function windmillModel(add, g) {                                           // 풍차: 돌 몸통 + 나무 모자 + 돌아가는 날개 네 개 + 곡식 자루
+    add(new THREE.CylinderGeometry(1.25, 1.75, 0.5, 10), M(0x8d9098), 0, 0.25, 0);
+    add(new THREE.CylinderGeometry(1.0, 1.5, 3.6, 10), M(0xd8cfba), 0, 2.3, 0);
+    add(new THREE.CylinderGeometry(1.05, 1.05, 0.2, 10), M(0x6a4a2a), 0, 4.15, 0);
+    add(new THREE.ConeGeometry(1.35, 1.6, 10), houseRoof, 0, 5.0, 0);
+    add(new THREE.BoxGeometry(0.7, 1.2, 0.12), M(0x4a301c), 0, 0.85, 1.42);                                      // 문
+    add(new THREE.BoxGeometry(0.4, 0.5, 0.1), windowGlow, 0, 3.0, 1.2);
+    const hub = new THREE.Group(); hub.position.set(0, 4.4, 1.35);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 8), M(0x4a301c)); cap.rotation.x = Math.PI / 2; hub.add(cap);
+    for (let i = 0; i < 4; i++) {
+      const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2;
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.14, 3.4, 0.1), M(0x6a4a2a)), sail = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2.3, 0.05), M(0xf0e8d0));
+      bar.position.y = 1.7; sail.position.set(0.45, 2.0, 0.03); bar.castShadow = sail.castShadow = true; arm.add(bar, sail); hub.add(arm);
+    }
+    g.add(hub); g.userData.sails = hub;
+    for (const [x, z] of [[1.6, 0.6], [1.9, 1.1]]) add(new THREE.CylinderGeometry(0.3, 0.34, 0.5, 8), M(0xc8a860), x, 0.25, z);
+  }
+  function infirmaryModel(add) {                                             // 병원: 흰 회벽 긴 집 + 붉은 지붕 + 빨간 십자 간판 + 약초밭
+    add(new THREE.BoxGeometry(5.6, 0.3, 3.8), M(0x8d9098), 0, 0.15, 0);
+    add(new THREE.BoxGeometry(5.0, 2.1, 3.2), M(0xe8e2d2), 0, 1.35, 0);
+    const roof = add(gableGeo(5.6, 1.5, 3.8), M(0xa84a3a), 0, 2.4, 0); roof.rotation.y = Math.PI / 2; roof.scale.set(1, 1, 1);
+    add(new THREE.BoxGeometry(0.9, 1.5, 0.12), M(0x6a4a2a), 0, 1.05, 1.62);
+    for (const x of [-1.7, 1.7]) add(new THREE.BoxGeometry(0.7, 0.6, 0.1), windowGlow, x, 1.7, 1.62);
+    add(new THREE.BoxGeometry(1.0, 1.0, 0.08), M(0xf4f4f0), 0, 3.0, 1.66);
+    add(new THREE.BoxGeometry(0.62, 0.18, 0.1), M(0xc0302a), 0, 3.0, 1.7); add(new THREE.BoxGeometry(0.18, 0.62, 0.1), M(0xc0302a), 0, 3.0, 1.7);
+    add(new THREE.BoxGeometry(2.4, 0.1, 0.9), dirt, 3.4, 0.05, 0.6);
+    for (let i = 0; i < 5; i++) add(new THREE.ConeGeometry(0.16, 0.45, 5), cropMat, 2.5 + i * 0.4, 0.3, 0.6);
+  }
+  function monumentModel(add) {                                              // 승전 기념비: 돌 계단 + 비석 + 금빛 꼭대기 + 세 영지의 전리품 깃발
+    add(new THREE.CylinderGeometry(1.9, 2.0, 0.25, 12), M(0x8d9098), 0, 0.12, 0); add(new THREE.CylinderGeometry(1.4, 1.5, 0.25, 12), M(0xa9acb4), 0, 0.37, 0);
+    add(new THREE.BoxGeometry(0.9, 2.6, 0.9), M(0xb8bac0), 0, 1.7, 0); add(new THREE.ConeGeometry(0.75, 0.8, 4), M(0xe0b040), 0, 3.4, 0).rotation.y = Math.PI / 4;
+    add(new THREE.SphereGeometry(0.22, 8, 6), M(0xe0b040), 0, 3.95, 0);
+    ['#b02a2a', '#4a8be0', '#5fc060'].forEach((c, i) => {
+      const a = i * 2.094 + 0.5, x = Math.cos(a) * 1.35, z = Math.sin(a) * 1.35;
+      add(new THREE.CylinderGeometry(0.04, 0.05, 2.2, 5), M(0x4a301c), x, 1.35, z); add(new THREE.BoxGeometry(0.55, 0.8, 0.04), M(c), x + 0.3, 1.9, z);
+    });
+  }
+  function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다
+    for (const o of obstacles) {
+      const u = o.userData; if (u.type !== 'building') continue;
+      if (u.sails) u.sails.rotation.z -= dt * (0.6 + 0.4 * Math.sin(t * 0.3));
+      if (!u.sheep) continue;
+      for (const s of u.sheep) {
+        const d = s.userData, dx = d.tx - s.position.x, dz = d.tz - s.position.z, dist = Math.hypot(dx, dz);
+        if (dist < 0.15) {
+          if ((d.wait -= dt) <= 0) { d.wait = 1.5 + Math.random() * 4; d.tx = (Math.random() - 0.5) * 3.4 - 0.4; d.tz = (Math.random() - 0.5) * 3; }
+          s.position.y = 0; continue;
+        }
+        const ang = Math.atan2(-dz, dx); let da = ang - s.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); s.rotation.y += da * Math.min(1, dt * 4);
+        const sp = Math.min(dist, 0.8 * dt); s.position.x += dx / dist * sp; s.position.z += dz / dist * sp; s.position.y = Math.abs(Math.sin(t * 7 + d.ph)) * 0.05;
+      }
     }
   }
 
@@ -11532,7 +11620,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       for (const b of exBeams) { const d = Math.hypot(b.parent.position.x - player.position.x, b.parent.position.z - player.position.z); b.material.opacity = (0.1 + 0.2 * nf) * Math.min(1, d / 9); }       // 가까이 가면 기둥이 옅어진다
     }
     if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
-    weatherStep(dt, night, hour); updateMark(t); updateStandard(t);
+    weatherStep(dt, night, hour); updateMark(t); updateStandard(t); lifeTick(t, dt);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; ambient.intensity += 0.2 * nf; }       // 버드아이 뷰에서는 안개가 멀리 밀려나고 밤에도 마을이 보인다
@@ -11950,7 +12038,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   });
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   tick();
 })();
 

@@ -60,7 +60,10 @@
       for (const lz of [-1.4, 1.4]) add(new THREE.BoxGeometry(0.1, 2.4, 0.1), woodMat2, 2.2, 1.2, lz);
     } else if (kind === 'plaza') { plazaModel(add);
     } else if (kind === 'muster') { musterModel(add);
-    } else if (kind === 'pen') { penModel(add, g.userData.seed);
+    } else if (kind === 'pen') { g.userData.sheep = penModel(add, g.userData.seed, (o) => g.add(o));
+    } else if (kind === 'windmill') { windmillModel(add, g);
+    } else if (kind === 'infirmary') { infirmaryModel(add);
+    } else if (kind === 'monument') { monumentModel(add);
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
       barracksModel(add);
     } else if (kind === 'range' && sm) {
@@ -190,6 +193,23 @@
     const halo = new THREE.Sprite(haloMat); halo.scale.set(2.6, 2.6, 1); halo.position.y = 2.45; halo.renderOrder = 5;       // 등불 주변의 번지는 빛
     g.add(post, bulb, halo); g.position.set(x, 0, z); scene.add(g); doormats.push(g);
     lampHalos.push(halo);
+  }
+  // 성벽 모서리 횃불대: 성벽을 설계하면 네 모서리에 높은 횃불대를 세운다 (밤에 켜지고 바닥에 빛 웅덩이가 퍼진다. 점광원은 쓰지 않아 폰에서도 가볍다)
+  const cornerLit = [];
+  function addCornerLamp(x, z) {
+    const g = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 3.4, 6), lampPostMat); post.position.y = 1.7; post.castShadow = true;
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.26, 0.3, 8), lampPostMat); bowl.position.y = 3.5;
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 6), lampGlow); flame.position.y = 3.95;
+    const halo = new THREE.Sprite(haloMat); halo.scale.set(5.2, 5.2, 1); halo.position.y = 3.9; halo.renderOrder = 5;
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), poolMat); pool.rotation.x = -Math.PI / 2; pool.scale.set(11, 11, 1); pool.position.y = 0.06; pool.renderOrder = 4;
+    g.add(post, bowl, flame, halo, pool); g.position.set(x, 0, z); scene.add(g); doormats.push(g); lampHalos.push(halo);
+  }
+  function cornerLampsSync() {                                      // 설계한 성벽 줄마다 한 번씩 (예전 저장·디버그 시작도 여기서 채운다)
+    for (let t = 0; t < designTier && t < CFG.DESIGN.length; t++) {
+      if (cornerLit[t]) continue; cornerLit[t] = true;
+      const h = CFG.DESIGN[t].half - 0.4; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addCornerLamp(sx * h, sz * h);
+    }
   }
   // 성문 조명: 문마다 실제 점광원 + 바닥에 퍼지는 따뜻한 빛 웅덩이 (밤에 문 앞이 충분히 밝도록)
   const haloMat = (() => {
@@ -344,6 +364,19 @@
     }
     return { x: 9, z: -4 };
   }
+  // 목표 위치 근처의 빈 자리 (바깥 구역용): 이미 있는 건물·계획·성벽·큰길과 겹치지 않는, 목표에서 가장 가까운 칸. near = { x, z, min, max } (min~max 는 마을 중심에서의 체비쇼프 거리)
+  function findSpotNear(kind, near) {
+    const rad = CFG.BUILDING[kind].radius;
+    const others = obstacles.filter(o => o.userData.type === 'building' || o.userData.type === 'fence').map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 0.1 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 폭이 얇아 반지름 0.1 로 본다 (두 성벽 사이 길이 좁다)
+    let best = null, bd = Infinity;
+    for (let x = -40; x <= 40; x += 1) for (let z = -40; z <= 40; z += 1) {
+      const c = cheb(x, z); if (c < near.min || c > near.max || Math.abs(x) < rad + 1.4 || Math.abs(z) < rad + 1.4) continue;
+      const d = Math.hypot(x - near.x, z - near.z); if (d >= bd) continue;
+      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 0.8)) continue;
+      bd = d; best = { x, z };
+    }
+    return best || { x: near.x, z: near.z };
+  }
   // 성채가 커지면(3 → 4 → 5단계) 이미 지은 건물(예전 저장 포함)이 성채와 겹칠 수 있다: 겹친 건물은 빈 자리로 옮긴다
   function keepOverlap(o) {
     const K = stage >= 4 ? KEEP_HALF : stage >= 3 ? 4.4 : 0; if (!K) return false;
@@ -394,7 +427,7 @@
     const names = [];
     if (g.outer) names.push(...planOuterFields(g));
     for (const lot of g.lots) {
-      const pos = lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
+      const pos = lot.near ? findSpotNear(lot.kind, lot.near) : lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
       clearArea(pos.x, pos.z, CFG.BUILDING[lot.kind].radius + 1.4);
       addBuildingBlueprint(lot.kind, pos.x, pos.z);
       names.push(BUILDING_NAME[lot.kind]);
@@ -402,7 +435,7 @@
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen' };
+  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument' };
   // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
@@ -427,7 +460,7 @@
     planCd -= dt; if (planCd > 0) return; planCd = 2.5;
     updatePlanBtn();
     if (dead || exActive || eventOpen || uiPause || !saveReady) return;
-    fixKeepOverlaps();
+    fixKeepOverlaps(); cornerLampsSync();
     const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
     if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
     const n = nextPlan(); if (n && canPay(n.cost)) n.run();

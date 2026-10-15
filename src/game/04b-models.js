@@ -221,34 +221,87 @@
     }
     for (const s of [-1, 1]) { add(new THREE.BoxGeometry(1.6, 0.12, 0.4), woodMat2, 0, 0.5, s * 2.15); for (const dx of [-0.65, 0.65]) add(new THREE.BoxGeometry(0.12, 0.4, 0.34), M(0x6a6e78), dx, 0.22, s * 2.15); }
   }
-  function musterModel(add) {                                                // 집결장: 다진 흙 마당 + 깃발 세 개(깃발 색) + 무기 걸이 + 단상
-    add(new THREE.BoxGeometry(9, 0.1, 6.4), M(0x8a6c48), 0, 0.05, 0);
-    add(new THREE.BoxGeometry(9.5, 0.2, 0.3), M(0x6a6e78), 0, 0.1, 3.3); add(new THREE.BoxGeometry(9.5, 0.2, 0.3), M(0x6a6e78), 0, 0.1, -3.3);
-    add(new THREE.BoxGeometry(0.3, 0.2, 6.4), M(0x6a6e78), 4.6, 0.1, 0); add(new THREE.BoxGeometry(0.3, 0.2, 6.4), M(0x6a6e78), -4.6, 0.1, 0);
+  function musterModel(add) {                                                // 집결장(작게): 다진 흙 마당 + 깃발 세 개(깃발 색) + 단상 + 무기 걸이
+    add(new THREE.BoxGeometry(6.2, 0.1, 4.4), M(0x8a6c48), 0, 0.05, 0);
+    for (const z of [-2.25, 2.25]) add(new THREE.BoxGeometry(6.5, 0.18, 0.22), M(0x6a6e78), 0, 0.09, z);
+    for (const x of [-3.15, 3.15]) add(new THREE.BoxGeometry(0.22, 0.18, 4.4), M(0x6a6e78), x, 0.09, 0);
     CFG.BANNER.COLORS.forEach((c, i) => {
-      const x = (i - 1) * 2.8;
-      add(new THREE.CylinderGeometry(0.07, 0.09, 4.4, 6), M(0x4a301c), x, 2.3, -2.2);
-      add(new THREE.BoxGeometry(1.2, 1.5, 0.05), M(c), x + 0.65, 3.7, -2.2);
-      add(new THREE.BoxGeometry(1.0, 0.18, 0.06), M(0x2a2a30), x + 0.65, 2.85, -2.2);
+      const x = (i - 1) * 1.9;
+      add(new THREE.CylinderGeometry(0.06, 0.08, 3.6, 6), M(0x4a301c), x, 1.9, -1.5);
+      add(new THREE.BoxGeometry(1.0, 1.2, 0.05), M(c), x + 0.55, 3.0, -1.5);
     });
-    add(new THREE.BoxGeometry(2.6, 0.45, 1.6), woodMat2, 0, 0.3, 0.4);                                           // 단상
-    add(new THREE.BoxGeometry(0.1, 1.5, 2.6), woodMat2, 3.6, 0.85, 1.2);                                         // 무기 걸이
-    for (const z of [0.4, 1.2, 2.0]) add(new THREE.BoxGeometry(0.06, 1.3, 0.06), M(0x9aa0aa), 3.5, 1.0, z);
-    for (const z of [-0.4, 0.4]) add(new THREE.CylinderGeometry(0.4, 0.4, 0.12, 12), M(0xb02a2a), 3.4, 0.9, 2.9 + z * 0).rotation.z = Math.PI / 2;
+    add(new THREE.BoxGeometry(1.8, 0.4, 1.1), woodMat2, 0, 0.25, 0.5);                                           // 단상
+    add(new THREE.BoxGeometry(0.1, 1.2, 1.8), woodMat2, 2.5, 0.7, 0.9);                                           // 무기 걸이
+    for (const z of [0.3, 0.9, 1.5]) add(new THREE.BoxGeometry(0.06, 1.0, 0.06), M(0x9aa0aa), 2.4, 0.85, z);
   }
-  function penModel(add, seed) {                                             // 가축 우리: 나무 울타리 + 건초 + 양 (seed 로 마리 수가 조금 달라진다)
+  function penModel(add, seed, add0) {                                       // 가축 우리: 나무 울타리 + 건초 + 양 (seed 로 마리 수가 조금 달라진다)
     const w = 5.2, d = 4.2, post = M(0x6b4a2a), rnd = rngOf(seed || 7);
     add(new THREE.BoxGeometry(w, 0.06, d), M(0x6f8a3a), 0, 0.03, 0);
     for (const z of [-d / 2, d / 2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(w, 0.09, 0.09), post, 0, y, z);
     for (const x of [-w / 2, w / 2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(0.09, 0.09, d), post, x, y, 0);
     for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, -d / 2], [0, d / 2]]) add(new THREE.BoxGeometry(0.14, 1.1, 0.14), post, x, 0.55, z);
     add(new THREE.BoxGeometry(1.2, 0.6, 0.9), M(0xd8b848), w / 2 - 1.0, 0.3, -d / 2 + 0.8);                      // 건초 더미
-    const n = 3 + Math.floor(rnd() * 3), wool = M(0xeeeeea), face = M(0x3a3430);
-    for (let i = 0; i < n; i++) {
-      const x = (rnd() - 0.5) * (w - 1.8) - 0.4, z = (rnd() - 0.5) * (d - 1.2), ry = rnd() * 6.28;
-      const b = add(new THREE.BoxGeometry(0.9, 0.55, 0.55), wool, x, 0.55, z); b.rotation.y = ry;
-      const h = add(new THREE.BoxGeometry(0.28, 0.28, 0.28), face, x + Math.cos(ry) * 0.55, 0.65, z - Math.sin(ry) * 0.55);
-      for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]]) add(new THREE.BoxGeometry(0.1, 0.3, 0.1), face, x + lx * Math.cos(ry) + lz * Math.sin(ry), 0.15, z - lx * Math.sin(ry) + lz * Math.cos(ry));
+    const n = 3 + Math.floor(rnd() * 3), wool = M(0xeeeeea), face = M(0x3a3430), sheep = [];
+    for (let i = 0; i < n; i++) {                                                                                 // 양: 그룹 하나 = 몸 + 머리 + 다리 (우리 안을 돌아다닌다)
+      const s = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.55), wool), head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.28), face);
+      body.position.y = 0.55; head.position.set(0.55, 0.65, 0); body.castShadow = head.castShadow = true; s.add(body, head);
+      for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.1), face); l.position.set(lx, 0.15, lz); s.add(l); }
+      s.position.set((rnd() - 0.5) * (w - 1.8) - 0.4, 0, (rnd() - 0.5) * (d - 1.2)); s.rotation.y = rnd() * 6.28;
+      s.userData = { tx: s.position.x, tz: s.position.z, wait: rnd() * 3, ph: rnd() * 6 }; sheep.push(s); add0(s);
+    }
+    return sheep;
+  }
+  function windmillModel(add, g) {                                           // 풍차: 돌 몸통 + 나무 모자 + 돌아가는 날개 네 개 + 곡식 자루
+    add(new THREE.CylinderGeometry(1.25, 1.75, 0.5, 10), M(0x8d9098), 0, 0.25, 0);
+    add(new THREE.CylinderGeometry(1.0, 1.5, 3.6, 10), M(0xd8cfba), 0, 2.3, 0);
+    add(new THREE.CylinderGeometry(1.05, 1.05, 0.2, 10), M(0x6a4a2a), 0, 4.15, 0);
+    add(new THREE.ConeGeometry(1.35, 1.6, 10), houseRoof, 0, 5.0, 0);
+    add(new THREE.BoxGeometry(0.7, 1.2, 0.12), M(0x4a301c), 0, 0.85, 1.42);                                      // 문
+    add(new THREE.BoxGeometry(0.4, 0.5, 0.1), windowGlow, 0, 3.0, 1.2);
+    const hub = new THREE.Group(); hub.position.set(0, 4.4, 1.35);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 8), M(0x4a301c)); cap.rotation.x = Math.PI / 2; hub.add(cap);
+    for (let i = 0; i < 4; i++) {
+      const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2;
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.14, 3.4, 0.1), M(0x6a4a2a)), sail = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2.3, 0.05), M(0xf0e8d0));
+      bar.position.y = 1.7; sail.position.set(0.45, 2.0, 0.03); bar.castShadow = sail.castShadow = true; arm.add(bar, sail); hub.add(arm);
+    }
+    g.add(hub); g.userData.sails = hub;
+    for (const [x, z] of [[1.6, 0.6], [1.9, 1.1]]) add(new THREE.CylinderGeometry(0.3, 0.34, 0.5, 8), M(0xc8a860), x, 0.25, z);
+  }
+  function infirmaryModel(add) {                                             // 병원: 흰 회벽 긴 집 + 붉은 지붕 + 빨간 십자 간판 + 약초밭
+    add(new THREE.BoxGeometry(5.6, 0.3, 3.8), M(0x8d9098), 0, 0.15, 0);
+    add(new THREE.BoxGeometry(5.0, 2.1, 3.2), M(0xe8e2d2), 0, 1.35, 0);
+    const roof = add(gableGeo(5.6, 1.5, 3.8), M(0xa84a3a), 0, 2.4, 0); roof.rotation.y = Math.PI / 2; roof.scale.set(1, 1, 1);
+    add(new THREE.BoxGeometry(0.9, 1.5, 0.12), M(0x6a4a2a), 0, 1.05, 1.62);
+    for (const x of [-1.7, 1.7]) add(new THREE.BoxGeometry(0.7, 0.6, 0.1), windowGlow, x, 1.7, 1.62);
+    add(new THREE.BoxGeometry(1.0, 1.0, 0.08), M(0xf4f4f0), 0, 3.0, 1.66);
+    add(new THREE.BoxGeometry(0.62, 0.18, 0.1), M(0xc0302a), 0, 3.0, 1.7); add(new THREE.BoxGeometry(0.18, 0.62, 0.1), M(0xc0302a), 0, 3.0, 1.7);
+    add(new THREE.BoxGeometry(2.4, 0.1, 0.9), dirt, 3.4, 0.05, 0.6);
+    for (let i = 0; i < 5; i++) add(new THREE.ConeGeometry(0.16, 0.45, 5), cropMat, 2.5 + i * 0.4, 0.3, 0.6);
+  }
+  function monumentModel(add) {                                              // 승전 기념비: 돌 계단 + 비석 + 금빛 꼭대기 + 세 영지의 전리품 깃발
+    add(new THREE.CylinderGeometry(1.9, 2.0, 0.25, 12), M(0x8d9098), 0, 0.12, 0); add(new THREE.CylinderGeometry(1.4, 1.5, 0.25, 12), M(0xa9acb4), 0, 0.37, 0);
+    add(new THREE.BoxGeometry(0.9, 2.6, 0.9), M(0xb8bac0), 0, 1.7, 0); add(new THREE.ConeGeometry(0.75, 0.8, 4), M(0xe0b040), 0, 3.4, 0).rotation.y = Math.PI / 4;
+    add(new THREE.SphereGeometry(0.22, 8, 6), M(0xe0b040), 0, 3.95, 0);
+    ['#b02a2a', '#4a8be0', '#5fc060'].forEach((c, i) => {
+      const a = i * 2.094 + 0.5, x = Math.cos(a) * 1.35, z = Math.sin(a) * 1.35;
+      add(new THREE.CylinderGeometry(0.04, 0.05, 2.2, 5), M(0x4a301c), x, 1.35, z); add(new THREE.BoxGeometry(0.55, 0.8, 0.04), M(c), x + 0.3, 1.9, z);
+    });
+  }
+  function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다
+    for (const o of obstacles) {
+      const u = o.userData; if (u.type !== 'building') continue;
+      if (u.sails) u.sails.rotation.z -= dt * (0.6 + 0.4 * Math.sin(t * 0.3));
+      if (!u.sheep) continue;
+      for (const s of u.sheep) {
+        const d = s.userData, dx = d.tx - s.position.x, dz = d.tz - s.position.z, dist = Math.hypot(dx, dz);
+        if (dist < 0.15) {
+          if ((d.wait -= dt) <= 0) { d.wait = 1.5 + Math.random() * 4; d.tx = (Math.random() - 0.5) * 3.4 - 0.4; d.tz = (Math.random() - 0.5) * 3; }
+          s.position.y = 0; continue;
+        }
+        const ang = Math.atan2(-dz, dx); let da = ang - s.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); s.rotation.y += da * Math.min(1, dt * 4);
+        const sp = Math.min(dist, 0.8 * dt); s.position.x += dx / dist * sp; s.position.z += dz / dist * sp; s.position.y = Math.abs(Math.sin(t * 7 + d.ph)) * 0.05;
+      }
     }
   }
 
