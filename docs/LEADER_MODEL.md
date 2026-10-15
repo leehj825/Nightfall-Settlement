@@ -54,3 +54,6 @@ The first soft joints left many gaps at the waist and shoulders because the part
 - The top of the chain skirt follows the vest (80% at the top, fading to 0 at half of the skirt height); the hem follows the thighs as before.
 - Joint ends blend up to 55% (radius 11 to 12 cm) at the elbow, hip and knee, up to 50% (radius 9 to 10 cm) at the shoulder top and hip top; the bottom of the vest follows the pelvis up to 60%.
 Only skin weights change; the part meshes are untouched. Numbers are in that function.
+
+## Under layer, second version (nf-v171)
+`leaderUnderlayer` (`js/rig.js`) is now a leather-brown mannequin made of pills (capsules with round ends) and balls (ellipsoids), all soft skinned: pelvis, chest and belly, a pill across the shoulders (fills the armpits and the shoulder tops), neck, head, and per side a shoulder ball, upper arm, elbow ball, forearm, hand, hip ball, thigh, knee ball, shin and foot. Round ends and joint balls mean a bend never opens a slit. About 1,900 vertices, built at load time, no data file.

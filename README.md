@@ -389,3 +389,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v169:** the soft joint options now also close the dark band at the waist (vest and skirt) and soften the neck; the under layer is leather brown instead of near black. The plain New model and the under-layer-only option have no waist blending.
 
 **nf-v170:** stronger soft joints for the new leader (options 2 and 4): the shoulder pads, pauldron and belt hang on the vest, the top of the skirt follows the vest and the hem the thighs, and joint blends are wider. See `docs/LEADER_MODEL.md`.
+
+**nf-v171:** the under layer of the new leader (options 3 and 4) now covers every joint and gap with pills and balls (shoulders and armpits, elbows, hands, hips, knees, feet, neck, head). See `docs/LEADER_MODEL.md`.
