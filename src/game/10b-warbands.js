@@ -85,10 +85,11 @@
   function applyMount(n) {                                                   // 말 메쉬를 붙이거나 뗀다 (기수를 말 등 높이로 올린다)
     const want = !!n.mounted && canMount(n);
     if (want && !n.horse) {
-      const horse = new THREE.Group(), body = horseModel(() => 0.3), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
+      const hash = [...(n.name || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0, coats = [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a, 0x5a5a5e, 0xb08a5a], bc = parseInt((n.warband >= 0 ? warbandColor(n.warband) : '#8a2a2a').slice(1), 16);
+      const horse = new THREE.Group(), body = horseModel(() => 0.3, { coat: coats[hash % coats.length], blanket: bc, armor: n.cls === 'spear' }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
+      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
     } else if (!want && n.horse) {
-      const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.horse = n.rider = null; n.mounted = false;
+      const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.rig.seated = false; n.horse = n.rider = null; n.mounted = false;
     }
     n.charge = 0;
   }
@@ -104,10 +105,10 @@
   function leaderMountMul() { return playerMounted ? 1.05 + (pBonusT > 0 ? CFG.CAV.CHARGE * (1 + 0.25 * pl.st.horsemaster) : 0) : 1; }
   function leaderRideApply() {
     if (playerMounted && !pHorse) {
-      const horse = new THREE.Group(), body = horseModel(() => 0.7), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+      const horse = new THREE.Group(), body = horseModel(() => 0.7, { coat: 0xe8e4d8, blanket: 0xe0b040, armor: true }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
     } else if (!playerMounted && pHorse) {
-      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); pHorse = pRider = null;
+      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); playerRig.seated = false; pHorse = pRider = null;
     }
     pCharge = 0; pBonusT = 0;
   }

@@ -768,7 +768,17 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt);
-      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt);
+      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated) this._seat();
+    }
+    // 말 위의 앉은 자세: 허벅지를 앞으로 벌려 안장을 감싸고 무릎을 접어 정강이가 말 옆구리로 내려오게 한다 (모션캡처 위에 덮어쓴다)
+    _seat() {
+      const R = this.rig, e = this._se || (this._se = new THREE.Euler()), q = this._sq || (this._sq = new THREE.Quaternion());
+      if (!R.hipL || !R.hipR || !R.kneeL || !R.kneeR) return;
+      for (const [h, k, s] of [[R.hipL, R.kneeL, 1], [R.hipR, R.kneeR, -1]]) {
+        e.set(-1.05, 0, s * 0.42); h.quaternion.setFromEuler(e);
+        e.set(1.0, 0, 0); k.quaternion.setFromEuler(e);
+      }
+      if (R.hips) R.hips.rotation.x = Math.min(R.hips.rotation.x, 0.0);
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세

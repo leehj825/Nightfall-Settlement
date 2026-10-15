@@ -1266,13 +1266,19 @@
       f.add(cloth); f.position.set(x, 2.6, z); f.visible = false; g.add(f); return f;
     });
   }
-  function horseModel(rnd) {                                                 // 말: 몸통 + 목 + 머리 + 다리 네 개 + 갈기와 꼬리
-    const s = new THREE.Group(), coat = M([0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a][Math.floor(rnd() * 4)]), dark = M(0x2a2018), mk = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; s.add(o); return o; };
+  function horseModel(rnd, o) {                                              // 말: 몸통 + 목 + 머리 + 다리 네 개 + 갈기와 꼬리. o = { coat, blanket(안장 담요 색), armor(마갑) }
+    o = o || {}; const s = new THREE.Group(), coat = M(o.coat !== undefined ? o.coat : [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a][Math.floor(rnd() * 4)]), dark = M(0x2a2018), mk = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; s.add(o); return o; };
     mk(new THREE.BoxGeometry(1.5, 0.75, 0.55), coat, 0, 1.15, 0);
     mk(new THREE.BoxGeometry(0.4, 0.8, 0.35), coat, 0.85, 1.5, 0).rotation.z = -0.5;
     mk(new THREE.BoxGeometry(0.6, 0.3, 0.28), coat, 1.2, 1.8, 0);
     mk(new THREE.BoxGeometry(0.15, 0.55, 0.12), dark, 0.62, 1.7, 0).rotation.z = -0.5;
     mk(new THREE.BoxGeometry(0.1, 0.6, 0.12), dark, -0.8, 1.1, 0).rotation.z = 0.35;
+    mk(new THREE.BoxGeometry(0.7, 0.08, 0.62), M(o.blanket !== undefined ? o.blanket : 0x8a2a2a), 0.05, 1.56, 0); mk(new THREE.BoxGeometry(0.55, 0.12, 0.45), M(0x4a301c), 0.05, 1.62, 0);        // 안장 담요와 안장
+    if (o.armor) {                                                                                               // 마갑: 가슴·목·머리 철판과 이마의 장식
+      const steel = M(0x9aa0aa), gold = M(0xe0b040);
+      mk(new THREE.BoxGeometry(0.5, 0.65, 0.62), steel, 0.6, 1.1, 0); mk(new THREE.BoxGeometry(0.42, 0.7, 0.4), steel, 0.88, 1.5, 0).rotation.z = -0.5;
+      mk(new THREE.BoxGeometry(0.4, 0.2, 0.3), steel, 1.3, 1.9, 0); mk(new THREE.BoxGeometry(0.08, 0.2, 0.08), gold, 1.5, 2.05, 0);
+    }
     s.userData.legs = [[-0.6, -0.18], [-0.6, 0.18], [0.6, -0.18], [0.6, 0.18]].map(([lx, lz]) => mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz));
     return s;
   }
@@ -1309,9 +1315,43 @@
     grp.position.set(gate.x, 0, gate.z); grp.rotation.y = Math.atan2(gate.nx, gate.nz); scene.add(grp); doormats.push(grp);
     return grp;
   }
+  // ---------- 5단계 마을의 활기: 손수레 두 대가 큰길을 오가고, 광장 분수 곁에 마을 사람들이 서 있다 (보기용, 충돌 없음. 낮에만 보인다) ----------
+  const townLife = { done: false, carts: [], folk: [] };
+  function cartModel() {                                                       // 수레: 나무 짐칸 + 바퀴 둘 + 짐(자루·통) + 짐 끄는 말
+    const g = new THREE.Group(), wood = M(0x7a5a3a), mk = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+    mk(new THREE.BoxGeometry(2.2, 0.15, 1.2), wood, 0, 0.7, 0); for (const z of [-0.6, 0.6]) mk(new THREE.BoxGeometry(2.2, 0.35, 0.08), wood, 0, 0.9, z); mk(new THREE.BoxGeometry(0.08, 0.35, 1.2), wood, -1.1, 0.9, 0);
+    g.userData.wheels = [-0.65, 0.65].map(z => { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 12), M(0x4a301c)); w.rotation.x = Math.PI / 2; w.position.set(0, 0.42, z * 1.0 + (z > 0 ? 0.1 : -0.1)); w.castShadow = true; g.add(w); return w; });
+    mk(new THREE.BoxGeometry(0.5, 0.4, 0.45), M(0xc8a860), -0.5, 1.0, -0.2); mk(new THREE.BoxGeometry(0.5, 0.4, 0.45), M(0xd8c890), -0.3, 1.0, 0.3); mk(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 8), M(0x8a5a2a), 0.2, 1.05, 0);
+    const horse = horseModel(() => 0.4, { coat: 0x8a6a4a, blanket: 0x6a4a2a }); horse.scale.setScalar(0.85); horse.position.set(2.5, 0, 0); g.add(horse);
+    mk(new THREE.BoxGeometry(0.9, 0.06, 0.06), wood, 1.45, 0.8, -0.25); mk(new THREE.BoxGeometry(0.9, 0.06, 0.06), wood, 1.45, 0.8, 0.25);
+    g.userData.horse = horse; return g;
+  }
+  function townLifeSync() {
+    if (townLife.done || stage < 5) return; const plaza = builtBuildings('plaza')[0]; if (!plaza) return;
+    townLife.done = true;
+    for (const [x0, x1, z] of [[9, 23, 1.4], [-23, -9, -1.4]]) { const c = cartModel(); c.position.set(x0, 0, z); c.userData.run = { x0, x1, z, dir: 1, x: x0, wait: 0 }; scene.add(c); townLife.carts.push(c); }
+    const px = plaza.position.x, pz = plaza.position.z;
+    [[-1.6, 3.9, 0.3], [-0.9, 3.9, -0.5], [2.0, -3.8, 2.9], [1.2, -3.8, 3.5], [-3.9, 0.8, 1.6]].forEach(([dx, dz, ry], i) => {
+      const rig = makeRig('citizen', [0xc05a3a, 0x3a7ac0, 0xd8a83a, 0x5aa05a, 0xa05aa0][i], { seed: 30 + i }), anim = new Anim(rig), g = new THREE.Group();
+      g.add(rig.root); g.position.set(px + dx, 0, pz + dz); g.rotation.y = Math.atan2(-dx, -dz) + (i % 2 ? 0.5 : -0.4); anim.base('idle', 0); scene.add(g); townLife.folk.push({ g, anim });
+    });
+  }
+  function townLifeTick(t, dt) {
+    townLifeSync(); if (!townLife.done) return;
+    const day = nowHour >= 7 && nowHour < 19;
+    for (const c of townLife.carts) {
+      const r = c.userData.run; c.visible = day;
+      if (!day) continue;
+      if (r.wait > 0) { r.wait -= dt; } else { r.x += r.dir * 1.4 * dt; if (r.x > r.x1) { r.x = r.x1; r.dir = -1; r.wait = 3; } else if (r.x < r.x0) { r.x = r.x0; r.dir = 1; r.wait = 3; } }
+      c.position.set(r.x, 0, r.z); c.rotation.y = r.dir > 0 ? 0 : Math.PI;
+      const mv = r.wait > 0 ? 0 : 1; for (const w of c.userData.wheels) w.rotation.y += mv * dt * 3.3 * r.dir * -1;
+      const h = c.userData.horse, legs = h.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mv; }); h.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mv;
+    }
+    for (const f of townLife.folk) { f.g.visible = day; if (day) f.anim.update(dt); }
+  }
   let mountBtnT = 0;
   function lifeTick(t, dt) {                                                 // 우리 안의 양이 돌아다니고, 풍차 날개가 돈다. 기병은 말이 달리고 돌격 힘이 쌓인다. 깃발도 여기서 갱신
-    bannerFlagTick(t); leaderRideTick(t, dt); if ((mountBtnT -= dt) <= 0) { mountBtnT = 0.5; updateMountBtn(); }
+    townLifeTick(t, dt); bannerFlagTick(t); leaderRideTick(t, dt); if ((mountBtnT -= dt) <= 0) { mountBtnT = 0.5; updateMountBtn(); }
     for (const n of npcs) {
       if (!n.horse) continue;
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
@@ -2820,10 +2860,11 @@
   function applyMount(n) {                                                   // 말 메쉬를 붙이거나 뗀다 (기수를 말 등 높이로 올린다)
     const want = !!n.mounted && canMount(n);
     if (want && !n.horse) {
-      const horse = new THREE.Group(), body = horseModel(() => 0.3), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
+      const hash = [...(n.name || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0, coats = [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a, 0x5a5a5e, 0xb08a5a], bc = parseInt((n.warband >= 0 ? warbandColor(n.warband) : '#8a2a2a').slice(1), 16);
+      const horse = new THREE.Group(), body = horseModel(() => 0.3, { coat: coats[hash % coats.length], blanket: bc, armor: n.cls === 'spear' }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
+      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
     } else if (!want && n.horse) {
-      const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.horse = n.rider = null; n.mounted = false;
+      const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.rig.seated = false; n.horse = n.rider = null; n.mounted = false;
     }
     n.charge = 0;
   }
@@ -2839,10 +2880,10 @@
   function leaderMountMul() { return playerMounted ? 1.05 + (pBonusT > 0 ? CFG.CAV.CHARGE * (1 + 0.25 * pl.st.horsemaster) : 0) : 1; }
   function leaderRideApply() {
     if (playerMounted && !pHorse) {
-      const horse = new THREE.Group(), body = horseModel(() => 0.7), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+      const horse = new THREE.Group(), body = horseModel(() => 0.7, { coat: 0xe8e4d8, blanket: 0xe0b040, armor: true }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
     } else if (!playerMounted && pHorse) {
-      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); pHorse = pRider = null;
+      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); playerRig.seated = false; pHorse = pRider = null;
     }
     pCharge = 0; pBonusT = 0;
   }
