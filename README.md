@@ -343,3 +343,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v146:** rain and snow follow the camera zoom: the weather box grows (up to 3.2x) and gets more drops when you zoom out, so the whole town is covered. `__nf.setWeather("rain")` forces weather for tests.
 
 **nf-v147 (Stage 5 town):** new Village Plan step "Plan Seat of Power" (150 wood, 120 stone): Fountain Plaza (`plazaModel`), Muster Yard (`musterModel`, banner colour flags), two Animal Pens (`penModel`), all visual only; the Stage 5 keep gets a stair and gold flags. Debug start at Stage 5 builds them too.
+
+**nf-v148:** buildings no longer overlap the keep. The Siege Workshop is now a fixed lot in the left outer area, `findTownSpot` keeps clear of the Stage 5 keep footprint (`KEEP_HALF`) and searches a grid, and `fixKeepOverlaps` moves any building (also from old saves) that the growing keep covers. Known: random lumber camp and quarry spots can still touch towers or market-district lots.
