@@ -63,8 +63,11 @@ def weld(p):
     return pos[keep], nor[keep], uv[keep], remap[idx]
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
-# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP
+# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP + (leg lengthening 0.08)
 ARM_UP = 0.07
+# the legs were too short: model height -> new height (knee 0.38 -> 0.43, hip 0.80 -> 0.88, everything above is moved up 8 cm; the leader is 1.88 m tall).
+# keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
+LEG_WARP = ([0, 0.38, 0.80, 1.80], [0, 0.43, 0.88, 1.88])
 
 def assign(v):
     """One bone for a whole part, from the part's centre (metres, feet at y=0, model facing +z, x<0 is the rig's L side). Rules fitted to the skeleton in tools/build_models.py."""
@@ -72,6 +75,7 @@ def assign(v):
     if y >= 1.58 and ax < 0.15: return 'head'
     if ax >= 0.24 and y >= 0.5: return ('shoulder' if y >= 1.12 else 'elbow') + side         # upper arm and pauldron -> shoulder; forearm, bracer, hand -> elbow
     if y >= 1.3 and ax >= 0.12: return 'shoulder' + side                                       # shoulder pads follow the arm
+    if 0.70 <= y < 0.86 and ax < 0.24 and (v.max(axis=0) - v.min(axis=0))[1] > 0.30: return 'hips'     # the long pelvis guards (chain skirt) stay on the pelvis so they do not open when the legs split
     if y < 0.86 and ax >= 0.05: return ('hip' if y >= 0.42 else 'knee') + side                # thigh -> hip; shin, boot -> knee
     if y < 0.7: return 'hips'
     if 0.70 <= y < 1.0 and ax < 0.24: return 'hips'                                           # pelvis guards, belt, pouches
@@ -96,7 +100,7 @@ def main():
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
     b64 = lambda a: base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
     arm = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])         # arms and shoulder pieces sit a bit higher, next to the neck (the animation was made for higher shoulders)
-    pos[arm, 1] += ARM_UP
+    pos[:, 1] = np.interp(pos[:, 1], LEG_WARP[0], LEG_WARP[1]); pos[arm, 1] += ARM_UP
     nn = nor / np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
     info = [{'name': names[k], 'bone': BM.BONES[bone_of[k]], 'verts': int((owner == k).sum())} for k in range(len(parts))]
     out = {'n': len(pos), 'pos': b64(np.round(pos * 10000).astype(np.int16)), 'uv': b64(np.round(uv * 65535).astype(np.uint16)), 'nor': b64(np.round(nn * 127).astype(np.int8)),

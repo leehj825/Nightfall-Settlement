@@ -379,3 +379,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v164:** the leader model now comes from `Leader2.glb` (coloured texture; `python3 tools/build_leader_parts.py Leader2.glb`; the FBX route and `tools/dump_fbx_parts.js` are gone), and the shoulders and arms are lifted next to the neck (`ARM_UP`). `js/leader_parts.js` is about 825 KB.
 
 **nf-v165:** the third leader option (New model on classic body) is removed; Settings now offers Classic or New model (old saved choices map to New model). `js/leader_parts.js` is about 738 KB.
+
+**nf-v166:** the new leader model has longer legs (about 8 cm, the leader is 1.88 m tall) and its chain skirt stays on the pelvis so it no longer opens at the back while running (`LEG_WARP`, see `docs/LEADER_MODEL.md`).

@@ -35,3 +35,6 @@ Only the base colour is used (no normal or roughness map). For comparison the ol
 
 ## Arms and shoulders
 The classic animation was made for shoulders about 17 cm below the head bone, while this model has a long neck and low shoulders, so in the first builds the arms and shoulder pieces sat too low next to the neck and head. The build now lifts every shoulder and arm part (`ARM_UP` = 7 cm in `tools/build_leader_parts.py`) and the shoulder joint moved up with them (`LEADER_JOINTS.shY` in `js/rig.js` = 1.36 + 0.07). Tune both numbers together if you want more or less.
+
+## Legs (nf-v166)
+The legs looked short and the chain skirt opened at the back when the legs split. The build now lengthens the legs (`LEG_WARP` in `tools/build_leader_parts.py`: knee 0.38 -> 0.43 m, hip 0.80 -> 0.88 m, everything above moves up 8 cm; the leader is 1.88 m tall) and keeps the two long pelvis guards (the chain skirt, parts 1 and 2) on the pelvis bone instead of the thigh bones, so the skirt no longer opens when the legs swing. `LEADER_JOINTS` in `js/rig.js` follows the new heights (`shY` 1.51, `hipY` 0.88, `kneeDY` 0.45, `neckY` 1.58). Change the numbers in both files together.
