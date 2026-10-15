@@ -3,7 +3,7 @@
 Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v143`.
 
 ## The project
-**Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement`, dev branch `ccr-e36fee4e-o4z0bs` (use the branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. No Play Store work. A medieval setting: avoid modern words (see the terms table in the roadmap).
+**Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement` (use the dev branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. Play Store release is documented in `RELEASE.md` but is the owner's task. A medieval setting: avoid modern words (see the terms table in the roadmap).
 
 ## Working rules that have been followed each round
 1. Make the change in `src/game/*.js` (or `js/rig.js`, `js/config.js`, `js/audio.js`, `index.html`, `css/style.css`).
@@ -38,13 +38,13 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - **Journeys, raids, bosses, chapters 1 to 6, endless mode, caravans, weather, seasons**: as described in `README.md`.
 
 ## Known gaps and things not verified
-- Everything was verified headless only. Not yet checked on a real phone: the warband bar and window layout, the extra Jump and Block buttons (the action column wraps into two columns), mining, chopping, farming and combo animations, block feel.
+- The owner has now played the debug build on a phone, so the old "headless only" caveat no longer applies in general. Specific findings were not written down yet: when the owner reports problems (layout, performance, animation feel, balance), record them here. Still unconfirmed in detail: the warband bar and window layout, the extra Jump and Block buttons, mining, chopping, farming and combo animations, block feel.
 - Guessed numbers worth tuning: great sword skill bonuses, unarmed and citizen punch damage, block strength (75% less), soldier-left-home power factor (one third), soldier cap values.
 - Chopping axe blade direction and the left-hand grip on tools are checked only in still frames.
 - Citizens fighting back and the roaming day enemies are lightly tested.
 - Journey power requirements are scaled by `CFG.EXP_NEED_SCALE` (0.8, a guess) since power became warband-based; check on a real run.
 - Custom skinned character models are disabled. Houses, the Stage 2 hall, the Stage 3 to 5 keep, barracks, lumber camp, quarry and tower are detailed procedural models in `src/game/04b-models.js` (`houseModel` varies per lot from `userData.seed`). The archery range, farm, gates, wolves, great sword, staff and armour still have no custom model.
-- Not played on a phone yet: World v2 performance, the stage gates (3 homes / 3 citizens for Stage 2, 8 and 12 villagers for Stages 3 and 4), raid and siege strength, wounds and courage, the title screen.
+- Needs tuning from phone play (numbers are still guesses): World v2 performance, the stage gates (3 homes / 3 citizens for Stage 2, 8 and 12 villagers for Stages 3 and 4), raid and siege strength, wounds and courage, the title screen.
 
 - **Gear slots**: `sword`, `great`, `spear`, `bow`, `armor` (`CFG.GEAR`); hero helpers `weaponDef(mode)`, `gearAtTier`; soldiers use `soldierWeaponDef(n)` (best of class slot and sword).
 - **Two classes per soldier**: `n.clsHome` (town) and `n.clsTrip` (journey, optional); `n.cls` is the active one, swapped on departure/return in `16-expeditions-story-journal.js`. Helpers `homeCls`, `tripCls`, `setClassFor` in `10b-warbands.js`.
@@ -57,10 +57,10 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - **Headless test tips:** call `__nf.pause(false)`, dismiss the tutorial coach and "Morning event" dialogs, set the clock with `setMin` and wait about 500 ms (`nowHour` only updates in the main loop), and run long scripts in the background. Camera views for screenshots: `__nf.camTest(dist, pitch, front)` with the player moved next to the building.
 
 ## Next steps (also in the roadmap)
-1. **Orders (buttons and soldier behaviour done in nf-v66, only UI-tested headless; fights not watched)**, Mark the foe is done (nf-v70, `toggleMark` / `markedFoe` in `10b-warbands.js`); leader's standard done (nf-v71, `standardMods` in `10b-warbands.js`, tuned by `CFG.STANDARD` and the Standard Bearer skill); next the Marshal extras (war layer phase 2; the saved per-warband `order` field exists in `10b-warbands.js` with `warbandOrder` / `setWarbandOrder`, nothing uses it yet; next: buttons, soldier behaviour, Mark the foe, standard): Forward, Stand firm, Withdraw, Mark the foe, Charge; nearby men fight better near the leader. Needs: a small order set on the warband bar, soldier behaviour states for the selected warband, saved settings.
-2. Raids: camp layout done (nf-v75: `banditcamp` in `CFG.EXPEDITIONS`, `buildBanditCamp` in `16-expeditions-story-journal.js`; note the old `buildCamp(id)` is the supply camp). Camp behaviour done too (nf-v77: `campRoute`, `exPush`, `campAlarm`, `campBroken`, tower archers `u.tower`). Lasting effect (`story.campFx`, `campRelief`), banner objective (`burnBanner`) and raid power (`powerFor`) done. Stage 3 Bandit Stronghold done (nf-v84). Next: the campaign map; the plan is in `docs/CAMPAIGN_MAP_PLAN.md` (phase 1, the map view, is done in nf-v86; phase 2 is done in nf-v87: march days, provisions and auto-resolved home nights in `src/game/16b-march.js`; phase 3 done in nf-v88: garrisons and holds in `src/game/16c-holds.js`; phase 4 done in nf-v91: realms in `src/game/16d-realms.js`; next phase 5: siege nodes, a separate plan). Multi-warband journeys are done (nf-v73: `escortBands`, `bandMax`, `toggleBring`). Next: raids on bandit camps with two or three warbands (Stage 2), then the campaign map and sieges (Stage 3).
-3. Realms, provisions, banners and the host, the final campaign.
-4. Later: custom models, tuning pass after phone testing.
+1. **Phone tuning pass:** collect the owner's findings from phone play, then tune the guessed numbers listed under "Known gaps" (all live in `js/config.js`).
+2. **Banners and the host** (2 to 4 warbands under one standard, unlocked at Stage 5, tested on the Training Field), the Marshal skill extras and an army rally. Orders, raids, the campaign map (phases 1 to 4), realms, sieges and wounds/courage/levies are all done; see `docs/ROADMAP.md`.
+3. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
+4. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
 
 ## Conventions worth remembering
 - `js/game.js` is generated; edit parts in `src/game/`. Parts run in file-name order; the first opens the IIFE, the last closes it. A part loaded early must not call `const` helpers from a later part at load time (use `function` declarations; see `10b-warbands.js`).

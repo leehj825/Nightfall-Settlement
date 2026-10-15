@@ -41,10 +41,13 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - Tuning after phone testing (world performance, stage gates, raids, sieges, wounds and courage).
 - More building models: archery range, farm, gates, market and siege workshop; custom skinned characters.
 
-**Next steps, in order** (details in `STAGES_AND_TRAINING_PLAN.md`)
-1. **Done (nf-v124 to nf-v130):** ground hit effects follow terrain, Stages and gates, World v2 (radius 100, lake, stream, marsh, forests, cliff plateau, more enemies), Stage 4 Walled City and Stage 5 Seat of Power, the Training Field (parade, three practice battles, siege practice, veteran drills).
-2. **Banners and the host** (unlocked at Stage 5), tested on the Training Field.
-7. **Polish:** cavalry and siege crews, audio, formations; balance and phone testing; custom models.
+**Next steps, in order**
+1. **Phone tuning pass:** the owner has played the debug build on a phone; collect the findings and tune world performance, stage gates, raid and siege strength, wounds and courage, and the other guessed numbers (all in `js/config.js`).
+2. **Banners and the host** (unlocked at Stage 5), tested on the Training Field; Marshal skill extras and an army rally.
+3. **Models:** archery range, farm, gates, market, siege workshop; later custom skinned characters.
+4. **Polish:** audio, formations, cavalry and siege crews.
+
+Already done and no longer listed as steps: ground hit effects, Stages and gates, World v2, Stages 4 and 5, the Training Field (`nf-v124` to `nf-v130`), the campaign map, realms, sieges and wounds/courage/levies.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 
@@ -154,5 +157,4 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 ## Other backlog (smaller)
 - Custom character models (leader, soldiers, citizens, raiders) and more weapon/building models; the current skinned models are disabled and several kinds (houses, towers, gates, wolves, great sword, staff, armor) have none.
 - More captured animations as needed from `js/anims_lib.js` (all received Mixamo clips are already stored retargeted).
-- Tune balance numbers marked as guesses in the README (great sword skills, unarmed damage, citizen defense, block strength).
-- Verify recent animation work on real phones (mining, chopping, farming, combos).
+- Tune balance numbers marked as guesses in the README (great sword skills, unarmed damage, citizen defense, block strength), using the owner's phone findings.

@@ -69,4 +69,4 @@ A **castle** is a walled raid that cannot be won by walking in. You march a host
 6. Soldiers do 20% damage to the lord without the leader nearby (existing rule), and 10% to walls and gates without siege gear.
 
 ## 8. Next step
-Approve (or change) the defaults, then start **phase 1: the castle zone**.
+All phases are built. What remains is balance and polish from phone play.
