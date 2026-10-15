@@ -271,7 +271,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (enemy && ev !== 2) for (const dx of [-0.13, 0.04]) part(RG.rag, ragMat, hips, dx, -0.22, 0.15, 0.12, 0, dx * 0.6);
     const mk = (typeof CHAR_MODELS !== 'undefined' && opts.model !== false && USE_CHAR_MODELS) ? modelKeyFor(kind, seed, enemy) : (USE_LEADER_PARTS && kind === 'player' && opts.model !== false ? LEADER_KEY : null);
     if (mk) {                                                                                 // 모델 캐릭터: 부품 대신 같은 뼈에 스킨 메시를 입힌다 (애니메이션은 그대로)
-      if (mk === 'leaderParts') {                                                              // mode 1: put the joints where this model's joints are
+      if (mk === 'leaderParts') {                                                              // put the joints where this model's joints are
         const J = LEADER_JOINTS, sy = bones.spine.parent.position.y + bones.spine.position.y;
         for (const [n, sx] of [['L', -1], ['R', 1]]) {
           bones['shoulder' + n].position.set(sx * J.shX, J.shY - sy, 0); bones['elbow' + n].position.set(sx * J.elX, -J.elDY, 0);
@@ -281,7 +281,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       root.updateMatrixWorld(true);
       const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
-      const HP = { leaderParts: [0.07, -0.28], leaderFit: [0.08, -0.35], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
+      const HP = { leaderParts: [0.07, -0.28], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
       out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
@@ -305,11 +305,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
   const unb64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
   function modelMesh(key, skeleton, material) {
-    const d = key === 'leaderParts' || key === 'leaderFit' ? LEADER_PARTS : CHAR_MODELS[key];
+    const d = key === 'leaderParts' ? LEADER_PARTS : CHAR_MODELS[key];
     let geo = modelGeos[key];
     if (!geo) {
       geo = modelGeos[key] = new THREE.BufferGeometry(); const n = d.n;
-      const p = unb64(key === 'leaderFit' ? d.pos3 : d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), sw = unb64(d.sw, Uint8Array), si = unb64(d.si, Uint8Array);
+      const p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), sw = unb64(d.sw, Uint8Array), si = unb64(d.si, Uint8Array);
       const P = new Float32Array(n * 3), U = new Float32Array(n * 2), N = new Float32Array(n * 3), W = new Float32Array(n * 4), I = new Uint16Array(n * 4);
       for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; }
       for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
@@ -330,8 +330,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const BONES = ['hips', 'spine', 'head', 'shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'hipL', 'hipR', 'kneeL', 'kneeR'];
   // 임시: 캐릭터 모델을 끄고 막대인간(폴리곤) 리그만 쓴다. 모델을 다시 켜려면 주소 뒤에 ?models=1 을 붙이거나 이 값을 true 로 바꾼다.
   const USE_CHAR_MODELS = /[?&]models=1/.test(location.search);
-  const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? (+window.NF_LEADER || 0) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = LEADER_MODE === 2 ? 'leaderFit' : 'leaderParts';
-  // mode 1: the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
+  const USE_LEADER_PARTS = typeof LEADER_PARTS !== 'undefined' && !!window.NF_LEADER, LEADER_KEY = 'leaderParts';
+  // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
   const LEADER_JOINTS = { shX: 0.29, shY: 1.43, elX: 0.06, elDY: 0.26, hipX: 0.12, hipY: 0.80, kneeX: 0.02, kneeDY: 0.42, neckY: 1.50 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간

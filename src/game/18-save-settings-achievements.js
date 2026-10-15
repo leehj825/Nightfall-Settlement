@@ -222,7 +222,7 @@
     $('startDbg').addEventListener('click', () => go('dbg' + $('startStage').value));
     setTimeout(() => { titleMode = true; debugJump(5); }, 120);            // 화면이 먼저 뜬 뒤 배경 마을을 짓는다
   }
-  { const sl = document.getElementById('setLeader'); sl.value = String(+window.NF_LEADER || 0);                       // 지휘관 모델 바꾸기(시험): 저장해 두고 다시 불러온다
+  { const sl = document.getElementById('setLeader'); sl.value = window.NF_LEADER ? '1' : '0';                       // 지휘관 모델 바꾸기(시험): 저장해 두고 다시 불러온다
     sl.addEventListener('change', () => {
       try { localStorage.setItem('nf_leader', sl.value); } catch (e) { /* ignore */ }
       try { saveGame(); sessionStorage.setItem('nf_intent', 'continue'); } catch (e) { /* ignore */ }
