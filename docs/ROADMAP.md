@@ -21,7 +21,7 @@
 
 > The detailed plan for the campaign map is in [CAMPAIGN_MAP_PLAN.md](CAMPAIGN_MAP_PLAN.md). The siege plan is in [SIEGE_PLAN.md](SIEGE_PLAN.md), wounds and courage in [WAR_STATE_PLAN.md](WAR_STATE_PLAN.md), and the **stages and Training Field plan** in [STAGES_AND_TRAINING_PLAN.md](STAGES_AND_TRAINING_PLAN.md).
 
-## Status (nf-v123)
+## Status (nf-v143)
 See `docs/HANDOFF.md` for the full state of the project, the working rules and how to test. A new chat should read that file first.
 
 **Done**
@@ -30,12 +30,16 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - **Raids:** Raider Outpost (1 warband), Bandit Camp (2), Bandit Stronghold (3), far raids (Hill Clan, Iron Legion, Clan Stronghold, Legion Keep); camp behaviour (alarm, gates, tower archers, burn the banner or kill the chief); lasting relief when a camp is broken.
 - **Campaign map:** phase 1 map tab, phase 2 march days, provisions and auto-resolved home nights with a morning report, phase 3 garrisons and holds, phase 4 three realms (Bandit Lords, Hill Clan, Iron Legion) with per-realm relief. The Journeys and Raids tabs were removed (the map replaces them).
 - **Hero:** advanced movement and spear skills, great sword and spear blacksmith gear, spear combo (stab, stab, full-force lunge), three-hit sword and great sword combos with a combo reset window, a red Attack button, camera drag anywhere, leader face from a reference picture.
-- **Village:** tents become houses at Stage 3, outer ring farms and archery range, outer homes and corner towers, closer walls, towers shoot hostile creatures, night lighting follows the hero.
+- **Village:** five Stages with gates (resources, minimum day, goal checklist), tents become houses at Stage 2, outer ring farms and archery range, outer homes and corner towers, three wall rings, closer walls, towers shoot hostile creatures, night lighting follows the hero.
+- **Siege and war state:** castles with gates, rams, ladders, boiling oil, the Siege Workshop and carried gear, catapults, fortresses, battle reports, realm castles and the final Iron Throne siege; wounds, courage, levies, garrison recall.
+- **World v2 and the Training Field:** radius 100 map with a river, lakes, marsh, forests and a cliff; Stage 4 Walled City, Stage 5 Seat of Power; the Training Field (parade, practice battles, siege practice, drills).
+- **Models and screens:** detailed houses (varied per lot), Stage 2 hall, keep (Stages 3 to 5), barracks, lumber camp, quarry and tower; buildings face the nearest main road; a title screen with an orbiting castle town, Continue / New game / New Game+, a Main menu button in Settings and a Debug start at any stage.
 - **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
 
 **Not done**
 - Banners and the host, extra unit types, audio, formations.
-- Tuning after phone testing, and custom models.
+- Tuning after phone testing (world performance, stage gates, raids, sieges, wounds and courage).
+- More building models: archery range, farm, gates, market and siege workshop; custom skinned characters.
 
 **Next steps, in order** (details in `STAGES_AND_TRAINING_PLAN.md`)
 1. **Done (nf-v124 to nf-v130):** ground hit effects follow terrain, Stages and gates, World v2 (radius 100, lake, stream, marsh, forests, cliff plateau, more enemies), Stage 4 Walled City and Stage 5 Seat of Power, the Training Field (parade, three practice battles, siege practice, veteran drills).
@@ -101,7 +105,7 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 
 | Today | What it becomes |
 |---|---|
-| **Ages** (Camp, Wooden Town, Stone Fortress) | The army tech tiers. Stage 1: forays only (one warband). Stage 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Stage 3: the campaign map, a siege workshop and companies (several warbands). |
+| **Stages** (Camp, Wooden Town, Stone Fortress, Walled City, Seat of Power) | The army tech tiers. Stage 1: forays only (one warband). Stage 2: raids on bandit camps (2 to 3 warbands) and a bigger soldier cap. Stage 3: the campaign map, a siege workshop and companies (several warbands). |
 | **Village Plan / town stages** | New plan steps: a training yard (raises the soldier cap and veteran training), a siege workshop, stables later. They use the same outer ring and wall rules as the outer fields. |
 | **Journey (expeditions)** | Stays as the **foray** level: same zones, chests, timer and escort, but you bring a warband. The chapter expeditions become the first nodes on the campaign map, so story progress and relics unlock nodes. |
 | **Night raid defense** | Unchanged at its core. Attacked realms send revenge raids; neglected defense invites bigger ones. Warbands you take away weaken the village, so the plan is to keep at least one warband home or rely on towers and walls. |
