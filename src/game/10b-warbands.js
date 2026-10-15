@@ -29,6 +29,7 @@
     const ratio = n.maxHp > 0 ? n.hp / n.maxHp : 1; n.role = want; n.archer = want === 'archer';
     n.baseColor = ROLE[want].color; n.maxHp = npcMaxHp(want, n.trait); n.hp = Math.max(1, Math.round(n.maxHp * ratio)); n.mat.color.set(n.baseColor); n.labelText = ''; n.hold = null; n.target = null;
   }
+  function dropMountIfNeeded(n) { if (n.mounted && !canMount(n)) { n.mounted = false; applyMount(n); } }
   function clsName(c) { return { sword: 'Swordsman', spear: 'Spearman', greatsword: 'Great Swordsman', medic: 'Medic', archer: 'Archer' }[c] || 'Swordsman'; }
   function homeCls(n) { return n.clsHome || (n.role === 'archer' ? 'archer' : n.cls) || 'sword'; }
   function tripCls(n) { return n.clsTrip || homeCls(n); }
@@ -87,7 +88,7 @@
   // ---------- 기병 (Cavalry): 마구간이 있으면 검병·창병이 말을 탈 수 있다 (마구간 1채당 CFG.CAV.PER_STABLE 기). 빠르고, 달려가서 치는 첫 일격이 세다 ----------
   const mountCap = () => CFG.CAV.PER_STABLE * builtBuildings('stable').length;
   const mountedCount = () => npcs.filter(n => n.mounted && !n.levy).length;
-  const canMount = (n) => n.role === 'melee' && ((n.cls || 'sword') === 'sword' || n.cls === 'spear');
+  const canMount = (n) => n.role === 'archer' || (n.role === 'melee' && ((n.cls || 'sword') === 'sword' || n.cls === 'spear'));
   function mountMul(n) { return n && n.mounted ? CFG.CAV.DMG + (n.chargeBonus ? CFG.CAV.CHARGE * (1 + 0.25 * pl.st.horsemaster) : 0) : 1; }
   function applyMount(n) {                                                   // 말 메쉬를 붙이거나 뗀다 (기수를 말 등 높이로 올린다)
     const want = !!n.mounted && canMount(n);
@@ -101,7 +102,7 @@
     n.charge = 0;
   }
   function toggleMount(n) {
-    if (!canMount(n)) { toast('Only swordsmen and spearmen can ride'); return false; }
+    if (!canMount(n)) { toast('Only swordsmen, spearmen and archers can ride'); return false; }
     if (!n.mounted && mountedCount() >= mountCap()) { toast(builtBuildings('stable').length ? 'Every stall is taken (3 horses per stable)' : 'Build Stables first'); return false; }
     n.mounted = !n.mounted; applyMount(n); return true;
   }
