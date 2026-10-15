@@ -393,3 +393,7 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
 .wdests { display: grid; gap: 6px; margin: 8px 0; } .wbdest { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: #fff; font: inherit; font-size: 14px; text-align: left; }
 .wbdest i { width: 14px; height: 18px; background: var(--c); border-radius: 2px 2px 8px 8px; } .wbdest b { flex: 1; font-weight: 600; } .wbdest span { font-size: 12px; color: #d8c8a6; } .wbdest.here { opacity: .55; }
 .wbulk { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; } .wbulk .wbact { flex: 1 1 45%; }
+
+/* The warband bar (chips + order strip) must never cover the sound and settings buttons at the bottom left */
+@media not all and (max-width: 640px) and (orientation: portrait) { #wbBar { max-width: min(56vw, calc(100vw - 540px)); } }
+@media (max-height: 520px) and (orientation: landscape) { #wbBar { max-width: min(56vw, calc(100vw - 430px)); } }

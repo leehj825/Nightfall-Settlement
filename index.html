@@ -54,6 +54,7 @@
   <label>Controls side<select id="setHand"><option value="r">Right-handed (stick on left)</option><option value="l">Left-handed (stick on right)</option></select></label>
   <label>Button size<select id="setBsz"><option value="s">Small</option><option value="m">Normal</option><option value="l">Large</option></select></label>
   <label>Vibration<select id="setHaptic"><option value="on">On</option><option value="off">Off</option></select></label>
+  <label>Leader model (test)<select id="setLeader"><option value="0">Classic</option><option value="1">New parts model</option></select></label>
   <label>Graphics<select id="setGfx"><option value="hi">High</option><option value="lo">Low (faster)</option><option value="min">Lowest (old phones)</option></select></label>
   <p class="shint" id="setSaveInfo"></p>
   <div class="tbtns"><button id="setAch">Achievements</button><button id="setRep">Balance report</button></div>
@@ -92,7 +93,7 @@
 <script src="js/audio.js"></script>
 <script src="js/anims.js"></script>
 <script src="js/models.js"></script>
-<script>if (/[?&]leader=1/.test(location.search)) document.write('<script src="js/leader_parts.js"><\/script>');</script>
+<script>(function () { var on = /[?&]leader=1/.test(location.search); try { if (!/[?&]leader=0/.test(location.search) && localStorage.getItem('nf_leader') === '1') on = true; } catch (e) {} window.NF_LEADER = on; if (on) document.write('<script src="js/leader_parts.js"><\/script>'); })();</script>
 <script src="js/structures.js"></script>
 <script src="js/rig.js"></script>
 <script src="js/game.js"></script>

@@ -1,6 +1,6 @@
 # Leader model made of parts (owner model, test build)
 
-Try it: add `?leader=1` to the address (`index.html?debug=1&leader=1`). Without the flag nothing changes and the extra file is not even downloaded.
+Try it: **Settings > Leader model (test) > New parts model** (works in the Android app too; the game saves and reloads), or add `?leader=1` to the address (`?leader=0` forces the classic leader). The choice is stored in `localStorage` (`nf_leader`). When it is off the extra file is not downloaded by the browser (the Android app bundles it, about 0.6 MB).
 
 ## What it is
 The owner's Tripo model (`Leader.fbx`, 45 separate meshes `tripo_part_N`, 9,724 triangles, three 4096x4096 PNG textures). Rebuilt for the game by two tools:

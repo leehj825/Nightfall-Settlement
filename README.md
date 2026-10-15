@@ -371,3 +371,5 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 **nf-v160:** archers can ride too (Horse Archer): the Mount button now shows for swordsmen, spearmen and archers (`canMount`). Switching a rider to a class that cannot ride (great sword, medic) dismounts them at once (`dropMountIfNeeded`). Mounted archers get the speed and damage bonus; the charge bonus only applies to melee strikes.
 
 **nf-v161 (leader test model):** `?leader=1` swaps the leader for the owner's 45-part Tripo model, each part bound rigidly to one bone (`js/leader_parts.js`, built by `tools/dump_fbx_parts.js` + `tools/build_leader_parts.py`; see `docs/LEADER_MODEL.md` for the sizes and ideas). Default game and its size are unchanged.
+
+**nf-v162:** Settings has **Leader model (test)** (Classic / New parts model; saves, stores `nf_leader` in localStorage and reloads), so the Android app can test the parts model without an address flag (`?leader=0` forces classic). The warband bar (chips plus order strip) is now limited in width so it can never cover the sound and settings buttons (it did on wide screens after nf-v158), and the portrait rule keeps its own width.
