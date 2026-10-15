@@ -43,7 +43,7 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 
 **Next steps, in order**
 1. **Phone tuning pass:** the owner has played the debug build on a phone; collect the findings and tune world performance, stage gates, raid and siege strength, wounds and courage, and the other guessed numbers (all in `js/config.js`).
-2. **Banners and the host** (unlocked at Stage 5), tested on the Training Field; Marshal skill extras and an army rally.
+2. **Banners and the host:** phase 1 built in `nf-v144` (`BANNERS_PLAN.md`); next host orders, army rally, Training Field parade and drills for banners; Marshal skill extras.
 3. **Models:** archery range, farm, gates, market, siege workshop; later custom skinned characters.
 4. **Polish:** audio, formations, cavalry and siege crews.
 

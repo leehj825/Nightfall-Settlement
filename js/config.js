@@ -258,6 +258,8 @@
     BUILD_TIME_BUILDING: 3,
     STANDARD: { RADIUS: 12, DMG: 0.15, GUARD: 0.15, RANK_RADIUS: 0.2, RANK_DMG: 0.04, RANK_GUARD: 0.03 },      // 지휘관의 깃발: 곁의 병사가 더 세게 치고 덜 맞는다 (기본값은 추정, 기술로 강해진다)
     EXP_NEED_SCALE: 0.8,      // EXP_NEED 는 원래 병사 전원(전부 100%) 기준이었다. 이제 데려가는 전투단 100% + 남은 병사 35% 이므로 0.8배 (추정값, 폰 테스트 후 조정)
+    BANNER: { STAGE: 5, MAX: 3, MAX_BANDS: 3, MIN_BANDS: 2, RADIUS: 18, DMG: 0.06, GUARD: 0.06, HOST_BONUS: 1,      // 깃발(banner, 전투단 2~3개 묶음): 해금 시대 / 깃발 수 / 깃발당 전투단 수 / 보너스에 필요한 전투단 수 / 같은 깃발 전투단이 가까운 거리 / 보너스(추정값) / 시대 5의 원정 전투단 추가 수
+      NAMES: ['Dragon', 'Griffin', 'Hart'], COLORS: ['#e8c040', '#c8d0e0', '#d07a3a'] },
     WARBAND: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3,        // 전투단(warband) 최대 인원 / 전투단 수 / 병사 수 상한(기본 + 병영·사격장당)
       NAMES: ['Lion', 'Wolf', 'Stag', 'Eagle', 'Raven', 'Boar'], COLORS: ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a'] },
     BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수

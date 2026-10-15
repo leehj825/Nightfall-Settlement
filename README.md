@@ -333,3 +333,7 @@ During an attack the great sword is held with both hands: a two-bone arm solver 
 - nf-v141: New title screen: a slow orbit around a fully built Stage 5 castle town (display only, your save is untouched), big logo, Continue / New game / New Game+ buttons and a small Debug corner (start at stage 1-5). Choices apply after a quick reload so the game starts in a clean world.
 - nf-v142: Settings has a Main menu button that returns to the title screen (saves first).
 - nf-v143: Removed the "Upgrade Stage: Click / T" label floating above the campfire and halls.
+
+
+## Banners (Stage 5, nf-v144)
+At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart banner (up to 3 warbands each). Orders go to the whole banner, **Bring whole banner** adds its warbands to the next journey, the party cap is one larger, and soldiers of one banner fight +6% harder and take 6% less damage while another of its warbands is within 18 paces. Plan: `docs/BANNERS_PLAN.md`.

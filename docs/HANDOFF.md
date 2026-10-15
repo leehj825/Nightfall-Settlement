@@ -58,7 +58,7 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 
 ## Next steps (also in the roadmap)
 1. **Phone tuning pass:** collect the owner's findings from phone play, then tune the guessed numbers listed under "Known gaps" (all live in `js/config.js`).
-2. **Banners and the host** (2 to 4 warbands under one standard, unlocked at Stage 5, tested on the Training Field), the Marshal skill extras and an army rally. Orders, raids, the campaign map (phases 1 to 4), realms, sieges and wounds/courage/levies are all done; see `docs/ROADMAP.md`.
+2. **Banners and the host:** phase 1 done in nf-v144 (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, banner block in `10b-warbands.js`); next phase 2 (host orders, army rally, Training Field), Marshal extras. Orders, raids, the campaign map (phases 1 to 4), realms, sieges and wounds/courage/levies are all done; see `docs/ROADMAP.md`.
 3. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
 4. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
 

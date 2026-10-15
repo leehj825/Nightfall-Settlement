@@ -369,3 +369,6 @@ body.titlemode > *:not(canvas):not(#startPanel):not(#fade) { display: none !impo
 .tMenu button#startNG { background: linear-gradient(#b8d4ff, #6a9ae0); border-color: #4a6aa0; color: #10203a; box-shadow: 0 4px 0 #2a4070, 0 8px 18px rgba(0,0,0,.5); }
 #startPanel .dbgStart { position: absolute; right: 10px; bottom: 10px; margin: 0; padding: 6px 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; background: rgba(20,14,10,.7); max-width: 300px; }
 #startPanel .dbgStart summary { opacity: .7; font-size: 12px; }
+
+.wbchip s { text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
+#wbPanel .wbn { display: flex; gap: 4px; margin: 6px 0 2px; } #wbPanel .wbn button { flex: 1; font-size: 12px; padding: 6px 4px; border-radius: 8px; border: 2px solid rgba(232,192,64,.5); background: rgba(0,0,0,.35); color: #fff; } #wbPanel .wbn button.on { border-color: #e8c040; background: rgba(232,192,64,.25); }
