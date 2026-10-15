@@ -332,3 +332,4 @@ During an attack the great sword is held with both hands: a two-bone arm solver 
 - nf-v138: The start screen always shows (Continue when a save exists, New game, New Game+). A Debug start drop-down starts a new game at stage 1-5 with every structure built, the population filled, the stage requirements met, perks chosen and the clock set to the stage day.
 - nf-v141: New title screen: a slow orbit around a fully built Stage 5 castle town (display only, your save is untouched), big logo, Continue / New game / New Game+ buttons and a small Debug corner (start at stage 1-5). Choices apply after a quick reload so the game starts in a clean world.
 - nf-v142: Settings has a Main menu button that returns to the title screen (saves first).
+- nf-v143: Removed the "Upgrade Stage: Click / T" label floating above the campfire and halls.

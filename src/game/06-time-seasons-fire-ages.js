@@ -92,7 +92,7 @@
   const hallGroup = new THREE.Group();
   campfire.add(hallGroup);
   const hallHint = textSprite('Upgrade Stage: Click / T', '#ffe7a8', 3.2, 0.8, 'bold 40px sans-serif');
-  campfire.add(hallHint);
+  // (안내 글자는 더 이상 붙이지 않는다: 클릭으로는 열리지 않고 T 키·Town Hall 버튼을 쓴다)
   const hallWood = mat(0x8a5a34), hallRoof = mat(0x6b3a22), hallDark = mat(0x2e2218), keepStone = mat(0x8b8e95), keepTower = mat(0x7a7e87), keepTop = mat(0x5c606a);
   function buildHall() {
     while (hallGroup.children.length) hallGroup.remove(hallGroup.children[0]);
