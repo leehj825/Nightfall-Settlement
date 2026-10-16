@@ -14,7 +14,8 @@
       box('head', 0.74, 0.34, 0.3, coat, hx + 0.24, hy - 0.12, 0, -0.5);
       for (const z of [-1, 1]) { box('head', 0.06, 0.07, 0.04, white, hx + 0.12, hy - 0.04, z * 0.155, -0.5); box('head', 0.035, 0.045, 0.03, dark, hx + 0.125, hy - 0.04, z * 0.175, -0.5); box('head', 0.09, 0.22, 0.07, coat, hx - 0.02, hy + 0.2, z * 0.1, z * -0.12); box('head', 0.04, 0.14, 0.03, dark, hx - 0.01, hy + 0.2, z * 0.1, z * -0.12); }   // eye (white + pupil), ear (+ dark inner)
       box('head', 0.1, 0.18, 0.1, dark, hx + 0.02, hy + 0.12, 0, 0.3); }
-    seg('neck', [RP.neck[0] - 0.12, RP.neck[1] + 0.2, 0], [RP.head[0] - 0.16, RP.head[1] + 0.2, 0], 0.09, 0.08, dark, 0.14);                                    // mane along the top of the neck
+    { const n0 = [RP.neck[0] - 0.1, RP.neck[1] + 0.2], n1 = [RP.head[0] - 0.12, RP.head[1] + 0.2], ang = Math.atan2(-(n1[0] - n0[0]), n1[1] - n0[1]);              // mane: a thick row of dark tufts along the top of the neck, hanging down the sides
+      for (let i = 0; i < 6; i++) { const u = i / 5, x = n0[0] + (n1[0] - n0[0]) * u - 0.02, y = n0[1] + (n1[1] - n0[1]) * u + 0.03 - 0.03 * (i % 2), h = 0.26 + 0.05 * (i % 2); box('neck', 0.16, h, 0.2, dark, x, y, 0, ang); box('neck', 0.1, h * 0.8, 0.34, dark, x - 0.01, y - 0.06, 0, ang); } }
     box('tail', 0.1, 0.55, 0.1, dark, RP.tail[0] - 0.05, RP.tail[1] - 0.22, 0, 0.15);                                                                  // tail
     for (const sd of ['L', 'R']) {
       const z = (i) => RP['f' + sd + i][2], fu = RP['f' + sd + 'U'], fl = RP['f' + sd + 'L'], hu = RP['h' + sd + 'U'], hl = RP['h' + sd + 'L'];
