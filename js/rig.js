@@ -281,7 +281,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       root.updateMatrixWorld(true);
       const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
-      const HP = { leaderParts: [0.07, -0.27], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
+      const HP = { leaderParts: [0.07, -0.30], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
       out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
@@ -401,7 +401,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 0 = classic stick-man; 1 = the new model (soft joints always on)
   const LEADER_SOFT = LEADER_MODE > 0;
   // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
-  const LEADER_JOINTS = { shX: 0.29, shY: 1.64, elX: 0.06, elDY: 0.37, hipX: 0.12, hipY: 0.99, kneeX: 0.02, kneeDY: 0.51, neckY: 1.66 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
+  const LEADER_JOINTS = { shX: 0.27, shY: 1.44, elX: 0.06, elDY: 0.32, hipX: 0.12, hipY: 0.81, kneeX: 0.02, kneeDY: 0.44, neckY: 1.46 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }

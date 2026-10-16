@@ -67,10 +67,10 @@ def weld(p):
 ARM_UP = 0.0
 # the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
 # keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
-LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.48, 0.99, 1.60, 1.97])        # leader3: knee, hip, shoulder, top
+LEG_WARP = ([0, 1.80], [0, 1.80])        # leader3 at its original size (no limb stretching)
 
 # the body (torso, skirt, belt) is warped on its own so the skirt hem stays high and more of the thigh shows below it
-BODY_WARP = ([0, 0.57, 0.81, 1.40, 1.80], [0, 0.80, 0.99, 1.60, 1.97])
+BODY_WARP = ([0, 1.80], [0, 1.80])
 
 def is_skirt(v):
     """The two long pelvis guards (the chain skirt, parts 1 and 2): centre at hip height, near the middle, tall."""

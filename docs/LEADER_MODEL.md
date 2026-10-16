@@ -113,3 +113,6 @@ The shoulder pivot was at 1.54 m (below the shoulder top), so raised arms swung 
 
 ## nf-v185: back to the 16-part leader3 model, arm BONES raised instead of the arm meshes
 The simple-clothes model with automatic skinning (nf-v183/184, above) was dropped on request: `js/rig.js`, `js/leader_parts.js` and the builder are the nf-v182 versions again (leader3.glb, 16 parts, soft joints always on). Differences from nf-v182: the arm meshes are no longer lifted (`ARM_UP` 0); instead the shoulder bone sits at shoulder level (`LEADER_JOINTS.shY` 1.64, `elDY` 0.37 so the elbow stays where the sleeve's elbow is, fist offset `[0.07, -0.27]`). The sections for nf-v183/184 describe code that is gone from the tree (see git history, commits 929a783 and 20c785e).
+
+## nf-v186: original size of leader3 (no limb stretching)
+The height warps are identity again (leader 1.80 m, original leg/arm/torso lengths). LEADER_JOINTS are the model's own joints: shX .27, shY 1.44 (sleeve top / shoulder level, bone raised, mesh not), elX .06, elDY .32, hipX .12, hipY .81, kneeDY .44, neckY 1.46; fist offset `[0.07, -0.30]`. Ground contact holds (hip joint height = leg length).
