@@ -12448,7 +12448,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const s of mv.subs) { const r = s.rig; if (!r || s.kind === 'beast') continue;
       r.brawl = w === 'none'; r.main = w; r.style = w === 'sword' ? 'ss' : w === 'great' ? 'gs' : w === 'bow' ? 'bow' : '';
       r.setGear('sword', gearDef('iron_sword')); r.setGear('great', { ...gearDef('iron_great'), slot: 'sword', great: true }); r.setGear('bow', gearDef('bow_basic')); r.setGear('spear', { id: 'spear_iron_spear', slot: 'spear', tier: 1, color: gearDef('iron_spear').color });
-      r.setShield && r.setShield(w === 'sword' && (s.kind === 'player' || s.kind === 'melee') ? { tier: 1 } : null); r.hold(w); s.anim.base(s.anim.baseName || 'idle'); }
+      r.setShield && r.setShield(s.kind === 'player' || s.kind === 'melee' ? { tier: 1 } : null); r.hold(w); s.anim.base(s.anim.baseName || 'idle'); }       // shield as in the game: kept with sword, greatsword and spear (the rig hides it with the bow)
   }
   function mvMount(on) {
     mv.mounted = on;
