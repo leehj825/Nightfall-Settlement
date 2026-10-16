@@ -63,11 +63,11 @@ def weld(p):
     return pos[keep], nor[keep], uv[keep], remap[idx]
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
-# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.55 + ARM_UP (leader3)
-ARM_UP = 0.05
+# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.60 + ARM_UP (leader3)
+ARM_UP = 0.07
 # the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
 # keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
-LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.45, 0.92, 1.55, 1.92])        # leader3: knee, hip, shoulder, top
+LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.48, 0.99, 1.60, 1.97])        # leader3: knee, hip, shoulder, top
 
 def is_skirt(v):
     """The two long pelvis guards (the chain skirt, parts 1 and 2): centre at hip height, near the middle, tall."""

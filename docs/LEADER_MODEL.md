@@ -89,3 +89,6 @@ The weight diffusion pass now runs over every vertex (twice, 6 cm radius, 45 % n
 - Settings > Leader model now has two choices: Classic and New model. The New model always uses the soft joints (whole-body weight diffusion); the under layer and the old options 2–4 were removed (code and `?leader=2..4`, which now means the new model; saved values 2–4 also load the new model).
 - Arms and shoulder armour are 5 cm higher (`ARM_UP` 0.05, `LEADER_JOINTS.shY` 1.60) to sit level with the neck.
 - The silver collar/shoulder pad (and the other pad inside the torso part) is fixed to the vest and excluded from the weight diffusion, so it no longer moves with the arm. It is not lifted with the arms either.
+
+## nf-v180: longer legs, hips higher in the skirt, arms higher
+Height warp now knee 0.37→0.48, hip 0.81→0.99, shoulder 1.40→1.60, top 1.80→1.97 (the leader is 1.97 m); `ARM_UP` 0.07; LEADER_JOINTS: shY 1.67, hipY 0.99, kneeDY 0.51, neckY 1.66, elDY 0.31. Ground contact is unchanged (the hip joint world height equals the leg length; the hips bone stays at the clips' height).
