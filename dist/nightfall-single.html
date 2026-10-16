@@ -5796,6 +5796,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const rig = this.rig, md = this.moveDir || 'f';
       if (name === 'gather') { const k = rig.tool === 'axe' ? (this.acts.chopMocap ? 'chopMocap' : 'gatherAxe') : (this.acts.mineMocap ? 'mineMocap' : 'gatherPick'); if (this.acts[k]) return k; return name; }       // 모션캡처(곡괭이질·도끼질) 우선
       if (name === 'farm') { const k = FARM_CLIPS[(this.farmI || 0) % FARM_CLIPS.length]; if (this.acts[k]) return k; return this.acts.gatherPick ? 'gatherPick' : 'gather'; }
+      if (rig.seated && (name === 'walk' || name === 'run')) name = 'idle';                  // a rider's upper body stays in its idle motion while the horse walks or runs
       const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
       if (name === 'idle') { const k = set === 'ss' ? (war ? 'ssIdle' : 'ssIdleCalm') : set === 'gs' ? (war ? 'gsIdle' : 'gsIdleCalm') : set === 'bow' ? (war ? 'bowIdle' : 'bowIdleCalm') : 'idle'; return this.acts[k] ? k : 'idle'; }
@@ -5919,8 +5920,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         e.set(-0.75, 0, -s * 0.55); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
         e.set(0.55, 0, 0); k.quaternion.setFromEuler(e);                          // the lower leg hangs down the flank (heels in), not moving with the run clip
       }
-      if (!R.held || R.held === 'none') for (const [sh, el] of [[R.shoulderL, R.elbowL], [R.shoulderR, R.elbowR]]) { if (!sh || !el) continue; e.set(-0.55, 0, 0); sh.quaternion.setFromEuler(e); e.set(-1.0, 0, 0); el.quaternion.setFromEuler(e); }        // unarmed rider: both hands forward on the reins, the arms do not swing with walk/run
-      if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); R.hips.quaternion.identity(); }       // the pelvis stays on the saddle: no run bob, no jump
+      if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); }          // the pelvis position stays on the saddle; its turn comes from the clip, so sword, spear and bow aim forward like on foot       // the pelvis stays on the saddle: no run bob, no jump
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세
