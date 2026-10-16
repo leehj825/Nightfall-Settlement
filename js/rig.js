@@ -224,7 +224,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     } else if (kind === 'citizen') {
       const v = female ? 5 : Math.floor(R(5) * 4);
       if (female) {
-        part(RG.dressSkirt, bodyMat, hips, 0, -0.35, 0, 0, 0, 0, Wb, 1, 0.8); part(RG.apron, cottonMat, spine, 0, 0.1, 0.14 * Wb + 0.03, 0, 0, 0, 1.2, 1.2, 1); part(RG.apron, cottonMat, hips, 0, -0.38, 0.27, 0.02, 0, 0, 1.5, 1.6, 1);
+        part(RG.dressSkirt, bodyMat, hips, 0, -0.35, 0, 0, 0, 0, Wb, 1, 0.8); part(RG.apron, cottonMat, spine, 0, 0.1, 0.14 * Wb + 0.03, 0, 0, 0, 1.2, 1.2, 1);
         for (let i = 0; i < 3; i++) part(RG.lace, beltMat, spine, 0, 0.36 + i * 0.07, 0.18 * Wb);
         part(RG.chest, cloth2, spine, 0, 0.47, 0, 0, 0, 0, Wb * 1.1, 0.7, 0.64);
       } else if (elder) {
@@ -749,8 +749,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
+    _fallStep(dt) {                                                     // a dead rider slides off the horse sideways and lies beside it
+      const R = this.rig, g = R.rider; if (!g) return;
+      if (this.dead && R.seated) { const f = this._fall || (this._fall = { t: 0, side: (R.fallSide || 1) }); f.t = Math.min(1, f.t + dt / 0.6); const k = f.t * f.t * (3 - 2 * f.t); g.rotation.z = -f.side * 1.45 * k; g.position.x = f.side * 0.75 * k; g.position.y = 0.8 - 0.45 * k; }
+      else if (this._fall) { this._fall = null; g.rotation.z = 0; g.position.x = 0; g.position.y = 0.8; }
+    }
     die() {
-      this.dead = true; this.shot = null; this.guarding = false; this.rig.aim(false);
+      this.dead = true; this.rig.fallen = true; this.shot = null; this.guarding = false; this.rig.aim(false);
       const set = this.rig.style === 'bow' ? ['dieBow', 'dieBow2'] : this.rig.style === 'gs' ? ['dieGs', 'dieGs2'] : ['die', 'die2'], ok = set.filter(k => this.acts[k]), dk = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 'die';
       this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE;
     }
@@ -782,7 +787,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
       else this._play(this.baseName || 'idle', 0.15, true);
     }
-    revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
+    revive() { this.dead = false; this.rig.fallen = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.baseName === 'farm' && !this.shot && this.cur) {                 // 농사: 심기 → 물주기 → 뽑기 → 따기 동작을 한 번씩 돌아가며 한다
         this._ft = (this._ft || 0) + dt;
@@ -793,7 +798,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt); if (this.rig.clavL) updateClavicles(this.rig);
-      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated) this._seat();
+      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated && !this.dead) this._seat(); this._fallStep(dt);
     }
     // 말 위의 앉은 자세: 허벅지를 앞으로 벌려 안장을 감싸고 무릎을 접어 정강이가 말 옆구리로 내려오게 한다 (모션캡처 위에 덮어쓴다)
     _seat() {
@@ -803,6 +808,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         e.set(-0.75, 0, -s * 0.55); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
         e.set(0.55, 0, 0); k.quaternion.setFromEuler(e);                          // the lower leg hangs down the flank (heels in), not moving with the run clip
       }
+      if (!R.held || R.held === 'none') for (const [sh, el] of [[R.shoulderL, R.elbowL], [R.shoulderR, R.elbowR]]) { if (!sh || !el) continue; e.set(-0.55, 0, 0); sh.quaternion.setFromEuler(e); e.set(-1.0, 0, 0); el.quaternion.setFromEuler(e); }        // unarmed rider: both hands forward on the reins, the arms do not swing with walk/run
       if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); R.hips.quaternion.identity(); }       // the pelvis stays on the saddle: no run bob, no jump
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)

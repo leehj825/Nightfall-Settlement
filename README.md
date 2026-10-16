@@ -421,3 +421,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v199: followers, citizens and raiders use FOLLOWER_BALANCE (smaller head, only about half the extra thickness); the leader keeps LEADER_BALANCE.
 - nf-v200: riders sit: the seated pose now really runs (the rig exposes hips and knee bones; before, it exited early and the legs ran inside the horse), legs wrap the flanks, pelvis fixed on the saddle, no jump/bob clip while mounted; Model field horse hops on jump.
 - nf-v201: horses are about 25 % narrower (body 0.55 to 0.42, saddle, neck, legs) and the rider's thighs open less, so the legs wrap the horse.
+- nf-v202: unarmed riders keep both hands forward (no arm swing on walk/run); a dead rider slides off sideways and lies beside the horse; the flat apron board in front of female citizens' legs is gone.

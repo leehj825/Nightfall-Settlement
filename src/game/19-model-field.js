@@ -32,8 +32,8 @@
   function mvMount(on) {
     mv.mounted = on;
     for (const s of mv.subs) { if (!s.rig || s.kind === 'beast') continue;
-      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; }
-      else if (!on && s.horse) { const cur = s.rig.root; s.rider.remove(cur); s.g.add(cur); s.g.remove(s.rider, s.horse); s.rig.seated = false; s.horse = s.rider = null; } }
+      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.rig.rider = rider; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; }
+      else if (!on && s.horse) { const cur = s.rig.root; s.rider.remove(cur); s.g.add(cur); s.g.remove(s.rider, s.horse); s.rig.seated = false; s.rig.rider = null; s.horse = s.rider = null; } }
     mvLayout();
   }
   function mvLayout() {                                      // all in a row, or only the chosen one in the middle
@@ -87,7 +87,7 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider) s.rider.position.y = 0.8 + s.horse.position.y; } }
+      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + s.horse.position.y; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();

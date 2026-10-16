@@ -400,7 +400,7 @@
       n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
       const sw = Math.min(1, v / 5) * 0.55, ph = t * 11, legs = n.horse.userData.legs || [];
       legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); n.rider.position.y = 0.8 + n.horse.position.y;
+      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); if (!n.rig.fallen) n.rider.position.y = 0.8 + n.horse.position.y;
     }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;

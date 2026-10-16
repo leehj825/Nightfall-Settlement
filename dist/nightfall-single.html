@@ -5335,7 +5335,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     } else if (kind === 'citizen') {
       const v = female ? 5 : Math.floor(R(5) * 4);
       if (female) {
-        part(RG.dressSkirt, bodyMat, hips, 0, -0.35, 0, 0, 0, 0, Wb, 1, 0.8); part(RG.apron, cottonMat, spine, 0, 0.1, 0.14 * Wb + 0.03, 0, 0, 0, 1.2, 1.2, 1); part(RG.apron, cottonMat, hips, 0, -0.38, 0.27, 0.02, 0, 0, 1.5, 1.6, 1);
+        part(RG.dressSkirt, bodyMat, hips, 0, -0.35, 0, 0, 0, 0, Wb, 1, 0.8); part(RG.apron, cottonMat, spine, 0, 0.1, 0.14 * Wb + 0.03, 0, 0, 0, 1.2, 1.2, 1);
         for (let i = 0; i < 3; i++) part(RG.lace, beltMat, spine, 0, 0.36 + i * 0.07, 0.18 * Wb);
         part(RG.chest, cloth2, spine, 0, 0.47, 0, 0, 0, 0, Wb * 1.1, 0.7, 0.64);
       } else if (elder) {
@@ -5860,8 +5860,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
+    _fallStep(dt) {                                                     // a dead rider slides off the horse sideways and lies beside it
+      const R = this.rig, g = R.rider; if (!g) return;
+      if (this.dead && R.seated) { const f = this._fall || (this._fall = { t: 0, side: (R.fallSide || 1) }); f.t = Math.min(1, f.t + dt / 0.6); const k = f.t * f.t * (3 - 2 * f.t); g.rotation.z = -f.side * 1.45 * k; g.position.x = f.side * 0.75 * k; g.position.y = 0.8 - 0.45 * k; }
+      else if (this._fall) { this._fall = null; g.rotation.z = 0; g.position.x = 0; g.position.y = 0.8; }
+    }
     die() {
-      this.dead = true; this.shot = null; this.guarding = false; this.rig.aim(false);
+      this.dead = true; this.rig.fallen = true; this.shot = null; this.guarding = false; this.rig.aim(false);
       const set = this.rig.style === 'bow' ? ['dieBow', 'dieBow2'] : this.rig.style === 'gs' ? ['dieGs', 'dieGs2'] : ['die', 'die2'], ok = set.filter(k => this.acts[k]), dk = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 'die';
       this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE;
     }
@@ -5893,7 +5898,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
       else this._play(this.baseName || 'idle', 0.15, true);
     }
-    revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
+    revive() { this.dead = false; this.rig.fallen = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.baseName === 'farm' && !this.shot && this.cur) {                 // 농사: 심기 → 물주기 → 뽑기 → 따기 동작을 한 번씩 돌아가며 한다
         this._ft = (this._ft || 0) + dt;
@@ -5904,7 +5909,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt); if (this.rig.clavL) updateClavicles(this.rig);
-      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated) this._seat();
+      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated && !this.dead) this._seat(); this._fallStep(dt);
     }
     // 말 위의 앉은 자세: 허벅지를 앞으로 벌려 안장을 감싸고 무릎을 접어 정강이가 말 옆구리로 내려오게 한다 (모션캡처 위에 덮어쓴다)
     _seat() {
@@ -5914,6 +5919,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         e.set(-0.75, 0, -s * 0.55); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
         e.set(0.55, 0, 0); k.quaternion.setFromEuler(e);                          // the lower leg hangs down the flank (heels in), not moving with the run clip
       }
+      if (!R.held || R.held === 'none') for (const [sh, el] of [[R.shoulderL, R.elbowL], [R.shoulderR, R.elbowR]]) { if (!sh || !el) continue; e.set(-0.55, 0, 0); sh.quaternion.setFromEuler(e); e.set(-1.0, 0, 0); el.quaternion.setFromEuler(e); }        // unarmed rider: both hands forward on the reins, the arms do not swing with walk/run
       if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); R.hips.quaternion.identity(); }       // the pelvis stays on the saddle: no run bob, no jump
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
@@ -7410,7 +7416,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
       const sw = Math.min(1, v / 5) * 0.55, ph = t * 11, legs = n.horse.userData.legs || [];
       legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); n.rider.position.y = 0.8 + n.horse.position.y;
+      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); if (!n.rig.fallen) n.rider.position.y = 0.8 + n.horse.position.y;
     }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;
@@ -8924,9 +8930,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (want && !n.horse) {
       const hash = [...(n.name || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0, coats = [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a, 0x5a5a5e, 0xb08a5a], bc = parseInt((n.warband >= 0 ? warbandColor(n.warband) : '#8a2a2a').slice(1), 16);
       const horse = new THREE.Group(), body = horseModel(() => 0.3, { coat: coats[hash % coats.length], blanket: bc, armor: n.cls === 'spear' }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
+      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.rig.rider = rider; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
     } else if (!want && n.horse) {
-      const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.rig.seated = false; n.horse = n.rider = null; n.mounted = false;
+      const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.rig.seated = false; n.rig.rider = null; n.horse = n.rider = null; n.mounted = false;
     }
     n.charge = 0;
   }
@@ -8943,9 +8949,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function leaderRideApply() {
     if (playerMounted && !pHorse) {
       const horse = new THREE.Group(), body = horseModel(() => 0.7, { coat: 0xe8e4d8, blanket: 0xe0b040, armor: true }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; playerRig.rider = rider; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
     } else if (!playerMounted && pHorse) {
-      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); playerRig.seated = false; pHorse = pRider = null;
+      const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); playerRig.seated = false; playerRig.rider = null; pHorse = pRider = null;
     }
     pCharge = 0; pBonusT = 0;
   }
@@ -8969,7 +8975,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     pBonusT = Math.max(0, pBonusT - dt);
     const sw = Math.min(1, v / 6) * 0.55, ph = t * 11, legs = pHorse.userData.legs || [];
     legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-    pHorse.position.y = Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 6); pRider.position.y = 0.8 + pHorse.position.y;
+    pHorse.position.y = Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 6); if (!playerRig.fallen) pRider.position.y = 0.8 + pHorse.position.y;
   }
   let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------
@@ -12447,8 +12453,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function mvMount(on) {
     mv.mounted = on;
     for (const s of mv.subs) { if (!s.rig || s.kind === 'beast') continue;
-      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; }
-      else if (!on && s.horse) { const cur = s.rig.root; s.rider.remove(cur); s.g.add(cur); s.g.remove(s.rider, s.horse); s.rig.seated = false; s.horse = s.rider = null; } }
+      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.rig.rider = rider; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; }
+      else if (!on && s.horse) { const cur = s.rig.root; s.rider.remove(cur); s.g.add(cur); s.g.remove(s.rider, s.horse); s.rig.seated = false; s.rig.rider = null; s.horse = s.rider = null; } }
     mvLayout();
   }
   function mvLayout() {                                      // all in a row, or only the chosen one in the middle
@@ -12502,7 +12508,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider) s.rider.position.y = 0.8 + s.horse.position.y; } }
+      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + s.horse.position.y; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();
