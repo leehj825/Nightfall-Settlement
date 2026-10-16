@@ -418,3 +418,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v196: the classic leader is built with twice the segments (own geometry set RG_PL in rig.js, quality Q=2) and smooth-shaded skin; other characters unchanged.
 - nf-v197: classic leader body balance (LEADER_BALANCE in rig.js): head 14 % smaller, arms and legs ~20-28 % thicker, torso a little deeper/wider.
 - nf-v198: the new body balance (LEADER_BALANCE) now applies to every human: soldiers, archers, citizens, raiders.
+- nf-v199: followers, citizens and raiders use FOLLOWER_BALANCE (smaller head, only about half the extra thickness); the leader keeps LEADER_BALANCE.
