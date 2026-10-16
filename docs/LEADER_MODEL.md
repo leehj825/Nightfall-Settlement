@@ -125,3 +125,6 @@ Raising an arm left the shoulder (collar pad, top of the vest) behind. Now the c
 
 ## nf-v189: real clavicle bones (clavL/clavR) for the new leader model
 Only the new leader has them: child of spine at x ±0.06, shoulder height; the shoulder bone is its child (position unchanged in the world). They are skin-only bones (13 skin bones), not in the clips: `updateClavicles` (rig.js, after `mixer.update`) rotates them from the upper-arm direction (up to 0.38 rad lift when the arm is above the horizontal, 0.25 rad forward turn when reaching forward). Weights: collar pad 85 % clavicle, shoulder armour 60 %, top of the vest next to the shoulder up to 70 %.
+
+## nf-v190: stronger clavicle lift, no armpit stretch
+Lift now reaches the full 0.5 rad at a horizontal arm (was ~0.12). Vest weights to the clavicle are limited to above shY-0.07 within 0.14 m of the shoulder (max 0.6), so the chest/armpit is no longer dragged.

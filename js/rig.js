@@ -341,7 +341,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis; neck: the collar follows the head
         const wy = J.hipY + 0.10, ww = 0.6 * (1 - smooth01(wy - 0.04, wy + 0.12, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
         if (ww >= wn) { nb = 'hips'; w = ww; } else { nb = 'head'; w = wn; }
-        const wsh = Math.abs(x) > 0.05 && y > J.shY - 0.2 ? near((x < 0 ? -1 : 1) * J.shX, J.shY - 0.02, 0.2) * 0.7 : 0;       // the top of the vest next to the shoulder rises with the arm (shoulders lift when the arm goes up)
+        const wsh = Math.abs(x) > 0.05 && y > J.shY - 0.07 ? near((x < 0 ? -1 : 1) * J.shX, J.shY + 0.02, 0.14) * 0.6 : 0;       // the top of the vest next to the shoulder rises with the arm (shoulders lift when the arm goes up)
         if (wsh > w) { nb = 'clav' + (x < 0 ? 'L' : 'R'); w = wsh; }
       }
       else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }
@@ -377,8 +377,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const _cq = new THREE.Vector3();
   function updateClavicles(rig) {                           // the collar bones follow the arm: when an upper arm goes above the horizontal the shoulder lifts (up to about 22 degrees) and moves forward with a reach
     for (const [n, s] of [['L', -1], ['R', 1]]) {
-      const v = _cq.set(0, -1, 0).applyQuaternion(rig['shoulder' + n].quaternion), t = Math.max(0, Math.min(1, (v.y + 0.35) / 1.1)), f = Math.max(0, Math.min(1, v.z));
-      rig['clav' + n].rotation.set(0, -s * 0.25 * f, s * 0.38 * t);
+      const v = _cq.set(0, -1, 0).applyQuaternion(rig['shoulder' + n].quaternion), t = Math.max(0, Math.min(1, (v.y + 0.85) / 0.85)), f = Math.max(0, Math.min(1, v.z));
+      rig['clav' + n].rotation.set(0, -s * 0.25 * f, s * 0.5 * t);
     }
   }
   function modelMesh(key, skeleton, material) {
