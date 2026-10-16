@@ -414,3 +414,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v192: tighter knee/hip blending (thighs not stretched); clavicle bones for the T-pose leader.
 - nf-v193: knee pivot moved into the thigh/shin overlap; leader model 8 % bigger.
 - nf-v194: new leader uses the skeleton weights from the model file.
+- nf-v195: Settings > Model field: a separate flat field with a free camera for characters, mounts and your own .glb (docs/MODEL_FIELD.md).

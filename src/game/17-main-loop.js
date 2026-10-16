@@ -1,5 +1,6 @@
   // ---------- 메인 루프 ----------
   const SPEED = 6;
+  let mvActive = false;                                       // Model field (19-model-field.js) is showing: the game is not stepped
   // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
   const WX_N = 1600, WX_BASE = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
   for (let i = 0; i < WX_N; i++) { const x = rand(-16, 16), y = rand(0, 14), z = rand(-16, 16); wxPos.set([x, y, z, x, y + 0.7, z], i * 6); wxVel[i] = rand(0.8, 1.2); }
@@ -37,6 +38,7 @@
 
   function tick() {
     requestAnimationFrame(tick);
+    if (mvActive) { mvStep(clock.getDelta()); return; }
     const rawDt = clock.getDelta(); fpsT += rawDt; fpsN++; if (fpsT >= 1) { window.__nfFps = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
     const dt = Math.min(rawDt, 0.05) * (eventOpen || uiPause ? 0 : 1);       // 아침 이벤트 창이 열려 있으면 시간이 멈춘다
     const t = clock.elapsedTime;
