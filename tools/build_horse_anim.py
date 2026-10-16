@@ -89,6 +89,11 @@ def main():
                     if (BONES[b][0][0] in 'fh' and len(BONES[b][0]) == 3) or BONES[b][0] == 'body':                                  # legs and the body pitch forward and back only: the angle in the side view (x forward, y up), no sideways swing
                         m0, m1 = P @ a0, P @ a1; d = np.arctan2(m1[1], m1[0]) - np.arctan2(m0[1], m0[0]); c, sn = np.cos(d), np.sin(d); D.append(np.array([[c, -sn, 0], [sn, c, 0], [0, 0, 1]]))
                     else: D.append(P @ swing(a0, a1) @ P.T)
+            ang = lambda M: np.arctan2(M[1, 0], M[0, 0])                                              # planar parts: the rotation angle about the side axis (+ = the foot swings forward)
+            for b in range(len(BONES)):                                                              # knee/hock bend only the anatomical way: front lower legs fold backward, hind lower legs forward (the owner's request), never the other way
+                n_ = BONES[b][0]
+                if n_[0] in 'fh' and n_[2] == 'L' and len(n_) == 3 and pidx[b] >= 0:
+                    rel = ang(D[b]) - ang(D[pidx[b]]); rel = -abs(rel) if n_[0] == 'f' else abs(rel); t = ang(D[pidx[b]]) + rel; c, sn = np.cos(t), np.sin(t); D[b] = np.array([[c, -sn, 0], [sn, c, 0], [0, 0, 1]])
             row = []
             for b in range(len(BONES)):
                 loc = (D[pidx[b]].T @ D[b]) if pidx[b] >= 0 else D[b]; row += mq(loc).round(4).tolist()
