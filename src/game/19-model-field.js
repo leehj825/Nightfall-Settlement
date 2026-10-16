@@ -17,7 +17,7 @@
       if (kind === 'enemy') rig.combat = true;
       mv.subs.push(s);
     }
-    const hg = new THREE.Group(), horse = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }); horse.rotation.y = -Math.PI / 2; hg.add(horse); hg.userData.legs = horse.userData.legs; sc.add(hg);
+    const hg = new THREE.Group(), horse = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }); horse.rotation.y = -Math.PI / 2; hg.add(horse); hg.userData.legs = horse.userData.legs; hg.userData.hr = horse.userData.hr; sc.add(hg);
     mv.subs.push({ label: 'Horse', kind: 'horse', g: hg, rig: null, anim: null, horse: hg, rider: null, hmove: 0 });
     mv.hop = 0;
     mvWeapon(mv.weapon); mvLayout(); mvUi();
@@ -32,7 +32,7 @@
   function mvMount(on) {
     mv.mounted = on;
     for (const s of mv.subs) { if (!s.rig || s.kind === 'beast') continue;
-      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.rig.rider = rider; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; }
+      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.rig.rider = rider; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; h.userData.hr = body.userData.hr; }
       else if (!on && s.horse) { const cur = s.rig.root; s.rider.remove(cur); s.g.add(cur); s.g.remove(s.rider, s.horse); s.rig.seated = false; s.rig.rider = null; s.horse = s.rider = null; } }
     mvLayout();
   }
@@ -87,7 +87,7 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + s.horse.position.y; } }
+      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0, bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0); s.horse.position.y = hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + hop; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();

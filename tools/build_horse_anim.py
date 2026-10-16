@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Builds js/horse_anim.js: walk and gallop animation for the classic (box) horse, taken from a rigged horse .glb (owner-made animation pack).
+
+usage: python3 tools/build_horse_anim.py Lowpolyhorseanimationspack.glb
+
+The classic horse is a hierarchy of rigid boxes on 27 joints (see src/game/04c-horse.js). Each joint follows one bone of the .glb skeleton:
+  hips<-spine.002, mid<-spine.004, front<-spine.005, neck1<-neck.001, neck2<-neck.003, head<-skull, tail<-tail.001,
+  per leg: upper<-upper_arm|thigh, 2<-forearm|lower_leg, 3<-forefoot|hind_foot, 4<-f_toe|r_toe.
+All joints rest with an identity orientation in the model frame (x forward, y up, z to the horse's right), so the animation is retargeted by world-space rotation deltas:
+  delta(bone, t) = world rotation at t * world rotation at rest^-1  (in the .glb frame), turned into the model frame; a joint's local rotation = parent delta^-1 * its delta.
+Clips: 'horse walk attack 1' (a walk cycle, 1.08 s) -> walk; 'horse runcycle new' (a gallop, 0.625 s) -> run. The hips also move (bob) - stored as a translation delta.
+Output: HORSE_ANIM = { bones: [[name, parentIndex]...], rest: [[x,y,z]...] (world, model frame), clips: { walk: { dur, n, q: [...], p: [...] }, run: {...} } }."""
+import sys, os, json, struct
+import numpy as np
+
+def load(path):
+    d = open(path, 'rb').read(); l = struct.unpack('<I', d[12:16])[0]; j = json.loads(d[20:20 + l]); off = 20 + l; bl = struct.unpack('<I', d[off:off + 4])[0]; blob = d[off + 8:off + 8 + bl]
+    CT = {5126: np.float32, 5123: np.uint16, 5125: np.uint32}; NN = {'SCALAR': 1, 'VEC3': 3, 'VEC4': 4}
+    def acc(i):
+        a = j['accessors'][i]; bv = j['bufferViews'][a['bufferView']]; n = NN[a['type']]
+        return np.frombuffer(blob, np.dtype(CT[a['componentType']]), a['count'] * n, bv.get('byteOffset', 0) + a.get('byteOffset', 0)).reshape(-1, n).astype(np.float64)
+    return j, acc
+
+def qmat(q):
+    x, y, z, w = q; return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)], [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)], [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+def mq(m):
+    t = np.trace(m)
+    if t > 0: s = np.sqrt(t + 1) * 2; q = [(m[2, 1] - m[1, 2]) / s, (m[0, 2] - m[2, 0]) / s, (m[1, 0] - m[0, 1]) / s, s / 4]
+    elif m[0, 0] > m[1, 1] and m[0, 0] > m[2, 2]: s = np.sqrt(1 + m[0, 0] - m[1, 1] - m[2, 2]) * 2; q = [s / 4, (m[0, 1] + m[1, 0]) / s, (m[0, 2] + m[2, 0]) / s, (m[2, 1] - m[1, 2]) / s]
+    elif m[1, 1] > m[2, 2]: s = np.sqrt(1 + m[1, 1] - m[0, 0] - m[2, 2]) * 2; q = [(m[0, 1] + m[1, 0]) / s, s / 4, (m[1, 2] + m[2, 1]) / s, (m[0, 2] - m[2, 0]) / s]
+    else: s = np.sqrt(1 + m[2, 2] - m[0, 0] - m[1, 1]) * 2; q = [(m[0, 2] + m[2, 0]) / s, (m[1, 2] + m[2, 1]) / s, s / 4, (m[1, 0] - m[0, 1]) / s]
+    q = np.array(q); q /= np.linalg.norm(q); return q if q[3] >= 0 else -q
+def slerp(a, b, t):
+    d = a @ b
+    if d < 0: b = -b; d = -d
+    if d > 0.9995: r = a + (b - a) * t; return r / np.linalg.norm(r)
+    th = np.arccos(d); return (np.sin((1 - t) * th) * a + np.sin(t * th) * b) / np.sin(th)
+
+BONES = [('hips', None, 'spine.002'), ('mid', 'hips', 'spine.004'), ('front', 'mid', 'spine.005'), ('neck1', 'front', 'neck.001'), ('neck2', 'neck1', 'neck.003'), ('head', 'neck2', 'skull'), ('tail', 'hips', 'tail.001')]
+for side in 'LR':
+    BONES += [('f%s1' % side, 'front', 'upper_arm.' + side), ('f%s2' % side, 'f%s1' % side, 'forearm.' + side), ('f%s3' % side, 'f%s2' % side, 'forefoot.' + side), ('f%s4' % side, 'f%s3' % side, 'f_toe.' + side),
+              ('h%s1' % side, 'hips', 'thigh.' + side), ('h%s2' % side, 'h%s1' % side, 'lower_leg.' + side), ('h%s3' % side, 'h%s2' % side, 'hind_foot.' + side), ('h%s4' % side, 'h%s3' % side, 'r_toe.' + side)]
+P = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]], float)          # glb (x right, y up, z forward) -> model (x forward, y up, z right)
+SHIFT = 0.05                                                      # the saddle spot (glb z = -0.05) becomes x = 0
+
+def main():
+    j, acc = load(sys.argv[1]); idx = {n.get('name'): i for i, n in enumerate(j['nodes'])}; nodes = j['nodes']; par = {}
+    for i, n in enumerate(nodes):
+        for c in n.get('children', []): par[c] = i
+    def world(pose):
+        W = {}
+        def w(i):
+            if i in W: return W[i]
+            n = nodes[i]; T, Q, S = pose.get(i, (n.get('translation', [0, 0, 0]), n.get('rotation', [0, 0, 0, 1]), n.get('scale', [1, 1, 1])))
+            M = np.eye(4); M[:3, :3] = qmat(Q) * np.array(S); M[:3, 3] = T; W[i] = (w(par[i]) if i in par else np.eye(4)) @ M; return W[i]
+        for i in range(len(nodes)): w(i)
+        return W
+    Wr = world({}); names = [b[0] for b in BONES]; pidx = [names.index(b[1]) if b[1] else -1 for b in BONES]; gi = [idx[b[2]] for b in BONES]
+    toM = lambda p: (P @ np.asarray(p, float)) + np.array([SHIFT, 0, 0])
+    rest = [toM(Wr[g][:3, 3]).round(4).tolist() for g in gi]
+    def clip(name):
+        ai = next(i for i, a in enumerate(j['animations']) if a['name'] == name); a = j['animations'][ai]; tr = {}
+        for ch in a['channels']:
+            s = a['samplers'][ch['sampler']]; tr[(ch['target']['node'], ch['target']['path'])] = (acc(s['input']).ravel(), acc(s['output']))
+        t0 = min(v[0][0] for v in tr.values()); t1 = max(v[0][-1] for v in tr.values()); return tr, t0, t1
+    def sample(k, t, quat):
+        times, vals = k; t = min(max(t, times[0]), times[-1])
+        if t >= times[-1]: return vals[-1]
+        i = np.searchsorted(times, t, side='right') - 1; u = (t - times[i]) / (times[i + 1] - times[i])
+        return slerp(vals[i], vals[i + 1], u) if quat else vals[i] * (1 - u) + vals[i + 1] * u
+    out = {}
+    for key, name, n in (('walk', 'horse walk attack 1', 26), ('run', 'horse runcycle new', 15)):
+        tr, t0, t1 = clip(name); dur = t1 - t0; qs, ps = [], []                      # n frames over one cycle (the last frame equals the first, so it is left out)
+        for f in range(n):
+            t = t0 + dur * f / n; pose = {}
+            for i, nd in enumerate(nodes):
+                g = lambda p, d, q: sample(tr[(i, p)], t, q) if (i, p) in tr else d
+                pose[i] = (g('translation', nd.get('translation', [0, 0, 0]), False), g('rotation', nd.get('rotation', [0, 0, 0, 1]), True), g('scale', nd.get('scale', [1, 1, 1]), False))
+            W = world(pose); D = []
+            for b in range(len(BONES)):
+                Rw = W[gi[b]][:3, :3]; Rr = Wr[gi[b]][:3, :3]; sc = np.linalg.norm(Rr, axis=0); Rw = Rw / np.linalg.norm(Rw, axis=0); Rr = Rr / sc
+                D.append(P @ (Rw @ Rr.T) @ P.T)
+            row = []
+            for b in range(len(BONES)):
+                loc = (D[pidx[b]].T @ D[b]) if pidx[b] >= 0 else D[b]; row += mq(loc).round(4).tolist()
+            qs += row; ps += (P @ (W[gi[0]][:3, 3] - Wr[gi[0]][:3, 3])).round(4).tolist()
+        out[key] = {'dur': round(float(dur), 4), 'n': n, 'q': qs, 'p': ps}
+    o = {'bones': [[names[i], pidx[i]] for i in range(len(names))], 'rest': rest, 'clips': out}
+    js = '// Generated by tools/build_horse_anim.py - walk and gallop for the classic horse (from the owner-made horse animation pack). Do not edit by hand.\nconst HORSE_ANIM = ' + json.dumps(o, separators=(',', ':')) + ';\n'
+    open(os.path.join(os.path.dirname(__file__), '..', 'js', 'horse_anim.js'), 'w').write(js); print('bones', len(names), 'walk', out['walk']['dur'], 'run', out['run']['dur'], 'js %d KB' % (len(js) // 1024))
+    for n_, r in zip(names, rest): print(n_, r)
+main()

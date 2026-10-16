@@ -290,22 +290,6 @@
       f.add(cloth); f.position.set(x, 2.6, z); f.visible = false; g.add(f); return f;
     });
   }
-  function horseModel(rnd, o) {                                              // 말: 몸통 + 목 + 머리 + 다리 네 개 + 갈기와 꼬리. o = { coat, blanket(안장 담요 색), armor(마갑) }
-    o = o || {}; const s = new THREE.Group(), coat = M(o.coat !== undefined ? o.coat : [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a][Math.floor(rnd() * 4)]), dark = M(0x2a2018), mk = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; s.add(o); return o; };
-    mk(new THREE.BoxGeometry(1.5, 0.75, 0.42), coat, 0, 1.15, 0);
-    mk(new THREE.BoxGeometry(0.4, 0.8, 0.27), coat, 0.85, 1.5, 0).rotation.z = -0.5;
-    mk(new THREE.BoxGeometry(0.6, 0.3, 0.22), coat, 1.2, 1.8, 0);
-    mk(new THREE.BoxGeometry(0.15, 0.55, 0.12), dark, 0.62, 1.7, 0).rotation.z = -0.5;
-    mk(new THREE.BoxGeometry(0.1, 0.6, 0.12), dark, -0.8, 1.1, 0).rotation.z = 0.35;
-    mk(new THREE.BoxGeometry(0.7, 0.08, 0.48), M(o.blanket !== undefined ? o.blanket : 0x8a2a2a), 0.05, 1.56, 0); mk(new THREE.BoxGeometry(0.55, 0.12, 0.34), M(0x4a301c), 0.05, 1.62, 0);        // 안장 담요와 안장
-    if (o.armor) {                                                                                               // 마갑: 가슴·목·머리 철판과 이마의 장식
-      const steel = M(0x9aa0aa), gold = M(0xe0b040);
-      mk(new THREE.BoxGeometry(0.5, 0.65, 0.48), steel, 0.6, 1.1, 0); mk(new THREE.BoxGeometry(0.42, 0.7, 0.3), steel, 0.88, 1.5, 0).rotation.z = -0.5;
-      mk(new THREE.BoxGeometry(0.4, 0.2, 0.24), steel, 1.3, 1.9, 0); mk(new THREE.BoxGeometry(0.08, 0.2, 0.08), gold, 1.5, 2.05, 0);
-    }
-    s.userData.legs = [[-0.6, -0.14], [-0.6, 0.14], [0.6, -0.14], [0.6, 0.14]].map(([lx, lz]) => mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz));
-    return s;
-  }
   function stableModel(add, seed, add0) {                                    // 마구간: 나무 외양간(칸막이 셋) + 앞 방목장 울타리 + 말 두 마리
     const rnd = rngOf(seed || 11), wood = M(0x7a5a3a), post = M(0x6b4a2a);
     add(new THREE.BoxGeometry(5.2, 0.1, 6.4), M(0x7a8a3a), 0, 0.05, 0.3);
@@ -398,9 +382,7 @@
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
       const v = dt > 0 ? mv / dt : 0;
       n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
-      const sw = Math.min(1, v / 5) * 0.55, ph = t * 11, legs = n.horse.userData.legs || [];
-      legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); if (!n.rig.fallen) n.rider.position.y = 0.8 + n.horse.position.y;
+      const bob = horseStep(n.horse, dt, v); if (!n.rig.fallen) n.rider.position.y = 0.8 + bob;
     }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;

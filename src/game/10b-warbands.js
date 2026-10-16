@@ -95,7 +95,7 @@
     if (want && !n.horse) {
       const hash = [...(n.name || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0, coats = [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a, 0x5a5a5e, 0xb08a5a], bc = parseInt((n.warband >= 0 ? warbandColor(n.warband) : '#8a2a2a').slice(1), 16);
       const horse = new THREE.Group(), body = horseModel(() => 0.3, { coat: coats[hash % coats.length], blanket: bc, armor: n.cls === 'spear' }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.rig.rider = rider; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
+      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.rig.rider = rider; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs; horse.userData.hr = body.userData.hr;
     } else if (!want && n.horse) {
       const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.rig.seated = false; n.rig.rider = null; n.horse = n.rider = null; n.mounted = false;
     }
@@ -114,7 +114,7 @@
   function leaderRideApply() {
     if (playerMounted && !pHorse) {
       const horse = new THREE.Group(), body = horseModel(() => 0.7, { coat: 0xe8e4d8, blanket: 0xe0b040, armor: true }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; playerRig.rider = rider; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; playerRig.rider = rider; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs; horse.userData.hr = body.userData.hr;
     } else if (!playerMounted && pHorse) {
       const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); playerRig.seated = false; playerRig.rider = null; pHorse = pRider = null;
     }
@@ -138,9 +138,7 @@
     const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
     const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
     pBonusT = Math.max(0, pBonusT - dt);
-    const sw = Math.min(1, v / 6) * 0.55, ph = t * 11, legs = pHorse.userData.legs || [];
-    legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-    pHorse.position.y = Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 6); if (!playerRig.fallen) pRider.position.y = 0.8 + pHorse.position.y;
+    const bob = horseStep(pHorse, dt, v); if (!playerRig.fallen) pRider.position.y = 0.8 + bob;
   }
   let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------

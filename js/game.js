@@ -1281,22 +1281,6 @@
       f.add(cloth); f.position.set(x, 2.6, z); f.visible = false; g.add(f); return f;
     });
   }
-  function horseModel(rnd, o) {                                              // 말: 몸통 + 목 + 머리 + 다리 네 개 + 갈기와 꼬리. o = { coat, blanket(안장 담요 색), armor(마갑) }
-    o = o || {}; const s = new THREE.Group(), coat = M(o.coat !== undefined ? o.coat : [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a][Math.floor(rnd() * 4)]), dark = M(0x2a2018), mk = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; s.add(o); return o; };
-    mk(new THREE.BoxGeometry(1.5, 0.75, 0.42), coat, 0, 1.15, 0);
-    mk(new THREE.BoxGeometry(0.4, 0.8, 0.27), coat, 0.85, 1.5, 0).rotation.z = -0.5;
-    mk(new THREE.BoxGeometry(0.6, 0.3, 0.22), coat, 1.2, 1.8, 0);
-    mk(new THREE.BoxGeometry(0.15, 0.55, 0.12), dark, 0.62, 1.7, 0).rotation.z = -0.5;
-    mk(new THREE.BoxGeometry(0.1, 0.6, 0.12), dark, -0.8, 1.1, 0).rotation.z = 0.35;
-    mk(new THREE.BoxGeometry(0.7, 0.08, 0.48), M(o.blanket !== undefined ? o.blanket : 0x8a2a2a), 0.05, 1.56, 0); mk(new THREE.BoxGeometry(0.55, 0.12, 0.34), M(0x4a301c), 0.05, 1.62, 0);        // 안장 담요와 안장
-    if (o.armor) {                                                                                               // 마갑: 가슴·목·머리 철판과 이마의 장식
-      const steel = M(0x9aa0aa), gold = M(0xe0b040);
-      mk(new THREE.BoxGeometry(0.5, 0.65, 0.48), steel, 0.6, 1.1, 0); mk(new THREE.BoxGeometry(0.42, 0.7, 0.3), steel, 0.88, 1.5, 0).rotation.z = -0.5;
-      mk(new THREE.BoxGeometry(0.4, 0.2, 0.24), steel, 1.3, 1.9, 0); mk(new THREE.BoxGeometry(0.08, 0.2, 0.08), gold, 1.5, 2.05, 0);
-    }
-    s.userData.legs = [[-0.6, -0.14], [-0.6, 0.14], [0.6, -0.14], [0.6, 0.14]].map(([lx, lz]) => mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz));
-    return s;
-  }
   function stableModel(add, seed, add0) {                                    // 마구간: 나무 외양간(칸막이 셋) + 앞 방목장 울타리 + 말 두 마리
     const rnd = rngOf(seed || 11), wood = M(0x7a5a3a), post = M(0x6b4a2a);
     add(new THREE.BoxGeometry(5.2, 0.1, 6.4), M(0x7a8a3a), 0, 0.05, 0.3);
@@ -1389,9 +1373,7 @@
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
       const v = dt > 0 ? mv / dt : 0;
       n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
-      const sw = Math.min(1, v / 5) * 0.55, ph = t * 11, legs = n.horse.userData.legs || [];
-      legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-      n.horse.position.y = n.rider.position.y * 0 + Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 5); if (!n.rig.fallen) n.rider.position.y = 0.8 + n.horse.position.y;
+      const bob = horseStep(n.horse, dt, v); if (!n.rig.fallen) n.rider.position.y = 0.8 + bob;
     }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;
@@ -1412,6 +1394,56 @@
     }
   }
 
+  // ---------- Horse: the classic box horse on a jointed skeleton (23 joints), with a walk and a gallop taken from the owner's horse animation pack (js/horse_anim.js, tools/build_horse_anim.py) ----------
+  // The horse faces +x (the callers turn it with rotation.y = -PI/2). Every box hangs on a joint; the joints rest with identity rotations, so the clips are plain local rotations.
+  function horseModel(rnd, o) {                                              // o = { coat, blanket (saddle blanket colour), armor (barding) }
+    o = o || {}; const A = HORSE_ANIM, s = new THREE.Group(), coat = M(o.coat !== undefined ? o.coat : [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a][Math.floor(rnd() * 4)]), dark = M(0x2a2018);
+    const J = {}, RP = {}; A.bones.forEach(([n, p], i) => { const j = new THREE.Group(); j.name = n; const r = A.rest[i], pr = p >= 0 ? A.rest[p] : [0, 0, 0]; j.position.set(r[0] - pr[0], r[1] - pr[1], r[2] - pr[2]); RP[n] = r; J[n] = j; (p >= 0 ? J[A.bones[p][0]] : s).add(j); });
+    const box = (bone, w, h, d, m, x, y, z, rz = 0) => { const k = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), r = RP[bone]; k.position.set(x - r[0], y - r[1], z - r[2]); k.rotation.z = rz; k.castShadow = true; J[bone].add(k); return k; };
+    const seg = (bone, a, b, w, d, m, grow = 0) => {                       // a box from joint a to joint b (or to a point), hung on `bone`
+      const pa = Array.isArray(a) ? a : RP[a], pb = Array.isArray(b) ? b : RP[b], dx = pb[0] - pa[0], dy = pb[1] - pa[1], L = Math.hypot(dx, dy) + grow;
+      return box(bone, w, L, d, m, (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2, Math.atan2(-dx, dy));
+    };
+    box('hips', 0.7, 0.55, 0.44, coat, -0.55, 1.27, 0); box('mid', 0.8, 0.58, 0.44, coat, -0.02, 1.2, 0); box('front', 0.74, 0.66, 0.44, coat, 0.42, 1.2, 0);        // rump, barrel, chest
+    seg('neck1', 'neck1', 'neck2', 0.3, 0.22, coat, 0.12); seg('neck2', 'neck2', 'head', 0.24, 0.2, coat, 0.1);                                                            // neck
+    seg('neck1', [RP.neck1[0] - 0.09, RP.neck1[1] + 0.09, 0], [RP.neck2[0] - 0.09, RP.neck2[1] + 0.09, 0], 0.07, 0.07, dark, 0.1);                                      // mane
+    { const h = box('head', 0.5, 0.24, 0.22, coat, RP.head[0] + 0.2, RP.head[1] - 0.1, 0, -0.5); box('head', 0.2, 0.2, 0.2, dark, RP.head[0] + 0.4, RP.head[1] - 0.26, 0, -0.5); box('head', 0.07, 0.16, 0.06, dark, RP.head[0] - 0.02, RP.head[1] + 0.16, 0.08); box('head', 0.07, 0.16, 0.06, dark, RP.head[0] - 0.02, RP.head[1] + 0.16, -0.08); }   // head, muzzle, ears
+    box('tail', 0.09, 0.62, 0.12, dark, RP.tail[0] - 0.06, RP.tail[1] - 0.28, 0, 0.15); box('tail', 0.14, 0.14, 0.14, dark, RP.tail[0] + 0.02, RP.tail[1], 0);                   // tail
+    for (const sd of ['L', 'R']) {
+      const f = (i) => RP['f' + sd + i], h = (i) => RP['h' + sd + i], fo = f(4), ho = h(4);
+      seg('f' + sd + '1', f(1), f(2), 0.2, 0.2, coat, 0.06); seg('f' + sd + '2', f(2), f(3), 0.15, 0.15, coat, 0.04); seg('f' + sd + '3', f(3), f(4), 0.11, 0.11, coat); seg('f' + sd + '4', fo, [fo[0], 0.02, fo[2]], 0.13, 0.14, dark);    // front leg: arm, forearm, cannon, hoof
+      box('f' + sd + '2', 0.16, 0.16, 0.16, dark, f(3)[0], f(3)[1], f(3)[2]);                                                                                                       // knee
+      seg('h' + sd + '1', h(1), h(2), 0.24, 0.22, coat, 0.08); seg('h' + sd + '2', h(2), h(3), 0.15, 0.15, coat, 0.04); seg('h' + sd + '3', h(3), h(4), 0.11, 0.11, coat); seg('h' + sd + '4', ho, [ho[0], 0.02, ho[2]], 0.13, 0.14, dark);    // hind leg: thigh, shin, cannon, hoof
+      box('h' + sd + '2', 0.17, 0.17, 0.17, dark, h(3)[0], h(3)[1], h(3)[2]);                                                                                                       // hock
+    }
+    box('mid', 0.7, 0.08, 0.5, M(o.blanket !== undefined ? o.blanket : 0x8a2a2a), 0.05, 1.5, 0); box('mid', 0.55, 0.12, 0.36, M(0x4a301c), 0.05, 1.56, 0);                         // blanket, saddle
+    if (o.armor) {                                                                                                                                                            // barding: chest, neck and head plates and a forehead ornament
+      const steel = M(0x9aa0aa), gold = M(0xe0b040);
+      box('front', 0.5, 0.65, 0.5, steel, 0.6, 1.15, 0); seg('neck1', 'neck1', 'neck2', 0.34, 0.3, steel, 0.1); box('head', 0.44, 0.2, 0.28, steel, RP.head[0] + 0.12, RP.head[1] - 0.05, 0, -0.5); box('head', 0.08, 0.2, 0.08, gold, RP.head[0] + 0.1, RP.head[1] + 0.12, 0);
+    }
+    s.userData.legs = []; s.userData.hr = { J, A, t: { walk: rnd() * 1, run: rnd() * 1 }, w: { walk: 0, run: 0 }, q: new THREE.Quaternion(), qa: new THREE.Quaternion(), qb: new THREE.Quaternion(), qr: new THREE.Quaternion() };
+    return s;
+  }
+  // Moves the horse's joints for one frame: speed (m/s) picks standing / walk / gallop (cross-faded); returns how much the back rises (the rider follows it).
+  function horseStep(h, dt, speed) {
+    const R = h.userData.hr; if (!R) return 0;
+    const A = R.A, c = A.clips, want = { walk: speed > 0.3 && speed < 4.2 ? 1 : 0, run: speed >= 4.2 ? 1 : 0 }, k = Math.min(1, dt * 6);
+    for (const n of ['walk', 'run']) R.w[n] += (want[n] - R.w[n]) * k;
+    const rate = { walk: Math.max(0.7, Math.min(2.2, speed / 1.6)) / c.walk.dur, run: Math.max(0.8, Math.min(1.4, speed / 6.5)) / c.run.dur };
+    for (const n of ['walk', 'run']) if (R.w[n] > 0.02) R.t[n] = (R.t[n] + dt * rate[n]) % 1;
+    const w0 = Math.max(0, 1 - R.w.walk - R.w.run), nb = A.bones.length; let bob = 0;
+    const frame = (n, b, out) => { const cl = c[n], f = R.t[n] * cl.n, i = Math.floor(f) % cl.n, j = (i + 1) % cl.n, u = f - Math.floor(f), o = b * 4, q = cl.q; R.qa.set(q[i * nb * 4 + o], q[i * nb * 4 + o + 1], q[i * nb * 4 + o + 2], q[i * nb * 4 + o + 3]); R.qb.set(q[j * nb * 4 + o], q[j * nb * 4 + o + 1], q[j * nb * 4 + o + 2], q[j * nb * 4 + o + 3]); return out.copy(R.qa).slerp(R.qb, u); };
+    for (let b = 0; b < nb; b++) {
+      const jt = R.J[A.bones[b][0]]; let x = 0, y = 0, z = 0, w = w0;                                  // blend by normalised weights (small rotations: a weighted sum is close enough)
+      for (const n of ['walk', 'run']) if (R.w[n] > 0.02) { frame(n, b, R.q); if (x * R.q.x + y * R.q.y + z * R.q.z + w * R.q.w < 0 && n !== 'walk') R.q.set(-R.q.x, -R.q.y, -R.q.z, -R.q.w); x += R.q.x * R.w[n]; y += R.q.y * R.w[n]; z += R.q.z * R.w[n]; w += R.q.w * R.w[n]; }
+      jt.quaternion.set(x, y, z, w).normalize();
+    }
+    // the back bobs with the gait (translation delta of the hips in the clips)
+    const hp = R.J.hips, r0 = A.rest[0]; let dx = 0, dy = 0, dz = 0;
+    for (const n of ['walk', 'run']) if (R.w[n] > 0.02) { const cl = c[n], f = R.t[n] * cl.n, i = Math.floor(f) % cl.n, j = (i + 1) % cl.n, u = f - Math.floor(f); dx += R.w[n] * (cl.p[i * 3] * (1 - u) + cl.p[j * 3] * u); dy += R.w[n] * (cl.p[i * 3 + 1] * (1 - u) + cl.p[j * 3 + 1] * u); dz += R.w[n] * (cl.p[i * 3 + 2] * (1 - u) + cl.p[j * 3 + 2] * u); }
+    hp.position.set(r0[0] + dx, r0[1] + dy, r0[2] + dz); bob = dy; h.userData.bob = bob;
+    return bob;
+  }
   // ---------- 대장간: 장비 제작 창 ----------
   const hallBtnEl = document.getElementById('hallBtn');
   const smithEl = document.getElementById('smithPanel'), smithList = document.getElementById('smithList'), smithBtnEl = document.getElementById('smithBtn');
@@ -2905,7 +2937,7 @@
     if (want && !n.horse) {
       const hash = [...(n.name || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0, coats = [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a, 0x5a5a5e, 0xb08a5a], bc = parseInt((n.warband >= 0 ? warbandColor(n.warband) : '#8a2a2a').slice(1), 16);
       const horse = new THREE.Group(), body = horseModel(() => 0.3, { coat: coats[hash % coats.length], blanket: bc, armor: n.cls === 'spear' }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.rig.rider = rider; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs;
+      const cur = n.rig.root; n.remove(cur); rider.add(cur); rider.position.y = 0.8; n.add(rider, horse); n.rig.seated = true; n.rig.rider = rider; n.horse = horse; n.rider = rider; horse.userData.legs = body.userData.legs; horse.userData.hr = body.userData.hr;
     } else if (!want && n.horse) {
       const cur = n.rig.root; n.rider.remove(cur); n.add(cur); n.remove(n.rider, n.horse); n.rig.seated = false; n.rig.rider = null; n.horse = n.rider = null; n.mounted = false;
     }
@@ -2924,7 +2956,7 @@
   function leaderRideApply() {
     if (playerMounted && !pHorse) {
       const horse = new THREE.Group(), body = horseModel(() => 0.7, { coat: 0xe8e4d8, blanket: 0xe0b040, armor: true }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; horse.add(body);
-      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; playerRig.rider = rider; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs;
+      const cur = playerRig.root; player.remove(cur); rider.add(cur); rider.position.y = 0.8; player.add(rider, horse); playerRig.seated = true; playerRig.rider = rider; pHorse = horse; pRider = rider; horse.userData.legs = body.userData.legs; horse.userData.hr = body.userData.hr;
     } else if (!playerMounted && pHorse) {
       const cur = playerRig.root; pRider.remove(cur); player.add(cur); player.remove(pRider, pHorse); playerRig.seated = false; playerRig.rider = null; pHorse = pRider = null;
     }
@@ -2948,9 +2980,7 @@
     const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
     const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
     pBonusT = Math.max(0, pBonusT - dt);
-    const sw = Math.min(1, v / 6) * 0.55, ph = t * 11, legs = pHorse.userData.legs || [];
-    legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * sw; });
-    pHorse.position.y = Math.abs(Math.sin(ph)) * 0.06 * Math.min(1, v / 6); if (!playerRig.fallen) pRider.position.y = 0.8 + pHorse.position.y;
+    const bob = horseStep(pHorse, dt, v); if (!playerRig.fallen) pRider.position.y = 0.8 + bob;
   }
   let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------
@@ -6413,7 +6443,7 @@
       if (kind === 'enemy') rig.combat = true;
       mv.subs.push(s);
     }
-    const hg = new THREE.Group(), horse = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }); horse.rotation.y = -Math.PI / 2; hg.add(horse); hg.userData.legs = horse.userData.legs; sc.add(hg);
+    const hg = new THREE.Group(), horse = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }); horse.rotation.y = -Math.PI / 2; hg.add(horse); hg.userData.legs = horse.userData.legs; hg.userData.hr = horse.userData.hr; sc.add(hg);
     mv.subs.push({ label: 'Horse', kind: 'horse', g: hg, rig: null, anim: null, horse: hg, rider: null, hmove: 0 });
     mv.hop = 0;
     mvWeapon(mv.weapon); mvLayout(); mvUi();
@@ -6428,7 +6458,7 @@
   function mvMount(on) {
     mv.mounted = on;
     for (const s of mv.subs) { if (!s.rig || s.kind === 'beast') continue;
-      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.rig.rider = rider; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; }
+      if (on && !s.horse) { const h = new THREE.Group(), body = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }), rider = new THREE.Group(); body.rotation.y = -Math.PI / 2; h.add(body); const cur = s.rig.root; s.g.remove(cur); rider.add(cur); rider.position.y = 0.8; s.g.add(rider, h); s.rig.seated = true; s.rig.rider = rider; s.horse = h; s.rider = rider; h.userData.legs = body.userData.legs; h.userData.hr = body.userData.hr; }
       else if (!on && s.horse) { const cur = s.rig.root; s.rider.remove(cur); s.g.add(cur); s.g.remove(s.rider, s.horse); s.rig.seated = false; s.rig.rider = null; s.horse = s.rider = null; } }
     mvLayout();
   }
@@ -6483,7 +6513,7 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + s.horse.position.y; } }
+      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0, bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0); s.horse.position.y = hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + hop; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();
