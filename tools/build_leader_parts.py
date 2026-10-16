@@ -63,8 +63,8 @@ def weld(p):
     return pos[keep], nor[keep], uv[keep], remap[idx]
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
-# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP + (leg lengthening 0.12)
-ARM_UP = 0.0
+# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.55 + ARM_UP (leader3)
+ARM_UP = 0.05
 # the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
 # keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
 LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.45, 0.92, 1.55, 1.92])        # leader3: knee, hip, shoulder, top
@@ -120,7 +120,10 @@ def main():
     if lift != 1.0: im = Image.fromarray((255 * (np.asarray(im, float) / 255) ** (1 / lift)).astype(np.uint8))
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
     b64 = lambda a: base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
-    arm = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])         # arms and shoulder pieces sit a bit higher, next to the neck (the animation was made for higher shoulders)
+    arm = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])
+    for k in range(len(parts)):                                                                                # the collar pads next to the neck stay with the body (not lifted with the arms)
+        v = pos[owner == k]; c = (v.max(axis=0) + v.min(axis=0)) / 2
+        if BM.BONES[bone_of[k]].startswith('shoulder') and abs(c[0]) < 0.22 and c[1] >= 1.3: arm[owner == k] = False         # arms and shoulder pieces sit a bit higher, next to the neck (the animation was made for higher shoulders)
     pos[:, 1] = np.interp(pos[:, 1], LEG_WARP[0], LEG_WARP[1]); pos[arm, 1] += ARM_UP
     nn = nor / np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
     info = [{'name': names[k], 'bone': BM.BONES[bone_of[k]], 'verts': int((owner == k).sum())} for k in range(len(parts))]

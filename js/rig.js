@@ -290,7 +290,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
         const m = modelMesh(key, skel, mat0); root.add(m); out.skin = m; out.model = key; out.setHand(key);
       };
       out.setModel(mk);
-      if (mk === 'leaderParts' && LEADER_UNDER) { out.under = leaderUnderlayer(skel, leaderSections(modelGeos.leaderParts)); root.add(out.under); }
     } else for (const g of groups.values()) { const mesh = new THREE.Mesh(mergeGeos(g.items), g.m); mesh.castShadow = !enemy || g.b.name === 'spine'; mesh.receiveShadow = false; g.b.add(mesh); }
     out.clips = STICK_CLIPS;
     return out;
@@ -309,7 +308,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   function softenLeaderJoints(geo, parts) {                  // closes the gaps at the joints by weights only (the parts themselves are not changed)
     const J = LEADER_JOINTS, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bi = n => BONES.indexOf(n), n = P.count;
-    const done = new Uint8Array(n), spine = bi('spine');
+    const done = new Uint8Array(n), pad = new Uint8Array(n), spine = bi('spine');
     // 1. whole parts: the shoulder pads and the belt hang on the vest; the pauldron mostly on the vest; the top of the skirt on the vest, the hem on the thighs
     let off = 0, sy0 = 1e9, sy1 = -1e9;
     for (let i = 0; i < n; i++) if (SW.getX(i) < 0.99 && P.getY(i) < J.hipY - 0.02) { const y = P.getY(i); if (y < sy0) sy0 = y; if (y > sy1) sy1 = y; }
@@ -318,7 +317,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       let ws = 0;
       if (part.bone.startsWith('shoulder') && cy > J.shY - 0.10) ws = cx < 0.22 ? 1 : 0.6;
       else if (part.bone === 'hips' && SW.getX(off) >= 0.99 && cy >= J.hipY - 0.08) ws = 0.75;
-      if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; }
+      if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; if (ws === 1) pad[i] = 1; }
       off += part.verts;
     }
     for (let i = 0; i < n; i++) {
@@ -355,6 +354,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (let it = 0; it < 2; it++) {
     const upd = [];
     for (let i = 0; i < n; i++) {
+      if (pad[i]) continue;                                                           // the collar / shoulder pads stay fixed on the vest (not on the arm)
       const mix = zone(i) ? 0.65 : 0.45;
       const x = P.getX(i), y = P.getY(i), z = P.getZ(i), acc = {}; let tot = 0;
       for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
@@ -369,72 +369,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const [i, bs, ws] of upd) { for (let c = 0; c < 4; c++) { const b = bs[c] || 0, w = ws[c] || 0; [SI.setX, SI.setY, SI.setZ, SI.setW][c].call(SI, i, b); [SW.setX, SW.setY, SW.setZ, SW.setW][c].call(SW, i, w); } }
     }
     SI.needsUpdate = SW.needsUpdate = true;
-  }
-  function leaderSections(geo) {                              // cross sections of the armour per body part and height (centre and half sizes), so the under layer can stay inside it
-    const P = geo.attributes.position, SI = geo.attributes.skinIndex, n = P.count, BIN = 0.04, NB = 64;
-    const G = { armL: ['shoulderL', 'elbowL'], armR: ['shoulderR', 'elbowR'], legL: ['hipL', 'kneeL'], legR: ['hipR', 'kneeR'], torso: ['spine', 'hips'], head: ['head'] }, T = {};
-    for (const g in G) T[g] = { x0: new Float32Array(NB).fill(1e9), x1: new Float32Array(NB).fill(-1e9), z0: new Float32Array(NB).fill(1e9), z1: new Float32Array(NB).fill(-1e9) };
-    for (let i = 0; i < n; i++) {
-      const b = BONES[SI.getX(i)]; let g = null; for (const k in G) if (G[k].includes(b)) { g = k; break; } if (!g) continue;
-      const x = P.getX(i), y = P.getY(i), z = P.getZ(i), k0 = Math.floor(y / BIN), t = T[g];
-      for (let k = Math.max(0, k0 - 1); k <= Math.min(NB - 1, k0 + 1); k++) { if (x < t.x0[k]) t.x0[k] = x; if (x > t.x1[k]) t.x1[k] = x; if (z < t.z0[k]) t.z0[k] = z; if (z > t.z1[k]) t.z1[k] = z; }
-    }
-    return (g, y) => {
-      const t = T[g], k0 = Math.max(0, Math.min(NB - 1, Math.floor(y / BIN)));
-      for (let d = 0; d < 6; d++) for (const k of [k0 - d, k0 + d]) if (k >= 0 && k < NB && t.x1[k] > t.x0[k]) return { cx: (t.x0[k] + t.x1[k]) / 2, cz: (t.z0[k] + t.z1[k]) / 2, hx: (t.x1[k] - t.x0[k]) / 2, hz: (t.z1[k] - t.z0[k]) / 2 };
-      return null;
-    };
-  }
-  function leaderUnderlayer(skeleton, sec) {                 // a simple leather-brown body under the armour (pills between the joints, balls at the joints), soft skinned and fitted to the armour so it stays inside
-    const J = LEADER_JOINTS, bi = n => BONES.indexOf(n), V = [], SI = [], SW = [], IX = [], K = 0.8;
-    const ring = (cx, cy, cz, ux, uy, rx, rz, f, own, ws, wsB, we, weB) => {
-      for (let k = 0; k < 10; k++) {
-        const th = k / 10 * Math.PI * 2, ex = Math.cos(th) * rx * f, ez = Math.sin(th) * rz * f;
-        V.push(cx + ex * ux, cy + ex * uy, cz + ez);
-        SI.push(bi(own), wsB, weB, 0); SW.push(1 - ws - we, ws, we, 0);
-      }
-    };
-    const stitch = (base, rings) => { for (let r = 0; r < rings - 1; r++) for (let k = 0; k < 10; k++) { const p = base + r * 10 + k, q = base + r * 10 + (k + 1) % 10; IX.push(p, q, p + 10, q, q + 10, p + 10); } };
-    const fit = (g, y, rx, rz) => { const q = g && sec(g, y); return q ? { cx: q.cx, cz: q.cz, rx: Math.max(0.02, Math.min(rx, K * q.hx)), rz: Math.max(0.02, Math.min(rz, K * q.hz)) } : null; };
-    const pill = (A, B, rx, rz, own, start, end, g) => {          // capsule: round ends, so a bend never opens a slit
-      const len = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1, a = [(B[0] - A[0]) / len, (B[1] - A[1]) / len], cap = Math.max(rx, rz) * 0.8, base = V.length / 3, steps = [];
-      for (let i = 0; i <= 4; i++) { const ph = (1 - i / 4) * Math.PI / 2; steps.push([-cap * Math.sin(ph), Math.cos(ph)]); }
-      steps.push([len * 0.5, 1]);
-      for (let i = 0; i <= 4; i++) { const ph = (i / 4) * Math.PI / 2; steps.push([len + cap * Math.sin(ph), Math.cos(ph)]); }
-      for (const [sv, f] of steps) {
-        const t = Math.max(0, Math.min(1, sv / len)), ws = start ? (1 - smooth01(0, 0.25, t)) * 0.5 : 0, we = end ? smooth01(0.75, 1, t) * 0.5 : 0, y = A[1] + a[1] * sv;
-        const q = fit(g, Math.max(0.02, Math.min(A[1], B[1]) + 0.0 + (y - Math.min(A[1], B[1]))), rx, rz);
-        ring(q ? q.cx : A[0] + a[0] * sv, y, q ? q.cz : 0, a[1], -a[0], q ? q.rx : rx, q ? q.rz : rz, Math.max(f, 0.02), own, ws, start ? bi(start) : 0, we, end ? bi(end) : 0);
-      }
-      stitch(base, steps.length);
-    };
-    const ball = (C, rx, ry, rz, a, b, wa, g) => {                 // ellipsoid at a joint, shared between two bones (wa for bone a)
-      const q = fit(g, C[1], rx, rz); if (q) { C = [q.cx, C[1], q.cz]; rx = q.rx; rz = q.rz; ry = Math.min(ry, Math.max(rx, rz) * 1.15); }
-      const base = V.length / 3, rings = 9;
-      for (let r = 0; r < rings; r++) {
-        const ph = -Math.PI / 2 + (r / (rings - 1)) * Math.PI, f = Math.max(Math.cos(ph), 0.02), cy = C[1] + Math.sin(ph) * ry;
-        for (let k = 0; k < 10; k++) { const th = k / 10 * Math.PI * 2; V.push(C[0] + Math.cos(th) * rx * f, cy, C[2] + Math.sin(th) * rz * f); SI.push(bi(a), bi(b), 0, 0); SW.push(wa, 1 - wa, 0, 0); }
-      }
-      stitch(base, rings);
-    };
-    // only at the joints (short pieces), not a whole body: waist, shoulders, neck, elbows, hips, knees
-    pill([0, J.hipY + 0.0], [0, J.hipY + 0.14], 0.22, 0.17, 'hips', null, 'spine', 'torso');                                   // waist band
-    pill([0, J.shY - 0.14], [0, J.shY - 0.02], 0.2, 0.15, 'spine', null, null, 'torso');                                       // upper back / chest top
-    pill([-J.shX + 0.04, J.shY - 0.07], [J.shX - 0.04, J.shY - 0.07], 0.09, 0.13, 'spine', 'shoulderL', 'shoulderR');          // across the shoulders: fills the armpits and the tops
-    pill([0, J.neckY - 0.1], [0, J.neckY + 0.02], 0.07, 0.07, 'head', 'spine', null, 'head');                               // neck
-    for (const s of [-1, 1]) {
-      const side = s < 0 ? 'L' : 'R', arm = 'arm' + side, leg = 'leg' + side, S = [s * J.shX, J.shY - 0.03], E = [s * (J.shX + J.elX), J.shY - J.elDY + 0.02];
-      const H = [s * J.hipX, J.hipY], Kn = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
-      ball([S[0] - s * 0.03, S[1] + 0.01, -0.01], 0.12, 0.13, 0.14, 'spine', 'shoulder' + side, 0.6);                                              // shoulder
-      ball([E[0], E[1], 0], 0.065, 0.085, 0.065, 'shoulder' + side, 'elbow' + side, 0.5, arm);                                    // elbow
-      ball([H[0], H[1], 0], 0.11, 0.12, 0.11, 'hips', 'hip' + side, 0.5, leg);                                                   // hip
-      ball([Kn[0], Kn[1], 0], 0.085, 0.1, 0.085, 'hip' + side, 'knee' + side, 0.5, leg);                                          // knee
-    }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(SI), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(SW), 4));
-    g.setIndex(IX); g.computeVertexNormals();
-    const m = new THREE.MeshStandardMaterial({ color: 0x6e3322, roughness: 0.9, metalness: 0 }); m.skinning = true;       // leather brown, close to the vest, so a gap looks like cloth and not like a hole
-    const mesh = new THREE.SkinnedMesh(g, m); mesh.frustumCulled = false; mesh.castShadow = false; mesh.bind(skeleton, new THREE.Matrix4());
-    return mesh;
   }
   function modelMesh(key, skeleton, material) {
     const d = key === 'leaderParts' ? LEADER_PARTS : CHAR_MODELS[key];
@@ -463,11 +397,11 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const BONES = ['hips', 'spine', 'head', 'shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'hipL', 'hipR', 'kneeL', 'kneeR'];
   // 임시: 캐릭터 모델을 끄고 막대인간(폴리곤) 리그만 쓴다. 모델을 다시 켜려면 주소 뒤에 ?models=1 을 붙이거나 이 값을 true 로 바꾼다.
   const USE_CHAR_MODELS = /[?&]models=1/.test(location.search);
-  const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? Math.max(0, Math.min(4, +window.NF_LEADER || 0)) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = 'leaderParts';
-  // 1 = the parts as they are; 2 = + soft blending at the joint ends; 3 = + a dark under layer (a simple body under the armour); 4 = both
-  const LEADER_SOFT = LEADER_MODE === 2 || LEADER_MODE === 4, LEADER_UNDER = LEADER_MODE === 3 || LEADER_MODE === 4;
+  const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? Math.max(0, Math.min(1, +window.NF_LEADER || 0)) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = 'leaderParts';
+  // 0 = classic stick-man; 1 = the new model (soft joints always on)
+  const LEADER_SOFT = LEADER_MODE > 0;
   // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
-  const LEADER_JOINTS = { shX: 0.29, shY: 1.55, elX: 0.06, elDY: 0.32, hipX: 0.12, hipY: 0.92, kneeX: 0.02, kneeDY: 0.47, neckY: 1.62 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
+  const LEADER_JOINTS = { shX: 0.29, shY: 1.60, elX: 0.06, elDY: 0.32, hipX: 0.12, hipY: 0.92, kneeX: 0.02, kneeDY: 0.47, neckY: 1.62 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }

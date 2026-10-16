@@ -84,3 +84,8 @@ The weight diffusion pass now runs over every vertex (twice, 6 cm radius, 45 % n
 - `python3 tools/build_leader_parts.py leader3.glb 1024` (the .glb is not in the repo). 16 parts, 15 291 vertices, 256 KB texture, `js/leader_parts.js` 877 KB (was 45 parts / 738 KB).
 - Same rig and same animation: the model is height-warped to the existing LEADER_JOINTS (knee 0.37→0.45, hip 0.81→0.92, shoulder 1.40→1.55, top 1.80→1.92); only `elDY` (0.26→0.32) and the fist offset (-0.28→-0.30) changed.
 - Parts go to bones as before (head, upper arm→shoulder, forearm/hand→elbow, thigh→hip, boot→knee, belt pieces→hips). The one big torso part (chest, belly, pelvis, chain skirt) is skinned softly per vertex: hips below the waist, spine above, head at the collar, and the skirt front also follows the thigh. All soft-joint options (2–4) run on it unchanged except that the skirt/waist logic is limited to vertices below the pelvis and only touches vertices with ≤2 influences.
+
+## nf-v179: only Classic and New model
+- Settings > Leader model now has two choices: Classic and New model. The New model always uses the soft joints (whole-body weight diffusion); the under layer and the old options 2–4 were removed (code and `?leader=2..4`, which now means the new model; saved values 2–4 also load the new model).
+- Arms and shoulder armour are 5 cm higher (`ARM_UP` 0.05, `LEADER_JOINTS.shY` 1.60) to sit level with the neck.
+- The silver collar/shoulder pad (and the other pad inside the torso part) is fixed to the vest and excluded from the weight diffusion, so it no longer moves with the arm. It is not lifted with the arms either.
