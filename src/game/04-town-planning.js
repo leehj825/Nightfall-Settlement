@@ -500,6 +500,7 @@
     toast('Upgraded to a stone wall!');
   }
   function makeStoneFence(f) {
+    if (isFortSpot(f.position.x, f.position.z)) { f.geometry = fortWallGeo(); f.material = fortMat; f.position.y = 0; Object.assign(f.userData, { level: 'stone', tall: true, radius: 1.6, hp: wallHp() * 1.5, maxHp: wallHp() * 1.5 }); return; }
     const wm = structMesh('wall');
     if (wm) { f.geometry = wm.geometry; f.material = wm.material; f.position.y = 0; }       // 벽돌 성벽 모델
     else { f.material = wallMat; f.scale.y = 1.25; f.position.y = 0.55 * 1.25; }                 // 짙은 회색 돌 성벽

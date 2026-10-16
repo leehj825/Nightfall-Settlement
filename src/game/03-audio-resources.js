@@ -109,7 +109,17 @@
     return fence;
   }
   const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
+  // Fort wall: the outermost ring (the Great Wall, half-width 40) is as tall as the gate towers (4.4 m) and cannot be jumped over: a stone body with a walkway ledge and merlons along the top
+  const isFortSpot = (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 32;
+  let fortGeo = null; const fortMat = new THREE.MeshStandardMaterial({ color: 0x8d9098, roughness: 0.9, flatShading: true });
+  function fortWallGeo() {
+    if (fortGeo) return fortGeo; const it = [], add = (w, h, d, x, y, z) => { const m = new THREE.Matrix4().makeTranslation(x, y, z); it.push([new THREE.BoxGeometry(w, h, d), m]); };
+    add(3.3, 3.9, 1.1, 0, 1.95, 0); add(3.3, 0.22, 1.5, 0, 3.95, 0);                                              // body, overhanging walkway ledge
+    for (const mx of [-1.2, -0.4, 0.4, 1.2]) add(0.55, 0.55, 1.5, mx, 4.33, 0);                                  // merlons
+    return fortGeo = mergeGeos(it);
+  }
   function createWall(x, z, rot) {              // 돌 성벽 (짙은 회색, HP 100)
+    if (isFortSpot(x, z)) { const f = new THREE.Mesh(fortWallGeo(), fortMat); f.position.set(x, 0, z); f.rotation.y = rot; f.castShadow = f.receiveShadow = true; f.userData = { type: 'fence', level: 'stone', tall: true, radius: 1.6, hp: wallHp() * 1.5, maxHp: wallHp() * 1.5 }; scene.add(f); obstacles.push(f); return f; }
     const wm = structMesh('wall'), w = wm ? new THREE.Mesh(wm.geometry, wm.material) : new THREE.Mesh(wallGeo, wallMat);       // 벽돌 성벽 모델
     w.position.set(x, wm ? 0 : 0.7, z);
     w.rotation.y = rot;

@@ -469,7 +469,17 @@
     return fence;
   }
   const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
+  // Fort wall: the outermost ring (the Great Wall, half-width 40) is as tall as the gate towers (4.4 m) and cannot be jumped over: a stone body with a walkway ledge and merlons along the top
+  const isFortSpot = (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 32;
+  let fortGeo = null; const fortMat = new THREE.MeshStandardMaterial({ color: 0x8d9098, roughness: 0.9, flatShading: true });
+  function fortWallGeo() {
+    if (fortGeo) return fortGeo; const it = [], add = (w, h, d, x, y, z) => { const m = new THREE.Matrix4().makeTranslation(x, y, z); it.push([new THREE.BoxGeometry(w, h, d), m]); };
+    add(3.3, 3.9, 1.1, 0, 1.95, 0); add(3.3, 0.22, 1.5, 0, 3.95, 0);                                              // body, overhanging walkway ledge
+    for (const mx of [-1.2, -0.4, 0.4, 1.2]) add(0.55, 0.55, 1.5, mx, 4.33, 0);                                  // merlons
+    return fortGeo = mergeGeos(it);
+  }
   function createWall(x, z, rot) {              // 돌 성벽 (짙은 회색, HP 100)
+    if (isFortSpot(x, z)) { const f = new THREE.Mesh(fortWallGeo(), fortMat); f.position.set(x, 0, z); f.rotation.y = rot; f.castShadow = f.receiveShadow = true; f.userData = { type: 'fence', level: 'stone', tall: true, radius: 1.6, hp: wallHp() * 1.5, maxHp: wallHp() * 1.5 }; scene.add(f); obstacles.push(f); return f; }
     const wm = structMesh('wall'), w = wm ? new THREE.Mesh(wm.geometry, wm.material) : new THREE.Mesh(wallGeo, wallMat);       // 벽돌 성벽 모델
     w.position.set(x, wm ? 0 : 0.7, z);
     w.rotation.y = rot;
@@ -982,6 +992,7 @@
     toast('Upgraded to a stone wall!');
   }
   function makeStoneFence(f) {
+    if (isFortSpot(f.position.x, f.position.z)) { f.geometry = fortWallGeo(); f.material = fortMat; f.position.y = 0; Object.assign(f.userData, { level: 'stone', tall: true, radius: 1.6, hp: wallHp() * 1.5, maxHp: wallHp() * 1.5 }); return; }
     const wm = structMesh('wall');
     if (wm) { f.geometry = wm.geometry; f.material = wm.material; f.position.y = 0; }       // 벽돌 성벽 모델
     else { f.material = wallMat; f.scale.y = 1.25; f.position.y = 0.55 * 1.25; }                 // 짙은 회색 돌 성벽
@@ -1373,7 +1384,7 @@
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
       const v = dt > 0 ? mv / dt : 0;
       n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
-      const air = n.rig.hopK || 0, bob = horseStep(n.horse, dt, v, air); n.horse.position.y = air * 0.7; if (!n.rig.fallen) n.rider.position.y = 0.8 + bob + n.horse.position.y;
+      const air = n.rig.hopK || 0, bob = horseStep(n.horse, dt, v, air); n.horse.position.y = air * 1.7; if (!n.rig.fallen) n.rider.position.y = 0.8 + bob + n.horse.position.y;
     }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;
@@ -2981,7 +2992,7 @@
     const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
     const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
     pBonusT = Math.max(0, pBonusT - dt);
-    const air = playerRig.hopK || 0, bob = horseStep(pHorse, dt, v, air); pHorse.position.y = air * 0.7; if (!playerRig.fallen) pRider.position.y = 0.8 + bob + pHorse.position.y;
+    const air = playerRig.hopK || 0, bob = horseStep(pHorse, dt, v, air); pHorse.position.y = air * 1.7; if (!playerRig.fallen) pRider.position.y = 0.8 + bob + pHorse.position.y;
   }
   let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------
@@ -6107,9 +6118,12 @@
     updateGather(dt, dashT > 0 || mag > 0.08);
 
     // 충돌 처리: 겹치면 바깥으로 밀어냄
+    const airborne = playerRig.seated && (playerRig.hopT > 0 || (playerRig.hopT = 0, false)), landT = playerRig.seated ? (playerRig.landT = airborne ? 0.35 : Math.max(0, (playerRig.landT || 0) - dt)) : 0;      // a rider's leap carries the horse over wooden fences and stone walls (not the tall fort walls)
     for (const o of obstacles) {
+      const ud0 = o.userData; if (ud0.type === 'fence' && !ud0.tall && airborne) continue;
       const dx = player.position.x - o.position.x, dz = player.position.z - o.position.z;
       const min = o.userData.radius + PLAYER_R, d = Math.hypot(dx, dz);
+      if (ud0.type === 'fence' && !ud0.tall && landT > 0 && d < min) { const fx = Math.sin(facing), fz = Math.cos(facing), f = dx * fx + dz * fz; if (f < 0.4 * min) { player.position.x = o.position.x + fx * min; player.position.z = o.position.z + fz * min; continue; } }       // landed inside the wall line: step out on the far side
       if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
     }
     if (exActive) {
@@ -6424,7 +6438,7 @@
   });
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (/[?&]debug/.test(location.search)) window.__nf = { get mvSubs() { return mv.subs; }, showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { createFence, createWall, get mvSubs() { return mv.subs; }, showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   // ---------- Model field: a separate flat field to look at characters, mounts and your own .glb files with a free camera (Settings > Model field) ----------
   const mv = { scene: null, cam: null, subs: [], sel: 'all', weapon: 'sword', mounted: false, yaw: 0.5, pitch: 0.25, dist: 6, target: new THREE.Vector3(0, 1, 0), auto: false, action: 'idle', gl: [] };
   function mvInit() {
@@ -6477,7 +6491,7 @@
         if (a === 'attack') an.once(mv.weapon === 'bow' ? 'attackBow' : mv.weapon === 'spear' ? 'attackSpear' : 'attackSword');
         else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') an.jump();
         else an.base(a, a === 'run' ? 5.5 : a === 'walk' ? 2.2 : 0); } }
-    if (a === 'jump') mv.hop = 0.8;
+    if (a === 'jump') mv.hop = 0.9;
     for (const s of mv.gl) if (s.mixer && s.clips[a]) { s.mixer.stopAllAction(); s.mixer.clipAction(s.clips[a]).play(); }
   }
   function mvLoadGlb(file) {
@@ -6515,7 +6529,7 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const air = s.rig ? s.rig.hopK || 0 : (mv.hop > 0 ? Math.sin(Math.PI * (1 - mv.hop / 0.8)) : 0), bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0, air); s.horse.position.y = air * 0.7; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + s.horse.position.y; } }
+      if (s.horse) { const air = s.rig ? s.rig.hopK || 0 : (mv.hop > 0 ? Math.sin(Math.PI * (1 - mv.hop / 0.9)) : 0), bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0, air); s.horse.position.y = air * 1.7; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + s.horse.position.y; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();

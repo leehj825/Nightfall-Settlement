@@ -775,7 +775,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
     jump() {
       if (this.dead || this.shot || this.guarding) return false;
-      if (this.rig.seated) { if (this.rig.hopT > 0) return false; this.rig.hopT = 0.8; return true; }        // a rider does not jump by himself: the horse jumps and carries him (hopK, see horseStep)
+      if (this.rig.seated) { if (this.rig.hopT > 0) return false; this.rig.hopT = 0.9; return true; }        // a rider does not jump by himself: the horse jumps and carries him (hopK, see horseStep)
       this.breakCombo();
       const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
       return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
@@ -812,7 +812,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
       this.mixer.update(dt); if (this.rig.clavL) updateClavicles(this.rig);
-      { const R = this.rig; if (R.hopT > 0) { R.hopT = Math.max(0, R.hopT - dt); R.hopK = Math.sin(Math.PI * (1 - R.hopT / 0.8)); } else R.hopK = 0; }
+      { const R = this.rig; if (R.hopT > 0) { R.hopT = Math.max(0, R.hopT - dt); R.hopK = Math.sin(Math.PI * (1 - R.hopT / 0.9)); } else R.hopK = 0; }
       this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated && !this.dead) this._seat(); this._fallStep(dt);
     }
     // 말 위의 앉은 자세: 허벅지를 앞으로 벌려 안장을 감싸고 무릎을 접어 정강이가 말 옆구리로 내려오게 한다 (모션캡처 위에 덮어쓴다)

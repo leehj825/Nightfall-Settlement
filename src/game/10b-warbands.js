@@ -138,7 +138,7 @@
     const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
     const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
     pBonusT = Math.max(0, pBonusT - dt);
-    const air = playerRig.hopK || 0, bob = horseStep(pHorse, dt, v, air); pHorse.position.y = air * 0.7; if (!playerRig.fallen) pRider.position.y = 0.8 + bob + pHorse.position.y;
+    const air = playerRig.hopK || 0, bob = horseStep(pHorse, dt, v, air); pHorse.position.y = air * 1.7; if (!playerRig.fallen) pRider.position.y = 0.8 + bob + pHorse.position.y;
   }
   let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------

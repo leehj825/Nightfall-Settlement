@@ -171,9 +171,12 @@
     updateGather(dt, dashT > 0 || mag > 0.08);
 
     // 충돌 처리: 겹치면 바깥으로 밀어냄
+    const airborne = playerRig.seated && (playerRig.hopT > 0 || (playerRig.hopT = 0, false)), landT = playerRig.seated ? (playerRig.landT = airborne ? 0.35 : Math.max(0, (playerRig.landT || 0) - dt)) : 0;      // a rider's leap carries the horse over wooden fences and stone walls (not the tall fort walls)
     for (const o of obstacles) {
+      const ud0 = o.userData; if (ud0.type === 'fence' && !ud0.tall && airborne) continue;
       const dx = player.position.x - o.position.x, dz = player.position.z - o.position.z;
       const min = o.userData.radius + PLAYER_R, d = Math.hypot(dx, dz);
+      if (ud0.type === 'fence' && !ud0.tall && landT > 0 && d < min) { const fx = Math.sin(facing), fz = Math.cos(facing), f = dx * fx + dz * fz; if (f < 0.4 * min) { player.position.x = o.position.x + fx * min; player.position.z = o.position.z + fz * min; continue; } }       // landed inside the wall line: step out on the far side
       if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
     }
     if (exActive) {
