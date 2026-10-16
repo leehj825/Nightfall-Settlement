@@ -425,3 +425,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v203: Model field keeps the shield with the spear (as in the game).
 - nf-v204: a rider's upper body plays its idle motion while the horse walks/runs (every weapon and unarmed); the pelvis turn of the attack clips is kept (position still locked on the saddle), so sword/spear/bow attacks aim forward like on foot.
 - nf-v205: the great sword uses the owner-made model (js/greatsword.js from Greatsword.glb via tools/build_greatsword.py; the scabbard in the file is left out).
+- nf-v206: great sword from the new greatsword.glb (sword part picked from the scabbard by connectivity), 22 % narrower, 15 % thinner, handle 1.3x (HANDLE, THIN_W, THIN_T in tools/build_greatsword.py).
