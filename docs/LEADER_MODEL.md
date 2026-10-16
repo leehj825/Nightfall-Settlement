@@ -128,3 +128,6 @@ Only the new leader has them: child of spine at x ±0.06, shoulder height; the s
 
 ## nf-v190: stronger clavicle lift, no armpit stretch
 Lift now reaches the full 0.5 rad at a horizontal arm (was ~0.12). Vest weights to the clavicle are limited to above shY-0.07 within 0.14 m of the shoulder (max 0.6), so the chest/armpit is no longer dragged.
+
+## nf-v191: T-pose model (Leader_t_pose.glb), classic 11 skin bones, no clavicle
+Back to automatic smooth skinning (as nf-v183/184; no clavicle bones, no part/soft-joint code). The model is in T-pose: the builder skins it with T-pose bone segments (`TPOSE`), then poses the arms 72 degrees down (linear blend skinning with the same weights, `pose_arms`) so the rest pose matches the rig. LEADER_JOINTS = shX .20, shY 1.38, elX .11, elDY .34, hipX .11, hipY .88, kneeDY .41, neckY 1.45; fist `[0.10, -0.33]`. Height 1.8 m. js/leader_parts.js 330 KB.
