@@ -411,3 +411,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v189: clavicle bones for the new leader; shoulders lift with the raised arm.
 - nf-v190: stronger clavicle lift; armpit/chest no longer stretched.
 - nf-v191: new T-pose leader model on the classic bones (no clavicle).
+- nf-v192: tighter knee/hip blending (thighs not stretched); clavicle bones for the T-pose leader.

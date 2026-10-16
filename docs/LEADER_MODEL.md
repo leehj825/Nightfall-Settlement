@@ -131,3 +131,7 @@ Lift now reaches the full 0.5 rad at a horizontal arm (was ~0.12). Vest weights 
 
 ## nf-v191: T-pose model (Leader_t_pose.glb), classic 11 skin bones, no clavicle
 Back to automatic smooth skinning (as nf-v183/184; no clavicle bones, no part/soft-joint code). The model is in T-pose: the builder skins it with T-pose bone segments (`TPOSE`), then poses the arms 72 degrees down (linear blend skinning with the same weights, `pose_arms`) so the rest pose matches the rig. LEADER_JOINTS = shX .20, shY 1.38, elX .11, elDY .34, hipX .11, hipY .88, kneeDY .41, neckY 1.45; fist `[0.10, -0.33]`. Height 1.8 m. js/leader_parts.js 330 KB.
+
+## nf-v192: tighter limb blending, clavicle bones back
+- Limb weights (shoulder, elbow, hip, knee) now fall off along the bone axis past the joint within 4 cm (radial falloff unchanged), so the thigh/knee no longer smears over ~10 cm.
+- Skin-only clavL/clavR bones (indices 11, 12) are back for the T-pose model: weights from a collar segment (max 0.6, above y 1.28) in the builder, runtime lift by updateClavicles (rig.js).

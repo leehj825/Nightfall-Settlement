@@ -75,21 +75,27 @@ def segments():
     for side, sx in (('L', -1), ('R', 1)):
         sh = (sx * TPOSE['sh'], TPOSE['y'], 0); el = (sx * TPOSE['el'], TPOSE['y'], 0); wr = (sx * TPOSE['wr'], TPOSE['y'], 0)
         hp = (sx * J['hipX'], J['hipY'], 0); kn = (sx * J['hipX'], J['hipY'] - J['kneeDY'], 0); an = (sx * J['hipX'], J['ankleY'], 0.02)
-        seg['shoulder' + side] = (sh, el, 0.075); seg['elbow' + side] = (el, wr, 0.07); seg['hip' + side] = (hp, kn, 0.10); seg['knee' + side] = (kn, an, 0.08)
+        seg['clav' + side] = ((sx * 0.05, 1.40, 0), (sx * 0.20, 1.40, 0), 0.05); seg['shoulder' + side] = (sh, el, 0.075); seg['elbow' + side] = (el, wr, 0.07); seg['hip' + side] = (hp, kn, 0.10); seg['knee' + side] = (kn, an, 0.08)
     return seg
 
 def point_seg(p, a, b):
-    a = np.array(a, float); b = np.array(b, float); ab = b - a; t = np.clip(((p - a) @ ab) / (ab @ ab), 0, 1); return np.linalg.norm(p - (a + t[:, None] * ab), axis=1), t
+    a = np.array(a, float); b = np.array(b, float); ab = b - a; L = np.linalg.norm(ab); u = ab / L; s = (p - a) @ u; t = np.clip(s / L, 0, 1)
+    rad = np.linalg.norm(p - (a + np.outer(s, u)), axis=1); ax = np.maximum(0, np.maximum(-s, s - L)); return rad, ax, t
+
+CLAV = {'clavL': 11, 'clavR': 12}                                # skin-only collar bones (after the 11 classic ones)
+def bone_index(n): return CLAV[n] if n in CLAV else BM.BONES.index(n)
 
 def skin(pos):
     """smooth weights for every vertex: exp(-(max(0, distance - radius) / SIGMA)^2) over the allowed bones; the 4 strongest, normalised."""
     seg = segments(); names = list(seg); W = np.zeros((len(pos), len(names)))
     for k, n in enumerate(names):
-        a, b, r = seg[n]; d, t = point_seg(pos, a, b); W[:, k] = np.exp(-(np.maximum(0, d - r) / SIGMA) ** 2) + 1e-6
+        a, b, r = seg[n]; rad, ax, t = point_seg(pos, a, b); limb = n[:-1] in ('shoulder', 'elbow', 'hip', 'knee')
+        W[:, k] = np.exp(-(np.maximum(0, rad - r) / SIGMA) ** 2 - ((ax / 0.04) ** 2 if limb else (ax / SIGMA) ** 2)) + 1e-6
+        if n.startswith('clav'): W[:, k] *= 0.6 * (pos[:, 1] > 1.28)
         if n[-1] in 'LR' and n not in ('hips',):                                                       # a limb only moves vertices on its own side (and a little across the centre line)
             side = -1 if n[-1] == 'L' else 1; W[:, k] *= np.where(pos[:, 0] * side >= -0.015, 1, np.exp(-((np.abs(pos[:, 0]) - 0.015) / 0.03) ** 2))
     top = np.argsort(-W, axis=1)[:, :4]; w = np.take_along_axis(W, top, 1); w /= w.sum(1, keepdims=True)
-    si = np.array([[BM.BONES.index(names[j]) for j in row] for row in top], np.uint8); sw = np.round(w * 255).astype(np.int32); sw[:, 0] += 255 - sw.sum(1)
+    si = np.array([[bone_index(names[j]) for j in row] for row in top], np.uint8); sw = np.round(w * 255).astype(np.int32); sw[:, 0] += 255 - sw.sum(1)
     return si, sw.astype(np.uint8)
 
 def pose_arms(pos, nor, si, sw):
@@ -122,7 +128,7 @@ def main():
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
     b64 = lambda a: base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
     nn = nor / np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
-    info = [{'name': names[k], 'bone': BM.BONES[int(np.bincount(si[owner == k][:, 0]).argmax())], 'verts': int((owner == k).sum())} for k in range(len(parts))]
+    info = [{'name': names[k], 'bone': BM.BONES[min(10, int(np.bincount(si[owner == k][:, 0]).argmax()))], 'verts': int((owner == k).sum())} for k in range(len(parts))]
     out = {'n': len(pos), 'pos': b64(np.round(pos * 10000).astype(np.int16)), 'uv': b64(np.round(uv * 65535).astype(np.uint16)), 'nor': b64(np.round(nn * 127).astype(np.int8)),
            'idx': b64(idx.astype(np.uint16 if len(pos) < 65535 else np.uint32)), 'idx32': len(pos) >= 65535, 'si': b64(si), 'sw': b64(sw),
            'tex': 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode(), 'parts': info}
