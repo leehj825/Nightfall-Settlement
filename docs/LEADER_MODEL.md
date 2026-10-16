@@ -92,3 +92,7 @@ The weight diffusion pass now runs over every vertex (twice, 6 cm radius, 45 % n
 
 ## nf-v180: longer legs, hips higher in the skirt, arms higher
 Height warp now knee 0.37→0.48, hip 0.81→0.99, shoulder 1.40→1.60, top 1.80→1.97 (the leader is 1.97 m); `ARM_UP` 0.07; LEADER_JOINTS: shY 1.67, hipY 0.99, kneeDY 0.51, neckY 1.66, elDY 0.31. Ground contact is unchanged (the hip joint world height equals the leg length; the hips bone stays at the clips' height).
+
+## nf-v181: shorter skirt (more thigh), arms higher again
+- The torso/skirt/belt parts have their own height warp (`BODY_WARP`: skirt hem 0.57→0.80 instead of 0.71), so the hem sits higher and more of the thigh shows below it; legs (thigh, boot) keep `LEG_WARP`.
+- `ARM_UP` 0.10, `LEADER_JOINTS.shY` 1.70 (arms and shoulder armour 3 cm higher than nf-v180).

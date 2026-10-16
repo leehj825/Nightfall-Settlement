@@ -64,10 +64,13 @@ def weld(p):
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
 # arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.60 + ARM_UP (leader3)
-ARM_UP = 0.07
+ARM_UP = 0.10
 # the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
 # keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
 LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.48, 0.99, 1.60, 1.97])        # leader3: knee, hip, shoulder, top
+
+# the body (torso, skirt, belt) is warped on its own so the skirt hem stays high and more of the thigh shows below it
+BODY_WARP = ([0, 0.57, 0.81, 1.40, 1.80], [0, 0.80, 0.99, 1.60, 1.97])
 
 def is_skirt(v):
     """The two long pelvis guards (the chain skirt, parts 1 and 2): centre at hip height, near the middle, tall."""
@@ -124,7 +127,8 @@ def main():
     for k in range(len(parts)):                                                                                # the collar pads next to the neck stay with the body (not lifted with the arms)
         v = pos[owner == k]; c = (v.max(axis=0) + v.min(axis=0)) / 2
         if BM.BONES[bone_of[k]].startswith('shoulder') and abs(c[0]) < 0.22 and c[1] >= 1.3: arm[owner == k] = False         # arms and shoulder pieces sit a bit higher, next to the neck (the animation was made for higher shoulders)
-    pos[:, 1] = np.interp(pos[:, 1], LEG_WARP[0], LEG_WARP[1]); pos[arm, 1] += ARM_UP
+    legp = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('hipL', 'hipR', 'kneeL', 'kneeR')])
+    pos[:, 1] = np.where(legp, np.interp(pos[:, 1], LEG_WARP[0], LEG_WARP[1]), np.interp(pos[:, 1], BODY_WARP[0], BODY_WARP[1])); pos[arm, 1] += ARM_UP
     nn = nor / np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
     info = [{'name': names[k], 'bone': BM.BONES[bone_of[k]], 'verts': int((owner == k).sum())} for k in range(len(parts))]
     out = {'n': len(pos), 'pos': b64(np.round(pos * 10000).astype(np.int16)), 'uv': b64(np.round(uv * 65535).astype(np.uint16)), 'nor': b64(np.round(nn * 127).astype(np.int8)),
