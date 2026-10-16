@@ -98,6 +98,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     apron: new THREE.BoxGeometry(0.3, 0.36, 0.02), pouch: new THREE.BoxGeometry(0.1, 0.1, 0.06), lace: new THREE.BoxGeometry(0.1, 0.015, 0.012), collar: new THREE.TorusGeometry(0.13, 0.035, 8, 16), band: new THREE.TorusGeometry(0.2, 0.016, 6, 18), brim: cyl(0.31, 0.31, 0.02, 18), dome: sph(0.2, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), helm: sph(0.235, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), helmBrim: cyl(0.29, 0.29, 0.025, 18), nasal: new THREE.BoxGeometry(0.025, 0.12, 0.02),
     scabbard: new THREE.BoxGeometry(0.06, 0.62, 0.035), rag: new THREE.BoxGeometry(0.09, 0.3, 0.012), wrap: cyl(0.062, 0.062, 0.08, 8), spikeBig: new THREE.ConeGeometry(0.05, 0.22, 6),
   });
+  const LEADER_BALANCE = { head: [0.86, 0.86, 0.86], spine: [1.06, 1.12, 1], shoulder: [1.22, 1.22, 1], elbow: [1.2, 1.2, 1], hip: [1.28, 1.28, 1], knee: [1.22, 1.22, 1], hips: [1.08, 1.12, 1] };       // [x, z, y] multipliers per bone (L/R share): the proportions of the custom leader
   const RG_HI = makeRG(); Q = 0.5; const RG_LO = makeRG(); Q = 2; const RG_PL = makeRG(); Q = 1;                      // RG_PL: the classic leader, twice the segments, smooth shaded
   const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _v = new THREE.Vector3(), _n3 = new THREE.Matrix3();
   function mergeGeos(items) {                                   // [[geometry, matrix], ...] -> 하나의 BufferGeometry (위치·법선·uv)
@@ -129,7 +130,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const W = enemy ? 1.05 : 0.93 + 0.14 * R(8), isPlayer = kind === 'player';          // 체형(어깨 너비)
     const bones = {}, groups = new Map();
     const bone = (name, parent, x, y, z) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, z); parent.add(b); bones[name] = b; return b; };
+    const BAL = isPlayer ? LEADER_BALANCE : null;                  // the classic leader's body balance (head smaller, thicker arms and legs) - see LEADER_BALANCE
     const part = (geo, m, b, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+      if (BAL) { const k = BAL[b.name.replace(/[LR]$/, '')]; if (k) { x *= k[0]; z *= k[1]; y *= k[2]; sx *= k[0]; sz *= k[1]; sy *= k[2]; } }
       _e.set(rx, ry, rz); _q.setFromEuler(_e); _m4.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz));
       const key = b.name + '|' + m.uuid; let g = groups.get(key); if (!g) groups.set(key, g = { b, m, items: [] }); g.items.push([geo, _m4.clone()]);
     };

@@ -416,3 +416,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v194: new leader uses the skeleton weights from the model file.
 - nf-v195: Settings > Model field: a separate flat field with a free camera for characters, mounts and your own .glb (docs/MODEL_FIELD.md).
 - nf-v196: the classic leader is built with twice the segments (own geometry set RG_PL in rig.js, quality Q=2) and smooth-shaded skin; other characters unchanged.
+- nf-v197: classic leader body balance (LEADER_BALANCE in rig.js): head 14 % smaller, arms and legs ~20-28 % thicker, torso a little deeper/wider.
