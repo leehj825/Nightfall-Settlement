@@ -130,7 +130,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const W = enemy ? 1.05 : 0.93 + 0.14 * R(8), isPlayer = kind === 'player';          // 체형(어깨 너비)
     const bones = {}, groups = new Map();
     const bone = (name, parent, x, y, z) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, z); parent.add(b); bones[name] = b; return b; };
-    const BAL = isPlayer ? LEADER_BALANCE : null;                  // the classic leader's body balance (head smaller, thicker arms and legs) - see LEADER_BALANCE
+    const BAL = LEADER_BALANCE;                                    // body balance of every human: head smaller, thicker arms and legs (soldiers, archers, citizens, raiders and the leader) - see LEADER_BALANCE
     const part = (geo, m, b, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
       if (BAL) { const k = BAL[b.name.replace(/[LR]$/, '')]; if (k) { x *= k[0]; z *= k[1]; y *= k[2]; sx *= k[0]; sz *= k[1]; sy *= k[2]; } }
       _e.set(rx, ry, rz); _q.setFromEuler(_e); _m4.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz));
