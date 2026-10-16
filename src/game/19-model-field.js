@@ -48,8 +48,9 @@
     for (const s of mv.subs) { const an = s.anim; if (!an) continue;
       if (a === 'die') an.die(); else { if (an.dead) an.revive();
         if (a === 'attack') an.once(mv.weapon === 'bow' ? 'attackBow' : mv.weapon === 'spear' ? 'attackSpear' : 'attackSword');
-        else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') { an.jump(); mv.hop = 0.8; }
+        else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') an.jump();
         else an.base(a, a === 'run' ? 5.5 : a === 'walk' ? 2.2 : 0); } }
+    if (a === 'jump') mv.hop = 0.8;
     for (const s of mv.gl) if (s.mixer && s.clips[a]) { s.mixer.stopAllAction(); s.mixer.clipAction(s.clips[a]).play(); }
   }
   function mvLoadGlb(file) {
@@ -87,7 +88,7 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0, bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0); s.horse.position.y = hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + hop; } }
+      if (s.horse) { const air = s.rig ? s.rig.hopK || 0 : (mv.hop > 0 ? Math.sin(Math.PI * (1 - mv.hop / 0.8)) : 0), bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0, air); s.horse.position.y = air * 0.7; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + s.horse.position.y; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();

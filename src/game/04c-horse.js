@@ -29,7 +29,7 @@
     return s;
   }
   // Moves the horse's joints for one frame: speed (m/s) picks standing / walk / gallop (cross-faded); returns how much the back rises (the rider follows it).
-  function horseStep(h, dt, speed) {
+  function horseStep(h, dt, speed, air = 0) {
     const R = h.userData.hr; if (!R) return 0;
     const A = R.A, c = A.clips, want = { walk: speed > 0.3 && speed < 4.2 ? 1 : 0, run: speed >= 4.2 ? 1 : 0 }, k = Math.min(1, dt * 6);
     for (const n of ['walk', 'run']) R.w[n] += (want[n] - R.w[n]) * k;
@@ -41,6 +41,7 @@
       const jt = R.J[A.bones[b][0]]; let x = 0, y = 0, z = 0, w = w0;                                  // blend by normalised weights (small rotations: a weighted sum is close enough)
       for (const n of ['walk', 'run']) if (R.w[n] > 0.02) { frame(n, b, R.q); if (x * R.q.x + y * R.q.y + z * R.q.z + w * R.q.w < 0 && n !== 'walk') R.q.set(-R.q.x, -R.q.y, -R.q.z, -R.q.w); x += R.q.x * R.w[n]; y += R.q.y * R.w[n]; z += R.q.z * R.w[n]; w += R.q.w * R.w[n]; }
       jt.quaternion.set(x, y, z, w).normalize();
+      if (air > 0) { const nm = A.bones[b][0], th = (nm[0] === 'f' && nm[2] === 'U' ? 0.45 : nm[0] === 'f' && nm[2] === 'L' ? -1.1 : nm[0] === 'h' && nm[2] === 'U' ? -0.35 : nm[0] === 'h' && nm[2] === 'L' ? 0.7 : 0) * air; if (th) { R.qr.set(0, 0, Math.sin(th / 2), Math.cos(th / 2)); jt.quaternion.premultiply(R.qr); } }       // jumping: the legs tuck (front knees fold back, hind legs fold forward)
     }
     // the back bobs with the gait (translation delta of the hips in the clips)
     const hp = R.J.body, r0 = A.rest[0]; let dx = 0, dy = 0, dz = 0;

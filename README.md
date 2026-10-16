@@ -439,3 +439,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v217: horse knees/hocks bend one way only: front lower legs fold backward, hind lower legs fold forward (tools/build_horse_anim.py); before, the gallop folded the hind lower legs 40-80 degrees backward.
 - nf-v218: horse knee/hock fold (front backward, hind forward) now starts from a straight leg (the fold the pack keeps all the time is taken off); thighs/upper legs swing freely both ways.
 - nf-v219: the hind legs swing further back and less forward (gallop thigh swing -29..+28 degrees instead of -5..+52; walk -25..+14; HIND_BACK in tools/build_horse_anim.py).
+- nf-v220: mounted jump works in the game: the Jump button makes the horse (and rider) leap about 0.7 m for 0.8 s with the legs tucked; soldiers on horses use the same hop (rig.hopT/hopK, horseStep air argument).

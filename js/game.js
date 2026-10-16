@@ -1373,7 +1373,7 @@
       const mv = Math.hypot(n.position.x - (n.lx ?? n.position.x), n.position.z - (n.lz ?? n.position.z)); n.lx = n.position.x; n.lz = n.position.z;
       const v = dt > 0 ? mv / dt : 0;
       n.charge = v > 3.2 ? Math.min(1.6, (n.charge || 0) + dt) : Math.max(0, (n.charge || 0) - dt * 2);
-      const bob = horseStep(n.horse, dt, v); if (!n.rig.fallen) n.rider.position.y = 0.8 + bob;
+      const air = n.rig.hopK || 0, bob = horseStep(n.horse, dt, v, air); n.horse.position.y = air * 0.7; if (!n.rig.fallen) n.rider.position.y = 0.8 + bob + n.horse.position.y;
     }
     for (const o of obstacles) {
       const u = o.userData; if (u.type !== 'building' || (!u.sails && !u.sheep && !u.pennants && !u.dummies)) continue;
@@ -1425,7 +1425,7 @@
     return s;
   }
   // Moves the horse's joints for one frame: speed (m/s) picks standing / walk / gallop (cross-faded); returns how much the back rises (the rider follows it).
-  function horseStep(h, dt, speed) {
+  function horseStep(h, dt, speed, air = 0) {
     const R = h.userData.hr; if (!R) return 0;
     const A = R.A, c = A.clips, want = { walk: speed > 0.3 && speed < 4.2 ? 1 : 0, run: speed >= 4.2 ? 1 : 0 }, k = Math.min(1, dt * 6);
     for (const n of ['walk', 'run']) R.w[n] += (want[n] - R.w[n]) * k;
@@ -1437,6 +1437,7 @@
       const jt = R.J[A.bones[b][0]]; let x = 0, y = 0, z = 0, w = w0;                                  // blend by normalised weights (small rotations: a weighted sum is close enough)
       for (const n of ['walk', 'run']) if (R.w[n] > 0.02) { frame(n, b, R.q); if (x * R.q.x + y * R.q.y + z * R.q.z + w * R.q.w < 0 && n !== 'walk') R.q.set(-R.q.x, -R.q.y, -R.q.z, -R.q.w); x += R.q.x * R.w[n]; y += R.q.y * R.w[n]; z += R.q.z * R.w[n]; w += R.q.w * R.w[n]; }
       jt.quaternion.set(x, y, z, w).normalize();
+      if (air > 0) { const nm = A.bones[b][0], th = (nm[0] === 'f' && nm[2] === 'U' ? 0.45 : nm[0] === 'f' && nm[2] === 'L' ? -1.1 : nm[0] === 'h' && nm[2] === 'U' ? -0.35 : nm[0] === 'h' && nm[2] === 'L' ? 0.7 : 0) * air; if (th) { R.qr.set(0, 0, Math.sin(th / 2), Math.cos(th / 2)); jt.quaternion.premultiply(R.qr); } }       // jumping: the legs tuck (front knees fold back, hind legs fold forward)
     }
     // the back bobs with the gait (translation delta of the hips in the clips)
     const hp = R.J.body, r0 = A.rest[0]; let dx = 0, dy = 0, dz = 0;
@@ -2980,7 +2981,7 @@
     const mv = Math.hypot(player.position.x - (pLX ?? player.position.x), player.position.z - (pLZ ?? player.position.z)); pLX = player.position.x; pLZ = player.position.z;
     const v = dt > 0 ? mv / dt : 0; pCharge = v > 4 ? Math.min(1.6, pCharge + dt) : Math.max(0, pCharge - dt * 2);
     pBonusT = Math.max(0, pBonusT - dt);
-    const bob = horseStep(pHorse, dt, v); if (!playerRig.fallen) pRider.position.y = 0.8 + bob;
+    const air = playerRig.hopK || 0, bob = horseStep(pHorse, dt, v, air); pHorse.position.y = air * 0.7; if (!playerRig.fallen) pRider.position.y = 0.8 + bob + pHorse.position.y;
   }
   let pLX, pLZ;
   // ---------- 깃발 든 병사: 깃발마다 첫 전투단의 병사 한 명이 그 깃발의 큰 깃발을 등에 진다 (보기용) ----------
@@ -6474,8 +6475,9 @@
     for (const s of mv.subs) { const an = s.anim; if (!an) continue;
       if (a === 'die') an.die(); else { if (an.dead) an.revive();
         if (a === 'attack') an.once(mv.weapon === 'bow' ? 'attackBow' : mv.weapon === 'spear' ? 'attackSpear' : 'attackSword');
-        else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') { an.jump(); mv.hop = 0.8; }
+        else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') an.jump();
         else an.base(a, a === 'run' ? 5.5 : a === 'walk' ? 2.2 : 0); } }
+    if (a === 'jump') mv.hop = 0.8;
     for (const s of mv.gl) if (s.mixer && s.clips[a]) { s.mixer.stopAllAction(); s.mixer.clipAction(s.clips[a]).play(); }
   }
   function mvLoadGlb(file) {
@@ -6513,7 +6515,7 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0, bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0); s.horse.position.y = hop; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + hop; } }
+      if (s.horse) { const air = s.rig ? s.rig.hopK || 0 : (mv.hop > 0 ? Math.sin(Math.PI * (1 - mv.hop / 0.8)) : 0), bob = horseStep(s.horse, dt, mv.action === 'run' ? 5.5 : mv.action === 'walk' ? 2.2 : 0, air); s.horse.position.y = air * 0.7; if (s.rider && !s.rig.fallen) s.rider.position.y = 0.8 + bob + s.horse.position.y; } }
     if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();
