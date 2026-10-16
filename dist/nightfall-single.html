@@ -5443,7 +5443,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const near = (jx, jy, r) => 1 - smooth01(0, r, Math.hypot(x - jx, y - jy));
       const E = [s * (J.shX + J.elX), J.shY - J.elDY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
       let nb = null, w = 0;
-      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.11) * 0.55, ws = near(s * J.shX, J.shY - 0.04, 0.24) * 0.9; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
+      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.11) * 0.55, ws = near(s * J.shX, J.shY - 0.04, 0.30) * 0.95; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
       else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.11) * 0.55; }
       else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.12) * 0.55, wh = near(s * J.hipX, J.hipY, 0.09) * 0.5; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
       else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.12) * 0.55; }

@@ -96,3 +96,7 @@ Height warp now knee 0.37→0.48, hip 0.81→0.99, shoulder 1.40→1.60, top 1.8
 ## nf-v181: shorter skirt (more thigh), arms higher again
 - The torso/skirt/belt parts have their own height warp (`BODY_WARP`: skirt hem 0.57→0.80 instead of 0.71), so the hem sits higher and more of the thigh shows below it; legs (thigh, boot) keep `LEG_WARP`.
 - `ARM_UP` 0.10, `LEADER_JOINTS.shY` 1.70 (arms and shoulder armour 3 cm higher than nf-v180).
+
+## nf-v182: skirt sides follow the thigh, sleeve top sticks to the collar
+- Chain skirt: the side panels (|x| > 0.10, not the back) now also take thigh weight (up to 0.85), so the skirt opens and closes with the leg in a wide stance; the back stays on the pelvis.
+- Shoulder: the sleeve-top blend toward the vest reaches 0.30 m (max 0.95), so no hole opens between the neck/collar and a raised arm.
