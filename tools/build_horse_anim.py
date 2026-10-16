@@ -96,6 +96,10 @@ def main():
         for b in lowers:                                                                              # the knee/hock bends only one way: front lower legs fold backward, hind lower legs forward (the owner's request); the fold the pack keeps all the time is taken off, so the leg can straighten
             rel = [abs(ang(D[b]) - ang(D[pidx[b]])) for D in Ds]; base = min(rel); sign = -1 if BONES[b][0][0] == 'f' else 1
             for D, r in zip(Ds, rel): D[b] = rot(ang(D[pidx[b]]) + sign * (r - base))
+        HIND_BACK = {'walk': -6, 'run': -24}[key]                                                      # degrees: the hind legs (thigh + lower leg together) swing further back and less forward (the owner's request)
+        for D in Ds:
+            for b in range(len(BONES)):
+                if BONES[b][0][0] == 'h' and len(BONES[b][0]) == 3: D[b] = rot(ang(D[b]) + np.radians(HIND_BACK))
         for D in Ds:
             for b in range(len(BONES)): loc = (D[pidx[b]].T @ D[b]) if pidx[b] >= 0 else D[b]; qs += mq(loc).round(4).tolist()
         out[key] = {'dur': round(float(dur), 4), 'n': n, 'q': qs, 'p': ps}
