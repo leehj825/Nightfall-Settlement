@@ -116,3 +116,6 @@ The simple-clothes model with automatic skinning (nf-v183/184, above) was droppe
 
 ## nf-v186: original size of leader3 (no limb stretching)
 The height warps are identity again (leader 1.80 m, original leg/arm/torso lengths). LEADER_JOINTS are the model's own joints: shX .27, shY 1.44 (sleeve top / shoulder level, bone raised, mesh not), elX .06, elDY .32, hipX .12, hipY .81, kneeDY .44, neckY 1.46; fist offset `[0.07, -0.30]`. Ground contact holds (hip joint height = leg length).
+
+## nf-v187: higher shoulder and hip bones (meshes unchanged), skirt follows the legs
+LEADER_JOINTS: shY 1.50 (was 1.44), elDY 0.38 (elbow stays at 1.12), hipY 0.88 (was 0.81), kneeDY 0.51 (knee stays at 0.37). Only the bones/pivots moved; no mesh was moved. The chain skirt takes more thigh weight (the whole front and sides, 25 % even at the top, up to 100 % at the hem); only the back centre stays on the pelvis.

@@ -112,7 +112,7 @@ def main():
     if tor.any():
         y, z, x = pos[tor, 1], pos[tor, 2], pos[tor, 0]; sm = lambda a, b, t: (lambda u: u * u * (3 - 2 * u))(np.clip((t - a) / (b - a), 0, 1))
         wh = 1 - sm(0.86, 1.06, y); wd = 0.5 * sm(1.50, 1.62, y)
-        h = np.clip((0.80 - y) / 0.23, 0, 1); wt = np.maximum(np.clip((z + 0.02) / 0.12, 0, 1) * np.clip(np.abs(x) / 0.08, 0.35, 1), 0.85 * np.clip((np.abs(x) - 0.10) / 0.10, 0, 1) * np.clip((z + 0.12) / 0.12, 0, 1)) * h ** 0.8 * wh      # front and side panels follow the thigh, the back stays on the pelvis
+        h = np.clip((0.80 - y) / 0.23, 0, 1); wt = np.maximum(np.clip((z + 0.02) / 0.12, 0, 1) * np.clip(np.abs(x) / 0.08, 0.5, 1), 1.0 * np.clip((np.abs(x) - 0.08) / 0.08, 0, 1) * np.clip((z + 0.14) / 0.12, 0, 1)) * (0.25 + 0.75 * h ** 0.5) * wh      # front and side panels follow the thigh, the back stays on the pelvis
         W = np.zeros((tor.sum(), 4)); I = np.zeros((tor.sum(), 4), np.uint8)
         I[:, 0] = BM.BONES.index('hips'); I[:, 1] = BM.BONES.index('spine'); I[:, 2] = BM.BONES.index('head')
         I[:, 3] = np.where(x < 0, BM.BONES.index('hipL'), BM.BONES.index('hipR'))
