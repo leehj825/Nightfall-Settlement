@@ -800,7 +800,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const R = this.rig, e = this._se || (this._se = new THREE.Euler()), q = this._sq || (this._sq = new THREE.Quaternion());
       if (!R.hipL || !R.hipR || !R.kneeL || !R.kneeR) return;
       for (const [h, k, s] of [[R.hipL, R.kneeL, 1], [R.hipR, R.kneeR, -1]]) {
-        e.set(-0.75, 0, -s * 0.85); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
+        e.set(-0.75, 0, -s * 0.55); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
         e.set(0.55, 0, 0); k.quaternion.setFromEuler(e);                          // the lower leg hangs down the flank (heels in), not moving with the run clip
       }
       if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); R.hips.quaternion.identity(); }       // the pelvis stays on the saddle: no run bob, no jump

@@ -292,18 +292,18 @@
   }
   function horseModel(rnd, o) {                                              // 말: 몸통 + 목 + 머리 + 다리 네 개 + 갈기와 꼬리. o = { coat, blanket(안장 담요 색), armor(마갑) }
     o = o || {}; const s = new THREE.Group(), coat = M(o.coat !== undefined ? o.coat : [0x7a4a2a, 0x3a2a22, 0xc8c0a8, 0x9a6a3a][Math.floor(rnd() * 4)]), dark = M(0x2a2018), mk = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; s.add(o); return o; };
-    mk(new THREE.BoxGeometry(1.5, 0.75, 0.55), coat, 0, 1.15, 0);
-    mk(new THREE.BoxGeometry(0.4, 0.8, 0.35), coat, 0.85, 1.5, 0).rotation.z = -0.5;
-    mk(new THREE.BoxGeometry(0.6, 0.3, 0.28), coat, 1.2, 1.8, 0);
+    mk(new THREE.BoxGeometry(1.5, 0.75, 0.42), coat, 0, 1.15, 0);
+    mk(new THREE.BoxGeometry(0.4, 0.8, 0.27), coat, 0.85, 1.5, 0).rotation.z = -0.5;
+    mk(new THREE.BoxGeometry(0.6, 0.3, 0.22), coat, 1.2, 1.8, 0);
     mk(new THREE.BoxGeometry(0.15, 0.55, 0.12), dark, 0.62, 1.7, 0).rotation.z = -0.5;
     mk(new THREE.BoxGeometry(0.1, 0.6, 0.12), dark, -0.8, 1.1, 0).rotation.z = 0.35;
-    mk(new THREE.BoxGeometry(0.7, 0.08, 0.62), M(o.blanket !== undefined ? o.blanket : 0x8a2a2a), 0.05, 1.56, 0); mk(new THREE.BoxGeometry(0.55, 0.12, 0.45), M(0x4a301c), 0.05, 1.62, 0);        // 안장 담요와 안장
+    mk(new THREE.BoxGeometry(0.7, 0.08, 0.48), M(o.blanket !== undefined ? o.blanket : 0x8a2a2a), 0.05, 1.56, 0); mk(new THREE.BoxGeometry(0.55, 0.12, 0.34), M(0x4a301c), 0.05, 1.62, 0);        // 안장 담요와 안장
     if (o.armor) {                                                                                               // 마갑: 가슴·목·머리 철판과 이마의 장식
       const steel = M(0x9aa0aa), gold = M(0xe0b040);
-      mk(new THREE.BoxGeometry(0.5, 0.65, 0.62), steel, 0.6, 1.1, 0); mk(new THREE.BoxGeometry(0.42, 0.7, 0.4), steel, 0.88, 1.5, 0).rotation.z = -0.5;
-      mk(new THREE.BoxGeometry(0.4, 0.2, 0.3), steel, 1.3, 1.9, 0); mk(new THREE.BoxGeometry(0.08, 0.2, 0.08), gold, 1.5, 2.05, 0);
+      mk(new THREE.BoxGeometry(0.5, 0.65, 0.48), steel, 0.6, 1.1, 0); mk(new THREE.BoxGeometry(0.42, 0.7, 0.3), steel, 0.88, 1.5, 0).rotation.z = -0.5;
+      mk(new THREE.BoxGeometry(0.4, 0.2, 0.24), steel, 1.3, 1.9, 0); mk(new THREE.BoxGeometry(0.08, 0.2, 0.08), gold, 1.5, 2.05, 0);
     }
-    s.userData.legs = [[-0.6, -0.18], [-0.6, 0.18], [0.6, -0.18], [0.6, 0.18]].map(([lx, lz]) => mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz));
+    s.userData.legs = [[-0.6, -0.14], [-0.6, 0.14], [0.6, -0.14], [0.6, 0.14]].map(([lx, lz]) => mk(new THREE.BoxGeometry(0.12, 0.8, 0.12), dark, lx, 0.4, lz));
     return s;
   }
   function stableModel(add, seed, add0) {                                    // 마구간: 나무 외양간(칸막이 셋) + 앞 방목장 울타리 + 말 두 마리
