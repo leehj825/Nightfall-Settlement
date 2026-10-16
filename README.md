@@ -434,3 +434,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v212: the horse's mane is a thick row of six dark tufts along the neck.
 - nf-v213: the horse's head tapers: a skull block, a slim muzzle and a dark nose; the neck is slimmer.
 - nf-v214: the horse's muzzle is a middle size (0.4 x 0.24 x 0.2 m with a 0.12 m dark nose).
+- nf-v215: the horse's head is a little shorter (skull 0.36 m, muzzle 0.34 m, nose forward 0.56 m).
