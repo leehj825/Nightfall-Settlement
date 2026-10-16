@@ -19,6 +19,7 @@
     }
     const hg = new THREE.Group(), horse = horseModel(() => 0.3, { coat: 0x7a4a2a, blanket: 0x8a2a2a }); horse.rotation.y = -Math.PI / 2; hg.add(horse); hg.userData.legs = horse.userData.legs; sc.add(hg);
     mv.subs.push({ label: 'Horse', kind: 'horse', g: hg, rig: null, anim: null, horse: hg, rider: null, hmove: 0 });
+    mv.hop = 0;
     mvWeapon(mv.weapon); mvLayout(); mvUi();
   }
   function mvWeapon(w) {                                    // the same gear setup the player and soldiers use
@@ -47,7 +48,7 @@
     for (const s of mv.subs) { const an = s.anim; if (!an) continue;
       if (a === 'die') an.die(); else { if (an.dead) an.revive();
         if (a === 'attack') an.once(mv.weapon === 'bow' ? 'attackBow' : mv.weapon === 'spear' ? 'attackSpear' : 'attackSword');
-        else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') an.jump();
+        else if (a === 'block') { an.guard(true); setTimeout(() => an.guard(false), 1500); } else if (a === 'jump') { an.jump(); mv.hop = 0.8; }
         else an.base(a, a === 'run' ? 5.5 : a === 'walk' ? 2.2 : 0); } }
     for (const s of mv.gl) if (s.mixer && s.clips[a]) { s.mixer.stopAllAction(); s.mixer.clipAction(s.clips[a]).play(); }
   }
@@ -86,7 +87,8 @@
   function mvStep(dt) {
     dt = Math.min(dt, 0.05); const t = clock.elapsedTime; if (mv.auto) mv.yaw += dt * 0.5;
     for (const s of mv.subs) { if (!s.g.visible) continue; if (s.anim) s.anim.update(dt);
-      if (s.horse) { const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg; } }
+      if (s.horse) { const u = mv.hop > 0 ? 1 - mv.hop / 0.8 : -1, hop = u >= 0 ? Math.sin(Math.PI * u) * 0.6 : 0; if (s.rider) s.rider.position.y = 0.8 + hop; const mvg = mv.action === 'walk' ? 0.5 : mv.action === 'run' ? 1 : 0, legs = s.horse.userData.legs || []; legs.forEach((l, i) => { l.rotation.z = Math.sin(t * 7 + (i % 2 ? Math.PI : 0)) * 0.4 * mvg; }); s.horse.position.y = Math.abs(Math.sin(t * 7)) * 0.04 * mvg + hop; if (s.rider) s.rider.position.y = 0.8 + s.horse.position.y; } }
+    if (mv.hop > 0) mv.hop -= dt;
     for (const s of mv.gl) if (s.mixer && s.g.visible) s.mixer.update(dt);
     const c = mv.cam, cp = Math.cos(mv.pitch), d = mv.dist; c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix();
     c.position.set(mv.target.x + Math.sin(mv.yaw) * cp * d, Math.max(0.1, mv.target.y + Math.sin(mv.pitch) * d), mv.target.z + Math.cos(mv.yaw) * cp * d); c.lookAt(mv.target);

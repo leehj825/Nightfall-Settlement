@@ -419,3 +419,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v197: classic leader body balance (LEADER_BALANCE in rig.js): head 14 % smaller, arms and legs ~20-28 % thicker, torso a little deeper/wider.
 - nf-v198: the new body balance (LEADER_BALANCE) now applies to every human: soldiers, archers, citizens, raiders.
 - nf-v199: followers, citizens and raiders use FOLLOWER_BALANCE (smaller head, only about half the extra thickness); the leader keeps LEADER_BALANCE.
+- nf-v200: riders sit: the seated pose now really runs (the rig exposes hips and knee bones; before, it exited early and the legs ran inside the horse), legs wrap the flanks, pelvis fixed on the saddle, no jump/bob clip while mounted; Model field horse hops on jump.

@@ -245,6 +245,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (ev === 4) { part(RG.scarfRing, sm(0x7a7a70, 1), spine, 0, 0.66, 0.0, Math.PI / 2, 0, 0, 1.05, 1.05, 1.4); part(RG.skirt, ragMat, hips, 0, -0.1, 0, 0, 0, 0, Wb, 0.7, 0.78); }
     }
     const out = { root, bodyMat, head, spine, baseScale: (opts.scale ?? 0.9) * (enemy || isPlayer ? (brute ? 1.12 : 1) : 0.95 + 0.1 * R(7)) * (female ? 0.96 : 1) };
+    out.hips = hips;
     for (const sx of [-1, 1]) {
       const n = sx < 0 ? 'L' : 'R';
       const sh = bone('shoulder' + n, spine, sx * 0.34 * Wb, 0.58, 0);
@@ -266,7 +267,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       part(RG.palm, skin, hd, 0, -0.025, 0.0, 0, 0, 0, brute ? 1.3 : 1.1, 1.1, 0.8); part(RG.thumb, skin, hd, -sx * 0.05, -0.02, 0.035, 0, 0, 0, 1.3, 1.5, 1.3);
       const hp = bone('hip' + n, hips, sx * 0.14 * Wb, -0.04, 0); out['hip' + n] = hp;
       part(RG.thigh, pants, hp, 0, -0.225, 0, 0, 0, 0, brute ? 1.15 : 1, 1, brute ? 1.15 : 1);
-      const kn = bone('knee' + n, hp, 0, -0.45, 0);
+      const kn = bone('knee' + n, hp, 0, -0.45, 0); out['knee' + n] = kn;
       part(RG.knee, pants, kn, 0, 0, 0); part(RG.shin, pants, kn, 0, -0.225, 0);
       part(RG.shaft, bootMat, kn, 0, -0.33, 0, 0, 0, 0, 1.12, 1.05, 1.12); part(RG.cuffBoot, leatherMat, kn, 0, -0.23, 0, 0, 0, 0, 1.25, 1.6, 1.25);
       part(RG.foot, bootMat, kn, 0, -0.43, 0.06, 0, 0, 0, 0.85, 0.55, 1.55); part(RG.sole, darkMat, kn, 0, -0.485, 0.07);
@@ -755,7 +756,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
     jump() {
-      if (this.dead || this.shot || this.guarding) return false;
+      if (this.dead || this.shot || this.guarding || this.rig.seated) return false;        // a rider does not jump by himself: the horse carries him
       this.breakCombo();
       const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
       return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
@@ -799,10 +800,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const R = this.rig, e = this._se || (this._se = new THREE.Euler()), q = this._sq || (this._sq = new THREE.Quaternion());
       if (!R.hipL || !R.hipR || !R.kneeL || !R.kneeR) return;
       for (const [h, k, s] of [[R.hipL, R.kneeL, 1], [R.hipR, R.kneeR, -1]]) {
-        e.set(-1.05, 0, s * 0.42); h.quaternion.setFromEuler(e);
-        e.set(1.0, 0, 0); k.quaternion.setFromEuler(e);
+        e.set(-0.75, 0, -s * 0.85); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
+        e.set(0.55, 0, 0); k.quaternion.setFromEuler(e);                          // the lower leg hangs down the flank (heels in), not moving with the run clip
       }
-      if (R.hips) R.hips.rotation.x = Math.min(R.hips.rotation.x, 0.0);
+      if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); R.hips.quaternion.identity(); }       // the pelvis stays on the saddle: no run bob, no jump
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세
