@@ -404,3 +404,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v182: skirt side panels follow the thigh; sleeve top stays attached to the collar.
 - nf-v183: new leader model with simple clothes, automatic smooth skinning (no parts, no soft-joint hacks); leader_parts.js 316 KB.
 - nf-v184: leader shoulder bone raised to neck level (arms swing from the shoulder top).
+- nf-v185: reverted to leader3 (16 parts); arm bones raised to shoulder level instead of lifting the arm meshes.
