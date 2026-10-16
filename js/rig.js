@@ -764,7 +764,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     }
     _fallStep(dt) {                                                     // a dead rider slides off the horse sideways and lies beside it
       const R = this.rig, g = R.rider; if (!g) return;
-      if (this.dead && R.seated) { const f = this._fall || (this._fall = { t: 0, side: (R.fallSide || 1) }); f.t = Math.min(1, f.t + dt / 0.6); const k = f.t * f.t * (3 - 2 * f.t); g.rotation.z = -f.side * 1.45 * k; g.position.x = f.side * 0.75 * k; g.position.y = 0.8 - 0.45 * k; }
+      if (this.dead && R.seated) { const f = this._fall || (this._fall = { t: 0, side: (R.fallSide || 1) }); f.t = Math.min(1, f.t + dt / 0.6); const k = f.t * f.t * (3 - 2 * f.t); g.rotation.z = 0; g.position.x = f.side * 0.95 * k; g.position.y = 0.8 * (1 - k); }                     // the die clip itself lays him down on his back; he slides off the saddle to the side and down to the ground
       else if (this._fall) { this._fall = null; g.rotation.z = 0; g.position.x = 0; g.position.y = 0.8; }
     }
     die() {
