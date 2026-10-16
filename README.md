@@ -402,3 +402,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v180: new leader model legs longer, hips higher in the skirt, arms higher.
 - nf-v181: skirt hem higher (more thigh visible), arms 3 cm higher.
 - nf-v182: skirt side panels follow the thigh; sleeve top stays attached to the collar.
+- nf-v183: new leader model with simple clothes, automatic smooth skinning (no parts, no soft-joint hacks); leader_parts.js 316 KB.

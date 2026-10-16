@@ -281,7 +281,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       root.updateMatrixWorld(true);
       const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
-      const HP = { leaderParts: [0.07, -0.29], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
+      const HP = { leaderParts: [0.09, -0.34], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
       out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
@@ -304,72 +304,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return (seed & 1) ? 'citizenFemale' : 'citizenMale';
   }
   const unb64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
-  // ----- Leader parts: close the gaps that open at the joints (the parts themselves are not changed) -----
-  const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  function softenLeaderJoints(geo, parts) {                  // closes the gaps at the joints by weights only (the parts themselves are not changed)
-    const J = LEADER_JOINTS, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bi = n => BONES.indexOf(n), n = P.count;
-    const done = new Uint8Array(n), pad = new Uint8Array(n), spine = bi('spine');
-    // 1. whole parts: the shoulder pads and the belt hang on the vest; the pauldron mostly on the vest; the top of the skirt on the vest, the hem on the thighs
-    let off = 0, sy0 = 1e9, sy1 = -1e9;
-    for (let i = 0; i < n; i++) if (SW.getX(i) < 0.99 && P.getY(i) < J.hipY - 0.02) { const y = P.getY(i); if (y < sy0) sy0 = y; if (y > sy1) sy1 = y; }
-    for (const part of parts) {
-      let cx = 0, cy = 0; for (let i = off; i < off + part.verts; i++) { cx += Math.abs(P.getX(i)); cy += P.getY(i); } cx /= part.verts; cy /= part.verts;
-      let ws = 0;
-      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.14) ws = cx < 0.22 ? 1 : 0.6;
-      else if (part.bone === 'hips' && SW.getX(off) >= 0.99 && cy >= J.hipY - 0.08) ws = 0.75;
-      if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; if (ws === 1) pad[i] = 1; }
-      off += part.verts;
-    }
-    for (let i = 0; i < n; i++) {
-      if (SW.getX(i) >= 0.99 || done[i] || P.getY(i) >= J.hipY - 0.02 ) continue;       // the skirt (soft, below the pelvis): add the vest at the top
-      const h = Math.max(0, Math.min(1, (sy1 - P.getY(i)) / (sy1 - sy0))), sp = 0.8 * (1 - smooth01(0, 0.5, h)), a = SW.getX(i), b = SW.getY(i);
-      SI.setZ(i, spine); SW.setX(i, a * (1 - sp)); SW.setY(i, b * (1 - sp)); SW.setZ(i, sp); done[i] = 1;
-    }
-    // 2. the other vertices near a joint also follow the bone on the other side (up to 0.5 at the joint, 0 at the radius)
-    for (let i = 0; i < n; i++) {
-      if (done[i] || SW.getZ(i) > 0 || SW.getW(i) > 0) continue;
-      const b = BONES[SI.getX(i)], side = b.endsWith('L') ? 'L' : b.endsWith('R') ? 'R' : '', s = side === 'L' ? -1 : 1, x = P.getX(i), y = P.getY(i);
-      const near = (jx, jy, r) => 1 - smooth01(0, r, Math.hypot(x - jx, y - jy));
-      const E = [s * (J.shX + J.elX), J.shY - J.elDY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
-      let nb = null, w = 0;
-      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.11) * 0.55, ws = near(s * J.shX, J.shY - 0.04, 0.30) * 0.95; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
-      else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.11) * 0.55; }
-      else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.12) * 0.55, wh = near(s * J.hipX, J.hipY, 0.09) * 0.5; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
-      else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.12) * 0.55; }
-      else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis; neck: the collar follows the head
-        const wy = J.hipY + 0.10, ww = 0.6 * (1 - smooth01(wy - 0.04, wy + 0.12, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
-        if (ww >= wn) { nb = 'hips'; w = ww; } else { nb = 'head'; w = wn; }
-      }
-      else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }
-      else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
-      if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
-    }
-    for (let i = 0; i < n; i++) { const t = SW.getX(i) + SW.getY(i) + SW.getZ(i) + SW.getW(i); if (t > 0 && Math.abs(t - 1) > 0.001) { SW.setX(i, SW.getX(i) / t); SW.setY(i, SW.getY(i) / t); SW.setZ(i, SW.getZ(i) / t); SW.setW(i, SW.getW(i) / t); } }
-    // 3. whole body: weights diffuse between the vertices of different parts that lie close together (twice), strongest at shoulders and neck, so neighbouring shells move together
-    const R = 0.06, cell = new Map(), key = (x, y, z) => Math.floor(x / R) + ',' + Math.floor(y / R) + ',' + Math.floor(z / R), zone = i => {
-      const x = P.getX(i), y = P.getY(i), s = x < 0 ? -1 : 1;
-      return Math.hypot(x - s * J.shX, y - J.shY) < 0.22 || (Math.abs(x) < 0.16 && y > J.neckY - 0.16 && y < J.neckY + 0.1);
-    };
-    for (let i = 0; i < n; i++) { const k = key(P.getX(i), P.getY(i), P.getZ(i)); (cell.get(k) || cell.set(k, []).get(k)).push(i); }
-    for (let it = 0; it < 2; it++) {
-    const upd = [];
-    for (let i = 0; i < n; i++) {
-      if (pad[i]) continue;                                                           // the collar / shoulder pads stay fixed on the vest (not on the arm)
-      const mix = zone(i) ? 0.65 : 0.45;
-      const x = P.getX(i), y = P.getY(i), z = P.getZ(i), acc = {}; let tot = 0;
-      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-        const l = cell.get((Math.floor(x / R) + dx) + ',' + (Math.floor(y / R) + dy) + ',' + (Math.floor(z / R) + dz)); if (!l) continue;
-        for (const j of l) { if (Math.hypot(P.getX(j) - x, P.getY(j) - y, P.getZ(j) - z) > R) continue; tot++; for (let c = 0; c < 4; c++) { const w = [SW.getX(j), SW.getY(j), SW.getZ(j), SW.getW(j)][c]; if (w > 0) { const b = [SI.getX(j), SI.getY(j), SI.getZ(j), SI.getW(j)][c]; acc[b] = (acc[b] || 0) + w; } } }
-      }
-      const cur = {}; [[SI.getX(i), SW.getX(i)], [SI.getY(i), SW.getY(i)], [SI.getZ(i), SW.getZ(i)], [SI.getW(i), SW.getW(i)]].forEach(([b, w]) => { if (w > 0) cur[b] = (cur[b] || 0) + w; });
-      const m = {}; for (const b in cur) m[b] = cur[b] * (1 - mix); for (const b in acc) m[b] = (m[b] || 0) + mix * acc[b] / tot;
-      const top = Object.entries(m).sort((u, v) => v[1] - u[1]).slice(0, 4), sum = top.reduce((q, e) => q + e[1], 0);
-      upd.push([i, top.map(e => +e[0]), top.map(e => e[1] / sum)]);
-    }
-    for (const [i, bs, ws] of upd) { for (let c = 0; c < 4; c++) { const b = bs[c] || 0, w = ws[c] || 0; [SI.setX, SI.setY, SI.setZ, SI.setW][c].call(SI, i, b); [SW.setX, SW.setY, SW.setZ, SW.setW][c].call(SW, i, w); } }
-    }
-    SI.needsUpdate = SW.needsUpdate = true;
-  }
   function modelMesh(key, skeleton, material) {
     const d = key === 'leaderParts' ? LEADER_PARTS : CHAR_MODELS[key];
     let geo = modelGeos[key];
@@ -383,7 +317,6 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
       geo.setAttribute('skinWeight', new THREE.BufferAttribute(W, 4)); geo.setAttribute('skinIndex', new THREE.BufferAttribute(I, 4));
       geo.setIndex(new THREE.BufferAttribute(d.idx32 ? unb64(d.idx, Uint32Array) : unb64(d.idx, Uint16Array), 1));
-      if (key === 'leaderParts' && LEADER_SOFT) softenLeaderJoints(geo, d.parts);
     }
     let tex = modelTexs[key];
     if (!tex) { tex = modelTexs[key] = new THREE.TextureLoader().load(d.tex); tex.flipY = true; tex.anisotropy = 2; }
@@ -399,9 +332,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const USE_CHAR_MODELS = /[?&]models=1/.test(location.search);
   const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? Math.max(0, Math.min(1, +window.NF_LEADER || 0)) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = 'leaderParts';
   // 0 = classic stick-man; 1 = the new model (soft joints always on)
-  const LEADER_SOFT = LEADER_MODE > 0;
   // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
-  const LEADER_JOINTS = { shX: 0.29, shY: 1.70, elX: 0.06, elDY: 0.31, hipX: 0.12, hipY: 0.99, kneeX: 0.02, kneeDY: 0.51, neckY: 1.66 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
+  const LEADER_JOINTS = { shX: 0.29, shY: 1.54, elX: 0.06, elDY: 0.34, hipX: 0.11, hipY: 0.91, kneeX: 0, kneeDY: 0.41, neckY: 1.59 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }

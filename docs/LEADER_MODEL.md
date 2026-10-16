@@ -100,3 +100,10 @@ Height warp now knee 0.37→0.48, hip 0.81→0.99, shoulder 1.40→1.60, top 1.8
 ## nf-v182: skirt sides follow the thigh, sleeve top sticks to the collar
 - Chain skirt: the side panels (|x| > 0.10, not the back) now also take thigh weight (up to 0.85), so the skirt opens and closes with the leg in a wide stance; the back stays on the pelvis.
 - Shoulder: the sleeve-top blend toward the vest reaches 0.30 m (max 0.95), so no hole opens between the neck/collar and a raised arm.
+
+## nf-v183: new leader model (leader_with_clothe.glb, simple clothes) with automatic smooth skinning
+**This replaces everything above about parts, soft joints and the under layer: that code is gone.**
+- Source: 7 meshes (legs+pelvis, torso+upper arms, two forearms/hands, head, two tiny pieces), 3 504 vertices, 136 KB texture, `js/leader_parts.js` 316 KB (was 877 KB). Build: `python3 tools/build_leader_parts.py <file>.glb 1024` (the .glb is not in the repo).
+- Skinning is automatic per vertex (`skin()` in the builder): weight = exp(-(max(0, distance to the bone segment - radius)/0.045)^2) over the bones of the model's A-pose skeleton (table `JOINTS`), 4 strongest kept; left/right limbs do not mix except at the centre line. So there are no separate shells to tear apart, and the joints bend smoothly.
+- The model is scaled to 1.9 m. `LEADER_JOINTS` in `js/rig.js` equals the builder's `JOINTS` (shX .29, shY 1.54, elX .06, elDY .34, hipX .11, hipY .91, kneeDY .41, neckY 1.59); fist offset `[0.09, -0.34]`.
+- To tune: change `JOINTS`/radii/`SIGMA` in the builder and the same numbers in `LEADER_JOINTS`, rebuild.

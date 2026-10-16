@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Builds js/leader_parts.js: the leader model made of separate parts (rigid segments) bound to the game's stick-man skeleton.
+"""Builds js/leader_parts.js: the leader model (owner-made, simple clothes) skinned automatically to the game's stick-man skeleton.
 
 usage:
-  python3 tools/build_leader_parts.py leader3.glb [texture-size] [lift]
-(a .glb file holds the parts and the base colour texture)
-  (lift = optional brightening of the colour texture, 1.0 = as is, 1.6 = noticeably lighter; the original is very dark)
+  python3 tools/build_leader_parts.py leader4.glb [texture-size] [lift]
+(a .glb file holds the meshes and the base colour texture; lift = optional brightening of the colour texture, 1.0 = as is)
 
-Every FBX mesh ("tripo_part_N") keeps its own geometry. Each part is bound to ONE bone (weight 255): the bone that the part belongs to by the
-same rules as tools/build_models.py (distance to the bone segments, arms/legs by side, hands to the forearm), summed over the part's vertices.
-So the animation moves whole segments (a sleeve, a boot, a shoulder pad) instead of blending by the area around a bone.
-The animation matches because js/rig.js moves the stick-man's joints to the model's joints (LEADER_JOINTS).
-The model is used with Settings > Leader model, or ?leader=1 (see js/rig.js). Output: LEADER_PARTS = same layout as CHAR_MODELS entries plus 'parts' (name, bone, vertex range)."""
+The model is a few big meshes (legs+pelvis, torso+upper arms, forearms, head). It is scaled to HEIGHT and every vertex gets smooth weights
+(up to 4 bones) from its distance to the bone segments of the model's own A-pose skeleton (the JOINTS table below; keep LEADER_JOINTS in js/rig.js in step).
+Left/right limbs never mix except at the centre line. The animation fits because js/rig.js moves the stick-man's joints to the same points.
+Output: LEADER_PARTS = same layout as CHAR_MODELS entries plus 'parts' (name, bone, vertex count)."""
 import sys, os, json, io, base64, struct
 import numpy as np
 from PIL import Image
@@ -62,37 +60,34 @@ def weld(p):
     keep = np.array(keep)
     return pos[keep], nor[keep], uv[keep], remap[idx]
 
-# height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
-# arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.60 + ARM_UP (leader3)
-ARM_UP = 0.10
-# the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
-# keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
-LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.48, 0.99, 1.60, 1.97])        # leader3: knee, hip, shoulder, top
 
-# the body (torso, skirt, belt) is warped on its own so the skirt hem stays high and more of the thigh shows below it
-BODY_WARP = ([0, 0.57, 0.81, 1.40, 1.80], [0, 0.80, 0.99, 1.60, 1.97])
+HEIGHT = 1.9
+# joints in metres at HEIGHT (feet at y = 0, model facing +z, x < 0 is the rig's L side): measured from the model's A-pose
+JOINTS = {'shX': 0.29, 'shY': 1.54, 'elX': 0.06, 'elDY': 0.34, 'hipX': 0.11, 'hipY': 0.91, 'kneeDY': 0.41, 'neckY': 1.59, 'wristX': 0.456, 'wristY': 0.86, 'ankleY': 0.09, 'headTop': 1.9}
+SIGMA = 0.045
 
-def is_skirt(v):
-    """The two long pelvis guards (the chain skirt, parts 1 and 2): centre at hip height, near the middle, tall."""
-    c = (v.max(axis=0) + v.min(axis=0)) / 2
-    return 0.70 <= c[1] < 0.86 and abs(c[0]) < 0.24 and (v.max(axis=0) - v.min(axis=0))[1] > 0.30
+def segments():
+    """bone -> (point A, point B, radius): the bone's segment and how far from it the surface still counts as 'inside' it."""
+    J = JOINTS; seg = {'hips': ((0, J['hipY'] - 0.12, 0), (0, J['hipY'] + 0.07, 0), 0.17), 'spine': ((0, J['hipY'] + 0.07, 0), (0, J['neckY'] - 0.06, 0), 0.17), 'head': ((0, J['neckY'], 0), (0, J['headTop'] - 0.12, 0), 0.10)}
+    for side, sx in (('L', -1), ('R', 1)):
+        sh = (sx * J['shX'], J['shY'], 0); el = (sx * (J['shX'] + J['elX']), J['shY'] - J['elDY'], 0); wr = (sx * J['wristX'], J['wristY'], 0)
+        hp = (sx * J['hipX'], J['hipY'], 0); kn = (sx * J['hipX'], J['hipY'] - J['kneeDY'], 0); an = (sx * J['hipX'], J['ankleY'], 0.02)
+        seg['shoulder' + side] = (sh, el, 0.075); seg['elbow' + side] = (el, wr, 0.07); seg['hip' + side] = (hp, kn, 0.10); seg['knee' + side] = (kn, an, 0.08)
+    return seg
 
-def is_torso(v):
-    """leader3: the one big part that holds chest, belly, pelvis and skirt."""
-    return len(v) > 3000
+def point_seg(p, a, b):
+    a = np.array(a, float); b = np.array(b, float); ab = b - a; t = np.clip(((p - a) @ ab) / (ab @ ab), 0, 1); return np.linalg.norm(p - (a + t[:, None] * ab), axis=1), t
 
-def assign(v):
-    """One bone for a whole part, from the part's centre (metres, feet at y=0, model facing +z, x<0 is the rig's L side). Rules fitted to the skeleton in tools/build_models.py."""
-    c = (v.max(axis=0) + v.min(axis=0)) / 2; x, y = c[0], c[1]; ax = abs(x); side = 'L' if x < 0 else 'R'
-    if len(v) < 100 and 0.5 <= y < 1.0: return 'hips'                                          # leader3: the small belt buckle
-    if y >= 1.58 and ax < 0.15: return 'head'
-    if ax >= 0.24 and y >= 0.5: return ('shoulder' if y >= 1.12 else 'elbow') + side         # upper arm and pauldron -> shoulder; forearm, bracer, hand -> elbow
-    if y >= 1.3 and ax >= 0.12: return 'shoulder' + side                                       # shoulder pads follow the arm
-    if is_skirt(v): return 'hips'                                                              # the chain skirt: pelvis bone, plus a soft share of the thigh bone at the front (see skirt weights)
-    if y < 0.86 and ax >= 0.05: return ('hip' if y >= 0.42 else 'knee') + side                # thigh -> hip; shin, boot -> knee
-    if y < 0.7: return 'hips'
-    if 0.70 <= y < 1.0 and ax < 0.24: return 'hips'                                           # pelvis guards, belt, pouches
-    return 'spine'
+def skin(pos):
+    """smooth weights for every vertex: exp(-(max(0, distance - radius) / SIGMA)^2) over the allowed bones; the 4 strongest, normalised."""
+    seg = segments(); names = list(seg); W = np.zeros((len(pos), len(names)))
+    for k, n in enumerate(names):
+        a, b, r = seg[n]; d, t = point_seg(pos, a, b); W[:, k] = np.exp(-(np.maximum(0, d - r) / SIGMA) ** 2) + 1e-6
+        if n[-1] in 'LR' and n not in ('hips',):                                                       # a limb only moves vertices on its own side (and a little across the centre line)
+            side = -1 if n[-1] == 'L' else 1; W[:, k] *= np.where(pos[:, 0] * side >= -0.015, 1, np.exp(-((np.abs(pos[:, 0]) - 0.015) / 0.03) ** 2))
+    top = np.argsort(-W, axis=1)[:, :4]; w = np.take_along_axis(W, top, 1); w /= w.sum(1, keepdims=True)
+    si = np.array([[BM.BONES.index(names[j]) for j in row] for row in top], np.uint8); sw = np.round(w * 255).astype(np.int32); sw[:, 0] += 255 - sw.sum(1)
+    return si, sw.astype(np.uint8)
 
 def main():
     src = sys.argv[1]; parts, tex = load_glb(src); tex = io.BytesIO(tex); rest = sys.argv[2:]
@@ -102,42 +97,20 @@ def main():
         pos, nor, uv, idx = weld(p); base = sum(len(a) for a in P)
         P.append(pos); N.append(nor); U.append(uv); I.append(idx + base); owner.append(np.full(len(pos), k)); names.append(p['name'])
     pos = np.concatenate(P); nor = np.concatenate(N); uv = np.concatenate(U); idx = np.concatenate(I); owner = np.concatenate(owner)
-    s = BM.HEIGHT / (pos[:, 1].max() - pos[:, 1].min()); pos = (pos - [0, pos[:, 1].min(), 0]) * s
+    s = HEIGHT / (pos[:, 1].max() - pos[:, 1].min()); pos = (pos - [0, pos[:, 1].min(), 0]) * s
     pos[:, 0] -= (pos[:, 0].max() + pos[:, 0].min()) / 2; pos[:, 2] -= (pos[:, 2].max() + pos[:, 2].min()) / 2
-    bone_of = np.zeros(len(parts), int)
-    for k in range(len(parts)): bone_of[k] = BM.BONES.index(assign(pos[owner == k]))
-    si = np.zeros((len(pos), 4), np.uint8); sw = np.zeros((len(pos), 4), np.uint8)
-    si[:, 0] = bone_of[owner]; sw[:, 0] = 255
-    tor = np.isin(owner, [k for k in range(len(parts)) if is_torso(pos[owner == k])])                      # leader3: one big torso part (chest, belly, pelvis, skirt): soft weights by height -> hips below the waist, spine above, head at the collar, the front of the skirt also follows the thigh
-    if tor.any():
-        y, z, x = pos[tor, 1], pos[tor, 2], pos[tor, 0]; sm = lambda a, b, t: (lambda u: u * u * (3 - 2 * u))(np.clip((t - a) / (b - a), 0, 1))
-        wh = 1 - sm(0.86, 1.06, y); wd = 0.5 * sm(1.50, 1.62, y)
-        h = np.clip((0.80 - y) / 0.23, 0, 1); wt = np.maximum(np.clip((z + 0.02) / 0.12, 0, 1) * np.clip(np.abs(x) / 0.08, 0.35, 1), 0.85 * np.clip((np.abs(x) - 0.10) / 0.10, 0, 1) * np.clip((z + 0.12) / 0.12, 0, 1)) * h ** 0.8 * wh      # front and side panels follow the thigh, the back stays on the pelvis
-        W = np.zeros((tor.sum(), 4)); I = np.zeros((tor.sum(), 4), np.uint8)
-        I[:, 0] = BM.BONES.index('hips'); I[:, 1] = BM.BONES.index('spine'); I[:, 2] = BM.BONES.index('head')
-        I[:, 3] = np.where(x < 0, BM.BONES.index('hipL'), BM.BONES.index('hipR'))
-        W[:, 3] = wt; W[:, 0] = wh - wt; W[:, 2] = wd; W[:, 1] = 1 - wh - wd
-        W = np.clip(W, 0, None); W /= W.sum(1, keepdims=True); q = np.round(W * 255).astype(np.int32); q[:, 0] += 255 - q.sum(1)
-        si[tor] = I; sw[tor] = q.astype(np.uint8)
+    si, sw = skin(pos)
     im = Image.open(tex).convert('RGB').resize((size, size), Image.LANCZOS)
     if lift != 1.0: im = Image.fromarray((255 * (np.asarray(im, float) / 255) ** (1 / lift)).astype(np.uint8))
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
     b64 = lambda a: base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
-    arm = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])
-    for k in range(len(parts)):                                                                                # the collar pads next to the neck stay with the body (not lifted with the arms)
-        v = pos[owner == k]; c = (v.max(axis=0) + v.min(axis=0)) / 2
-        if BM.BONES[bone_of[k]].startswith('shoulder') and abs(c[0]) < 0.22 and c[1] >= 1.3: arm[owner == k] = False         # arms and shoulder pieces sit a bit higher, next to the neck (the animation was made for higher shoulders)
-    legp = np.isin(bone_of[owner], [BM.BONES.index(n) for n in ('hipL', 'hipR', 'kneeL', 'kneeR')])
-    pos[:, 1] = np.where(legp, np.interp(pos[:, 1], LEG_WARP[0], LEG_WARP[1]), np.interp(pos[:, 1], BODY_WARP[0], BODY_WARP[1])); pos[arm, 1] += ARM_UP
     nn = nor / np.maximum(np.linalg.norm(nor, axis=1, keepdims=True), 1e-9)
-    info = [{'name': names[k], 'bone': BM.BONES[bone_of[k]], 'verts': int((owner == k).sum())} for k in range(len(parts))]
+    info = [{'name': names[k], 'bone': BM.BONES[int(np.bincount(si[owner == k][:, 0]).argmax())], 'verts': int((owner == k).sum())} for k in range(len(parts))]
     out = {'n': len(pos), 'pos': b64(np.round(pos * 10000).astype(np.int16)), 'uv': b64(np.round(uv * 65535).astype(np.uint16)), 'nor': b64(np.round(nn * 127).astype(np.int8)),
            'idx': b64(idx.astype(np.uint16 if len(pos) < 65535 else np.uint32)), 'idx32': len(pos) >= 65535, 'si': b64(si), 'sw': b64(sw),
            'tex': 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode(), 'parts': info}
-    js = '// Generated by tools/build_leader_parts.py - the leader built from separate rigid parts (owner-made model). Loaded only with ?leader=1. Do not edit by hand.\nconst LEADER_PARTS = ' + json.dumps(out, separators=(',', ':')) + ';\n'
+    js = '// Generated by tools/build_leader_parts.py - the leader model (owner-made, simple clothes), smooth skinned to the stick-man skeleton. Loaded only when Settings > Leader model = New model. Do not edit by hand.\nconst LEADER_PARTS = ' + json.dumps(out, separators=(',', ':')) + ';\n'
     dst = os.path.join(os.path.dirname(__file__), '..', 'js', 'leader_parts.js'); open(dst, 'w').write(js)
-    cnt = {}
-    for k in range(len(parts)): cnt[BM.BONES[bone_of[k]]] = cnt.get(BM.BONES[bone_of[k]], 0) + 1
-    print('verts', len(pos), 'tris', len(idx) // 3, 'tex %d KB' % (len(buf.getvalue()) // 1024), 'js %d KB' % (len(js) // 1024), 'scale %.4f' % s); print('parts per bone', cnt)
+    print('verts', len(pos), 'tris', len(idx) // 3, 'tex %d KB' % (len(buf.getvalue()) // 1024), 'js %d KB' % (len(js) // 1024), 'scale %.4f' % s)
 
 if __name__ == '__main__': main()
