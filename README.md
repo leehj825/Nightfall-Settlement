@@ -437,3 +437,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v215: the horse's head is a little shorter (skull 0.36 m, muzzle 0.34 m, nose forward 0.56 m).
 - nf-v216: horse legs (all eight parts) and the body swing forward and back only; the sideways sway of the back is removed (tools/build_horse_anim.py).
 - nf-v217: horse knees/hocks bend one way only: front lower legs fold backward, hind lower legs fold forward (tools/build_horse_anim.py); before, the gallop folded the hind lower legs 40-80 degrees backward.
+- nf-v218: horse knee/hock fold (front backward, hind forward) now starts from a straight leg (the fold the pack keeps all the time is taken off); thighs/upper legs swing freely both ways.
