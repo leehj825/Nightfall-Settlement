@@ -5392,7 +5392,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       }
       root.updateMatrixWorld(true);
       const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
-      const HP = { leaderParts: [0.07, -0.28], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
+      const HP = { leaderParts: [0.07, -0.30], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
       out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
@@ -5423,7 +5423,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const done = new Uint8Array(n), spine = bi('spine');
     // 1. whole parts: the shoulder pads and the belt hang on the vest; the pauldron mostly on the vest; the top of the skirt on the vest, the hem on the thighs
     let off = 0, sy0 = 1e9, sy1 = -1e9;
-    for (let i = 0; i < n; i++) if (SW.getX(i) < 0.99) { const y = P.getY(i); if (y < sy0) sy0 = y; if (y > sy1) sy1 = y; }
+    for (let i = 0; i < n; i++) if (SW.getX(i) < 0.99 && P.getY(i) < J.hipY - 0.02) { const y = P.getY(i); if (y < sy0) sy0 = y; if (y > sy1) sy1 = y; }
     for (const part of parts) {
       let cx = 0, cy = 0; for (let i = off; i < off + part.verts; i++) { cx += Math.abs(P.getX(i)); cy += P.getY(i); } cx /= part.verts; cy /= part.verts;
       let ws = 0;
@@ -5433,13 +5433,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       off += part.verts;
     }
     for (let i = 0; i < n; i++) {
-      if (SW.getX(i) >= 0.99 || done[i]) continue;                                    // the skirt (already soft): add the vest at the top
+      if (SW.getX(i) >= 0.99 || done[i] || P.getY(i) >= J.hipY - 0.02 ) continue;       // the skirt (soft, below the pelvis): add the vest at the top
       const h = Math.max(0, Math.min(1, (sy1 - P.getY(i)) / (sy1 - sy0))), sp = 0.8 * (1 - smooth01(0, 0.5, h)), a = SW.getX(i), b = SW.getY(i);
       SI.setZ(i, spine); SW.setX(i, a * (1 - sp)); SW.setY(i, b * (1 - sp)); SW.setZ(i, sp); done[i] = 1;
     }
     // 2. the other vertices near a joint also follow the bone on the other side (up to 0.5 at the joint, 0 at the radius)
     for (let i = 0; i < n; i++) {
-      if (done[i]) continue;
+      if (done[i] || SW.getZ(i) > 0 || SW.getW(i) > 0) continue;
       const b = BONES[SI.getX(i)], side = b.endsWith('L') ? 'L' : b.endsWith('R') ? 'R' : '', s = side === 'L' ? -1 : 1, x = P.getX(i), y = P.getY(i);
       const near = (jx, jy, r) => 1 - smooth01(0, r, Math.hypot(x - jx, y - jy));
       const E = [s * (J.shX + J.elX), J.shY - J.elDY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
@@ -5456,6 +5456,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
       if (nb && w > 0.01) { SI.setY(i, bi(nb)); SW.setX(i, 1 - w); SW.setY(i, w); }
     }
+    for (let i = 0; i < n; i++) { const t = SW.getX(i) + SW.getY(i) + SW.getZ(i) + SW.getW(i); if (t > 0 && Math.abs(t - 1) > 0.001) { SW.setX(i, SW.getX(i) / t); SW.setY(i, SW.getY(i) / t); SW.setZ(i, SW.getZ(i) / t); SW.setW(i, SW.getW(i) / t); } }
     // 3. whole body: weights diffuse between the vertices of different parts that lie close together (twice), strongest at shoulders and neck, so neighbouring shells move together
     const R = 0.06, cell = new Map(), key = (x, y, z) => Math.floor(x / R) + ',' + Math.floor(y / R) + ',' + Math.floor(z / R), zone = i => {
       const x = P.getX(i), y = P.getY(i), s = x < 0 ? -1 : 1;
@@ -5577,7 +5578,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 1 = the parts as they are; 2 = + soft blending at the joint ends; 3 = + a dark under layer (a simple body under the armour); 4 = both
   const LEADER_SOFT = LEADER_MODE === 2 || LEADER_MODE === 4, LEADER_UNDER = LEADER_MODE === 3 || LEADER_MODE === 4;
   // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
-  const LEADER_JOINTS = { shX: 0.29, shY: 1.55, elX: 0.06, elDY: 0.26, hipX: 0.12, hipY: 0.92, kneeX: 0.02, kneeDY: 0.47, neckY: 1.62 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
+  const LEADER_JOINTS = { shX: 0.29, shY: 1.55, elX: 0.06, elDY: 0.32, hipX: 0.12, hipY: 0.92, kneeX: 0.02, kneeDY: 0.47, neckY: 1.62 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }

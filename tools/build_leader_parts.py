@@ -2,7 +2,7 @@
 """Builds js/leader_parts.js: the leader model made of separate parts (rigid segments) bound to the game's stick-man skeleton.
 
 usage:
-  python3 tools/build_leader_parts.py Leader2.glb [texture-size] [lift]
+  python3 tools/build_leader_parts.py leader3.glb [texture-size] [lift]
 (a .glb file holds the parts and the base colour texture)
   (lift = optional brightening of the colour texture, 1.0 = as is, 1.6 = noticeably lighter; the original is very dark)
 
@@ -64,19 +64,24 @@ def weld(p):
 
 # height warp (metres): model height -> classic stick-man height. knee, hip, shoulder, neck, head top (the head keeps its size and is only moved up)
 # arms and shoulder pieces are lifted by this much (metres); keep LEADER_JOINTS.shY in js/rig.js = 1.36 + ARM_UP + (leg lengthening 0.12)
-ARM_UP = 0.07
+ARM_UP = 0.0
 # the legs were too short: model height -> new height (knee 0.38 -> 0.45, hip 0.80 -> 0.92, everything above is moved up 12 cm; the leader is 1.92 m tall).
 # keep LEADER_JOINTS (hipY, kneeDY, neckY, shY) in js/rig.js in step with these numbers
-LEG_WARP = ([0, 0.38, 0.80, 1.80], [0, 0.45, 0.92, 1.92])
+LEG_WARP = ([0, 0.37, 0.81, 1.40, 1.80], [0, 0.45, 0.92, 1.55, 1.92])        # leader3: knee, hip, shoulder, top
 
 def is_skirt(v):
     """The two long pelvis guards (the chain skirt, parts 1 and 2): centre at hip height, near the middle, tall."""
     c = (v.max(axis=0) + v.min(axis=0)) / 2
     return 0.70 <= c[1] < 0.86 and abs(c[0]) < 0.24 and (v.max(axis=0) - v.min(axis=0))[1] > 0.30
 
+def is_torso(v):
+    """leader3: the one big part that holds chest, belly, pelvis and skirt."""
+    return len(v) > 3000
+
 def assign(v):
     """One bone for a whole part, from the part's centre (metres, feet at y=0, model facing +z, x<0 is the rig's L side). Rules fitted to the skeleton in tools/build_models.py."""
     c = (v.max(axis=0) + v.min(axis=0)) / 2; x, y = c[0], c[1]; ax = abs(x); side = 'L' if x < 0 else 'R'
+    if len(v) < 100 and 0.5 <= y < 1.0: return 'hips'                                          # leader3: the small belt buckle
     if y >= 1.58 and ax < 0.15: return 'head'
     if ax >= 0.24 and y >= 0.5: return ('shoulder' if y >= 1.12 else 'elbow') + side         # upper arm and pauldron -> shoulder; forearm, bracer, hand -> elbow
     if y >= 1.3 and ax >= 0.12: return 'shoulder' + side                                       # shoulder pads follow the arm
@@ -100,11 +105,17 @@ def main():
     for k in range(len(parts)): bone_of[k] = BM.BONES.index(assign(pos[owner == k]))
     si = np.zeros((len(pos), 4), np.uint8); sw = np.zeros((len(pos), 4), np.uint8)
     si[:, 0] = bone_of[owner]; sw[:, 0] = 255
-    sk = np.isin(owner, [k for k in range(len(parts)) if is_skirt(pos[owner == k])])                     # skirt: the back stays on the pelvis (connected), the front follows the thigh, more towards the hem
-    if sk.any():
-        y, z, x = pos[sk, 1], pos[sk, 2], pos[sk, 0]; h = np.clip((y.max() - y) / (y.max() - y.min()), 0, 1)
-        w = np.clip((z + 0.02) / 0.12, 0, 1) * np.clip(np.abs(x) / 0.08, 0.35, 1) * h ** 0.8
-        si[sk, 1] = np.where(x < 0, BM.BONES.index('hipL'), BM.BONES.index('hipR')); sw[sk, 0] = np.round(255 * (1 - w)).astype(np.uint8); sw[sk, 1] = 255 - sw[sk, 0]
+    tor = np.isin(owner, [k for k in range(len(parts)) if is_torso(pos[owner == k])])                      # leader3: one big torso part (chest, belly, pelvis, skirt): soft weights by height -> hips below the waist, spine above, head at the collar, the front of the skirt also follows the thigh
+    if tor.any():
+        y, z, x = pos[tor, 1], pos[tor, 2], pos[tor, 0]; sm = lambda a, b, t: (lambda u: u * u * (3 - 2 * u))(np.clip((t - a) / (b - a), 0, 1))
+        wh = 1 - sm(0.86, 1.06, y); wd = 0.5 * sm(1.50, 1.62, y)
+        h = np.clip((0.80 - y) / 0.23, 0, 1); wt = np.clip((z + 0.02) / 0.12, 0, 1) * np.clip(np.abs(x) / 0.08, 0.35, 1) * h ** 0.8 * wh
+        W = np.zeros((tor.sum(), 4)); I = np.zeros((tor.sum(), 4), np.uint8)
+        I[:, 0] = BM.BONES.index('hips'); I[:, 1] = BM.BONES.index('spine'); I[:, 2] = BM.BONES.index('head')
+        I[:, 3] = np.where(x < 0, BM.BONES.index('hipL'), BM.BONES.index('hipR'))
+        W[:, 3] = wt; W[:, 0] = wh - wt; W[:, 2] = wd; W[:, 1] = 1 - wh - wd
+        W = np.clip(W, 0, None); W /= W.sum(1, keepdims=True); q = np.round(W * 255).astype(np.int32); q[:, 0] += 255 - q.sum(1)
+        si[tor] = I; sw[tor] = q.astype(np.uint8)
     im = Image.open(tex).convert('RGB').resize((size, size), Image.LANCZOS)
     if lift != 1.0: im = Image.fromarray((255 * (np.asarray(im, float) / 255) ** (1 / lift)).astype(np.uint8))
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
