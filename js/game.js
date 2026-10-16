@@ -1405,8 +1405,12 @@
       return box(bone, w, L, d, m, (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2, Math.atan2(-dx, dy));
     };
     box('body', 1.7, 0.62, 0.46, coat, -0.02, 1.2, 0);                                                                                                 // body: one block
-    seg('neck', [RP.neck[0] - 0.05, RP.neck[1] - 0.05, 0], RP.head, 0.36, 0.26, coat, 0.16);                                                          // neck: one block
-    box('head', 0.58, 0.26, 0.24, coat, RP.head[0] + 0.2, RP.head[1] - 0.1, 0, -0.5);                                                                   // head: one block
+    seg('neck', [RP.neck[0] - 0.05, RP.neck[1] - 0.05, 0], RP.head, 0.38, 0.3, coat, 0.16);                                                          // neck: one block
+    { const hx = RP.head[0], hy = RP.head[1], white = M(0xf4efe4);                                                                                          // head: one larger block with eyes, ears and a forelock
+      box('head', 0.74, 0.34, 0.3, coat, hx + 0.24, hy - 0.12, 0, -0.5);
+      for (const z of [-1, 1]) { box('head', 0.06, 0.07, 0.04, white, hx + 0.12, hy - 0.04, z * 0.155, -0.5); box('head', 0.035, 0.045, 0.03, dark, hx + 0.125, hy - 0.04, z * 0.175, -0.5); box('head', 0.09, 0.22, 0.07, coat, hx - 0.02, hy + 0.2, z * 0.1, z * -0.12); box('head', 0.04, 0.14, 0.03, dark, hx - 0.01, hy + 0.2, z * 0.1, z * -0.12); }   // eye (white + pupil), ear (+ dark inner)
+      box('head', 0.1, 0.18, 0.1, dark, hx + 0.02, hy + 0.12, 0, 0.3); }
+    seg('neck', [RP.neck[0] - 0.12, RP.neck[1] + 0.2, 0], [RP.head[0] - 0.16, RP.head[1] + 0.2, 0], 0.09, 0.08, dark, 0.14);                                    // mane along the top of the neck
     box('tail', 0.1, 0.55, 0.1, dark, RP.tail[0] - 0.05, RP.tail[1] - 0.22, 0, 0.15);                                                                  // tail
     for (const sd of ['L', 'R']) {
       const z = (i) => RP['f' + sd + i][2], fu = RP['f' + sd + 'U'], fl = RP['f' + sd + 'L'], hu = RP['h' + sd + 'U'], hl = RP['h' + sd + 'L'];

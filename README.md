@@ -430,3 +430,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v208: a dead rider now lies on the ground beside the horse (the die clip lays him down; the rider group only slides off sideways to ground level; no extra tilt).
 - nf-v209: the classic horse is rigged (23 joints) and walks/gallops with the animation from the horse pack; the rider follows the bob.
 - nf-v210: the horse is simplified: 12 joints, one block each for body, neck and head, two thick parts per leg; the animation is retargeted by direction (swing) to fit.
+- nf-v211: the horse's head is larger (0.74 m) with eyes, ears and a forelock, and the neck has a mane.
