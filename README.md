@@ -408,3 +408,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v186: leader3 back to its original size; joints placed on the model's own joints.
 - nf-v187: shoulder and hip bones raised (meshes unchanged); skirt follows the legs more.
 - nf-v188: shoulders (collar pad, top of the vest) now follow the raised arm.
+- nf-v189: clavicle bones for the new leader; shoulders lift with the raised arm.

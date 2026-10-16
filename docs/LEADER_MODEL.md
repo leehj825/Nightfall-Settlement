@@ -122,3 +122,6 @@ LEADER_JOINTS: shY 1.50 (was 1.44), elDY 0.38 (elbow stays at 1.12), hipY 0.88 (
 
 ## nf-v188: shoulders lift with the arm
 Raising an arm left the shoulder (collar pad, top of the vest) behind. Now the collar pad takes 55 % of the shoulder bone (45 % stays on the vest) and the top of the vest next to each shoulder (|x| > 0.05, above shY-0.2, within 0.2 m of the joint) takes up to 55 % of that side's shoulder bone, so the shoulder rises with the arm like a clavicle. Arm and leg bones are unchanged (nf-v187).
+
+## nf-v189: real clavicle bones (clavL/clavR) for the new leader model
+Only the new leader has them: child of spine at x ±0.06, shoulder height; the shoulder bone is its child (position unchanged in the world). They are skin-only bones (13 skin bones), not in the clips: `updateClavicles` (rig.js, after `mixer.update`) rotates them from the upper-arm direction (up to 0.38 rad lift when the arm is above the horizontal, 0.25 rad forward turn when reaching forward). Weights: collar pad 85 % clavicle, shoulder armour 60 %, top of the vest next to the shoulder up to 70 %.

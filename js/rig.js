@@ -274,13 +274,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (mk === 'leaderParts') {                                                              // put the joints where this model's joints are
         const J = LEADER_JOINTS, sy = bones.spine.parent.position.y + bones.spine.position.y;
         for (const [n, sx] of [['L', -1], ['R', 1]]) {
-          bones['shoulder' + n].position.set(sx * J.shX, J.shY - sy, 0); bones['elbow' + n].position.set(sx * J.elX, -J.elDY, 0);
+          const cl = new THREE.Bone(); cl.name = 'clav' + n; cl.position.set(sx * 0.06, J.shY - sy, 0); bones.spine.add(cl); bones['clav' + n] = cl;           // clavicle: lifts the shoulder when the arm goes up (see updateClavicles)
+          cl.add(bones['shoulder' + n]); out['clav' + n] = cl;
+          bones['shoulder' + n].position.set(sx * (J.shX - 0.06), 0, 0); bones['elbow' + n].position.set(sx * J.elX, -J.elDY, 0);
           bones['hip' + n].position.set(sx * J.hipX, J.hipY - bones.hips.position.y, 0); bones['knee' + n].position.set(sx * J.kneeX, -J.kneeDY, 0);
         }
         bones.head.position.y = J.neckY - sy;
       }
       root.updateMatrixWorld(true);
-      const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
+      const skel = new THREE.Skeleton((mk === 'leaderParts' ? BONES.concat(['clavL', 'clavR']) : BONES).map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
       const HP = { leaderParts: [0.07, -0.30], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
       out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
@@ -307,7 +309,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // ----- Leader parts: close the gaps that open at the joints (the parts themselves are not changed) -----
   const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   function softenLeaderJoints(geo, parts) {                  // closes the gaps at the joints by weights only (the parts themselves are not changed)
-    const J = LEADER_JOINTS, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bi = n => BONES.indexOf(n), n = P.count;
+    const J = LEADER_JOINTS, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bi = n => n === 'clavL' ? BONES.length : n === 'clavR' ? BONES.length + 1 : BONES.indexOf(n), n = P.count;
     const done = new Uint8Array(n), pad = new Uint8Array(n), spine = bi('spine');
     // 1. whole parts: the shoulder pads and the belt hang on the vest; the pauldron mostly on the vest; the top of the skirt on the vest, the hem on the thighs
     let off = 0, sy0 = 1e9, sy1 = -1e9;
@@ -315,9 +317,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const part of parts) {
       let cx = 0, cy = 0; for (let i = off; i < off + part.verts; i++) { cx += Math.abs(P.getX(i)); cy += P.getY(i); } cx /= part.verts; cy /= part.verts;
       let ws = 0;
-      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.14) ws = cx < 0.22 ? 0.45 : 0.6;                                // the collar pad lifts with the arm (45 % of the vest stays)
+      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.14) ws = cx < 0.22 ? 0.85 : 0.6;                                // the collar pad follows the clavicle (lifts with the arm); the shoulder armour 60 % on the clavicle
       else if (part.bone === 'hips' && SW.getX(off) >= 0.99 && cy >= J.hipY - 0.08) ws = 0.75;
-      if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; if (ws === 1) pad[i] = 1; }
+      if (ws) { const cb = bi(part.bone.endsWith('L') ? 'clavL' : 'clavR'); for (let i = off; i < off + part.verts; i++) { if (cx < 0.22) { SI.setX(i, cb); SW.setX(i, 0.85); SI.setY(i, spine); SW.setY(i, 0.15); } else { SI.setY(i, cb); SW.setX(i, 1 - ws); SW.setY(i, ws); } done[i] = 1; } }
       off += part.verts;
     }
     for (let i = 0; i < n; i++) {
@@ -332,15 +334,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const near = (jx, jy, r) => 1 - smooth01(0, r, Math.hypot(x - jx, y - jy));
       const E = [s * (J.shX + J.elX), J.shY - J.elDY], K = [s * (J.hipX + J.kneeX), J.hipY - J.kneeDY];
       let nb = null, w = 0;
-      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.11) * 0.55, ws = near(s * J.shX, J.shY - 0.04, 0.30) * 0.95; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'spine'; w = ws; } }
+      if (b.startsWith('shoulder')) { const we = near(E[0], E[1], 0.11) * 0.55, ws = near(s * J.shX, J.shY - 0.04, 0.30) * 0.95; if (we >= ws) { nb = 'elbow' + side; w = we; } else { nb = 'clav' + side; w = ws; } }
       else if (b.startsWith('elbow')) { nb = 'shoulder' + side; w = near(E[0], E[1], 0.11) * 0.55; }
       else if (b.startsWith('hip') && b !== 'hips') { const wk = near(K[0], K[1], 0.12) * 0.55, wh = near(s * J.hipX, J.hipY, 0.09) * 0.5; if (wk >= wh) { nb = 'knee' + side; w = wk; } else { nb = 'hips'; w = wh; } }
       else if (b.startsWith('knee')) { nb = 'hip' + side; w = near(K[0], K[1], 0.12) * 0.55; }
       else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis; neck: the collar follows the head
         const wy = J.hipY + 0.10, ww = 0.6 * (1 - smooth01(wy - 0.04, wy + 0.12, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
         if (ww >= wn) { nb = 'hips'; w = ww; } else { nb = 'head'; w = wn; }
-        const wsh = Math.abs(x) > 0.05 && y > J.shY - 0.2 ? near((x < 0 ? -1 : 1) * J.shX, J.shY - 0.02, 0.2) * 0.55 : 0;       // the top of the vest next to the shoulder rises with the arm (shoulders lift when the arm goes up)
-        if (wsh > w) { nb = 'shoulder' + (x < 0 ? 'L' : 'R'); w = wsh; }
+        const wsh = Math.abs(x) > 0.05 && y > J.shY - 0.2 ? near((x < 0 ? -1 : 1) * J.shX, J.shY - 0.02, 0.2) * 0.7 : 0;       // the top of the vest next to the shoulder rises with the arm (shoulders lift when the arm goes up)
+        if (wsh > w) { nb = 'clav' + (x < 0 ? 'L' : 'R'); w = wsh; }
       }
       else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }
       else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
@@ -371,6 +373,13 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const [i, bs, ws] of upd) { for (let c = 0; c < 4; c++) { const b = bs[c] || 0, w = ws[c] || 0; [SI.setX, SI.setY, SI.setZ, SI.setW][c].call(SI, i, b); [SW.setX, SW.setY, SW.setZ, SW.setW][c].call(SW, i, w); } }
     }
     SI.needsUpdate = SW.needsUpdate = true;
+  }
+  const _cq = new THREE.Vector3();
+  function updateClavicles(rig) {                           // the collar bones follow the arm: when an upper arm goes above the horizontal the shoulder lifts (up to about 22 degrees) and moves forward with a reach
+    for (const [n, s] of [['L', -1], ['R', 1]]) {
+      const v = _cq.set(0, -1, 0).applyQuaternion(rig['shoulder' + n].quaternion), t = Math.max(0, Math.min(1, (v.y + 0.35) / 1.1)), f = Math.max(0, Math.min(1, v.z));
+      rig['clav' + n].rotation.set(0, -s * 0.25 * f, s * 0.38 * t);
+    }
   }
   function modelMesh(key, skeleton, material) {
     const d = key === 'leaderParts' ? LEADER_PARTS : CHAR_MODELS[key];
@@ -849,7 +858,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this._ce = performance.now(); this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
-      this.mixer.update(dt);
+      this.mixer.update(dt); if (this.rig.clavL) updateClavicles(this.rig);
       this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated) this._seat();
     }
     // 말 위의 앉은 자세: 허벅지를 앞으로 벌려 안장을 감싸고 무릎을 접어 정강이가 말 옆구리로 내려오게 한다 (모션캡처 위에 덮어쓴다)
