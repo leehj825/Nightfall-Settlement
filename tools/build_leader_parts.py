@@ -63,7 +63,7 @@ def weld(p):
 
 HEIGHT = 1.9
 # joints in metres at HEIGHT (feet at y = 0, model facing +z, x < 0 is the rig's L side): measured from the model's A-pose
-JOINTS = {'shX': 0.29, 'shY': 1.54, 'elX': 0.06, 'elDY': 0.34, 'hipX': 0.11, 'hipY': 0.91, 'kneeDY': 0.41, 'neckY': 1.59, 'wristX': 0.456, 'wristY': 0.86, 'ankleY': 0.09, 'headTop': 1.9}
+JOINTS = {'shX': 0.27, 'shY': 1.60, 'elX': 0.08, 'elDY': 0.40, 'hipX': 0.11, 'hipY': 0.91, 'kneeDY': 0.41, 'neckY': 1.59, 'wristX': 0.456, 'wristY': 0.86, 'ankleY': 0.09, 'headTop': 1.9}
 SIGMA = 0.045
 
 def segments():

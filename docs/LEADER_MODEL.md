@@ -107,3 +107,6 @@ Height warp now knee 0.37→0.48, hip 0.81→0.99, shoulder 1.40→1.60, top 1.8
 - Skinning is automatic per vertex (`skin()` in the builder): weight = exp(-(max(0, distance to the bone segment - radius)/0.045)^2) over the bones of the model's A-pose skeleton (table `JOINTS`), 4 strongest kept; left/right limbs do not mix except at the centre line. So there are no separate shells to tear apart, and the joints bend smoothly.
 - The model is scaled to 1.9 m. `LEADER_JOINTS` in `js/rig.js` equals the builder's `JOINTS` (shX .29, shY 1.54, elX .06, elDY .34, hipX .11, hipY .91, kneeDY .41, neckY 1.59); fist offset `[0.09, -0.34]`.
 - To tune: change `JOINTS`/radii/`SIGMA` in the builder and the same numbers in `LEADER_JOINTS`, rebuild.
+
+## nf-v184: shoulder bone moved up
+The shoulder pivot was at 1.54 m (below the shoulder top), so raised arms swung from too low. The bone now sits at shX 0.27, shY 1.60 (neck level), elbow at elX 0.08 / elDY 0.40 (same elbow spot as before). The mesh is unchanged; only the bones and the weight segments moved (builder `JOINTS` = `LEADER_JOINTS`).
