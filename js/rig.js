@@ -274,15 +274,15 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (mk === 'leaderParts') {                                                              // put the joints where this model's joints are
         const J = LEADER_JOINTS, sy = bones.spine.parent.position.y + bones.spine.position.y;
         for (const [n, sx] of [['L', -1], ['R', 1]]) {
-          const cl = new THREE.Bone(); cl.name = 'clav' + n; cl.position.set(sx * 0.05, J.shY - sy, 0); bones.spine.add(cl); bones['clav' + n] = cl; cl.add(bones['shoulder' + n]); out['clav' + n] = cl;      // collar bone: lifts the shoulder when the arm goes up (updateClavicles)
-          bones['shoulder' + n].position.set(sx * (J.shX - 0.05), 0, 0); bones['elbow' + n].position.set(sx * J.elX, -J.elDY, 0);
+          const cl = new THREE.Bone(); cl.name = 'clav' + n; cl.position.set(sx * 0.054, J.shY - sy, 0); bones.spine.add(cl); bones['clav' + n] = cl; cl.add(bones['shoulder' + n]); out['clav' + n] = cl;      // collar bone: lifts the shoulder when the arm goes up (updateClavicles)
+          bones['shoulder' + n].position.set(sx * (J.shX - 0.054), 0, 0); bones['elbow' + n].position.set(sx * J.elX, -J.elDY, 0);
           bones['hip' + n].position.set(sx * J.hipX, J.hipY - bones.hips.position.y, 0); bones['knee' + n].position.set(sx * J.kneeX, -J.kneeDY, 0);
         }
         bones.head.position.y = J.neckY - sy;
       }
       root.updateMatrixWorld(true);
       const skel = new THREE.Skeleton((mk === 'leaderParts' ? BONES.concat(['clavL', 'clavR']) : BONES).map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
-      const HP = { leaderParts: [0.10, -0.33], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
+      const HP = { leaderParts: [0.108, -0.356], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
       out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
@@ -341,7 +341,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? Math.max(0, Math.min(1, +window.NF_LEADER || 0)) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = 'leaderParts';
   // 0 = classic stick-man; 1 = the new model (soft joints always on)
   // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
-  const LEADER_JOINTS = { shX: 0.20, shY: 1.38, elX: 0.11, elDY: 0.34, hipX: 0.11, hipY: 0.88, kneeX: 0, kneeDY: 0.41, neckY: 1.45 };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
+  const LS = 1.08, LEADER_JOINTS = { shX: 0.20 * LS, shY: 1.38 * LS, elX: 0.11 * LS, elDY: 0.34 * LS, hipX: 0.11 * LS, hipY: 0.88 * LS, kneeX: 0, kneeDY: 0.46 * LS, neckY: 1.45 * LS };      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }

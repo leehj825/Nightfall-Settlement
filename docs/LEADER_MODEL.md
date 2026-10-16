@@ -135,3 +135,6 @@ Back to automatic smooth skinning (as nf-v183/184; no clavicle bones, no part/so
 ## nf-v192: tighter limb blending, clavicle bones back
 - Limb weights (shoulder, elbow, hip, knee) now fall off along the bone axis past the joint within 4 cm (radial falloff unchanged), so the thigh/knee no longer smears over ~10 cm.
 - Skin-only clavL/clavR bones (indices 11, 12) are back for the T-pose model: weights from a collar segment (max 0.6, above y 1.28) in the builder, runtime lift by updateClavicles (rig.js).
+
+## nf-v193: knee pivot inside the thigh/shin overlap, model 8 % bigger
+The thigh meshes end at y 0.38 and the shin meshes start at 0.46 (T-pose model), so the knee pivot is now at 0.42 (kneeDY 0.46) instead of 0.47: a bent knee no longer opens the cut ends. `SCALE` 1.08 in the builder and `LS` 1.08 in rig.js scale the whole model and its joints (1.94 m). Fingers: the rig has no finger bones (classic neither); not done.

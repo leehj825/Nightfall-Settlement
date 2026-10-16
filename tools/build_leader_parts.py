@@ -62,8 +62,9 @@ def weld(p):
 
 
 HEIGHT = 1.8
+SCALE = 1.08        # the finished model is scaled up by this (1.944 m); keep LS in js/rig.js equal
 # joints in metres at HEIGHT (feet at y = 0, model facing +z, x < 0 is the rig's L side): measured from the model's A-pose
-JOINTS = {'shX': 0.20, 'shY': 1.38, 'elX': 0.11, 'elDY': 0.34, 'hipX': 0.11, 'hipY': 0.88, 'kneeDY': 0.41, 'neckY': 1.45, 'wristX': 0.20, 'wristY': 1.04, 'ankleY': 0.09, 'headTop': 1.8}
+JOINTS = {'shX': 0.20, 'shY': 1.38, 'elX': 0.11, 'elDY': 0.34, 'hipX': 0.11, 'hipY': 0.88, 'kneeDY': 0.46, 'neckY': 1.45, 'wristX': 0.20, 'wristY': 1.04, 'ankleY': 0.09, 'headTop': 1.8}
 # the model is in T-pose; these are its T-pose joints (shoulder, elbow, wrist along x). The arms are posed down at build time (see pose_arms) to the rig's rest pose
 TPOSE = {'sh': 0.20, 'el': 0.56, 'wr': 0.88, 'y': 1.375}
 ARM_DOWN = np.radians(72)
@@ -122,7 +123,7 @@ def main():
     s = HEIGHT / (pos[:, 1].max() - pos[:, 1].min()); pos = (pos - [0, pos[:, 1].min(), 0]) * s
     pos[:, 0] -= (pos[:, 0].max() + pos[:, 0].min()) / 2; pos[:, 2] -= (pos[:, 2].max() + pos[:, 2].min()) / 2
     si, sw = skin(pos); pos, nor = pose_arms(pos, nor, si, sw)
-    arm = np.isin(si[:, 0], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])
+    pos = pos * SCALE; arm = np.isin(si[:, 0], [BM.BONES.index(n) for n in ('shoulderL', 'shoulderR', 'elbowL', 'elbowR')])
     im = Image.open(tex).convert('RGB').resize((size, size), Image.LANCZOS)
     if lift != 1.0: im = Image.fromarray((255 * (np.asarray(im, float) / 255) ** (1 / lift)).astype(np.uint8))
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84, optimize=True)
