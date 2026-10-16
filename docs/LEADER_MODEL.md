@@ -138,3 +138,6 @@ Back to automatic smooth skinning (as nf-v183/184; no clavicle bones, no part/so
 
 ## nf-v193: knee pivot inside the thigh/shin overlap, model 8 % bigger
 The thigh meshes end at y 0.38 and the shin meshes start at 0.46 (T-pose model), so the knee pivot is now at 0.42 (kneeDY 0.46) instead of 0.47: a bent knee no longer opens the cut ends. `SCALE` 1.08 in the builder and `LS` 1.08 in rig.js scale the whole model and its joints (1.94 m). Fingers: the rig has no finger bones (classic neither); not done.
+
+## nf-v194: the model's own skeleton and weights (leader_skeleton.glb)
+**Replaces the automatic skinning of nf-v183-193.** The builder now reads the Mixamo-style skeleton in the .glb (65 joints, per-vertex weights) and merges the joints into the game's bones: Hips->hips; Spine/Spine1/Spine2->spine; Neck/Head->head; Shoulder->clavL/clavR; Arm->shoulder; ForeArm/Hand/fingers->elbow; UpLeg->hip; Leg/Foot/Toe->knee (Mixamo Left = +x = game R). The T-pose arms are posed 72 degrees down at build time with the arm weights. Joint positions are written into leader_parts.js ('joints') and read by rig.js (LEADER_JOINTS, collar x, fist offset), so nothing is hand-tuned. Height 1.944 m. Fingers move rigidly with the forearm (no finger bones yet). js/leader_parts.js 329 KB.
