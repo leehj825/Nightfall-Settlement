@@ -119,3 +119,6 @@ The height warps are identity again (leader 1.80 m, original leg/arm/torso lengt
 
 ## nf-v187: higher shoulder and hip bones (meshes unchanged), skirt follows the legs
 LEADER_JOINTS: shY 1.50 (was 1.44), elDY 0.38 (elbow stays at 1.12), hipY 0.88 (was 0.81), kneeDY 0.51 (knee stays at 0.37). Only the bones/pivots moved; no mesh was moved. The chain skirt takes more thigh weight (the whole front and sides, 25 % even at the top, up to 100 % at the hem); only the back centre stays on the pelvis.
+
+## nf-v188: shoulders lift with the arm
+Raising an arm left the shoulder (collar pad, top of the vest) behind. Now the collar pad takes 55 % of the shoulder bone (45 % stays on the vest) and the top of the vest next to each shoulder (|x| > 0.05, above shY-0.2, within 0.2 m of the joint) takes up to 55 % of that side's shoulder bone, so the shoulder rises with the arm like a clavicle. Arm and leg bones are unchanged (nf-v187).

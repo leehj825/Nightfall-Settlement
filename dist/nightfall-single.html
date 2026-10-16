@@ -5426,7 +5426,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const part of parts) {
       let cx = 0, cy = 0; for (let i = off; i < off + part.verts; i++) { cx += Math.abs(P.getX(i)); cy += P.getY(i); } cx /= part.verts; cy /= part.verts;
       let ws = 0;
-      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.14) ws = cx < 0.22 ? 1 : 0.6;
+      if (part.bone.startsWith('shoulder') && cy > J.shY - 0.14) ws = cx < 0.22 ? 0.45 : 0.6;                                // the collar pad lifts with the arm (45 % of the vest stays)
       else if (part.bone === 'hips' && SW.getX(off) >= 0.99 && cy >= J.hipY - 0.08) ws = 0.75;
       if (ws) for (let i = off; i < off + part.verts; i++) { SI.setY(i, spine); SW.setX(i, 1 - ws); SW.setY(i, ws); done[i] = 1; if (ws === 1) pad[i] = 1; }
       off += part.verts;
@@ -5450,6 +5450,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       else if (b === 'spine') {                                                       // waist: the bottom of the vest follows the pelvis; neck: the collar follows the head
         const wy = J.hipY + 0.10, ww = 0.6 * (1 - smooth01(wy - 0.04, wy + 0.12, y)), wn = 0.4 * smooth01(J.neckY - 0.12, J.neckY, y);
         if (ww >= wn) { nb = 'hips'; w = ww; } else { nb = 'head'; w = wn; }
+        const wsh = Math.abs(x) > 0.05 && y > J.shY - 0.2 ? near((x < 0 ? -1 : 1) * J.shX, J.shY - 0.02, 0.2) * 0.55 : 0;       // the top of the vest next to the shoulder rises with the arm (shoulders lift when the arm goes up)
+        if (wsh > w) { nb = 'shoulder' + (x < 0 ? 'L' : 'R'); w = wsh; }
       }
       else if (b === 'hips') { const wy = J.hipY + 0.10; nb = 'spine'; w = 0.5 * smooth01(wy - 0.10, wy + 0.02, y); }
       else if (b === 'head') { nb = 'spine'; w = 0.4 * (1 - smooth01(J.neckY - 0.02, J.neckY + 0.08, y)); }
