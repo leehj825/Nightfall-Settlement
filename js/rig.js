@@ -555,7 +555,19 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const mk = kind + (tier > 0 ? 1 : 0), m = wMats[mk] || (wMats[mk] = new THREE.MeshStandardMaterial({ map: isTool ? tTex : wTex, roughness: 0.6, metalness: 0.15, color: tier > 0 ? 0xfff0c8 : 0xffffff }));
     const mesh = new THREE.Mesh(geo, m); mesh.castShadow = true; return mesh;
   }
+  let gsGeo = null, gsMat = null;
+  function greatswordMesh(tier) {                                  // the owner-made great sword (js/greatsword.js), long axis +Y with the grip at the origin
+    const d = GREATSWORD;
+    if (!gsGeo) {
+      const n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2);
+      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
+      gsGeo = new THREE.BufferGeometry(); gsGeo.setAttribute('position', new THREE.BufferAttribute(P, 3)); gsGeo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); gsGeo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); gsGeo.setIndex(new THREE.BufferAttribute(unb64(d.idx, Uint16Array), 1));
+      const t = new THREE.TextureLoader().load(d.tex); t.flipY = true; gsMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0.2 });
+    }
+    const m = new THREE.Mesh(gsGeo, tier > 0 ? gsMat.clone() : gsMat); if (tier > 0) m.material.color.set(0xfff0c8); m.castShadow = true; return m;
+  }
   function makeSwordMesh(def) {
+    if (def.great && typeof GREATSWORD !== 'undefined') { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(greatswordMesh(def.tier)); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
     const wm = weaponModel('sword', def.tier);
     if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); wm.scale.setScalar((def.tier > 0 ? 1.25 : 1) * (def.great ? 1.6 : 1)); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
     const g = new THREE.Group(), inner = new THREE.Group(), len = def.tier > 0 ? 1.05 : 0.8;
