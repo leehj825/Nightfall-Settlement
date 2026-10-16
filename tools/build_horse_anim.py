@@ -3,9 +3,7 @@
 
 usage: python3 tools/build_horse_anim.py Lowpolyhorseanimationspack.glb
 
-The classic horse is a hierarchy of rigid boxes on 27 joints (see src/game/04c-horse.js). Each joint follows one bone of the .glb skeleton:
-  hips<-spine.002, mid<-spine.004, front<-spine.005, neck1<-neck.001, neck2<-neck.003, head<-skull, tail<-tail.001,
-  per leg: upper<-upper_arm|thigh, 2<-forearm|lower_leg, 3<-forefoot|hind_foot, 4<-f_toe|r_toe.
+The classic horse is a hierarchy of rigid boxes on 12 joints (see src/game/04c-horse.js): body, neck, head, tail and two parts per leg (U upper, L lower). Each joint is placed at one bone of the .glb skeleton and takes the rotation of one bone (BONES below).
 All joints rest with an identity orientation in the model frame (x forward, y up, z to the horse's right), so the animation is retargeted by world-space rotation deltas:
   delta(bone, t) = world rotation at t * world rotation at rest^-1  (in the .glb frame), turned into the model frame; a joint's local rotation = parent delta^-1 * its delta.
 Clips: 'horse walk attack 1' (a walk cycle, 1.08 s) -> walk; 'horse runcycle new' (a gallop, 0.625 s) -> run. The hips also move (bob) - stored as a translation delta.
@@ -36,10 +34,15 @@ def slerp(a, b, t):
     if d > 0.9995: r = a + (b - a) * t; return r / np.linalg.norm(r)
     th = np.arccos(d); return (np.sin((1 - t) * th) * a + np.sin(t * th) * b) / np.sin(th)
 
-BONES = [('hips', None, 'spine.002'), ('mid', 'hips', 'spine.004'), ('front', 'mid', 'spine.005'), ('neck1', 'front', 'neck.001'), ('neck2', 'neck1', 'neck.003'), ('head', 'neck2', 'skull'), ('tail', 'hips', 'tail.001')]
+def swing(a, b):
+    a = a / np.linalg.norm(a); b = b / np.linalg.norm(b); v = np.cross(a, b); c = a @ b
+    if c < -0.9999: return -np.eye(3) + 2 * np.outer(a, a)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]]); return np.eye(3) + K + K @ K / (1 + c)
+
+BONES = [('body', None, 'spine.004', 'spine.004'), ('neck', 'body', 'neck.001', ('neck.001', 'skull')), ('head', 'neck', 'skull', 'skull'), ('tail', 'body', 'tail.001', 'tail.001')]       # (name, parent, pivot bone, rotation: a bone, or a pair (from, to) of bones whose direction the part follows) in the glb
 for side in 'LR':
-    BONES += [('f%s1' % side, 'front', 'upper_arm.' + side), ('f%s2' % side, 'f%s1' % side, 'forearm.' + side), ('f%s3' % side, 'f%s2' % side, 'forefoot.' + side), ('f%s4' % side, 'f%s3' % side, 'f_toe.' + side),
-              ('h%s1' % side, 'hips', 'thigh.' + side), ('h%s2' % side, 'h%s1' % side, 'lower_leg.' + side), ('h%s3' % side, 'h%s2' % side, 'hind_foot.' + side), ('h%s4' % side, 'h%s3' % side, 'r_toe.' + side)]
+    BONES += [('f%sU' % side, 'body', 'forearm.' + side, ('forearm.' + side, 'forefoot.' + side)), ('f%sL' % side, 'f%sU' % side, 'forefoot.' + side, ('forefoot.' + side, 'f_hoof.' + side)),
+              ('h%sU' % side, 'body', 'thigh.' + side, ('thigh.' + side, 'hind_foot.' + side)), ('h%sL' % side, 'h%sU' % side, 'hind_foot.' + side, ('hind_foot.' + side, 'r_hoof.' + side))]
 P = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]], float)          # glb (x right, y up, z forward) -> model (x forward, y up, z right)
 SHIFT = 0.05                                                      # the saddle spot (glb z = -0.05) becomes x = 0
 
@@ -55,7 +58,7 @@ def main():
             M = np.eye(4); M[:3, :3] = qmat(Q) * np.array(S); M[:3, 3] = T; W[i] = (w(par[i]) if i in par else np.eye(4)) @ M; return W[i]
         for i in range(len(nodes)): w(i)
         return W
-    Wr = world({}); names = [b[0] for b in BONES]; pidx = [names.index(b[1]) if b[1] else -1 for b in BONES]; gi = [idx[b[2]] for b in BONES]
+    Wr = world({}); names = [b[0] for b in BONES]; pidx = [names.index(b[1]) if b[1] else -1 for b in BONES]; gi = [idx[b[2]] for b in BONES]; gr = [(idx[b[3]], None) if isinstance(b[3], str) else (idx[b[3][0]], idx[b[3][1]]) for b in BONES]; hip = idx['spine.002']
     toM = lambda p: (P @ np.asarray(p, float)) + np.array([SHIFT, 0, 0])
     rest = [toM(Wr[g][:3, 3]).round(4).tolist() for g in gi]
     def clip(name):
@@ -78,12 +81,15 @@ def main():
                 pose[i] = (g('translation', nd.get('translation', [0, 0, 0]), False), g('rotation', nd.get('rotation', [0, 0, 0, 1]), True), g('scale', nd.get('scale', [1, 1, 1]), False))
             W = world(pose); D = []
             for b in range(len(BONES)):
-                Rw = W[gi[b]][:3, :3]; Rr = Wr[gi[b]][:3, :3]; sc = np.linalg.norm(Rr, axis=0); Rw = Rw / np.linalg.norm(Rw, axis=0); Rr = Rr / sc
-                D.append(P @ (Rw @ Rr.T) @ P.T)
+                g0, g1 = gr[b]
+                if g1 is None:
+                    Rw = W[g0][:3, :3]; Rr = Wr[g0][:3, :3]; Rw = Rw / np.linalg.norm(Rw, axis=0); Rr = Rr / np.linalg.norm(Rr, axis=0); D.append(P @ (Rw @ Rr.T) @ P.T)
+                else:                                                                                       # follow the direction between two bones (swing only, no twist)
+                    a0 = Wr[g1][:3, 3] - Wr[g0][:3, 3]; a1 = W[g1][:3, 3] - W[g0][:3, 3]; D.append(P @ swing(a0, a1) @ P.T)
             row = []
             for b in range(len(BONES)):
                 loc = (D[pidx[b]].T @ D[b]) if pidx[b] >= 0 else D[b]; row += mq(loc).round(4).tolist()
-            qs += row; ps += (P @ (W[gi[0]][:3, 3] - Wr[gi[0]][:3, 3])).round(4).tolist()
+            qs += row; ps += (P @ (W[hip][:3, 3] - Wr[hip][:3, 3])).round(4).tolist()
         out[key] = {'dur': round(float(dur), 4), 'n': n, 'q': qs, 'p': ps}
     o = {'bones': [[names[i], pidx[i]] for i in range(len(names))], 'rest': rest, 'clips': out}
     js = '// Generated by tools/build_horse_anim.py - walk and gallop for the classic horse (from the owner-made horse animation pack). Do not edit by hand.\nconst HORSE_ANIM = ' + json.dumps(o, separators=(',', ':')) + ';\n'
