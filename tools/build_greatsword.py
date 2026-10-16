@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Builds js/greatsword.js: the great sword model (owner-made .glb: one mesh with a base colour texture).
 
-usage: python3 tools/build_greatsword.py Greatsword.glb [texture-size] [length-metres]
+usage: python3 tools/build_greatsword.py Greatsword.glb [texture-size] [length-metres, default 2.25]
 
 The .glb has the sword lying along +x (pommel at -x, tip at +x, blade wide along y). It is turned to the way js/rig.js holds weapons (long axis +Y, the grip at the origin, blade wide along x)
-and scaled to the given length (default 1.5 m). Output: GREATSWORD = { n, pos, uv, nor, idx, tex } (same packing as the CHAR_MODELS weapons)."""
+and scaled to the given length (default 2.25 m). Output: GREATSWORD = { n, pos, uv, nor, idx, tex } (same packing as the CHAR_MODELS weapons)."""
 import sys, os, json, io, base64, struct
 import numpy as np
 from PIL import Image
@@ -12,7 +12,7 @@ HANDLE = 1.3; THIN_W = 0.78; THIN_T = 0.85          # handle length factor, widt
 GT = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}; NN = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3}
 def main():
     d = open(sys.argv[1], 'rb').read(); cl = struct.unpack('<I', d[12:16])[0]; j = json.loads(d[20:20 + cl]); off = 20 + cl; bl = struct.unpack('<I', d[off:off + 4])[0]; blob = d[off + 8:off + 8 + bl]
-    size = int(sys.argv[2]) if len(sys.argv) > 2 else 512; length = float(sys.argv[3]) if len(sys.argv) > 3 else 1.5
+    size = int(sys.argv[2]) if len(sys.argv) > 2 else 512; length = float(sys.argv[3]) if len(sys.argv) > 3 else 2.25
     def acc(i):
         a = j['accessors'][i]; bv = j['bufferViews'][a['bufferView']]; n = NN[a['type']]; dt = np.dtype(GT[a['componentType']])
         return np.frombuffer(blob, dt, a['count'] * n, bv.get('byteOffset', 0) + a.get('byteOffset', 0)).reshape(-1, n).astype(np.float64)
