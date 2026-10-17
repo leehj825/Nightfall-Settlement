@@ -1,5 +1,6 @@
 (() => {
-  const setAppH = () => document.documentElement.style.setProperty('--app-h', innerHeight + 'px');       // 모바일 주소창 때문에 100vh가 실제 화면보다 큰 문제 방지
+  const adH = (typeof CFG !== 'undefined' && CFG.ADS && CFG.ADS.BANNER) ? CFG.ADS.HEIGHT : 0; if (adH) { document.documentElement.style.setProperty('--ad-h', adH + 'px'); document.body.classList.add('ad'); }
+  const setAppH = () => document.documentElement.style.setProperty('--app-h', (innerHeight - (document.body.classList.contains('titlemode') ? 0 : adH)) + 'px');       // 모바일 주소창 때문에 100vh가 실제 화면보다 큰 문제 방지
   setAppH(); addEventListener('resize', setAppH);
   // ---------- 렌더러 / 씬 ----------
   const canvas = document.getElementById('game');

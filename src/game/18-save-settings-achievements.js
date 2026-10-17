@@ -219,7 +219,7 @@
     $('startInfo').textContent = d ? `Saved game · Day ${d.day} · ${new Date(d.ts).toLocaleDateString()}` : 'Hold the night. Build the realm.';
     $('startContinue').style.display = d ? '' : 'none';
     const ngBtn = $('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
-    document.body.classList.add('titlemode'); p.style.display = 'flex';
+    document.body.classList.add('titlemode'); p.style.display = 'flex'; dispatchEvent(new Event('resize'));        // the title uses the whole screen (no ad strip)
     const go = (intent) => { try { sessionStorage.setItem('nf_intent', intent); } catch (e) { /* ignore */ } p.classList.add('out'); setTimeout(() => location.reload(), 380); };
     $('startContinue').addEventListener('click', () => go('continue'));
     $('startNew').addEventListener('click', () => go('new'));

@@ -226,7 +226,7 @@
       if (weaponMode === 'bow' && !dead && !bird && !camFront && !uiPause) {
         camera.updateMatrixWorld(); xhV.set(player.position.x + Math.sin(facing) * 12, player.position.y + 1.1, player.position.z + Math.cos(facing) * 12).project(camera);
         if (xhV.z < 1 && Math.abs(xhV.x) < 1.2 && Math.abs(xhV.y) < 1.2) {
-          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px)`;
+          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * canvas.clientWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * canvas.clientHeight).toFixed(1)}px)`;
           let lock = false; const fx = Math.sin(facing), fz = Math.cos(facing);
           for (const e of enemies) { if (e.userData.sinking) continue; const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z, d = Math.hypot(dx, dz); if (d < 26 && d > 1 && (dx * fx + dz * fz) / d > 0.985) { lock = true; break; } }
           if (lock !== xhLock) { xhLock = lock; xh.classList.toggle('lock', lock); }

@@ -1,5 +1,6 @@
 (() => {
-  const setAppH = () => document.documentElement.style.setProperty('--app-h', innerHeight + 'px');       // 모바일 주소창 때문에 100vh가 실제 화면보다 큰 문제 방지
+  const adH = (typeof CFG !== 'undefined' && CFG.ADS && CFG.ADS.BANNER) ? CFG.ADS.HEIGHT : 0; if (adH) { document.documentElement.style.setProperty('--ad-h', adH + 'px'); document.body.classList.add('ad'); }
+  const setAppH = () => document.documentElement.style.setProperty('--app-h', (innerHeight - (document.body.classList.contains('titlemode') ? 0 : adH)) + 'px');       // 모바일 주소창 때문에 100vh가 실제 화면보다 큰 문제 방지
   setAppH(); addEventListener('resize', setAppH);
   // ---------- 렌더러 / 씬 ----------
   const canvas = document.getElementById('game');
@@ -261,8 +262,9 @@
   lookAt.set(0, LOOK_H, 0);
 
   function resize() {
-    renderer.setSize(innerWidth, innerHeight, false);
-    camera.aspect = innerWidth / innerHeight;
+    const vw = canvas.clientWidth || innerWidth, vh = canvas.clientHeight || innerHeight;                  // the game area (below the ad banner)
+    renderer.setSize(vw, vh, false);
+    camera.aspect = vw / vh;
     camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
@@ -1771,7 +1773,7 @@
     const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y), dur = performance.now() - tapStart.t;
     tapStart = null;
     if (moved > 10 || dur > 450 || e.button !== 0) return;
-    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    { const cr = canvas.getBoundingClientRect(); ndc.set((e.clientX - cr.left) / cr.width * 2 - 1, -((e.clientY - cr.top) / cr.height) * 2 + 1); }
     ray.setFromCamera(ndc, camera);
     const nh = ray.intersectObjects(npcs, true);                          // 주민을 누르면 주민 카드
     if (nh.length) { let o = nh[0].object; while (o && !npcs.includes(o)) o = o.parent; if (o) { openNpcCard(o); return; } }
@@ -6173,7 +6175,7 @@
       if (weaponMode === 'bow' && !dead && !bird && !camFront && !uiPause) {
         camera.updateMatrixWorld(); xhV.set(player.position.x + Math.sin(facing) * 12, player.position.y + 1.1, player.position.z + Math.cos(facing) * 12).project(camera);
         if (xhV.z < 1 && Math.abs(xhV.x) < 1.2 && Math.abs(xhV.y) < 1.2) {
-          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px)`;
+          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * canvas.clientWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * canvas.clientHeight).toFixed(1)}px)`;
           let lock = false; const fx = Math.sin(facing), fz = Math.cos(facing);
           for (const e of enemies) { if (e.userData.sinking) continue; const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z, d = Math.hypot(dx, dz); if (d < 26 && d > 1 && (dx * fx + dz * fz) / d > 0.985) { lock = true; break; } }
           if (lock !== xhLock) { xhLock = lock; xh.classList.toggle('lock', lock); }
@@ -6418,7 +6420,7 @@
     $('startInfo').textContent = d ? `Saved game · Day ${d.day} · ${new Date(d.ts).toLocaleDateString()}` : 'Hold the night. Build the realm.';
     $('startContinue').style.display = d ? '' : 'none';
     const ngBtn = $('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
-    document.body.classList.add('titlemode'); p.style.display = 'flex';
+    document.body.classList.add('titlemode'); p.style.display = 'flex'; dispatchEvent(new Event('resize'));        // the title uses the whole screen (no ad strip)
     const go = (intent) => { try { sessionStorage.setItem('nf_intent', intent); } catch (e) { /* ignore */ } p.classList.add('out'); setTimeout(() => location.reload(), 380); };
     $('startContinue').addEventListener('click', () => go('continue'));
     $('startNew').addEventListener('click', () => go('new'));
