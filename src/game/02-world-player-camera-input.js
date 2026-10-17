@@ -94,7 +94,7 @@
   let titleMode = false, titleAng = 0.6;                                 // 시작 화면: 완성된 성 마을 둘레를 천천히 도는 카메라
   let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
   function setCamMax() { DIST_MAX = stage >= 4 ? 34 : stage >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
-  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
+  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 }; let exR = 46;              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
   const setDist = d => { DIST = bird ? Math.min(150, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
@@ -130,7 +130,8 @@
   let panMid = null, panId = null;
   const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
     const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-    birdX = Math.max(-140, Math.min(140, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-140, Math.min(140, birdZ + (-rz * dx + fz * dy) * sc));
+    const ox = exActive ? EXC.x : 0, oz = exActive ? EXC.z : 0;
+    birdX = ox + Math.max(-140, Math.min(140, birdX - ox + (-rx * dx + fx * dy) * sc)); birdZ = oz + Math.max(-140, Math.min(140, birdZ - oz + (-rz * dx + fz * dy) * sc));
   };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });

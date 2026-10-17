@@ -185,7 +185,7 @@
         if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
       }
       const dx = player.position.x - EXC.x, dz = player.position.z - EXC.z, dd = Math.hypot(dx, dz);
-      if (dd > 41) { player.position.x = EXC.x + dx / dd * 41; player.position.z = EXC.z + dz / dd * 41; }
+      if (dd > exR - 5) { player.position.x = EXC.x + dx / dd * (exR - 5); player.position.z = EXC.z + dz / dd * (exR - 5); }
     } else {
       player.position.x = Math.max(-MAP, Math.min(MAP, player.position.x));
       player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));

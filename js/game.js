@@ -245,7 +245,7 @@
   let titleMode = false, titleAng = 0.6;                                 // 시작 화면: 완성된 성 마을 둘레를 천천히 도는 카메라
   let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
   function setCamMax() { DIST_MAX = stage >= 4 ? 34 : stage >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
-  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
+  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 }; let exR = 46;              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
   const setDist = d => { DIST = bird ? Math.min(150, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
@@ -281,7 +281,8 @@
   let panMid = null, panId = null;
   const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
     const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-    birdX = Math.max(-140, Math.min(140, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-140, Math.min(140, birdZ + (-rz * dx + fz * dy) * sc));
+    const ox = exActive ? EXC.x : 0, oz = exActive ? EXC.z : 0;
+    birdX = ox + Math.max(-140, Math.min(140, birdX - ox + (-rx * dx + fx * dy) * sc)); birdZ = oz + Math.max(-140, Math.min(140, birdZ - oz + (-rz * dx + fz * dy) * sc));
   };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1534,7 +1535,7 @@
     updateHud();
   }
   function toggleBird() {
-    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = 58; pitch = 1.3; birdX = exActive ? EXC.x : 0; birdZ = exActive ? EXC.z : 0; }
+    if (!bird) { savedView = { d: DIST, p: pitch }; bird = true; DIST = exActive ? 58 + (exR - 46) * 1.2 : 58; pitch = 1.3; birdX = exActive ? EXC.x : 0; birdZ = exActive ? EXC.z : 0; }
     else { bird = false; if (savedView) { DIST = savedView.d; pitch = savedView.p; } }
     document.getElementById('birdBtn').classList.toggle('on', bird);
     toast(bird ? "Map view - drag to turn, two fingers (or right-drag) to move, pinch to zoom in close. Press again to return" : 'Back to the hero view');
@@ -1775,10 +1776,11 @@
     if (moved > 10 || dur > 450 || e.button !== 0) return;
     { const cr = canvas.getBoundingClientRect(); ndc.set((e.clientX - cr.left) / cr.width * 2 - 1, -((e.clientY - cr.top) / cr.height) * 2 + 1); }
     ray.setFromCamera(ndc, camera);
+    if (wbPlacing && exActive) { const gq = new THREE.Vector3(); if (ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gq)) { placeBands(gq.x, gq.z); return; } }
     const nh = ray.intersectObjects(npcs, true);                          // 주민을 누르면 주민 카드
     if (nh.length) { let o = nh[0].object; while (o && !npcs.includes(o)) o = o.parent; if (o) { openNpcCard(o); return; } }
     const gp = new THREE.Vector3();
-    const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);      // 건물 주변을 눌러도 열리도록 지면 좌표로도 판정
+    const onGround = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp);
     if (nmActive && builtBuildings('market').length && (ray.intersectObjects(builtBuildings('market'), true).length || (onGround && builtBuildings('market').some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) nightMerchantMenu();
     else if (smiths().length && (ray.intersectObjects(smiths(), true).length || (onGround && smiths().some(m => Math.hypot(gp.x - m.position.x, gp.z - m.position.z) < m.userData.radius + 0.3)))) openSmith();
     else if (e.pointerType === 'mouse' && !dead && !uiPause && !eventOpen) attack();                    // 마우스 클릭만 기본 공격 (터치는 공격 버튼으로: 병사를 잘못 누르지 않게)
@@ -3081,7 +3083,28 @@
     markRing.userData.cone.position.y = 2.6 * (u.boss ? 1.8 : 1) + Math.sin(t * 6) * 0.15;
   }
   const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
-  let wbOpen = -1, wbBarHtml = '', wbSel = -1, wbAll = false, wbMoveFor = -1;
+  let wbOpen = -1, wbBarHtml = '', wbSel = -1, wbAll = false, wbMoveFor = -1, wbPlacing = false;
+  // ---------- 전투단 진지 (원정): 'Place' 를 누르고 땅을 누르면 고른 전투단이 그 자리에 줄지어 서서 지킨다. 'Follow' 는 다시 따라오게 한다 ----------
+  var bandPost = {};
+  const bandSlot = (n) => npcs.filter(x => x.escort && x.warband === n.warband).indexOf(n);
+  function postMarks() {
+    for (const k of Object.keys(bandPost)) { const p = bandPost[k]; if (!exActive || !p.mark) continue; p.mark.userData.cloth.rotation.y = Math.sin(performance.now() / 300 + +k) * 0.3; }
+  }
+  function setBandPost(i, x, z) {
+    let p = bandPost[i];
+    if (!p) { const g = new THREE.Group(), col = new THREE.Color(wbi(i).color), ring = new THREE.Mesh(new THREE.RingGeometry(3.4, 4.0, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 6, 5), lampPostMat), cloth = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.3, 0.05), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.12; pole.position.y = 3; cloth.position.set(1.05, 5.3, 0); g.add(ring, pole, cloth); g.userData.cloth = cloth; scene.add(g); exMeshes.push(g); p = bandPost[i] = { x, z, mark: g }; }
+    p.x = x; p.z = z; p.mark.position.set(x, groundY(x, z, 1) || 0, z);
+  }
+  function clearBandPost(i) { const p = bandPost[i]; if (!p) return; scene.remove(p.mark); delete bandPost[i]; }
+  function clearAllPosts() { for (const k of Object.keys(bandPost)) clearBandPost(k); wbPlacing = false; }
+  function placeBands(x, z) {                                              // 땅을 눌렀다: 고른 전투단들을 그 자리에 (여럿이면 가로로 나란히)
+    const tgt = wbOrderTargets(); wbPlacing = false; wbBarHtml = ''; renderWbBar(); if (!tgt.length) return;
+    const lim = exR - 7, hx = x - EXC.x, hz = z - EXC.z, hd = Math.hypot(hx, hz); if (hd > lim) { x = EXC.x + hx / hd * lim; z = EXC.z + hz / hd * lim; }
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    tgt.forEach((b, k) => { const off = (k - (tgt.length - 1) / 2) * 11; setBandPost(b, x + rx * off, z + rz * off); });
+    toast(tgt.length === 1 ? `${wbi(tgt[0]).name} holds that ground` : 'The bands take their ground'); Snd.play('click');
+  }
   function renderWbBar() {
     const show = !dead && !uiPause;                                  // 원정 중에도 보인다 (함께 간 전투단만)
     let html = '';
@@ -3090,6 +3113,7 @@
       const hurt = m.filter(n => n.down).length, sel = !exActive && bringing(i);
       html += `<button class="wbchip${sel ? ' sel' : ''}${wbSel === i ? ' pick' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${bannerOf(i) >= 0 ? `<s style="color:${CFG.BANNER.COLORS[bannerOf(i)]}">${CFG.BANNER.NAMES[bannerOf(i)][0]}</s>` : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
     }
+    if (html && exActive) html = `${exActive.prep ? '<button class="wbbegin" data-begin="1" title="End the preparation: the foe attacks">&#9876; Begin</button>' : ''}<button class="wbplace${wbPlacing ? ' on' : ''}" data-place="1" title="Then tap the ground">&#8982; ${wbPlacing ? 'Tap ground' : 'Place'}</button><button class="wbfollow" data-follow="1" title="Come back to the commander">&#9873; Follow</button>` + html;
     if (html) html += `<button class="wbmark${markedFoe ? ' on' : ''}" data-mark="1" title="Mark the foe (Y)">&#9678; Mark</button>`;
     if (html) {                                                          // 명령 띠: 고른 전투단(없거나 All 이면 전체)에게 바로 내린다. 창을 열 필요가 없다
       const tgt = wbOrderTargets(), cur = tgt.length && tgt.every(b => warbandOrder(b) === warbandOrder(tgt[0])) ? warbandOrder(tgt[0]) : '';
@@ -3105,6 +3129,9 @@
     toast(`${tgt.length === 1 ? wbi(tgt[0]).name : 'The whole host'}: ${WB_ORDER_LABEL[o]}`); Snd.play('click'); wbBarHtml = ''; renderWbBar();
   }
   wbBar.addEventListener('pointerdown', e => {
+    if (e.target.closest('[data-begin]')) { e.preventDefault(); e.stopPropagation(); endPrep(''); return; }
+    if (e.target.closest('[data-place]')) { e.preventDefault(); e.stopPropagation(); wbPlacing = !wbPlacing; if (wbPlacing) toast(`Tap the ground to place ${wbOrderTargets().length === 1 ? wbi(wbOrderTargets()[0]).name : 'the bands'}`); wbBarHtml = ''; renderWbBar(); return; }
+    if (e.target.closest('[data-follow]')) { e.preventDefault(); e.stopPropagation(); const tg = wbOrderTargets(); tg.forEach(clearBandPost); wbPlacing = false; toast('Following you'); wbBarHtml = ''; renderWbBar(); return; }
     if (e.target.closest('.wbmark')) { e.preventDefault(); e.stopPropagation(); toggleMark(); return; }
     const q = e.target.closest('[data-ordq]'); if (q) { e.preventDefault(); e.stopPropagation(); issueOrder(q.dataset.ordq); return; }
     if (e.target.closest('[data-all]')) { e.preventDefault(); e.stopPropagation(); wbAll = !wbAll; if (wbAll) wbSel = -1; wbBarHtml = ''; renderWbBar(); return; }
@@ -3166,7 +3193,7 @@
     else { const r1 = t.closest('.wr1'), li = r1 && r1.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) { openNpcCard(n); cardBackWb = i; } } }
     e.stopPropagation();
   });
-  setInterval(renderWbBar, 600);
+  setInterval(() => { renderWbBar(); postMarks(); }, 600);
   // ---------- 아침 이벤트: 선택에 따라 득실이 갈리는 짧은 사건 (창이 열려 있는 동안 시간이 멈춘다) ----------
   let eventOpen = false, pendingRaiders = 0; const eventQueue = [];
   const evEl = document.getElementById('eventPanel'), evBtns = document.getElementById('evBtns');
@@ -4799,7 +4826,7 @@
         const f = camera.getWorldDirection(new THREE.Vector3()), tx = near.position.x - player.position.x, tz = near.position.z - player.position.z;
         const rel = Math.atan2(tx * -f.z + tz * f.x, tx * f.x + tz * f.z); arrow = ` ${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(rel / (Math.PI / 4)) + 8) % 8]}${Math.round(nd0)}m`;
       }
-      const t = exActive.training ? `Training Field · ☠${foes.length} · kills ${exStats.kills} · ✊${Math.round(courageOf())}` : `${exActive.dest.name} · home in ${mm}:${ss} · 🎁${chests.length}${arrow} · ☠${foes.length} · ✊${Math.round(courageOf())}${exCamp ? (exCamp.broken ? ' · camp broken ✔' : exCamp.alarm ? ' · ALARM' : ' · chief alive') : ''}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
+      const t = exActive.training ? `Training Field · ☠${foes.length} · kills ${exStats.kills} · ✊${Math.round(courageOf())}` : `${exActive.dest.name} · home in ${mm}:${ss} · 🎁${chests.length}${arrow} · ☠${foes.length} · ✊${Math.round(courageOf())}${exCamp ? (exCamp.broken ? ' · camp broken ✔' : exCamp.alarm ? ' · ALARM' : exActive.prep ? ' · PREPARING' : ' · chief alive') : ''}`; if (t !== raidTxt) { raidTxt = t; raidTxtEl.textContent = t; raidEl.className = 'soon'; } return; }
     if (night) {
       if (isRaid(nd)) { text = `🌑 Blood Moon raid: ${realmDef(realmOfNight(nd)).short}`; cls = 'blood'; }
       else { const left = nextRaidFrom(nd + 1) - nd, tp = nightTypeOf(nd); text = `${tp === 'calm' ? 'Quiet night' : NIGHT_INFO[tp][0]} · ${left} day${left > 1 ? 's' : ''} until the next big raid`; cls = left <= 1 ? 'soon' : ''; }
@@ -4994,27 +5021,30 @@
     return { cx, cz, R, towers, banner, fire, solids, gate, ram, cat, ladders, oil, drops: [], load: { ...siegeLoad }, alarm: false, broken: false };
   }
   function buildZone(d) {
-    const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
+    exR = d.training ? (d.siege ? 80 : 62) : d.castle ? 80 : d.camp && (d.bands >= 2 || d.camp.radius >= 15) ? 62 : 46;          // 큰 전투일수록 들판이 넓다
+    const big = exR / 46, cnt = (n) => Math.round(n * big * big * 0.75), campDz = Math.round((exR - 46) * 0.3);
+    const geo = new THREE.CircleGeometry(exR, 56); geo.rotateX(-Math.PI / 2);
     const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.tint, flatShading: true, roughness: 1 }));
     ground.position.set(EXC.x, 0.02, EXC.z); ground.receiveShadow = true; exAdd(ground, false);
-    for (let i = 0; i < 26; i++) {                                   // 지역 테두리: 큰 바위들
-      const a = i / 26 * Math.PI * 2, s = rand(1.4, 2.4), r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
-      r.position.set(EXC.x + Math.cos(a) * 44, s * 0.5, EXC.z + Math.sin(a) * 44); r.castShadow = true; exAdd(r, false);
+    const nRim = Math.round(26 * big);
+    for (let i = 0; i < nRim; i++) {                                 // 지역 테두리: 큰 바위들
+      const a = i / nRim * Math.PI * 2, s = rand(1.4, 2.4), r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
+      r.position.set(EXC.x + Math.cos(a) * (exR - 2), s * 0.5, EXC.z + Math.sin(a) * (exR - 2)); r.castShadow = true; exAdd(r, false);
     }
     const flag = new THREE.Group();                                   // 귀환 깃발 (입구)
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4, 6), lampPostMat); pole.position.y = 2;
     const cloth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.05), flagMat); cloth.position.set(0.7, 3.5, 0);
-    flag.add(pole, cloth); flag.position.set(EXC.x, 0, EXC.z - 36); exAdd(flag, false);
-    const taken = [{ x: EXC.x, z: EXC.z - 34, r: 7 }];
+    flag.add(pole, cloth); flag.position.set(EXC.x, 0, EXC.z - (exR - 10)); exAdd(flag, false);
+    const taken = [{ x: EXC.x, z: EXC.z - (exR - 12), r: 7 + (exR - 46) * 0.3 }];
     const spot = (rad) => {                                           // 겹치지 않는 위치 찾기
       for (let k = 0; k < 40; k++) {
-        const a = rand(0, 6.28), rr = Math.sqrt(Math.random()) * 38, x = EXC.x + Math.cos(a) * rr, z = EXC.z + Math.sin(a) * rr;
+        const a = rand(0, 6.28), rr = Math.sqrt(Math.random()) * (exR - 8), x = EXC.x + Math.cos(a) * rr, z = EXC.z + Math.sin(a) * rr;
         if (taken.every(t => Math.hypot(x - t.x, z - t.z) > t.r + rad)) { taken.push({ x, z, r: rad }); return { x, z }; }
       }
-      return { x: EXC.x + rand(-30, 30), z: EXC.z + rand(-20, 30) };
+      return { x: EXC.x + rand(-30, 30) * big, z: EXC.z + rand(-20, 30) * big };
     };
     exCamp = null; const inner = [];
-    if (d.camp) { const cx = EXC.x, cz = EXC.z + 6; exCamp = buildBanditCamp(d, cx, cz, inner); taken.push({ x: cx, z: cz, r: d.camp.radius + 2.5 }); }
+    if (d.camp) { const cx = EXC.x, cz = EXC.z + 6 + campDz; exCamp = buildBanditCamp(d, cx, cz, inner); taken.push({ x: cx, z: cz, r: d.camp.radius + 2.5 }); }
     const innerSpot = (rad) => {                                      // 야영지 안쪽의 빈 자리
       const C = exCamp; if (!C) return spot(rad);
       for (let k = 0; k < 40; k++) {
@@ -5023,8 +5053,8 @@
       }
       return spot(rad);
     };
-    for (let i = 0; i < d.trees; i++) { const o = makeTree(), p = spot(1.8); o.position.set(p.x, 0, p.z); exAdd(o, true); }
-    for (let i = 0; i < d.rocks; i++) { const o = makeRock(), p = spot(1.6); o.position.set(p.x, 0, p.z); exAdd(o, true); }
+    for (let i = 0, nT = cnt(d.trees); i < nT; i++) { const o = makeTree(), p = spot(1.8); o.position.set(p.x, 0, p.z); exAdd(o, true); }
+    for (let i = 0, nR = cnt(d.rocks); i < nR; i++) { const o = makeRock(), p = spot(1.6); o.position.set(p.x, 0, p.z); exAdd(o, true); }
     for (let i = 0; i < d.ore; i++) {
       const o = makeRock(), p = spot(1.8); o.scale.setScalar(1.25); o.userData.radius *= 1.25; o.userData.ore = true;
       o.traverse(m => { if (m.isMesh) m.material = oreMat; });
@@ -5055,8 +5085,12 @@
   function cleanupZone() {
     for (const o of exMeshes.concat(exObjs)) scene.remove(o);
     if (exCamp) for (const d of exCamp.drops || []) { scene.remove(d.ring); scene.remove(d.ball); }
-    exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null; for (const n of npcs) n.ramCrew = false;
+    clearAllPosts(); exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null; for (const n of npcs) n.ramCrew = false;
     for (const e of enemies.slice()) if (e.userData.ex) removeEnemy(e);
+  }
+  function endPrep(why) {
+    if (!exActive || !exActive.prep) return;
+    exActive.prep = false; toast(why ? `${why} The battle begins!` : 'The battle begins!'); Snd.play('horn'); wbBarHtml = ''; renderWbBar();
   }
   function exEnemyStep(e, u, dt) {
     const px = player.position.x - e.position.x, pz = player.position.z - e.position.z, pd = Math.hypot(px, pz);
@@ -5067,18 +5101,22 @@
       if (d < td - 1.5 && d < 10) { td = d; tx = n.position.x; tz = n.position.z; tn = n; }
     }
     const C = exCamp;
+    if (exActive && exActive.prep) {                                          // 준비 단계: 아직 싸움이 시작되지 않았다. 가까이 다가가거나 먼저 치면 끝난다
+      if (u.hp < (u.hpPrev ?? u.hp) || (C && Math.hypot(player.position.x - C.cx, player.position.z - C.cz) < C.R + 22) || near < 14) endPrep(u.hp < (u.hpPrev ?? u.hp) ? 'First blood!' : 'The foe has seen you!');
+    }
+    const prep = !!(exActive && exActive.prep);
     if (u.tower) {                                                            // 망루 궁수: 제자리에서 사거리 안의 상대를 쏜다
       u.atkAnimCd -= dt; u.anim.base('idle', 0);
-      if (near < 22 && !(C && C.broken) && !(u.stunT > 0)) { e.lookAt(tx, e.position.y, tz); u.range = 20; archerStep(e, u, dt); }
+      if (near < 22 && !prep && !(C && C.broken) && !(u.stunT > 0)) { e.lookAt(tx, e.position.y, tz); u.range = 20; archerStep(e, u, dt); }
       return;
     }
     if (C && u.camp && u.hp < (u.hpPrev ?? u.hp)) campAlarm();                // 맞으면 경보
     u.hpPrev = u.hp;
     if (C && u.camp) {                                                        // 야영지 병사: 가까이 오거나 경보가 울리면 달려들고, 아니면 자리를 지킨다
       const was = u.aggro;
-      u.aggro = C.broken ? false : (u.aggro ? near < 26 : near < (C.alarm ? 32 : 12));
+      u.aggro = C.broken || prep ? false : (u.aggro ? near < 26 : near < (C.alarm ? 32 : 12));
       if (u.aggro && !was) campAlarm();
-    } else u.aggro = exActive ? (u.aggro ? near < 24 : near < 13) : false;
+    } else u.aggro = exActive && !prep ? (u.aggro ? near < 24 : near < 13) : false;
     let moving = false; u.escortCd = (u.escortCd || 0) - dt;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
     else if (u.aggro && td > 0.9 && !(u.stunT > 0)) {
@@ -5091,7 +5129,7 @@
     if (C) exPush(e, u.r);
     if (u.archer && u.aggro) { u.range = 14; archerStep(e, u, dt); }
     const dx = e.position.x - EXC.x, dz = e.position.z - EXC.z, dd = Math.hypot(dx, dz);
-    if (dd > 42) { e.position.x = EXC.x + dx / dd * 42; e.position.z = EXC.z + dz / dd * 42; }
+    if (dd > exR - 4) { e.position.x = EXC.x + dx / dd * (exR - 4); e.position.z = EXC.z + dz / dd * (exR - 4); }
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
     if (td < (tn ? 0.45 : PLAYER_R) + u.r + 0.15) {
       if (tn) { if (u.escortCd <= 0 && !(u.stunT > 0)) { u.escortCd = 0.9; damageEscort(tn, u.contact * 0.7); } }
@@ -5276,7 +5314,7 @@
       if (od < m && od > 1e-4) { n.position.x = o.position.x + ox / od * m; n.position.z = o.position.z + oz / od * m; }
     }
     const cx = n.position.x - EXC.x, cz = n.position.z - EXC.z, cd = Math.hypot(cx, cz);
-    if (cd > 41) { n.position.x = EXC.x + cx / cd * 41; n.position.z = EXC.z + cz / cd * 41; }
+    if (cd > exR - 5) { n.position.x = EXC.x + cx / cd * (exR - 5); n.position.z = EXC.z + cz / cd * (exR - 5); }
     return d;
   }
   function escortStep(dt) {
@@ -5285,8 +5323,10 @@
     n.atkCd -= dt;
     if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
     const ord = orderOf(n);                                                                     // 명령: Stand firm 은 그 자리를 지킨다, Withdraw 는 근접병이 싸우지 않고 곁에 붙는다, Charge 는 멀리서 달려든다
-    if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
-    let foe = null, bd = ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
+    const post = ord !== 'withdraw' && n.warband >= 0 ? bandPost[n.warband] : null;                  // 전투단 진지: 정해 준 자리에 줄지어 선다
+    if (post) { const k = bandSlot(n); n.hold = { x: post.x + ((k % 5) - 2) * 1.9, z: post.z - Math.floor(k / 5) * 1.7 }; }
+    else if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
+    let foe = null, bd = post ? (ord === 'charge' ? 18 : ord === 'stand' ? 9 : 13) : ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
     for (const e of enemies) {
       if (ord === 'withdraw' && n.role === 'melee') break;
       if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
@@ -5464,16 +5504,16 @@
       if (d.castle) { const G = siegeGear(); siegeLoad = { ram: Math.min(1, G.ram), ladder: Math.min(CFG.SIEGE.LADDER_MAX, G.ladder), catapult: Math.min(1, G.catapult) }; G.ram -= siegeLoad.ram; G.ladder -= siegeLoad.ladder; G.catapult -= siegeLoad.catapult; }
       else siegeLoad = { ram: 0, ladder: 0, catapult: 0 };
       exStats = { kills: 0, t0: performance.now() };
-      buildZone(d);
+      buildZone(d); if (d.camp && exR > 46) { exActive.prep = true; setTimeout(() => toast('Preparation: Place your bands, then Begin the assault'), 3000); }
       if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder || siegeLoad.catapult ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}${siegeLoad.catapult ? ', catapult' : ''}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
       const party = escortPool().filter(n => inParty(n)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
         n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);                    // 원정 직업으로 바꾼다 (마을 직업은 clsHome 에 남는다)
-        n.escort = true; n.hold = null; n.position.set(EXC.x + ((i % 6) - 2.5) * 1.8, 0, EXC.z - 31 - Math.floor(i / 6) * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+        n.escort = true; n.hold = null; n.position.set(EXC.x + ((i % 6) - 2.5) * 1.8, 0, EXC.z - (exR - 15) - Math.floor(i / 6) * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
       exActive.party = party.length; if (d.march) { const ml = marchOut(d); exActive.marchLines = ml; setTimeout(() => showTripReport(`${d.march}d march`, ml.concat(`Provisions: ${marchCost} food`)), 1800); } if (party.length && !npcs.some(n => n.role !== 'citizen' && !party.includes(n)) && (story.guardWarn = (story.guardWarn || 0) + 1) <= 3) setTimeout(() => toast('No soldiers left at home'), 3200);       // 처음 세 번만 알린다
-      player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
+      player.position.set(EXC.x, 0, EXC.z - (exR - 13)); facing = 0; player.rotation.y = 0; yaw = 0;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       exEnding = false; updateExUi(); toast(d.raid ? `${d.name}: break the camp` : `${d.name}: find the chests`); Snd.play('horn');
     });
@@ -5854,15 +5894,15 @@
       const siege = mode === 'siege', dest = siege ? TRAIN_SIEGE : TRAIN_DEST;
       exActive = { dest, training: true, night: false, ret: { x: player.position.x, z: player.position.z }, res0: { ...res } };
       siegeLoad = siege ? { ram: 1, ladder: CFG.SIEGE.LADDER_MAX, catapult: 1 } : { ram: 0, ladder: 0, catapult: 0 }; exStats = { kills: 0, t0: performance.now(), battle: null };       // 공성 연습: 장비는 소모되지 않는다
-      buildZone(dest);
+      buildZone(dest); if (siege) exActive.prep = true;
       const party = escortPool(), bands = [...new Set(party.map(n => n.warband))].sort((a, b) => (a < 0 ? 99 : bannerOf(a) >= 0 ? bannerOf(a) * 10 + a : 50 + a) - (b < 0 ? 99 : bannerOf(b) >= 0 ? bannerOf(b) * 10 + b : 50 + b));
       bands.forEach((bi, row) => {                                              // 전투단마다 한 줄: 왼쪽에 깃발과 이름
-        const z = EXC.z - 34 + row * 3.6, mem = party.filter(n => n.warband === bi), col = bi >= 0 ? warbandColor(bi) : '#9aa0aa';
+        const z = EXC.z - (exR - 12) + row * 3.6, mem = party.filter(n => n.warband === bi), col = bi >= 0 ? warbandColor(bi) : '#9aa0aa';
         const g = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4, 6), lampPostMat), cloth = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.05), new THREE.MeshStandardMaterial({ color: new THREE.Color(col), flatShading: true }));
         pole.position.y = 2; cloth.position.set(0.6, 3.4, 0); g.add(pole, cloth);
         const lbl = textSprite(bi >= 0 ? warbandName(bi) + (bannerOf(bi) >= 0 ? ` (${CFG.BANNER.NAMES[bannerOf(bi)]})` : '') : 'Levies', col, 3.4, 0.9, 'bold 52px sans-serif'); lbl.position.set(0, 4.6, 0); g.add(lbl);
         g.position.set(EXC.x - 10, 0, z); exAdd(g, false);
-        if (siege) { const mem2 = party.filter(n => n.warband === bi); mem2.forEach((n, j) => { npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n); n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n); n.escort = true; n.hold = null; n.parade = null; n.position.set(EXC.x + ((j % 6) - 2.5) * 1.8, 0, EXC.z - 31 - row * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false; n.hp = n.maxHp; }); return; }
+        if (siege) { const mem2 = party.filter(n => n.warband === bi); mem2.forEach((n, j) => { npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n); n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n); n.escort = true; n.hold = null; n.parade = null; n.position.set(EXC.x + ((j % 6) - 2.5) * 1.8, 0, EXC.z - (exR - 15) - row * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false; n.hp = n.maxHp; }); return; }
         mem.forEach((n, j) => {
           npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
           n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);
@@ -5870,7 +5910,7 @@
         });
       });
       exActive.party = party.length;
-      player.position.set(EXC.x, 0, EXC.z - 24); facing = 0; player.rotation.y = 0; yaw = 0; DIST = Math.min(DIST_MAX, 26); pitch = 0.95;
+      player.position.set(EXC.x, 0, EXC.z - (exR - 22)); facing = 0; player.rotation.y = 0; yaw = 0; DIST = Math.min(DIST_MAX, 26); pitch = 0.95;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       exEnding = false; updateExUi(); toast(siege ? 'Siege practice: break the gate, take the keep. Gear is not used up' : `Training Field: ${party.length} soldiers on parade. Pick a practice battle`); Snd.play('horn');
     });
@@ -6134,7 +6174,7 @@
         if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
       }
       const dx = player.position.x - EXC.x, dz = player.position.z - EXC.z, dd = Math.hypot(dx, dz);
-      if (dd > 41) { player.position.x = EXC.x + dx / dd * 41; player.position.z = EXC.z + dz / dd * 41; }
+      if (dd > exR - 5) { player.position.x = EXC.x + dx / dd * (exR - 5); player.position.z = EXC.z + dz / dd * (exR - 5); }
     } else {
       player.position.x = Math.max(-MAP, Math.min(MAP, player.position.x));
       player.position.z = Math.max(-MAP, Math.min(MAP, player.position.z));
@@ -6446,7 +6486,7 @@
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
   if (!document.body.classList.contains('titlemode')) setTimeout(hideBootCover, 300);        // not the title screen (continue / new game / debug): show the game itself
-  if (/[?&]debug/.test(location.search)) window.__nf = { createFence, createWall, get mvSubs() { return mv.subs; }, showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  if (/[?&]debug/.test(location.search)) window.__nf = { get bandPost() { return bandPost; }, createFence, createWall, get mvSubs() { return mv.subs; }, showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   // ---------- Model field: a separate flat field to look at characters, mounts and your own .glb files with a free camera (Settings > Model field) ----------
   const mv = { scene: null, cam: null, subs: [], sel: 'all', weapon: 'sword', mounted: false, yaw: 0.5, pitch: 0.25, dist: 6, target: new THREE.Vector3(0, 1, 0), auto: false, action: 'idle', gl: [] };
   function mvInit() {
