@@ -9,7 +9,7 @@
   let playerClass = null, order = 'guard', rallyT = 0;
   const perks = {};                                                  // 시대 -> 퍼크 id
   // 주인공 성장: 처치·원정·생존으로 경험치를 얻고, 레벨이 오를 때마다 세 가지 중 하나를 고른다 (유물을 찾으면 보너스 선택)
-  const ST0 = () => ({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0, standard: 0, lunge: 0, impale: 0, evade: 0, vault: 0, stride: 0 });      // 영웅 성장 기본값 (새 항목은 옛 저장에서 0)
+  const ST0 = () => ({ hp: 0, dmg: 0, spd: 0, dash: 0, ult: 0, leech: 0, guard: 0, rally: 0, spear: 0, fletch: 0, regen: 0, forage: 0, cleave: 0, whirl: 0, standard: 0, bannerlord: 0, warcommand: 0, horsemaster: 0, drillmaster: 0, lunge: 0, impale: 0, evade: 0, vault: 0, stride: 0 });      // 영웅 성장 기본값 (새 항목은 옛 저장에서 0)
   const pl = { lvl: 1, xp: 0, pend: 0, st: ST0() };
   const PL_MAX = 12, xpNeed = (l) => 40 + 35 * (l - 1);
   let diff = 'normal', ngLevel = 0;
@@ -18,18 +18,18 @@
   const scaleHp = (h) => Math.round((h * dm().hp + (dm().hp - 1) * 1.2) * 10) / 10;
   const hasPerk = (id) => Object.values(perks).includes(id);
   const pMaxHp = () => CFG.PLAYER_MAX_HP + (playerClass === 'warrior' ? 30 : playerClass === 'commander' ? -20 : 0) + 20 * pl.st.hp + (story.dusk ? 20 : 0);
-  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1) * (dashBonusT > 0 ? 1 + 0.25 * pl.st.vault : 1);
+  const pDmg = () => (playerClass === 'warrior' ? 1.25 : playerClass === 'commander' ? 0.8 : 1) * (1 + 0.15 * pl.st.dmg) * (story.dusk ? 1.1 : 1) * (dashBonusT > 0 ? 1 + 0.25 * pl.st.vault : 1) * leaderMountMul();
   const gatherYield = (t) => CFG.GATHER_YIELD[t] + (hasPerk('forager') ? 1 : 0) + (pl.st.forage >= 3 ? 1 : 0) + (pl.st.forage >= 5 ? 1 : 0);
   const fenceHp = () => CFG.FENCE_HP * (hasPerk('fortifier') ? 1.5 : 1), wallHp = () => CFG.WALL_HP * (hasPerk('engineer') ? 1.5 : 1) * (hasPerk('bastion') ? 1.25 : 1);
   const dashMul = () => (playerClass === 'warrior' ? 0.8 : 1) * (hasPerk('warlord') ? 0.75 : 1) * 0.88 ** pl.st.dash;
-  const spdMul = () => (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd) * (pl.st.stride && !enemyWithin(player.position.x, player.position.z, 20) ? 1 + 0.08 * pl.st.stride : 1);       // Long Stride: 적이 가까이 없을 때만
+  const spdMul = () => (playerMounted ? CFG.CAV.SPEED * (1 + 0.08 * pl.st.horsemaster) : 1) * (hasPerk('scout') ? 1.1 : 1) * (1 + 0.06 * pl.st.spd) * (pl.st.stride && !enemyWithin(player.position.x, player.position.z, 20) ? 1 + 0.08 * pl.st.stride : 1);       // Long Stride: 적이 가까이 없을 때만
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
   const courageOf = () => Math.max(0, Math.min(100, story.courage ?? CFG.COURAGE.START));
   const courageMul = () => { const c = courageOf() / 100, K = CFG.COURAGE; return c <= 0.7 ? K.MIN_MUL + (1 - K.MIN_MUL) * c / 0.7 : 1 + (K.MAX_MUL - 1) * (c - 0.7) / 0.3; };       // 0 = 0.75, 70 = 1.0, 100 = 1.1
   function addCourage(d) { const was = courageOf(); story.courage = Math.max(0, Math.min(100, was + d)); if (story.courage <= 0 && was > 0 && exActive) toast('The host loses heart and falls back!'); }
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * (hasPerk('veteran') ? 1.1 : 1) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * mountMul(n) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * (hasPerk('veteran') ? 1.1 : 1) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' };
@@ -69,6 +69,7 @@
   // 플레이어 채집: 버튼을 누르면 CFG.PLAYER_GATHER_TIME초 동안 들썩이며 진행 바가 차고, 이동하면 취소된다 (NPC와 같은 템포)
   let gathering = null;
   function gather() {
+    if (playerMounted) leaderDismount();
     if (dead || gathering) return;
     let best = null, bestD = GATHER_RANGE;
     for (const o of (exActive ? exObjs : obstacles)) {
@@ -108,7 +109,17 @@
     return fence;
   }
   const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
+  // Fort wall: the outermost ring (the Great Wall, half-width 40) is as tall as the gate towers (4.4 m) and cannot be jumped over: a stone body with a walkway ledge and merlons along the top
+  const isFortSpot = (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 32;
+  let fortGeo = null; const fortMat = new THREE.MeshStandardMaterial({ color: 0x8d9098, roughness: 0.9, flatShading: true });
+  function fortWallGeo() {
+    if (fortGeo) return fortGeo; const it = [], add = (w, h, d, x, y, z) => { const m = new THREE.Matrix4().makeTranslation(x, y, z); it.push([new THREE.BoxGeometry(w, h, d), m]); };
+    add(3.3, 3.9, 1.1, 0, 1.95, 0); add(3.3, 0.22, 1.5, 0, 3.95, 0);                                              // body, overhanging walkway ledge
+    for (const mx of [-1.2, -0.4, 0.4, 1.2]) add(0.55, 0.55, 1.5, mx, 4.33, 0);                                  // merlons
+    return fortGeo = mergeGeos(it);
+  }
   function createWall(x, z, rot) {              // 돌 성벽 (짙은 회색, HP 100)
+    if (isFortSpot(x, z)) { const f = new THREE.Mesh(fortWallGeo(), fortMat); f.position.set(x, 0, z); f.rotation.y = rot; f.castShadow = f.receiveShadow = true; f.userData = { type: 'fence', level: 'stone', tall: true, radius: 1.6, hp: wallHp() * 1.5, maxHp: wallHp() * 1.5 }; scene.add(f); obstacles.push(f); return f; }
     const wm = structMesh('wall'), w = wm ? new THREE.Mesh(wm.geometry, wm.material) : new THREE.Mesh(wallGeo, wallMat);       // 벽돌 성벽 모델
     w.position.set(x, wm ? 0 : 0.7, z);
     w.rotation.y = rot;

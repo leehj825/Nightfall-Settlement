@@ -333,3 +333,115 @@ During an attack the great sword is held with both hands: a two-bone arm solver 
 - nf-v141: New title screen: a slow orbit around a fully built Stage 5 castle town (display only, your save is untouched), big logo, Continue / New game / New Game+ buttons and a small Debug corner (start at stage 1-5). Choices apply after a quick reload so the game starts in a clean world.
 - nf-v142: Settings has a Main menu button that returns to the title screen (saves first).
 - nf-v143: Removed the "Upgrade Stage: Click / T" label floating above the campfire and halls.
+
+
+## Banners (Stage 5, nf-v144)
+At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart banner (up to 3 warbands each). Orders go to the whole banner, **Bring whole banner** adds its warbands to the next journey, the party cap is one larger, and soldiers of one banner fight +6% harder and take 6% less damage while another of its warbands is within 18 paces. Plan: `docs/BANNERS_PLAN.md`.
+
+**nf-v145:** the warband window has a Whole host order row, Rally Cry reaches banner soldiers anywhere, and the Training Field parade groups by banner (banner soldiers get +1 drill XP).
+
+**nf-v146:** rain and snow follow the camera zoom: the weather box grows (up to 3.2x) and gets more drops when you zoom out, so the whole town is covered. `__nf.setWeather("rain")` forces weather for tests.
+
+**nf-v147 (Stage 5 town):** new Village Plan step "Plan Seat of Power" (150 wood, 120 stone): Fountain Plaza (`plazaModel`), Muster Yard (`musterModel`, banner colour flags), two Animal Pens (`penModel`), all visual only; the Stage 5 keep gets a stair and gold flags. Debug start at Stage 5 builds them too.
+
+**nf-v148:** buildings no longer overlap the keep. The Siege Workshop is now a fixed lot in the left outer area, `findTownSpot` keeps clear of the Stage 5 keep footprint (`KEEP_HALF`) and searches a grid, and `fixKeepOverlaps` moves any building (also from old saves) that the growing keep covers. Known: random lumber camp and quarry spots can still touch towers or market-district lots.
+
+**nf-v149:** Stage 5 "Plan Great Works" (120 wood, 150 stone): Windmill (`windmillModel`, sails turn), Infirmary, Victory Monument, all visual only, placed by `findSpotNear` (grid search near a target). The Muster Yard is smaller and sits in the outer (third) layer. Sheep in the pens walk around (`lifeTick` in `04b-models.js`). Every wall ring gets four corner torch posts that light at night (`cornerLampsSync`, glow sprite and ground pool, no real lights so phones stay fast).
+
+**nf-v150:** Stage 5 finishing touches: gatehouses (`gatehouseModel`) on the gates of the second and third wall (visual only, made in `cornerLampsSync`), a "Plan Stables" step (`stableModel`, two horses wander in the paddock, 100 wood 40 stone), and the Victory Monument shows one pennant per realm you hold a site in (full size when the realm is broken).
+
+**nf-v151:** Stage 5 plan step "Plan Outer Homes (3rd ring)" (160 wood): 8 more houses inside the third wall (`findSpotNear`, ring 27 to 36), so the population cap rises by 8 (house = +1 max population). Debug start at Stage 5 now has 23 houses.
+
+**nf-v152:** Cavalry (Stage 5, needs Stables): Mount/Dismount button per soldier in the warband window; mounted men run 1.45x faster and charge for +45%. New Marshal column in the hero skill tree (Banner Lord, War Command, Horse Master, Drill Master). A soldier of each banner carries that banner's flag.
+
+**nf-v153 (walkable gaps):** Stage 5 buildings no longer block paths. Stable, windmill and infirmary moved to the wide third layer; `findSpotNear` now keeps 1.5 collision radius for walls and a 1.6 gap between buildings; the new buildings have smaller collision radii (stable 2.8, infirmary 2.8, windmill 1.9, monument 1.8, muster 3.0, pen 2.4); pens at x=+-20. Games that already built them keep the old spots (start a new debug game).
+
+**nf-v154:** the leader can ride (Stage 5 and at least one Stables built): Mount button above Jump, key M. Mounted: move x1.45 (Horse Master adds more), +5% damage, first strike after running about 1 second +45% "Charge!". Gathering or dying dismounts. Code: `toggleLeaderMount`, `leaderRideTick` in `10b-warbands.js`.
+
+**nf-v155:** riders sit on their horse (`rig.seated`, `_seat` in `js/rig.js` overrides the legs); horses have varied coats, a saddle blanket in the warband colour, and lancers and the leader wear horse armour. Stage 5 town life (`townLifeTick` in `04b-models.js`): two handcarts with a horse go back and forth on the east and west roads, five villagers stand around the fountain; all visual, day only.
+
+**nf-v156:** path safety net (`fixTightBuildings` in `04-town-planning.js`, runs with the plan tick, moves movable buildings with no walkable gap), Settings **Unstick** button (moves the leader to the town square), sheep/horses/sails/carts/villagers only animate within 60 paces of the leader, and effects for Stage 5 buildings: Windmill +4 food each morning (`CFG.WINDMILL_FOOD`), Infirmary heals wounds one extra day, Victory Monument +3 courage each morning (`CFG.MONUMENT_COURAGE`). Villagers already fill the population cap every morning, so no change was needed there.
+
+**nf-v157:** Stage 5 "Plan Training Yard" (140 wood, 80 stone): sand yard with three swaying dummies, a target and a weapon rack; +6 soldier cap per yard and up to 6 home soldiers gain +1 veteran XP every morning (`CFG.YARD_XP`, `CFG.YARD_SEATS`). Endgame (`src/game/16f-endgame.js`): when the Iron Throne falls (`story.campaignWon`) and you are home, a victory screen shows days, level, kills, population, soldiers, sites held, realms broken, buildings and stage with Keep ruling, New Game+ and Main menu; the Journal shows a final goal line for the Iron Throne.
+
+**nf-v158 (band config and control):** the warband window's **Move to…** shows all six bands with counts and moves a soldier in one tap (a full band swaps with its last member); **All at home / All journey** buttons set every soldier's class in a band at once; the warband bar tap now **selects** a band (white outline) and a second tap opens its window; a new **order strip** (All, Go, Hold, Back, Charge) sits next to Mark and gives orders to the selected band, or to the whole host when All is on or nothing is selected (banner members move together). Code: `issueOrder`, `wbOrderTargets`, `wbMoveFor` in `10b-warbands.js`.
+
+**nf-v159 (archer as a class):** every soldier can now switch between Swordsman, Spearman, Great Swordsman, Medic and **Archer** in the warband window (At home / Journey / All buttons) and on the soldier card. Switching changes the role (`syncClassRole` in `10b-warbands.js`, called from `applyGear`): health keeps its ratio, veteran XP and band stay, the bow or the melee weapon is equipped. Home and journey classes can differ, so a soldier can be a spearman at home and an archer on journeys. Mounts are dropped when a rider becomes an archer. Saved with `clsSet`.
+
+**nf-v160:** archers can ride too (Horse Archer): the Mount button now shows for swordsmen, spearmen and archers (`canMount`). Switching a rider to a class that cannot ride (great sword, medic) dismounts them at once (`dropMountIfNeeded`). Mounted archers get the speed and damage bonus; the charge bonus only applies to melee strikes.
+
+**nf-v161 (leader test model):** `?leader=1` swaps the leader for the owner's 45-part Tripo model, each part bound rigidly to one bone (`js/leader_parts.js`, built by `tools/dump_fbx_parts.js` + `tools/build_leader_parts.py`; see `docs/LEADER_MODEL.md` for the sizes and ideas). Default game and its size are unchanged.
+
+**nf-v162:** Settings has **Leader model (test)** (Classic / New parts model; saves, stores `nf_leader` in localStorage and reloads), so the Android app can test the parts model without an address flag (`?leader=0` forces classic). The warband bar (chips plus order strip) is now limited in width so it can never cover the sound and settings buttons (it did on wide screens after nf-v158), and the portrait rule keeps its own width.
+
+**nf-v163:** three leader options in Settings: Classic, **New model (own joints)** (the stick-man's shoulders, elbows, hips, knees and neck are moved to the model's joints, which stops the parts flying apart) and **New model on classic body** (parts stretched to the classic joints, same movement as the classic leader). See `docs/LEADER_MODEL.md`.
+
+**nf-v164:** the leader model now comes from `Leader2.glb` (coloured texture; `python3 tools/build_leader_parts.py Leader2.glb`; the FBX route and `tools/dump_fbx_parts.js` are gone), and the shoulders and arms are lifted next to the neck (`ARM_UP`). `js/leader_parts.js` is about 825 KB.
+
+**nf-v165:** the third leader option (New model on classic body) is removed; Settings now offers Classic or New model (old saved choices map to New model). `js/leader_parts.js` is about 738 KB.
+
+**nf-v166:** the new leader model has longer legs (about 8 cm, the leader is 1.88 m tall) and its chain skirt stays on the pelvis so it no longer opens at the back while running (`LEG_WARP`, see `docs/LEADER_MODEL.md`).
+
+**nf-v167:** the new leader's legs are longer again (hip 0.92 m, the leader is 1.92 m tall) and the chain skirt is soft skinned: the back stays connected to the pelvis while the front follows the thighs and stretches (see `docs/LEADER_MODEL.md`).
+
+**nf-v168:** Settings > Leader model now has five choices: Classic, New model, New model + soft joints, New model + under layer, New model + both. The soft joints and the under layer close the gaps that open at the joints when the rigid parts bend (the parts are not changed). `?leader=0..4`. See `docs/LEADER_MODEL.md`.
+
+**nf-v169:** the soft joint options now also close the dark band at the waist (vest and skirt) and soften the neck; the under layer is leather brown instead of near black. The plain New model and the under-layer-only option have no waist blending.
+
+**nf-v170:** stronger soft joints for the new leader (options 2 and 4): the shoulder pads, pauldron and belt hang on the vest, the top of the skirt follows the vest and the hem the thighs, and joint blends are wider. See `docs/LEADER_MODEL.md`.
+
+**nf-v171:** the under layer of the new leader (options 3 and 4) now covers every joint and gap with pills and balls (shoulders and armpits, elbows, hands, hips, knees, feet, neck, head). See `docs/LEADER_MODEL.md`.
+- nf-v172: under layer fitted inside the armour (no bulging); soft joints extended to shoulders and neck by weight diffusion.
+- nf-v173: stronger shoulder-to-body soft joints; thicker under layer.
+- nf-v174: under layer reduced to joint pieces; collar pads follow the vest fully.
+- nf-v175: shoulder armour stays attached to the back when the arm is raised.
+- nf-v176: shoulder filler of the under layer enlarged and recoloured to match the vest.
+- nf-v177: soft connection applied to all joints of the leader (option 2/4).
+- nf-v178: leader model replaced by leader3.glb (16 parts), same rig and animation.
+- nf-v179: leader options reduced to Classic/New model; arms 5 cm higher; silver shoulder pad fixed to the body.
+- nf-v180: new leader model legs longer, hips higher in the skirt, arms higher.
+- nf-v181: skirt hem higher (more thigh visible), arms 3 cm higher.
+- nf-v182: skirt side panels follow the thigh; sleeve top stays attached to the collar.
+- nf-v183: new leader model with simple clothes, automatic smooth skinning (no parts, no soft-joint hacks); leader_parts.js 316 KB.
+- nf-v184: leader shoulder bone raised to neck level (arms swing from the shoulder top).
+- nf-v185: reverted to leader3 (16 parts); arm bones raised to shoulder level instead of lifting the arm meshes.
+- nf-v186: leader3 back to its original size; joints placed on the model's own joints.
+- nf-v187: shoulder and hip bones raised (meshes unchanged); skirt follows the legs more.
+- nf-v188: shoulders (collar pad, top of the vest) now follow the raised arm.
+- nf-v189: clavicle bones for the new leader; shoulders lift with the raised arm.
+- nf-v190: stronger clavicle lift; armpit/chest no longer stretched.
+- nf-v191: new T-pose leader model on the classic bones (no clavicle).
+- nf-v192: tighter knee/hip blending (thighs not stretched); clavicle bones for the T-pose leader.
+- nf-v193: knee pivot moved into the thigh/shin overlap; leader model 8 % bigger.
+- nf-v194: new leader uses the skeleton weights from the model file.
+- nf-v195: Settings > Model field: a separate flat field with a free camera for characters, mounts and your own .glb (docs/MODEL_FIELD.md).
+- nf-v196: the classic leader is built with twice the segments (own geometry set RG_PL in rig.js, quality Q=2) and smooth-shaded skin; other characters unchanged.
+- nf-v197: classic leader body balance (LEADER_BALANCE in rig.js): head 14 % smaller, arms and legs ~20-28 % thicker, torso a little deeper/wider.
+- nf-v198: the new body balance (LEADER_BALANCE) now applies to every human: soldiers, archers, citizens, raiders.
+- nf-v199: followers, citizens and raiders use FOLLOWER_BALANCE (smaller head, only about half the extra thickness); the leader keeps LEADER_BALANCE.
+- nf-v200: riders sit: the seated pose now really runs (the rig exposes hips and knee bones; before, it exited early and the legs ran inside the horse), legs wrap the flanks, pelvis fixed on the saddle, no jump/bob clip while mounted; Model field horse hops on jump.
+- nf-v201: horses are about 25 % narrower (body 0.55 to 0.42, saddle, neck, legs) and the rider's thighs open less, so the legs wrap the horse.
+- nf-v202: unarmed riders keep both hands forward (no arm swing on walk/run); a dead rider slides off sideways and lies beside the horse; the flat apron board in front of female citizens' legs is gone.
+- nf-v203: Model field keeps the shield with the spear (as in the game).
+- nf-v204: a rider's upper body plays its idle motion while the horse walks/runs (every weapon and unarmed); the pelvis turn of the attack clips is kept (position still locked on the saddle), so sword/spear/bow attacks aim forward like on foot.
+- nf-v205: the great sword uses the owner-made model (js/greatsword.js from Greatsword.glb via tools/build_greatsword.py; the scabbard in the file is left out).
+- nf-v206: great sword from the new greatsword.glb (sword part picked from the scabbard by connectivity), 22 % narrower, 15 % thinner, handle 1.3x (HANDLE, THIN_W, THIN_T in tools/build_greatsword.py).
+- nf-v207: great sword 1.5x bigger overall (2.25 m long, width and thickness scale with it; default length in tools/build_greatsword.py).
+- nf-v208: a dead rider now lies on the ground beside the horse (the die clip lays him down; the rider group only slides off sideways to ground level; no extra tilt).
+- nf-v209: the classic horse is rigged (23 joints) and walks/gallops with the animation from the horse pack; the rider follows the bob.
+- nf-v210: the horse is simplified: 12 joints, one block each for body, neck and head, two thick parts per leg; the animation is retargeted by direction (swing) to fit.
+- nf-v211: the horse's head is larger (0.74 m) with eyes, ears and a forelock, and the neck has a mane.
+- nf-v212: the horse's mane is a thick row of six dark tufts along the neck.
+- nf-v213: the horse's head tapers: a skull block, a slim muzzle and a dark nose; the neck is slimmer.
+- nf-v214: the horse's muzzle is a middle size (0.4 x 0.24 x 0.2 m with a 0.12 m dark nose).
+- nf-v215: the horse's head is a little shorter (skull 0.36 m, muzzle 0.34 m, nose forward 0.56 m).
+- nf-v216: horse legs (all eight parts) and the body swing forward and back only; the sideways sway of the back is removed (tools/build_horse_anim.py).
+- nf-v217: horse knees/hocks bend one way only: front lower legs fold backward, hind lower legs fold forward (tools/build_horse_anim.py); before, the gallop folded the hind lower legs 40-80 degrees backward.
+- nf-v218: horse knee/hock fold (front backward, hind forward) now starts from a straight leg (the fold the pack keeps all the time is taken off); thighs/upper legs swing freely both ways.
+- nf-v219: the hind legs swing further back and less forward (gallop thigh swing -29..+28 degrees instead of -5..+52; walk -25..+14; HIND_BACK in tools/build_horse_anim.py).
+- nf-v220: mounted jump works in the game: the Jump button makes the horse (and rider) leap about 0.7 m for 0.8 s with the legs tucked; soldiers on horses use the same hop (rig.hopT/hopK, horseStep air argument).
+- nf-v221: the mounted leap is 1.7 m high / 0.9 s and carries the horse over wooden fences and stone walls (not over fort walls); the outermost ring (Great Wall, > 32 m from the centre) is now a 4.4 m fort wall with walkway ledge and merlons, matching the gate towers, and cannot be jumped.
+- nf-v222: a loading cover (title, LOADING and a bar, in index.html) hides the half-built start scene while the title town is built, then fades out; no glimpse of the starting village.
+- nf-v223: the in-game 'Nightfall Settlement' title is removed (clock and notices move up); a 50 px ad banner slot sits on top of the game screen (CFG.ADS in js/config.js; a placeholder until an ad SDK is wired in); the game area, tap picking and crosshair use the area below the banner.
+- nf-v224: the 2nd wall (stone ring, half-width 25) no longer gets gatehouse towers; only the outermost wall's gates do.
+- nf-v225: documents updated to match the code (LEADER_MODEL.md rewritten as a current-state page, MODEL_FIELD.md, HANDOFF.md, ROADMAP.md).

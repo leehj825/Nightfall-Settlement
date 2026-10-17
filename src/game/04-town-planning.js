@@ -58,6 +58,14 @@
       add(new THREE.BoxGeometry(6.2, 0.22, 4.6), houseRoof, 0, 2.7, 0).rotation.z = 0.06;
       add(new THREE.BoxGeometry(1.5, 0.5, 3.4), woodMat2, -0.6, 0.55, 0); add(new THREE.CylinderGeometry(0.3, 0.3, 3.8, 8), logPile, -0.6, 1.1, 0).rotation.x = Math.PI / 2;
       for (const lz of [-1.4, 1.4]) add(new THREE.BoxGeometry(0.1, 2.4, 0.1), woodMat2, 2.2, 1.2, lz);
+    } else if (kind === 'plaza') { plazaModel(add);
+    } else if (kind === 'muster') { musterModel(add);
+    } else if (kind === 'pen') { g.userData.sheep = penModel(add, g.userData.seed, (o) => g.add(o));
+    } else if (kind === 'windmill') { windmillModel(add, g);
+    } else if (kind === 'infirmary') { infirmaryModel(add);
+    } else if (kind === 'monument') { monumentModel(add, g);
+    } else if (kind === 'trainyard') { trainyardModel(add, g);
+    } else if (kind === 'stable') { g.userData.sheep = stableModel(add, g.userData.seed, (o) => g.add(o));
     } else if (kind === 'barracks') {                                    // 평평하고 넓은 회색 건물
       barracksModel(add);
     } else if (kind === 'range' && sm) {
@@ -187,6 +195,24 @@
     const halo = new THREE.Sprite(haloMat); halo.scale.set(2.6, 2.6, 1); halo.position.y = 2.45; halo.renderOrder = 5;       // 등불 주변의 번지는 빛
     g.add(post, bulb, halo); g.position.set(x, 0, z); scene.add(g); doormats.push(g);
     lampHalos.push(halo);
+  }
+  // 성벽 모서리 횃불대: 성벽을 설계하면 네 모서리에 높은 횃불대를 세운다 (밤에 켜지고 바닥에 빛 웅덩이가 퍼진다. 점광원은 쓰지 않아 폰에서도 가볍다)
+  const cornerLit = [];
+  function addCornerLamp(x, z) {
+    const g = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 3.4, 6), lampPostMat); post.position.y = 1.7; post.castShadow = true;
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.26, 0.3, 8), lampPostMat); bowl.position.y = 3.5;
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 6), lampGlow); flame.position.y = 3.95;
+    const halo = new THREE.Sprite(haloMat); halo.scale.set(5.2, 5.2, 1); halo.position.y = 3.9; halo.renderOrder = 5;
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), poolMat); pool.rotation.x = -Math.PI / 2; pool.scale.set(11, 11, 1); pool.position.y = 0.06; pool.renderOrder = 4;
+    g.add(post, bowl, flame, halo, pool); g.position.set(x, 0, z); scene.add(g); doormats.push(g); lampHalos.push(halo);
+  }
+  function cornerLampsSync() {                                      // 설계한 성벽 줄마다 한 번씩 (예전 저장·디버그 시작도 여기서 채운다)
+    for (let t = 0; t < designTier && t < CFG.DESIGN.length; t++) {
+      if (cornerLit[t]) continue; cornerLit[t] = true;
+      const h = CFG.DESIGN[t].half - 0.4; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addCornerLamp(sx * h, sz * h);
+    }
+    if (stage >= 5) for (const g of gateWaypoints) if (g.r > 32 && !g.house) g.house = gatehouseModel(null, g);      // stage 5: only the outermost wall's gates get the gatehouse towers (the 2nd wall's gates are plain openings)
   }
   // 성문 조명: 문마다 실제 점광원 + 바닥에 퍼지는 따뜻한 빛 웅덩이 (밤에 문 앞이 충분히 밝도록)
   const haloMat = (() => {
@@ -324,18 +350,66 @@
     return best || { x: kind === 'lumber' ? 20 : -20, z: kind === 'lumber' ? 10 : -10 };
   }
   // 마을 안쪽의 빈 자리 찾기 (우물·시장): 중심에 가깝고, 출입구 통로와 다른 건물에서 떨어진 곳
-  function findTownSpot(kind) {
+  const KEEP_HALF = 5.1;                                                     // 5단계 성채가 차지하는 반너비 (모서리 탑 포함). 어느 시대에 지어도 성채가 커져서 겹치지 않도록 항상 이만큼 비운다
+  function findTownSpot(kind, ignore) {
     const rad = CFG.BUILDING[kind].radius;
-    const others = obstacles.filter(o => o.userData.type === 'building').map(o => [o.position.x, o.position.z, o.userData.radius]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));
-    let best = null, bd = Infinity;
-    for (let i = 0; i < 400; i++) {
-      const x = rand(-13, 13), z = rand(-13, 13), d = Math.hypot(x, z);
-      if (cheb(x, z) > 10.5 || Math.abs(x) < rad + 1.2 || Math.abs(z) < rad + 1.2 || d < FIRE_R + rad + 3.2) continue;
-      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.0)) continue;
-      if ([[-12.3, -12.3], [12.3, -12.3], [-12.3, 12.3], [12.3, 12.3]].some(([tx, tz]) => Math.hypot(x - tx, z - tz) < rad + 4.5)) continue;       // 예정된 모서리 타워 자리와 겹치지 않게
-      if (d < bd) { bd = d; best = { x, z }; }
+    const others = obstacles.filter(o => o.userData.type === 'building' && o !== ignore).map(o => [o.position.x, o.position.z, o.userData.radius]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));
+    for (const [maxC, tm] of [[10.5, 4.5], [12, 3.5], [13, 2.5]]) {                                  // 자리가 없으면 조건을 조금씩 풀어서 다시 찾는다
+      let best = null, bd = Infinity;
+      for (let x = -13; x <= 13; x += 0.5) for (let z = -13; z <= 13; z += 0.5) {
+        const d = Math.hypot(x, z);
+        if (cheb(x, z) > maxC || cheb(x, z) < KEEP_HALF + rad + 0.6 || Math.abs(x) < rad + 1.2 || Math.abs(z) < rad + 1.2 || d < FIRE_R + rad + 3.2) continue;
+        if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.0)) continue;
+        if ([[-12.3, -12.3], [12.3, -12.3], [-12.3, 12.3], [12.3, 12.3]].some(([tx, tz]) => Math.hypot(x - tx, z - tz) < rad + tm)) continue;       // 예정된 모서리 타워 자리와 겹치지 않게
+        if (d < bd) { bd = d; best = { x, z }; }
+      }
+      if (best) return best;
     }
-    return best || { x: 7, z: -4 };
+    return { x: 9, z: -4 };
+  }
+  // 목표 위치 근처의 빈 자리 (바깥 구역용): 이미 있는 건물·계획·성벽·큰길과 겹치지 않는, 목표에서 가장 가까운 칸. near = { x, z, min, max } (min~max 는 마을 중심에서의 체비쇼프 거리)
+  function findSpotNear(kind, near, ignore, strict) {
+    const rad = CFG.BUILDING[kind].radius;
+    const others = obstacles.filter(o => o !== ignore && (o.userData.type === 'building' || o.userData.type === 'fence')).map(o => [o.position.x, o.position.z, o.userData.type === 'fence' ? 1.5 : o.userData.radius || 2]).concat(blueprints.map(b => [b.position.x, b.position.z, b.userData.radius || 2]));       // 성벽은 충돌 반지름 1.5. 건물 가장자리와 사이에 사람이 지나갈 틈(넉넉히 1.6)을 남긴다
+    let best = null, bd = Infinity;
+    for (let x = -40; x <= 40; x += 1) for (let z = -40; z <= 40; z += 1) {
+      const c = cheb(x, z); if (c < near.min || c > near.max || Math.abs(x) < rad + 1.4 || Math.abs(z) < rad + 1.4) continue;
+      const d = Math.hypot(x - near.x, z - near.z); if (d >= bd) continue;
+      if (others.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < rad + or + 1.6)) continue;
+      bd = d; best = { x, z };
+    }
+    return best || (strict ? null : { x: near.x, z: near.z });
+  }
+  // 길 막힘 방지: 움직여도 되는 건물(벌목장·채석장·마구간·풍차·병원·집결장·우리·기념비)이 다른 건물과 겹치거나 성벽에 너무 붙어 사람이 지나갈 틈이 없으면 가까운 빈 자리로 옮긴다
+  const MOVABLE = ['lumber', 'quarry', 'stable', 'windmill', 'infirmary', 'muster', 'pen', 'monument', 'trainyard'];
+  function fixTightBuildings() {
+    const B = obstacles.filter(o => o.userData.type === 'building'), F = obstacles.filter(o => o.userData.type === 'fence'), now = performance.now();
+    for (const o of B) {
+      const u = o.userData; if (!MOVABLE.includes(u.kind) || (u.noSpotT && now < u.noSpotT)) continue;
+      const r = u.radius || 2;
+      const bad = B.some(q => q !== o && Math.hypot(q.position.x - o.position.x, q.position.z - o.position.z) - r - (q.userData.radius || 2) < 0.2) || F.some(f => Math.hypot(f.position.x - o.position.x, f.position.z - o.position.z) - r - 1.5 < 0.6);
+      if (!bad) continue;
+      const c = cheb(o.position.x, o.position.z), pos = findSpotNear(u.kind, { x: o.position.x, z: o.position.z, min: Math.max(8, c - 8), max: c + 8 }, o, true);
+      if (!pos) { u.noSpotT = now + 60000; continue; }
+      clearArea(pos.x, pos.z, r + 1.4); o.position.x = pos.x; o.position.z = pos.z; dust(pos.x, pos.z);
+    }
+  }
+  // 성채가 커지면(3 → 4 → 5단계) 이미 지은 건물(예전 저장 포함)이 성채와 겹칠 수 있다: 겹친 건물은 빈 자리로 옮긴다
+  function keepOverlap(o) {
+    const K = stage >= 4 ? KEEP_HALF : stage >= 3 ? 4.4 : 0; if (!K) return false;
+    const dx = Math.max(Math.abs(o.position.x) - K, 0), dz = Math.max(Math.abs(o.position.z) - K, 0);
+    return Math.hypot(dx, dz) < (o.userData.radius || 2) + 0.3;
+  }
+  function fixKeepOverlaps() {
+    for (const o of obstacles) {
+      const u = o.userData; if (u.type !== 'building' || u.kind === 'tower' || u.kind === 'farm' || !CFG.BUILDING[u.kind] || cheb(o.position.x, o.position.z) > 14 || !keepOverlap(o)) continue;
+      const rad = CFG.BUILDING[u.kind].radius, fixed = u.kind === 'siegeshop' ? { x: -21, z: -3.5 } : null;
+      const free = fixed && !obstacles.some(q => q !== o && q.userData.type === 'building' && Math.hypot(q.position.x - fixed.x, q.position.z - fixed.z) < rad + (q.userData.radius || 2) + 0.5);
+      const pos = free ? fixed : findTownSpot(u.kind, o);
+      clearArea(pos.x, pos.z, rad + 1.4); o.position.x = pos.x; o.position.z = pos.z;
+      if (u.face) { u.face = faceOf(pos.x, pos.z); o.rotation.y = Math.atan2(u.face.x, u.face.z); }
+      dust(pos.x, pos.z);
+    }
   }
   // 둘째(바깥) 방어선이 계획되었고, 그 성벽 청사진이 하나도 남지 않았으면 완성
   const homesBuilt = () => !blueprints.some(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house');       // 지을 집 청사진이 남아 있지 않다
@@ -370,7 +444,7 @@
     const names = [];
     if (g.outer) names.push(...planOuterFields(g));
     for (const lot of g.lots) {
-      const pos = lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
+      const pos = lot.near ? findSpotNear(lot.kind, lot.near) : lot.auto ? (lot.auto === 'town' ? findTownSpot(lot.kind) : findClusterSpot(lot.kind)) : lot;
       clearArea(pos.x, pos.z, CFG.BUILDING[lot.kind].radius + 1.4);
       addBuildingBlueprint(lot.kind, pos.x, pos.z);
       names.push(BUILDING_NAME[lot.kind]);
@@ -378,7 +452,7 @@
     updateHud(); updateTownBtn();
     toast(`${g.label} done! ${names.join(' · ')} - your companions will build them`);
   }
-  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop' };
+  const BUILDING_NAME = { well: 'Well', market: 'Market', smith: 'Blacksmith', house: 'House', barracks: 'Barracks', range: 'Archery Range', farm: 'Farm', lumber: 'Lumber Camp', quarry: 'Quarry', tower: 'Defense Tower', siegeshop: 'Siege Workshop', plaza: 'Fountain Plaza', muster: 'Muster Yard', pen: 'Animal Pen', windmill: 'Windmill', infirmary: 'Infirmary', monument: 'Victory Monument', stable: 'Stables', trainyard: 'Training Yard' };
   // ----- 마을 계획: 일꾼들이 알아서 계획을 세운다. 플레이어는 우선순위만 고른다 (버튼을 누르면 방어 → 균형 → 경제 순으로 바뀐다) -----
   const PLAN_MODES = [['defense', 'Defense first'], ['balanced', 'Balanced'], ['economy', 'Economy first']];
   const planModeNow = () => PLAN_MODES.find(m => m[0] === settings.plan) || PLAN_MODES[1];
@@ -403,6 +477,7 @@
     planCd -= dt; if (planCd > 0) return; planCd = 2.5;
     updatePlanBtn();
     if (dead || exActive || eventOpen || uiPause || !saveReady) return;
+    fixKeepOverlaps(); fixTightBuildings(); cornerLampsSync(); trimMounts();
     const h = (gameMin / 60) % 24; if (h >= 18 || h < 6) return;              // 낮에만 계획한다
     if (blueprints.length > 8) return;                                          // 아직 지을 것이 많으면 새 계획을 쌓지 않는다
     const n = nextPlan(); if (n && canPay(n.cost)) n.run();
@@ -425,6 +500,7 @@
     toast('Upgraded to a stone wall!');
   }
   function makeStoneFence(f) {
+    if (isFortSpot(f.position.x, f.position.z)) { f.geometry = fortWallGeo(); f.material = fortMat; f.position.y = 0; Object.assign(f.userData, { level: 'stone', tall: true, radius: 1.6, hp: wallHp() * 1.5, maxHp: wallHp() * 1.5 }); return; }
     const wm = structMesh('wall');
     if (wm) { f.geometry = wm.geometry; f.material = wm.material; f.position.y = 0; }       // 벽돌 성벽 모델
     else { f.material = wallMat; f.scale.y = 1.25; f.position.y = 0.55 * 1.25; }                 // 짙은 회색 돌 성벽

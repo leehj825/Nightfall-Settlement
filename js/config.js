@@ -42,9 +42,17 @@
       { stage: 3, needsOuterWall: true, label: 'Plan Outer Homes (1/2)', cost: { wood: 60 }, lots: [{ kind: 'house', x: -13, z: -20 }, { kind: 'house', x: -7, z: -20 }, { kind: 'house', x: 7, z: -20 }] },
       { stage: 3, needsOuterWall: true, needsHomesBuilt: true, label: 'Plan Outer Homes (2/2)', cost: { wood: 80 }, lots: [{ kind: 'house', x: 13, z: -20 }, { kind: 'house', x: 7, z: 20 }, { kind: 'house', x: 13, z: 20 }] },
       // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
-      { stage: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', auto: 'town' }] },
+      { stage: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', x: -21, z: -3.5 }] },
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
+      // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
+      { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 20, z: 3.5 }, { kind: 'pen', x: -20, z: 3.5 }] },
+      // 5단계 대공사: 풍차, 병원, 승전 기념비 (보기용)
+      { stage: 5, label: 'Plan Great Works', cost: { wood: 120, stone: 150 }, lots: [{ kind: 'windmill', near: { x: 30, z: -30, min: 27, max: 38 } }, { kind: 'infirmary', near: { x: -30, z: -30, min: 27, max: 38 } }, { kind: 'monument', near: { x: -3.5, z: 11, min: 7, max: 14 } }] },
+      // 5단계 주택가: 셋째 성벽 안쪽에 집 8채 (집 1채 = 최대 인구 +1)
+      { stage: 5, label: 'Plan Outer Homes (3rd ring)', cost: { wood: 160 }, lots: [{ kind: 'house', near: { x: -33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: -33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: 33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: 33, min: 27, max: 36 } }] },
+      { stage: 5, label: 'Plan Training Yard', cost: { wood: 140, stone: 80 }, lots: [{ kind: 'trainyard', near: { x: -31, z: 8, min: 27, max: 38 } }] },
+      { stage: 5, label: 'Plan Stables', cost: { wood: 100, stone: 40 }, lots: [{ kind: 'stable', near: { x: 30, z: 30, min: 27, max: 38 } }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
@@ -62,9 +70,11 @@
       well: { res: 'wood', cost: 6, radius: 1.3, size: [2.4, 2.4, 2.4] }, market: { res: 'wood', cost: 12, radius: 2.6, size: [5.2, 2.4, 3.4] },
       quarry: { res: 'wood', cost: 8, radius: 1.8, size: [3.4, 2, 3] }, tower: { res: 'stone', cost: 10, radius: 1.7, size: [3.2, 4.5, 3.2] },
       siegeshop: { res: 'wood', cost: 14, radius: 3.4, size: [6, 3, 4.4] },
+      plaza: { res: 'stone', cost: 16, radius: 3.0, size: [6, 2.4, 6] }, muster: { res: 'wood', cost: 12, radius: 3.0, size: [6.4, 3.8, 4.4] }, windmill: { res: 'wood', cost: 16, radius: 1.9, size: [4, 5.8, 4] }, infirmary: { res: 'wood', cost: 14, radius: 2.8, size: [5.6, 3.6, 3.8] }, monument: { res: 'stone', cost: 14, radius: 1.8, size: [4, 4.2, 4] }, trainyard: { res: 'wood', cost: 18, radius: 3.2, size: [7, 3, 5.6] }, stable: { res: 'wood', cost: 16, radius: 2.8, size: [5.4, 3.4, 6.4] }, pen: { res: 'wood', cost: 8, radius: 2.4, size: [5.2, 1.1, 4.2] },
     },
     // 경제 건물: 시민이 정착해서 일한다. 농장은 식량 생산, 벌목장/채석장은 주변 자원을 캐서 건물로 가져와 쌓는다(효율 배수)
     FARM_CYCLE: 8, FARM_YIELD: 2, WORK_RADIUS: 14, WORKSITE_YIELD_MULT: 2, SITE_REGROW: 7,   // SITE_REGROW: 건물 주변에 자원이 다시 자라는 주기(초)
+    ADS: { BANNER: true, HEIGHT: 50 },          // top banner slot (a placeholder until an ad SDK is wired in; set BANNER false to remove it)
     SEASONS_ON: true, SICK_ON: true, SEASON_DAYS: 3, SICK_DAYS: 2,                                   // 계절(3일마다 바뀜) / 질병 규칙은 끌 수 있다
     // 9단계: 직업(일터)과 숙련도 / 건물 레벨
     LEVELED: ['farm', 'lumber', 'quarry', 'smith', 'market', 'well', 'tower'], BUILD_UPGRADE: { 2: { wood: 20, stone: 10 }, 3: { stone: 30, iron: 6 } }, BUILD_UPGRADES_PER_MORNING: 1,
@@ -258,7 +268,12 @@
     BUILD_TIME_BUILDING: 3,
     STANDARD: { RADIUS: 12, DMG: 0.15, GUARD: 0.15, RANK_RADIUS: 0.2, RANK_DMG: 0.04, RANK_GUARD: 0.03 },      // 지휘관의 깃발: 곁의 병사가 더 세게 치고 덜 맞는다 (기본값은 추정, 기술로 강해진다)
     EXP_NEED_SCALE: 0.8,      // EXP_NEED 는 원래 병사 전원(전부 100%) 기준이었다. 이제 데려가는 전투단 100% + 남은 병사 35% 이므로 0.8배 (추정값, 폰 테스트 후 조정)
-    WARBAND: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3,        // 전투단(warband) 최대 인원 / 전투단 수 / 병사 수 상한(기본 + 병영·사격장당)
+    YARD_XP: 1, YARD_SEATS: 6,      // 훈련소: 아침마다 집에 있는 병사 최대 6명(훈련소 1채당)이 숙련 +1 (공짜), 병사 수 상한 +6
+    WINDMILL_FOOD: 4, MONUMENT_COURAGE: 3,      // 5단계 건물 효과(추정값): 풍차 1채당 아침 식량 +4, 승전 기념비 아침마다 사기 +3, 병원은 부상 회복 하루 단축
+    CAV: { PER_STABLE: 3, SPEED: 1.45, DMG: 1.12, CHARGE: 0.45, CHARGE_T: 0.8 },      // 기병(말 탄 병사): 마구간 1채당 3기, 이동 x1.45, 피해 x1.12, 달려오다 치는 첫 일격 +45% (추정값)
+    BANNER: { STAGE: 5, MAX: 3, MAX_BANDS: 3, MIN_BANDS: 2, RADIUS: 18, DMG: 0.06, GUARD: 0.06, HOST_BONUS: 1, DRILL_XP: 1,      // 깃발(banner, 전투단 2~3개 묶음): 해금 시대 / 깃발 수 / 깃발당 전투단 수 / 보너스에 필요한 전투단 수 / 같은 깃발 전투단이 가까운 거리 / 보너스(추정값) / 시대 5의 원정 전투단 추가 수
+      NAMES: ['Dragon', 'Griffin', 'Hart'], COLORS: ['#e8c040', '#c8d0e0', '#d07a3a'] },
+    WARBAND: { SIZE: 6, MAX: 6, CAP_BASE: 6, CAP_BARRACKS: 6, CAP_RANGE: 3, CAP_YARD: 6,        // 전투단(warband) 최대 인원 / 전투단 수 / 병사 수 상한(기본 + 병영·사격장당)
       NAMES: ['Lion', 'Wolf', 'Stag', 'Eagle', 'Raven', 'Boar'], COLORS: ['#e0604a', '#4a8be0', '#5fc060', '#e0b43c', '#a864d6', '#b8794a'] },
     BASE_POP: 3, CITIZEN_HP: 30,               // 시작 인구(초기 동료 3명) / 시민 체력. 최대 인구 = BASE_POP + 거주지 수
     // 공성 투척병 (Day 4~): 초장거리에서 곡사로 폭발 바위를 던져 구조물을 광역 파괴. 궁수(30)가 닿지 않는 거리에 멈춘다

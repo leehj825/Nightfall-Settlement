@@ -37,14 +37,17 @@ See `docs/HANDOFF.md` for the full state of the project, the working rules and h
 - **Polish:** shorter in-game text, View/Weapon button labels, order buttons, key rebinds.
 
 **Not done**
-- Banners and the host, extra unit types, audio, formations.
-- Tuning after phone testing (world performance, stage gates, raids, sieges, wounds and courage).
+- Training Yard, the endgame (final campaign flow and victory screen), extra unit types, audio, formations.
 - More building models: archery range, farm, gates, market and siege workshop; custom skinned characters.
 
-**Next steps, in order** (details in `STAGES_AND_TRAINING_PLAN.md`)
-1. **Done (nf-v124 to nf-v130):** ground hit effects follow terrain, Stages and gates, World v2 (radius 100, lake, stream, marsh, forests, cliff plateau, more enemies), Stage 4 Walled City and Stage 5 Seat of Power, the Training Field (parade, three practice battles, siege practice, veteran drills).
-2. **Banners and the host** (unlocked at Stage 5), tested on the Training Field.
-7. **Polish:** cavalry and siege crews, audio, formations; balance and phone testing; custom models.
+**Next steps, in order** (balance tuning is not a step: the owner plays on a phone all along and reports findings in chat, which are fixed as they arrive)
+1. **Stage 5 town (done):** a last Village Plan step "Plan Seat of Power" builds a fountain plaza, a Muster Yard (banner flags) and two animal pens; the keep gets a stair and gold flags. nf-v149 adds a second step "Plan Great Works" (windmill with turning sails, infirmary, victory monument), a smaller Muster Yard in the third layer, walking sheep, and torch posts at every wall corner. nf-v150 adds gatehouses on the second and third wall gates, a Stables step with two walking horses, and monument pennants that rise for each realm you hold sites in. nf-v152 adds cavalry (mounted soldiers), the Marshal skill column and banner flags (see BANNERS_PLAN.md). nf-v155 adds a seated riding pose (`Anim._seat`), horse coats by soldier, saddle blankets in the warband colour, barding for lancers and a white armoured horse for the leader, two handcarts on the roads and villagers at the fountain (day only). nf-v156: `fixTightBuildings` moves lumber camps, quarries and the new Stage 5 buildings that overlap others or hug a wall, an Unstick button in Settings, far-away animation skipping, and real effects (windmill +4 food a morning, infirmary heals wounds a day faster, monument +3 courage a morning). Next: the Training Yard and the endgame.
+2. **Banners and the host (done through `nf-v152`, see `BANNERS_PLAN.md`):** banners, host orders, army rally, cavalry, the leader's horse, the Marshal skill column and banner flags.
+3. **Band controls (done in `nf-v158`):** move picker, bulk class buttons, select-then-order strip (see README). **Training Yard and endgame (done in `nf-v157`):** a Stage 5 Training Yard (+6 soldier cap, free drill XP each morning) and a victory screen when the Iron Throne falls (stats, Keep ruling, New Game+, Main menu), plus a final goal line in the Journal.
+4. **Models:** archery range, farm, gates, market, siege workshop; later custom skinned characters.
+5. **Polish:** audio, formations, cavalry and siege crews.
+
+Already done and no longer listed as steps: ground hit effects, Stages and gates, World v2, Stages 4 and 5, the Training Field (`nf-v124` to `nf-v130`), the campaign map, realms, sieges and wounds/courage/levies.
 
 Ideas for the long term. Nothing here is built yet unless it says so. Order is a suggestion, not a promise.
 
@@ -154,5 +157,6 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 ## Other backlog (smaller)
 - Custom character models (leader, soldiers, citizens, raiders) and more weapon/building models; the current skinned models are disabled and several kinds (houses, towers, gates, wolves, great sword, staff, armor) have none.
 - More captured animations as needed from `js/anims_lib.js` (all received Mixamo clips are already stored retargeted).
-- Tune balance numbers marked as guesses in the README (great sword skills, unarmed damage, citizen defense, block strength).
-- Verify recent animation work on real phones (mining, chopping, farming, combos).
+
+## Update at nf-v224 (owner-driven round)
+Done: new leader model (own skeleton and weights, clavicles), classic leader and body balance, great sword model, riders and the rigged horse (walk, gallop, jump over low fences), fort walls on the outermost ring, Model field, loading cover, ad banner slot. Still open: apply the skinned-model route to soldiers and citizens (the Model field is the place to look at new models); wire a real ad SDK into the banner slot when the owner has AdMob ids; horses in stables are still static; the leader's mounted use of the great sword and bow death clips were checked only in the Model field.

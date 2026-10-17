@@ -111,8 +111,9 @@
   lookAt.set(0, LOOK_H, 0);
 
   function resize() {
-    renderer.setSize(innerWidth, innerHeight, false);
-    camera.aspect = innerWidth / innerHeight;
+    const vw = canvas.clientWidth || innerWidth, vh = canvas.clientHeight || innerHeight;                  // the game area (below the ad banner)
+    renderer.setSize(vw, vh, false);
+    camera.aspect = vw / vh;
     camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
@@ -197,6 +198,7 @@
   addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jump(); }
     if (e.code === 'KeyR' && !e.repeat) dash();
+    if (e.code === 'KeyM' && !e.repeat) toggleLeaderMount();
     if (e.code === 'KeyG' && !e.repeat) gather();
     if (e.code === 'KeyE' && !e.repeat) ultimate();
     if (e.code === 'KeyF' && !e.repeat) attack();

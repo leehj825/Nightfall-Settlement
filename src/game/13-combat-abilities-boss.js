@@ -9,7 +9,7 @@
   function attack() {
     if (!tapTip && !dead) { tapTip = true; try { localStorage.setItem('nf_tiptap', '1'); } catch (e) {} setTimeout(() => toast('Tip: use the red Attack button (or press F) to attack'), 600); }
     if (dead || atkCd > 0 || dashT > 0 || blocking) return;
-    gathering = null;
+    gathering = null; leaderChargeStrike();
     if (weaponMode === 'bow') {
       playerAnim.once('attackBow'); { const dur = playerAnim.shot.dur; atkCd = Math.max(ATK_CD, dur * 0.9); atkLock = dur * 0.9; }
       later(playerAnim.hitIn, () => { if (dead) return; shake = Math.max(shake, 0.08); Snd.play('bow'); fireArrow(player.position.x, player.position.z, facing, true, gearDef(playerGear.bow).dmg * pDmg() * (1 + 0.2 * pl.st.fletch)); });
@@ -287,7 +287,7 @@
     g.position.set(player.position.x, groundY(player.position.x, player.position.z, 3) + 0.12, player.position.z); g.userData.life = 0.45; scene.add(g); slashes.push(g);
     let k = 0;
     for (const n of npcs) {
-      if (n.role === 'citizen' || n.down || Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) > CFG.RALLY_RADIUS) continue;
+      if (n.role === 'citizen' || n.down || (!inBanner(n) && Math.hypot(n.position.x - player.position.x, n.position.z - player.position.z) > CFG.RALLY_RADIUS)) continue;
       n.hp = Math.min(n.maxHp, n.hp + Math.round(n.maxHp * 0.3)); k++; floatText('Rally!', n.position.x, 3.0, n.position.z);
     }
     toast(`Rally Cry! ${k} soldier${k === 1 ? '' : 's'} fight harder for ${CFG.RALLY_TIME}s`);

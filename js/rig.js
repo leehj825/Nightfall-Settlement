@@ -32,7 +32,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   // 사람마다 피부색·머리색·머리 모양·체형·옷 장식이 다르고(seed), 역할별 복장(병사: 사슬 + 튜닉 + 견갑 + 투구 / 궁수: 후드 + 화살통 + 가죽 조끼 / 시민: 튜닉 + 모자 / 주인공: 망토 + 머리띠 / 적: 두건 + 복면 + 누더기)이 붙는다.
   const skinMat = mat(0xf1c9a0), darkMat = mat(0x3a2a22), eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3a1a }), visorMat = mat(0x2a2a30);
   const sm = (c, rough = 0.88, metal = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal });
-  const PLAYER_SKIN = (() => { const m = sm(0xe7ae88, 0.8); m.flatShading = true; return m; })(), PLAYER_HAIR = sm(0x5a2d1e, 0.65);       // 지휘관: 따뜻한 살구빛 피부와 붉은 밤색 머리
+  const PLAYER_SKIN = sm(0xe7ae88, 0.8), PLAYER_HAIR = sm(0x5a2d1e, 0.65);       // 지휘관: 따뜻한 살구빛 피부와 붉은 밤색 머리
   const SKINS = [0xf1c9a0, 0xe3b48a, 0xc88b63, 0x8d5a3b, 0xf4d6b8].map(c => { const m = sm(c, 0.8); m.flatShading = true; return m; }), HAIRS = [0x2a1a10, 0x5a3a1e, 0x8a5a2b, 0xc9a23a, 0x9a9a9a, 0x151515, 0x7a2a1a].map(c => sm(c, 0.7));
   const bootMat = sm(0x2b1d14), beltMat = sm(0x4a3320), buckleMat = sm(0xc9a23a, 0.5, 0.3), steelMat = sm(0x9ca2ad, 0.55, 0.25), mailMat = sm(0x626874, 0.65, 0.2), eyeDark = new THREE.MeshBasicMaterial({ color: 0x1a1210 }), eyeWhite = new THREE.MeshBasicMaterial({ color: 0xf2eee6 });
   mailMat.map = (() => {                                       // 사슬 갑옷: 회색 바탕에 격자무늬
@@ -98,7 +98,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     apron: new THREE.BoxGeometry(0.3, 0.36, 0.02), pouch: new THREE.BoxGeometry(0.1, 0.1, 0.06), lace: new THREE.BoxGeometry(0.1, 0.015, 0.012), collar: new THREE.TorusGeometry(0.13, 0.035, 8, 16), band: new THREE.TorusGeometry(0.2, 0.016, 6, 18), brim: cyl(0.31, 0.31, 0.02, 18), dome: sph(0.2, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), helm: sph(0.235, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), helmBrim: cyl(0.29, 0.29, 0.025, 18), nasal: new THREE.BoxGeometry(0.025, 0.12, 0.02),
     scabbard: new THREE.BoxGeometry(0.06, 0.62, 0.035), rag: new THREE.BoxGeometry(0.09, 0.3, 0.012), wrap: cyl(0.062, 0.062, 0.08, 8), spikeBig: new THREE.ConeGeometry(0.05, 0.22, 6),
   });
-  const RG_HI = makeRG(); Q = 0.5; const RG_LO = makeRG(); Q = 1;
+  const LEADER_BALANCE = { head: [0.86, 0.86, 0.86], spine: [1.06, 1.12, 1], shoulder: [1.22, 1.22, 1], elbow: [1.2, 1.2, 1], hip: [1.28, 1.28, 1], knee: [1.22, 1.22, 1], hips: [1.08, 1.12, 1] };       // [x, z, y] multipliers per bone (L/R share): the proportions of the custom leader
+  const FOLLOWER_BALANCE = { head: [0.88, 0.88, 0.88], spine: [1.02, 1.05, 1], shoulder: [1.1, 1.1, 1], elbow: [1.08, 1.08, 1], hip: [1.12, 1.12, 1], knee: [1.1, 1.1, 1], hips: [1.03, 1.05, 1] };       // soldiers, archers, citizens, raiders: the smaller head, but only about half the extra thickness of the leader
+  const RG_HI = makeRG(); Q = 0.5; const RG_LO = makeRG(); Q = 2; const RG_PL = makeRG(); Q = 1;                      // RG_PL: the classic leader, twice the segments, smooth shaded
   const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _v = new THREE.Vector3(), _n3 = new THREE.Matrix3();
   function mergeGeos(items) {                                   // [[geometry, matrix], ...] -> 하나의 BufferGeometry (위치·법선·uv)
     let nv = 0, ni = 0;
@@ -120,7 +122,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return out;
   }
   function buildStickman(color, opts = {}) {
-    const kind = opts.kind || 'citizen', enemy = !!opts.enemy, seed = opts.seed ?? 0, bodyMat = opts.bodyMat || mat(color), root = new THREE.Group(), RG = enemy ? RG_LO : RG_HI;
+    const kind = opts.kind || 'citizen', enemy = !!opts.enemy, seed = opts.seed ?? 0, bodyMat = opts.bodyMat || mat(color), root = new THREE.Group(), RG = enemy ? RG_LO : kind === 'player' ? RG_PL : RG_HI;
     const R = (k) => ((Math.imul((seed | 0) ^ Math.imul(k + 1, 0x9e3779b1), 2654435761) >>> 0) % 1000) / 1000;            // 사람마다 고정된 0~1 난수
     if (!enemy) { bodyMat.flatShading = false; bodyMat.roughness = 0.88; bodyMat.needsUpdate = true; }
     const skin = enemy ? sm(0xb59a84, 0.8) : kind === 'player' ? PLAYER_SKIN : SKINS[Math.floor(R(1) * SKINS.length)], hair = kind === 'player' ? PLAYER_HAIR : HAIRS[Math.floor(R(2) * HAIRS.length)], hstyle = Math.floor(R(3) * 6);
@@ -129,7 +131,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const W = enemy ? 1.05 : 0.93 + 0.14 * R(8), isPlayer = kind === 'player';          // 체형(어깨 너비)
     const bones = {}, groups = new Map();
     const bone = (name, parent, x, y, z) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, z); parent.add(b); bones[name] = b; return b; };
+    const BAL = isPlayer ? LEADER_BALANCE : FOLLOWER_BALANCE;                                    // body balance of every human: head smaller, thicker arms and legs (soldiers, archers, citizens, raiders and the leader) - see LEADER_BALANCE
     const part = (geo, m, b, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+      if (BAL) { const k = BAL[b.name.replace(/[LR]$/, '')]; if (k) { x *= k[0]; z *= k[1]; y *= k[2]; sx *= k[0]; sz *= k[1]; sy *= k[2]; } }
       _e.set(rx, ry, rz); _q.setFromEuler(_e); _m4.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz));
       const key = b.name + '|' + m.uuid; let g = groups.get(key); if (!g) groups.set(key, g = { b, m, items: [] }); g.items.push([geo, _m4.clone()]);
     };
@@ -220,7 +224,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     } else if (kind === 'citizen') {
       const v = female ? 5 : Math.floor(R(5) * 4);
       if (female) {
-        part(RG.dressSkirt, bodyMat, hips, 0, -0.35, 0, 0, 0, 0, Wb, 1, 0.8); part(RG.apron, cottonMat, spine, 0, 0.1, 0.14 * Wb + 0.03, 0, 0, 0, 1.2, 1.2, 1); part(RG.apron, cottonMat, hips, 0, -0.38, 0.27, 0.02, 0, 0, 1.5, 1.6, 1);
+        part(RG.dressSkirt, bodyMat, hips, 0, -0.35, 0, 0, 0, 0, Wb, 1, 0.8); part(RG.apron, cottonMat, spine, 0, 0.1, 0.14 * Wb + 0.03, 0, 0, 0, 1.2, 1.2, 1);
         for (let i = 0; i < 3; i++) part(RG.lace, beltMat, spine, 0, 0.36 + i * 0.07, 0.18 * Wb);
         part(RG.chest, cloth2, spine, 0, 0.47, 0, 0, 0, 0, Wb * 1.1, 0.7, 0.64);
       } else if (elder) {
@@ -241,6 +245,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (ev === 4) { part(RG.scarfRing, sm(0x7a7a70, 1), spine, 0, 0.66, 0.0, Math.PI / 2, 0, 0, 1.05, 1.05, 1.4); part(RG.skirt, ragMat, hips, 0, -0.1, 0, 0, 0, 0, Wb, 0.7, 0.78); }
     }
     const out = { root, bodyMat, head, spine, baseScale: (opts.scale ?? 0.9) * (enemy || isPlayer ? (brute ? 1.12 : 1) : 0.95 + 0.1 * R(7)) * (female ? 0.96 : 1) };
+    out.hips = hips;
     for (const sx of [-1, 1]) {
       const n = sx < 0 ? 'L' : 'R';
       const sh = bone('shoulder' + n, spine, sx * 0.34 * Wb, 0.58, 0);
@@ -262,19 +267,28 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       part(RG.palm, skin, hd, 0, -0.025, 0.0, 0, 0, 0, brute ? 1.3 : 1.1, 1.1, 0.8); part(RG.thumb, skin, hd, -sx * 0.05, -0.02, 0.035, 0, 0, 0, 1.3, 1.5, 1.3);
       const hp = bone('hip' + n, hips, sx * 0.14 * Wb, -0.04, 0); out['hip' + n] = hp;
       part(RG.thigh, pants, hp, 0, -0.225, 0, 0, 0, 0, brute ? 1.15 : 1, 1, brute ? 1.15 : 1);
-      const kn = bone('knee' + n, hp, 0, -0.45, 0);
+      const kn = bone('knee' + n, hp, 0, -0.45, 0); out['knee' + n] = kn;
       part(RG.knee, pants, kn, 0, 0, 0); part(RG.shin, pants, kn, 0, -0.225, 0);
       part(RG.shaft, bootMat, kn, 0, -0.33, 0, 0, 0, 0, 1.12, 1.05, 1.12); part(RG.cuffBoot, leatherMat, kn, 0, -0.23, 0, 0, 0, 0, 1.25, 1.6, 1.25);
       part(RG.foot, bootMat, kn, 0, -0.43, 0.06, 0, 0, 0, 0.85, 0.55, 1.55); part(RG.sole, darkMat, kn, 0, -0.485, 0.07);
       if (kind === 'melee' || isPlayer) part(RG.greave, steelMat, kn, 0, -0.16, 0.012, 0, 0, 0, 1.12, 1.15, 1.12);
     }
     if (enemy && ev !== 2) for (const dx of [-0.13, 0.04]) part(RG.rag, ragMat, hips, dx, -0.22, 0.15, 0.12, 0, dx * 0.6);
-    const mk = (typeof CHAR_MODELS !== 'undefined' && opts.model !== false && USE_CHAR_MODELS) ? modelKeyFor(kind, seed, enemy) : null;
+    const mk = (typeof CHAR_MODELS !== 'undefined' && opts.model !== false && USE_CHAR_MODELS) ? modelKeyFor(kind, seed, enemy) : (USE_LEADER_PARTS && kind === 'player' && opts.model !== false ? LEADER_KEY : null);
     if (mk) {                                                                                 // 모델 캐릭터: 부품 대신 같은 뼈에 스킨 메시를 입힌다 (애니메이션은 그대로)
+      if (mk === 'leaderParts') {                                                              // put the joints where this model's joints are
+        const J = LEADER_JOINTS, sy = bones.spine.parent.position.y + bones.spine.position.y;
+        for (const [n, sx] of [['L', -1], ['R', 1]]) {
+          const cl = new THREE.Bone(); cl.name = 'clav' + n; cl.position.set(sx * J.clX, J.shY - sy, 0); bones.spine.add(cl); bones['clav' + n] = cl; cl.add(bones['shoulder' + n]); out['clav' + n] = cl;      // collar bone: lifts the shoulder when the arm goes up (updateClavicles)
+          bones['shoulder' + n].position.set(sx * (J.shX - J.clX), 0, 0); bones['elbow' + n].position.set(sx * J.elX, -J.elDY, 0);
+          bones['hip' + n].position.set(sx * J.hipX, J.hipY - bones.hips.position.y, 0); bones['knee' + n].position.set(sx * J.kneeX, -J.kneeDY, 0);
+        }
+        bones.head.position.y = J.neckY - sy;
+      }
       root.updateMatrixWorld(true);
-      const skel = new THREE.Skeleton(BONES.map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
-      const HP = { leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
-      out.setHand = (key) => { const h = HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
+      const skel = new THREE.Skeleton((mk === 'leaderParts' ? BONES.concat(['clavL', 'clavR']) : BONES).map(n => bones[n])), mat0 = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }); mat0.skinning = true;                // three r128: 스킨 메시는 재질에 skinning 이 켜져 있어야 뼈를 따라 움직인다
+      const HP = { leaderParts: [0.1, -0.29], leader: [0.08, -0.45], soldierSword: [-0.04, -0.5], soldierBow: [-0.03, -0.48], citizenMale: [0.01, -0.49], citizenFemale: [-0.05, -0.48], bandit1: [-0.03, -0.47], bandit2: [0, -0.52] };       // 모델마다 주먹 위치(팔꿈치 기준)가 다르다
+      out.setHand = (key) => { const h = key === 'leaderParts' && typeof LEADER_PARTS !== 'undefined' ? [LEADER_PARTS.joints.fistX, LEADER_PARTS.joints.fistY] : HP[key] || [0, -0.47]; out.handR.position.set(h[0], h[1], 0.03); out.handL.position.set(-h[0], h[1], 0.03); };
       out.setHand(mk);                // 모델의 주먹은 막대인간 손뼈보다 아래에 있다: 무기가 손에 쥐어지도록 손뼈를 내린다
       out.bodyMat = mat0; out.skeleton = skel; out.seed = seed; out.model = mk;
       out.setModel = (key) => {
@@ -290,14 +304,21 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const modelGeos = {}, modelTexs = {};
   function modelKeyFor(kind, seed, enemy) {
     if (enemy || kind === 'enemy') return (seed & 1) ? 'bandit1' : 'bandit2';
-    if (kind === 'player') return 'leader';
+    if (kind === 'player') return USE_LEADER_PARTS ? LEADER_KEY : 'leader';
     if (kind === 'melee') return 'soldierSword';
     if (kind === 'archer') return 'soldierBow';
     return (seed & 1) ? 'citizenFemale' : 'citizenMale';
   }
   const unb64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const _cq = new THREE.Vector3();
+  function updateClavicles(rig) {                           // the collar bones follow the arm: above the horizontal the shoulder lifts (up to ~29 degrees) and turns forward when reaching
+    for (const [n, s] of [['L', -1], ['R', 1]]) {
+      const v = _cq.set(0, -1, 0).applyQuaternion(rig['shoulder' + n].quaternion), t = Math.max(0, Math.min(1, (v.y + 0.85) / 0.85)), f = Math.max(0, Math.min(1, v.z));
+      rig['clav' + n].rotation.set(0, -s * 0.25 * f, s * 0.5 * t);
+    }
+  }
   function modelMesh(key, skeleton, material) {
-    const d = CHAR_MODELS[key];
+    const d = key === 'leaderParts' ? LEADER_PARTS : CHAR_MODELS[key];
     let geo = modelGeos[key];
     if (!geo) {
       geo = modelGeos[key] = new THREE.BufferGeometry(); const n = d.n;
@@ -322,6 +343,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const BONES = ['hips', 'spine', 'head', 'shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'hipL', 'hipR', 'kneeL', 'kneeR'];
   // 임시: 캐릭터 모델을 끄고 막대인간(폴리곤) 리그만 쓴다. 모델을 다시 켜려면 주소 뒤에 ?models=1 을 붙이거나 이 값을 true 로 바꾼다.
   const USE_CHAR_MODELS = /[?&]models=1/.test(location.search);
+  const LEADER_MODE = typeof LEADER_PARTS !== 'undefined' ? Math.max(0, Math.min(1, +window.NF_LEADER || 0)) : 0, USE_LEADER_PARTS = LEADER_MODE > 0, LEADER_KEY = 'leaderParts';
+  // 0 = classic stick-man; 1 = the new model (soft joints always on)
+  // the model's own joint heights (metres, feet at 0): the stick-man's bones are moved there so the parts swing around the right points
+  const LEADER_JOINTS = typeof LEADER_PARTS !== 'undefined' ? LEADER_PARTS.joints : { shX: 0.23, shY: 1.52, elX: 0.04, elDY: 0.28, hipX: 0.11, hipY: 0.98, kneeX: 0, kneeDY: 0.44, neckY: 1.6, clX: 0.08, fistX: 0.1, fistY: -0.29 };      // from the model's own skeleton (tools/build_leader_parts.py)      // 지휘관만 따로 만든 부품(분리된 조각) 모델로 바꿔 본다: 주소 뒤에 ?leader=1
   const TBONES = BONES.concat(['handL', 'handR']);          // 애니메이션 뼈: 손목은 스킨에는 없고 무기만 따라간다
   const kf = (u, pts) => {                   // pts: [[u, value], ...] 선형 보간
     for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (b === a ? 1 : (u - a) / (b - a)); }
@@ -530,7 +555,19 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const mk = kind + (tier > 0 ? 1 : 0), m = wMats[mk] || (wMats[mk] = new THREE.MeshStandardMaterial({ map: isTool ? tTex : wTex, roughness: 0.6, metalness: 0.15, color: tier > 0 ? 0xfff0c8 : 0xffffff }));
     const mesh = new THREE.Mesh(geo, m); mesh.castShadow = true; return mesh;
   }
+  let gsGeo = null, gsMat = null;
+  function greatswordMesh(tier) {                                  // the owner-made great sword (js/greatsword.js), long axis +Y with the grip at the origin
+    const d = GREATSWORD;
+    if (!gsGeo) {
+      const n = d.n, p = unb64(d.pos, Int16Array), uv = unb64(d.uv, Uint16Array), nr = unb64(d.nor, Int8Array), P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2);
+      for (let i = 0; i < n * 3; i++) { P[i] = p[i] / 10000; N[i] = nr[i] / 127; } for (let i = 0; i < n * 2; i++) U[i] = uv[i] / 65535;
+      gsGeo = new THREE.BufferGeometry(); gsGeo.setAttribute('position', new THREE.BufferAttribute(P, 3)); gsGeo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); gsGeo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); gsGeo.setIndex(new THREE.BufferAttribute(unb64(d.idx, Uint16Array), 1));
+      const t = new THREE.TextureLoader().load(d.tex); t.flipY = true; gsMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0.2 });
+    }
+    const m = new THREE.Mesh(gsGeo, tier > 0 ? gsMat.clone() : gsMat); if (tier > 0) m.material.color.set(0xfff0c8); m.castShadow = true; return m;
+  }
   function makeSwordMesh(def) {
+    if (def.great && typeof GREATSWORD !== 'undefined') { const g = new THREE.Group(), inner = new THREE.Group(); inner.add(greatswordMesh(def.tier)); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
     const wm = weaponModel('sword', def.tier);
     if (wm) { const g = new THREE.Group(), inner = new THREE.Group(); wm.scale.setScalar((def.tier > 0 ? 1.25 : 1) * (def.great ? 1.6 : 1)); inner.add(wm); inner.rotation.x = Math.PI / 2; g.add(inner); return g; }
     const g = new THREE.Group(), inner = new THREE.Group(), len = def.tier > 0 ? 1.05 : 0.8;
@@ -660,6 +697,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       const rig = this.rig, md = this.moveDir || 'f';
       if (name === 'gather') { const k = rig.tool === 'axe' ? (this.acts.chopMocap ? 'chopMocap' : 'gatherAxe') : (this.acts.mineMocap ? 'mineMocap' : 'gatherPick'); if (this.acts[k]) return k; return name; }       // 모션캡처(곡괭이질·도끼질) 우선
       if (name === 'farm') { const k = FARM_CLIPS[(this.farmI || 0) % FARM_CLIPS.length]; if (this.acts[k]) return k; return this.acts.gatherPick ? 'gatherPick' : 'gather'; }
+      if (rig.seated && (name === 'walk' || name === 'run')) name = 'idle';                  // a rider's upper body stays in its idle motion while the horse walks or runs
       const set = rig.sheathed ? '' : rig.style === 'gs' ? 'gs' : (rig.style === 'ss' || rig.main === 'spear') ? 'ss' : rig.style === 'bow' ? 'bow' : '', war = !!rig.combat;
       const suf = md === 'b' ? 'B' : md === 'p' ? 'P' : md === 'n' ? 'N' : '';
       if (name === 'idle') { const k = set === 'ss' ? (war ? 'ssIdle' : 'ssIdleCalm') : set === 'gs' ? (war ? 'gsIdle' : 'gsIdleCalm') : set === 'bow' ? (war ? 'bowIdle' : 'bowIdleCalm') : 'idle'; return this.acts[k] ? k : 'idle'; }
@@ -724,14 +762,20 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (wasBow) this.rig.aim(true);
       this._play(name, 0.08, true);
     }
+    _fallStep(dt) {                                                     // a dead rider slides off the horse sideways and lies beside it
+      const R = this.rig, g = R.rider; if (!g) return;
+      if (this.dead && R.seated) { const f = this._fall || (this._fall = { t: 0, side: (R.fallSide || 1) }); f.t = Math.min(1, f.t + dt / 0.6); const k = f.t * f.t * (3 - 2 * f.t); g.rotation.z = 0; g.position.x = f.side * 0.95 * k; g.position.y = 0.8 * (1 - k); }                     // the die clip itself lays him down on his back; he slides off the saddle to the side and down to the ground
+      else if (this._fall) { this._fall = null; g.rotation.z = 0; g.position.x = 0; g.position.y = 0.8; }
+    }
     die() {
-      this.dead = true; this.shot = null; this.guarding = false; this.rig.aim(false);
+      this.dead = true; this.rig.fallen = true; this.shot = null; this.guarding = false; this.rig.aim(false);
       const set = this.rig.style === 'bow' ? ['dieBow', 'dieBow2'] : this.rig.style === 'gs' ? ['dieGs', 'dieGs2'] : ['die', 'die2'], ok = set.filter(k => this.acts[k]), dk = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 'die';
       this._play(dk, 0.15, true); if (this.acts[dk]) this.acts[dk].timeScale = MIXAMO_FAST_DIE;
     }
     // 점프: 칼·방패 / 대검 / 일반 이동 팩의 점프를 약 0.75초로 재생한다 (높이는 모션캡처의 엉덩이 높이를 그대로 쓴다)
     jump() {
       if (this.dead || this.shot || this.guarding) return false;
+      if (this.rig.seated) { if (this.rig.hopT > 0) return false; this.rig.hopT = 0.9; return true; }        // a rider does not jump by himself: the horse jumps and carries him (hopK, see horseStep)
       this.breakCombo();
       const k = this.rig.style === 'gs' && this.acts.gsJump ? 'gsJump' : (this.rig.style === 'ss' || this.rig.main === 'spear') && this.acts.ssJump ? 'ssJump' : this.acts.jump ? 'jump' : null; if (!k) return false;
       return k === 'jump' ? this._short(k, 1.1, 0.08, 0.125, 0.83) : this._short(k, 0.75, 0.08);        // 일반 점프 클립은 앞뒤 서 있는 부분을 잘라 낸다 (웅크림 → 공중 → 착지)
@@ -757,7 +801,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (on) { const k = this.rig.style === 'gs' && this.acts.gsBlock ? 'gsBlock' : this.rig.style === 'bow' && this.acts.bowBlock ? 'bowBlock' : 'ssBlock'; if (!this.acts[k]) { this.guarding = false; return; } this.shot = null; this.acts[k].timeScale = 1.3; this._play(k, 0.1, true); }
       else this._play(this.baseName || 'idle', 0.15, true);
     }
-    revive() { this.dead = false; this.baseName = ''; this.base('idle'); }
+    revive() { this.dead = false; this.rig.fallen = false; this.baseName = ''; this.base('idle'); }
     update(dt) {
       if (this.baseName === 'farm' && !this.shot && this.cur) {                 // 농사: 심기 → 물주기 → 뽑기 → 따기 동작을 한 번씩 돌아가며 한다
         this._ft = (this._ft || 0) + dt;
@@ -767,8 +811,19 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (this.shot && (this.shot.t += dt) >= this.shot.dur) { this._ce = performance.now(); this.shot = null; this.rig.aim(false); this._play(this.baseName || 'idle', 0.15, true); }
       const want = this.baseName === 'gather' && !this.shot ? 'pick' : this.rig.main;
       if (want !== this.rig.held) this.rig.hold(want);
-      this.mixer.update(dt);
-      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt);
+      this.mixer.update(dt); if (this.rig.clavL) updateClavicles(this.rig);
+      { const R = this.rig; if (R.hopT > 0) { R.hopT = Math.max(0, R.hopT - dt); R.hopK = Math.sin(Math.PI * (1 - R.hopT / 0.9)); } else R.hopK = 0; }
+      this._spear(dt); this._tool(); this._toolArm(); this._gsArm(dt); if (this.rig.seated && !this.dead) this._seat(); this._fallStep(dt);
+    }
+    // 말 위의 앉은 자세: 허벅지를 앞으로 벌려 안장을 감싸고 무릎을 접어 정강이가 말 옆구리로 내려오게 한다 (모션캡처 위에 덮어쓴다)
+    _seat() {
+      const R = this.rig, e = this._se || (this._se = new THREE.Euler()), q = this._sq || (this._sq = new THREE.Quaternion());
+      if (!R.hipL || !R.hipR || !R.kneeL || !R.kneeR) return;
+      for (const [h, k, s] of [[R.hipL, R.kneeL, 1], [R.hipR, R.kneeR, -1]]) {
+        e.set(-0.75, 0, -s * 0.55); h.quaternion.setFromEuler(e);                  // the thigh opens sideways over the horse's flanks and a little forward
+        e.set(0.55, 0, 0); k.quaternion.setFromEuler(e);                          // the lower leg hangs down the flank (heels in), not moving with the run clip
+      }
+      if (R.hips) { R.hips.position.set(0, R.hips.userData.seatY ?? (R.hips.userData.seatY = R.hips.position.y > 0.5 ? 0.9 : R.hips.position.y), 0); }          // the pelvis position stays on the saddle; its turn comes from the clip, so sword, spear and bow aim forward like on foot       // the pelvis stays on the saddle: no run bob, no jump
     }
     // 창: 서 있을 때는 위로 세워 들고, 달리기·공격에서는 검처럼 손에 직각으로 쥔다 (손목은 모션캡처를 따른다)
     // 2관절 팔 IK: 어깨→팔꿈치→손이 목표 T에 닿게 한다. base1/base2 는 w=0 일 때의 자세

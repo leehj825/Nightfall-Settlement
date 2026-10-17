@@ -107,6 +107,8 @@
     { id: 'stride', label: 'Long Stride', desc: 'Run 8% faster whenever no foe is near' }, { id: 'evade', label: 'Shadow Step', desc: 'Dash goes 15% further and keeps you untouchable a little longer' },
     { id: 'vault', label: 'Rushing Strike', desc: 'After a dash your attacks deal +25% damage for 1.2s' }, { id: 'lunge', label: 'Lunge', desc: 'Spear thrust: +12% damage and +10% reach' },
     { id: 'impale', label: 'Impale', desc: 'Spear thrust: staggers foes 0.25s and widens a little (not bosses)' }, { id: 'standard', label: 'Standard Bearer', desc: 'Your standard reaches 20% further and soldiers near you fight and endure more' },
+    { id: 'bannerlord', label: 'Banner Lord', desc: 'Banners: +3% damage and guard, +3 reach for their bonus' }, { id: 'warcommand', label: 'War Command', desc: 'Charging men deal +8% damage; men standing firm take 6% less' },
+    { id: 'horsemaster', label: 'Horse Master', desc: 'Mounted men: +8% speed and +25% charge damage' }, { id: 'drillmaster', label: 'Drill Master', desc: 'Training Field drills give +1 extra drill XP' },
     { id: 'regen', label: 'Second Wind', desc: 'Regain health slowly anywhere, even in a fight' }, { id: 'forage', label: 'Forager', desc: 'Gather faster; +1 yield at 3 and 5 stacks' },
   ];
   const hudEl = document.getElementById('hud'), hudBarEl = document.getElementById('hudBar');
@@ -141,6 +143,7 @@
     { id: 'vanguard', name: 'Vanguard', color: '#e0604a', nodes: ['dmg', 'hp', 'guard', 'leech', 'cleave', 'whirl'] },
     { id: 'ranger', name: 'Ranger', color: '#6cc060', nodes: ['spd', 'fletch', 'stride', 'dash', 'evade', 'vault', 'forage'] },
     { id: 'tactician', name: 'Tactician', color: '#5b9bd6', nodes: ['spear', 'lunge', 'ult', 'impale', 'regen', 'standard', 'rally'] },
+    { id: 'marshal', name: 'Marshal', color: '#e0b43c', nodes: ['bannerlord', 'warcommand', 'horsemaster', 'drillmaster'] },
   ];
   const branchPts = (b) => b.nodes.reduce((a, id) => a + (pl.st[id] || 0), 0);
   const nodeInfo = (id) => LEVEL_UPS.find(u => u.id === id);

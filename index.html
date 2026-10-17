@@ -13,8 +13,9 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<div id="bootCover" style="position:fixed;top:calc(-1 * var(--ad-h,0px));left:0;right:0;bottom:0;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(ellipse at 50% 60%,#2a1a3c 0%,#120a22 70%,#0a0614 100%);color:#f2d27a;font-family:system-ui,sans-serif;transition:opacity .5s"><div style="font-size:clamp(22px,5vw,40px);font-weight:800;letter-spacing:.12em;text-shadow:0 3px 0 #5a2a10">NIGHTFALL SETTLEMENT</div><div style="font-size:14px;opacity:.75;letter-spacing:.2em">LOADING</div><div style="width:min(60vw,240px);height:4px;border-radius:2px;background:rgba(255,255,255,.15);overflow:hidden"><div style="width:40%;height:100%;background:#f2a23a;border-radius:2px;animation:bootbar 1.1s ease-in-out infinite"></div></div></div><style>@keyframes bootbar{0%{margin-left:-40%}100%{margin-left:100%}}#bootCover.off{opacity:0;pointer-events:none}</style>
+<div id="adBanner"><div class="adBox">ADVERTISEMENT</div></div>
 <canvas id="game"></canvas>
-<h1 id="title">Nightfall Settlement</h1>
 <div id="hudBar" title="Tap for all stats (I)"><span id="barA"></span><small id="barB"></small></div>
 <div id="hud">🌲 Wood: <b id="woodN">0</b><br>🪨 Stone: <b id="stoneN">0</b><br>🔩 Iron: <b id="ironN">0</b><br><span id="shardRow" style="display: none">💠 Shards: <b id="shardN">0</b><br></span>❤️ HP: <b id="hpN">100</b><br><span id="lvlRow">⭐ Level: <b id="lvlN">1</b> <small id="xpN"></small></span><br>⚔️ Attack: <b id="atkN">1</b><br>🛡️ Armor: <b id="armN">None</b><br>🍞 Food: <b id="foodN">0</b><br>🏕️ Stage: <b id="stageN">Stage 1 · Camp</b><br>🏘️ Population: <b id="popN">3 / 3</b><br>🌟 Prosperity: <b id="prosN">Fragile 25</b><br>🙂 Mood: <b id="moodN">Content 60</b><br><small id="popJobs">(Citizens: 0 | Melee: 2 | Archers: 1)</small></div>
 <div id="planBox">
@@ -36,8 +37,9 @@
 <div id="fade"></div>
 <div id="wbBar"></div>
 <div id="wbPanel"><div class="wcard"></div></div>
-<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><div id="ncPick"><button data-cls="sword">Sword</button><button data-cls="spear">Spear</button><button data-cls="greatsword">Great Sword</button><button data-cls="medic">Medic</button></div><button id="ncClass"></button><button id="ncWarband"></button><button id="ncJob"></button><button id="ncClose">Close</button></div></div>
+<div id="npcCard"><div class="ncard"><div class="nhead"><b id="ncName"></b><span id="ncRole"></span></div><p id="ncTrait"></p><div class="moodbar"><div id="ncMoodBar"></div></div><div id="ncMoodTxt"></div><ul id="ncInfo"></ul><div id="ncPick"><button data-cls="sword">Sword</button><button data-cls="spear">Spear</button><button data-cls="greatsword">Great Sword</button><button data-cls="medic">Medic</button><button data-cls="archer">Archer</button></div><button id="ncClass"></button><button id="ncWarband"></button><button id="ncJob"></button><button id="ncClose">Close</button></div></div>
 <div id="eventPanel"><div class="ecard"><small>Morning event</small><h3 id="evTitle"></h3><p id="evText"></p><div id="evBtns"></div></div></div>
+<div id="victory"><div class="vcard"><h2>The Realm Is Yours</h2><p id="vText"></p><ul id="vStats"></ul><div class="vbtns"><button id="vKeep">Keep ruling</button><button id="vNG">New Game+</button><button id="vMenu">Main menu</button></div></div></div>
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
 <button id="setBtn" title="Settings">⚙️</button>
@@ -53,10 +55,11 @@
   <label>Controls side<select id="setHand"><option value="r">Right-handed (stick on left)</option><option value="l">Left-handed (stick on right)</option></select></label>
   <label>Button size<select id="setBsz"><option value="s">Small</option><option value="m">Normal</option><option value="l">Large</option></select></label>
   <label>Vibration<select id="setHaptic"><option value="on">On</option><option value="off">Off</option></select></label>
+  <label>Leader model (test)<select id="setLeader"><option value="0">Classic</option><option value="1">New model</option></select></label>
   <label>Graphics<select id="setGfx"><option value="hi">High</option><option value="lo">Low (faster)</option><option value="min">Lowest (old phones)</option></select></label>
   <p class="shint" id="setSaveInfo"></p>
   <div class="tbtns"><button id="setAch">Achievements</button><button id="setRep">Balance report</button></div>
-  <div class="tbtns"><button id="setMenu">Main menu</button></div>
+  <div class="tbtns"><button id="setUnstick">Unstick</button><button id="setModelField">Model field</button><button id="setMenu">Main menu</button></div>
   <div class="tbtns"><button id="setTips">Replay tips</button><button id="setDel">Delete save</button><button id="setClose">Close</button></div></div></div>
 <div id="xhair"><svg viewBox="0 0 26 26" width="26" height="26"><g stroke="#000" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"><path d="M13 2v6M13 18v6M2 13h6M18 13h6"/></g><g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M13 2v6M13 18v6M2 13h6M18 13h6"/></g><circle cx="13" cy="13" r="1.3" fill="#fff"/></svg></div>
 <canvas id="joy" width="150" height="150"></canvas>
@@ -78,6 +81,7 @@
   <button class="btn" id="actBtn">Gather<small>G</small></button>
   <button class="btn" id="ultBtn">Ultimate<small id="ultCd">E</small></button>
   <button class="btn" id="dashBtn">Dash<small>R</small></button>
+  <button class="btn" id="mountBtn" style="display: none"><span id="mountLbl">Mount</span><small>M</small></button>
   <button class="btn" id="jumpBtn">Jump<small>Space</small></button>
   <button class="btn" id="blockBtn">Block<small>Hold Shift</small></button>
   <button class="btn" id="atkBtn">Attack<small>F</small></button>
@@ -90,6 +94,9 @@
 <script src="js/audio.js"></script>
 <script src="js/anims.js"></script>
 <script src="js/models.js"></script>
+<script src="js/greatsword.js"></script>
+<script src="js/horse_anim.js"></script>
+<script>(function () { var on = 0, m = /[?&]leader=([0-9])/.exec(location.search); if (m) on = +m[1]; else { try { on = +localStorage.getItem('nf_leader') || 0; } catch (e) {} } on = on ? 1 : 0; window.NF_LEADER = on; if (on) document.write('<script src="js/leader_parts.js"><\/script>'); })();</script>
 <script src="js/structures.js"></script>
 <script src="js/rig.js"></script>
 <script src="js/game.js"></script>

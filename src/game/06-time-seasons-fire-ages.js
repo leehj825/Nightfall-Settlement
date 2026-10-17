@@ -177,7 +177,7 @@
     const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y), dur = performance.now() - tapStart.t;
     tapStart = null;
     if (moved > 10 || dur > 450 || e.button !== 0) return;
-    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    { const cr = canvas.getBoundingClientRect(); ndc.set((e.clientX - cr.left) / cr.width * 2 - 1, -((e.clientY - cr.top) / cr.height) * 2 + 1); }
     ray.setFromCamera(ndc, camera);
     const nh = ray.intersectObjects(npcs, true);                          // 주민을 누르면 주민 카드
     if (nh.length) { let o = nh[0].object; while (o && !npcs.includes(o)) o = o.parent; if (o) { openNpcCard(o); return; } }

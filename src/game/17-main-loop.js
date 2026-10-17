@@ -1,7 +1,8 @@
   // ---------- 메인 루프 ----------
   const SPEED = 6;
+  let mvActive = false;                                       // Model field (19-model-field.js) is showing: the game is not stepped
   // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
-  const WX_N = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
+  const WX_N = 1600, WX_BASE = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
   for (let i = 0; i < WX_N; i++) { const x = rand(-16, 16), y = rand(0, 14), z = rand(-16, 16); wxPos.set([x, y, z, x, y + 0.7, z], i * 6); wxVel[i] = rand(0.8, 1.2); }
   wxLines.geometry.setAttribute('position', new THREE.BufferAttribute(wxPos, 3)); wxLines.frustumCulled = false; scene.add(wxLines);
   let wx = { kind: 'none', day: -1, lvl: 0, target: 0, snd: 0 };
@@ -16,9 +17,11 @@
     const show = wx.lvl > 0.03, snow = !storm && wx.kind === 'snow';
     wxLines.visible = show; if (!show) return;
     const mat = wxLines.material; mat.color.setHex(snow ? 0xffffff : 0xaec6ff); mat.opacity = Math.min(0.55, wx.lvl * 0.6);
+    const zoom = Math.min(3.2, Math.max(1, DIST / 12)), live = Math.min(WX_N, Math.round(WX_BASE * zoom * zoom * 0.5 + WX_BASE * 0.5));        // 카메라를 멀리 당기면 비 구역도 함께 커진다 (마을 전체에 내린다)
+    wxLines.scale.set(zoom, zoom, zoom); wxLines.geometry.setDrawRange(0, Math.max(WX_BASE, live) * 2);
     wxLines.position.set(player.position.x, player.position.y, player.position.z);
     const a = wxLines.geometry.attributes.position.array, fall = snow ? 2.2 : 16, len = snow ? 0.12 : 0.75;
-    for (let i = 0; i < WX_N; i++) {
+    for (let i = 0, n = Math.max(WX_BASE, live); i < n; i++) {
       const o = i * 6; let y = a[o + 1] - fall * wxVel[i] * dt; if (y < 0) y += 14;
       a[o + 1] = y; a[o + 4] = y + len; a[o] = a[o + 3] += (snow ? Math.sin(y * 2 + i) * 0.4 : -2.0) * dt; if (a[o] < -16) a[o] = a[o + 3] += 32; a[o + 2] = a[o + 5];
     }
@@ -35,6 +38,7 @@
 
   function tick() {
     requestAnimationFrame(tick);
+    if (mvActive) { mvStep(clock.getDelta()); return; }
     const rawDt = clock.getDelta(); fpsT += rawDt; fpsN++; if (fpsT >= 1) { window.__nfFps = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
     const dt = Math.min(rawDt, 0.05) * (eventOpen || uiPause ? 0 : 1);       // 아침 이벤트 창이 열려 있으면 시간이 멈춘다
     const t = clock.elapsedTime;
@@ -56,7 +60,7 @@
       for (const b of exBeams) { const d = Math.hypot(b.parent.position.x - player.position.x, b.parent.position.z - player.position.z); b.material.opacity = (0.1 + 0.2 * nf) * Math.min(1, d / 9); }       // 가까이 가면 기둥이 옅어진다
     }
     if (lightning > 0) { lightning = Math.max(0, lightning - dt * 3.2); const f = lightning * (0.6 + 0.4 * Math.sin(t * 60)); ambient.intensity += f * 1.4; sun.intensity += f * 0.9; scene.fog.color.lerp(C(0xcfd8ff), f * 0.5); scene.background.copy(scene.fog.color); }
-    weatherStep(dt, night, hour); updateMark(t); updateStandard(t);
+    weatherStep(dt, night, hour); updateMark(t); updateStandard(t); lifeTick(t, dt);
     fogNight = night && wave.type === 'fog'; fogBoost += ((fogNight ? 1 : 0) - fogBoost) * Math.min(1, dt * 0.8);
     scene.fog.near *= 1 - 0.55 * fogBoost; scene.fog.far *= 1 - 0.45 * fogBoost;      // 안개의 밤: 시야가 크게 줄어든다
     if (bird) { scene.fog.near *= 4; scene.fog.far *= 4; ambient.intensity += 0.2 * nf; }       // 버드아이 뷰에서는 안개가 멀리 밀려나고 밤에도 마을이 보인다
@@ -167,9 +171,12 @@
     updateGather(dt, dashT > 0 || mag > 0.08);
 
     // 충돌 처리: 겹치면 바깥으로 밀어냄
+    const airborne = playerRig.seated && (playerRig.hopT > 0 || (playerRig.hopT = 0, false)), landT = playerRig.seated ? (playerRig.landT = airborne ? 0.35 : Math.max(0, (playerRig.landT || 0) - dt)) : 0;      // a rider's leap carries the horse over wooden fences and stone walls (not the tall fort walls)
     for (const o of obstacles) {
+      const ud0 = o.userData; if (ud0.type === 'fence' && !ud0.tall && airborne) continue;
       const dx = player.position.x - o.position.x, dz = player.position.z - o.position.z;
       const min = o.userData.radius + PLAYER_R, d = Math.hypot(dx, dz);
+      if (ud0.type === 'fence' && !ud0.tall && landT > 0 && d < min) { const fx = Math.sin(facing), fz = Math.cos(facing), f = dx * fx + dz * fz; if (f < 0.4 * min) { player.position.x = o.position.x + fx * min; player.position.z = o.position.z + fz * min; continue; } }       // landed inside the wall line: step out on the far side
       if (d < min && d > 1e-4) { player.position.x = o.position.x + dx / d * min; player.position.z = o.position.z + dz / d * min; }
     }
     if (exActive) {
@@ -219,7 +226,7 @@
       if (weaponMode === 'bow' && !dead && !bird && !camFront && !uiPause) {
         camera.updateMatrixWorld(); xhV.set(player.position.x + Math.sin(facing) * 12, player.position.y + 1.1, player.position.z + Math.cos(facing) * 12).project(camera);
         if (xhV.z < 1 && Math.abs(xhV.x) < 1.2 && Math.abs(xhV.y) < 1.2) {
-          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px)`;
+          xh.style.display = 'block'; xh.style.transform = `translate(${((xhV.x * 0.5 + 0.5) * canvas.clientWidth).toFixed(1)}px, ${((-xhV.y * 0.5 + 0.5) * canvas.clientHeight).toFixed(1)}px)`;
           let lock = false; const fx = Math.sin(facing), fz = Math.cos(facing);
           for (const e of enemies) { if (e.userData.sinking) continue; const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z, d = Math.hypot(dx, dz); if (d < 26 && d > 1 && (dx * fx + dz * fz) / d > 0.985) { lock = true; break; } }
           if (lock !== xhLock) { xhLock = lock; xh.classList.toggle('lock', lock); }
