@@ -157,3 +157,6 @@ War is **not a separate game mode**. It is a new layer on the same village, save
 ## Other backlog (smaller)
 - Custom character models (leader, soldiers, citizens, raiders) and more weapon/building models; the current skinned models are disabled and several kinds (houses, towers, gates, wolves, great sword, staff, armor) have none.
 - More captured animations as needed from `js/anims_lib.js` (all received Mixamo clips are already stored retargeted).
+
+## Update at nf-v224 (owner-driven round)
+Done: new leader model (own skeleton and weights, clavicles), classic leader and body balance, great sword model, riders and the rigged horse (walk, gallop, jump over low fences), fort walls on the outermost ring, Model field, loading cover, ad banner slot. Still open: apply the skinned-model route to soldiers and citizens (the Model field is the place to look at new models); wire a real ad SDK into the banner slot when the owner has AdMob ids; horses in stables are still static; the leader's mounted use of the great sword and bow death clips were checked only in the Model field.

@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v224`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v225`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement` (use the dev branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. Play Store release is documented in `RELEASE.md` but is the owner's task. A medieval setting: avoid modern words (see the terms table in the roadmap).
@@ -21,6 +21,7 @@ Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list
 | Captured animations | `js/anims.js` (clips used by the game, ~86), `js/anims_lib.js` (all ~180 retargeted clips, not loaded by the game or the Android build) |
 | Animation tool | `tools/retarget_mixamo.js` (`LIB=1` writes the library; `win` option trims and loops a clip; reads `.fbx` and `.glb#N`) |
 | Animation sources kept in the repo | `tools/anim_src/` (knight GLBs for mining and chopping, the horizontal melee FBX). The big Mixamo packs are not in the repo: if a new move is needed and it is not in `anims_lib.js`, ask the owner to resend it |
+| New character/animal files | `js/leader_parts.js` (the leader's skinned model, lazy), `js/greatsword.js` (great sword mesh), `js/horse_anim.js` (horse walk/gallop), built by `tools/build_leader_parts.py`, `tools/build_greatsword.py`, `tools/build_horse_anim.py`; `src/game/04c-horse.js` (jointed box horse, `horseStep`), `src/game/19-model-field.js` (Settings > Model field), see `docs/LEADER_MODEL.md` and `docs/MODEL_FIELD.md` |
 | Models and structures | `js/models.js` (skinned characters, off by default, `?models=1` turns them on; weapon and tool models are always used), `js/structures.js` (well, smithy, range, tent, tree, campfire, fence, wall) built by `tools/build_structures.py` |
 | Config and balance numbers | `js/config.js` (`CFG`: stages and stage gates, town groups, siege/wound/levy/training numbers, expeditions, warbands `CFG.WARBAND`, towers, gear) |
 | Audio | `js/audio.js` (synth sounds and music) |
@@ -56,13 +57,19 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 - **Title screen and debug start (nf-v138 to nf-v143):** `showTitle` in `18-save-settings-achievements.js` builds a Stage 5 showcase town with `debugJump(5)` and orbits the camera around it (`titleMode`). Every button stores an intent in `sessionStorage` (`nf_intent`) and reloads so the game starts in a clean world; `bootGame` reads it. The Debug corner starts a new game at stage 1 to 5 with everything built (`debugJump` in `14-chapter-clear-checkpoint-debug.js`). Settings has a Main menu button. `?debug=1` skips the title (add `&load=1` to see it); `__nf` also exposes `setStage`, `builtBuildings`.
 - **Headless test tips:** call `__nf.pause(false)`, dismiss the tutorial coach and "Morning event" dialogs, set the clock with `setMin` and wait about 500 ms (`nowHour` only updates in the main loop), and run long scripts in the background. Camera views for screenshots: `__nf.camTest(dist, pitch, front)` with the player moved next to the building.
 
+## Added in nf-v158 to nf-v224 (owner-driven round; details in `README.md`)
+- **Leader and characters:** new skinned leader model with clavicles (`docs/LEADER_MODEL.md`), smoother classic leader, body balance tables for all humans, great sword model, riders sit (idle upper body, thighs over the flanks, fall off sideways when dead).
+- **Horse:** jointed box horse with the walk and gallop from the horse pack; mounted jump 1.7 m / 0.9 s over wood fences and stone walls; the outermost ring (Great Wall, more than 32 m from the centre) is a 4.4 m **fort wall** (`createWall` in `03-audio-resources.js`, `userData.tall`) that cannot be jumped; gatehouse towers only on the outermost wall's gates.
+- **Model field:** Settings > Model field (`19-model-field.js`, `docs/MODEL_FIELD.md`): a flat field with a free camera for characters, mounts and your own .glb files.
+- **Screens:** a loading cover in `index.html` hides the half-built start scene before the title town; the in-game title text is gone; a 50 px ad banner slot sits at the top (`CFG.ADS` in `js/config.js`, `body.ad` in `css/style.css`: body becomes the containing block of the fixed UI, the canvas area, tap picking and crosshair use the area below the strip). It is a placeholder: no ad SDK yet (AdMob needs the owner's app id and banner unit id).
+
 ## Next steps (also in the roadmap)
 Balance tuning is **not** a step: the owner plays the debug build on a phone all along and reports problems in chat (blocked paths, layout, performance, balance). Fix them as they come, and keep numbers in `js/config.js`.
 1. **Banners and the host: done through nf-v152** (`docs/BANNERS_PLAN.md`, `CFG.BANNER`, `CFG.CAV`, banner, cavalry and leader-horse blocks in `10b-warbands.js`; Marshal column in `08-enemies.js`). Orders, raids, the campaign map, realms, sieges and wounds/courage/levies are done too; see `docs/ROADMAP.md`.
 2. **Stage 5 town: done through nf-v156** (plaza, muster yard, pens, windmill, infirmary, monument, stables, gatehouses, corner torches, outer homes, town life, path safety net).
 3. **Training Yard and endgame: done in nf-v157** (`trainyardModel`, `CFG.YARD_*`, `16f-endgame.js`: `throneLine`, `showVictory`, `victoryTick`). Nothing planned is left except models and polish.
 4. **Models and polish:** archery range, farm, gates, market and siege workshop models; audio; formations; extra unit types.
-5. Later: custom skinned character models; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
+5. Later: the same skinned-model route for soldiers and citizens (the leader is done); optional AdMob in the banner slot; Play Store release (`RELEASE.md`, owner tasks: signing key, secrets, store listing).
 
 ## Conventions worth remembering
 - `js/game.js` is generated; edit parts in `src/game/`. Parts run in file-name order; the first opens the IIFE, the last closes it. A part loaded early must not call `const` helpers from a later part at load time (use `function` declarations; see `10b-warbands.js`).
