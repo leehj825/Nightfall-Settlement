@@ -6764,7 +6764,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (cornerLit[t]) continue; cornerLit[t] = true;
       const h = CFG.DESIGN[t].half - 0.4; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addCornerLamp(sx * h, sz * h);
     }
-    if (stage >= 5) for (const g of gateWaypoints) if (g.r >= 25 && !g.house) g.house = gatehouseModel(null, g);      // 5단계: 둘째·셋째 성벽의 성문에 문루
+    if (stage >= 5) for (const g of gateWaypoints) if (g.r > 32 && !g.house) g.house = gatehouseModel(null, g);      // stage 5: only the outermost wall's gates get the gatehouse towers (the 2nd wall's gates are plain openings)
   }
   // 성문 조명: 문마다 실제 점광원 + 바닥에 퍼지는 따뜻한 빛 웅덩이 (밤에 문 앞이 충분히 밝도록)
   const haloMat = (() => {
