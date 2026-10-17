@@ -1,4 +1,4 @@
-# Leader model and character proportions (current state, nf-v225)
+# Leader model and character proportions (current state, nf-v226)
 
 This file describes what the code does now. (The long history of the earlier parts-model experiments - 45 and 16 separate parts, soft joints, an under layer, automatic skinning - was removed on purpose: that code is gone; see git history before nf-v194 if it is ever needed.)
 

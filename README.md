@@ -445,3 +445,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v223: the in-game 'Nightfall Settlement' title is removed (clock and notices move up); a 50 px ad banner slot sits on top of the game screen (CFG.ADS in js/config.js; a placeholder until an ad SDK is wired in); the game area, tap picking and crosshair use the area below the banner.
 - nf-v224: the 2nd wall (stone ring, half-width 25) no longer gets gatehouse towers; only the outermost wall's gates do.
 - nf-v225: documents updated to match the code (LEADER_MODEL.md rewritten as a current-state page, MODEL_FIELD.md, HANDOFF.md, ROADMAP.md).
+- nf-v226: the context buttons (Orders, Smithy, Rest, Standard...) sit left of the action buttons' wrapped columns, so they no longer overlap Block/Attack now that the ad strip makes the screen shorter (css ctxActions right offsets).
