@@ -1,6 +1,39 @@
   // ---------- 절차적 맵: 나무 / 바위 ----------
   const obstacles = [];   // 충돌 + 채집 대상 배열
   const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
+  // ---------- generated textures: stone blocks, planks, shingles, plaster. No files: drawn on a canvas, mapped by object-space triplanar so boxes, cones and walls of any size keep the same scale ----------
+  const procTexCache = {};
+  function procTex(kind) {
+    if (procTexCache[kind]) return procTexCache[kind];
+    const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S; const c = cv.getContext('2d');
+    let seed = kind.length * 977 + kind.charCodeAt(0); const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const g = (v) => { v = Math.max(0, Math.min(255, Math.round(v))); return `rgb(${v},${v},${v})`; };
+    c.fillStyle = g(235); c.fillRect(0, 0, S, S);
+    if (kind === 'stone') {                                           // staggered blocks, dark mortar, speckles
+      c.fillStyle = g(120); c.fillRect(0, 0, S, S);
+      for (let row = 0; row < 8; row++) { const bw = 32, off = row % 2 ? 16 : 0; for (let col = -1; col < 5; col++) { const x = col * bw + off, y = row * 16, v = 205 + r() * 45; c.fillStyle = g(v); c.fillRect(x + 1.5, y + 1.5, bw - 3, 13); c.fillStyle = g(v + 14); c.fillRect(x + 1.5, y + 1.5, bw - 3, 2); } }
+    } else if (kind === 'wood') {                                     // vertical planks with grain lines and nail dots
+      for (let i = 0; i < 8; i++) { const x = i * 16, v = 205 + r() * 40; c.fillStyle = g(v); c.fillRect(x, 0, 16, S); for (let k = 0; k < 9; k++) { c.fillStyle = g(v - 22 - r() * 20); c.fillRect(x + 2 + r() * 12, 0, 1, S); } c.fillStyle = g(95); c.fillRect(x + 15, 0, 1.5, S); c.fillRect(x + 7, 8, 2, 2); c.fillRect(x + 7, S - 10, 2, 2); }
+    } else if (kind === 'shingle') {                                  // overlapping rows of rounded tiles
+      c.fillStyle = g(110); c.fillRect(0, 0, S, S);
+      for (let row = 0; row < 8; row++) { const off = row % 2 ? 8 : 0; for (let col = -1; col < 9; col++) { const x = col * 16 + off, y = row * 16, v = 190 + r() * 55; c.fillStyle = g(v); c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 15, y); c.lineTo(x + 15, y + 9); c.quadraticCurveTo(x + 8, y + 20, x + 1, y + 9); c.fill(); c.fillStyle = g(v - 40); c.fillRect(x + 1, y, 14, 2); } }
+    } else {                                                          // plaster: soft mottling and a few cracks
+      for (let i = 0; i < 700; i++) { c.fillStyle = g(205 + r() * 50); c.fillRect(r() * S, r() * S, 2 + r() * 6, 2 + r() * 6); }
+      c.strokeStyle = g(170); c.lineWidth = 1; for (let i = 0; i < 3; i++) { c.beginPath(); let x = r() * S, y = r() * S; c.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 18; y += 6 + r() * 8; c.lineTo(x, y); } c.stroke(); }
+    }
+    for (let i = 0; i < 160; i++) { c.fillStyle = `rgba(0,0,0,${0.03 + r() * 0.05})`; c.fillRect(r() * S, r() * S, 1 + r() * 2, 1 + r() * 2); }
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return (procTexCache[kind] = t);
+  }
+  function texMat(color, kind, tile) {                                // tile: texture repeats per metre
+    const m = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 1, map: procTex(kind) });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uTile = { value: tile };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTP; varying vec3 vTN;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvTP = position * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz)); vTN = abs(normal);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTP; varying vec3 vTN; uniform float uTile;').replace('#include <map_fragment>', 'vec3 tw = pow(normalize(vTN + 1e-4), vec3(4.0)); tw /= (tw.x + tw.y + tw.z); diffuseColor.rgb *= (texture2D(map, vTP.zy * uTile) * tw.x + texture2D(map, vTP.xz * uTile) * tw.y + texture2D(map, vTP.xy * uTile) * tw.z).rgb;');
+    };
+    m.customProgramCacheKey = () => 'procTex';
+    return m;
+  }
   const trunkMat = mat(0x6b4226), leafMat = mat(0x3f8a3c), rockMat = mat(0x8b8b92);
   const rand = (a, b) => a + Math.random() * (b - a);
 

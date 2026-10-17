@@ -32,7 +32,7 @@
     if (map.has(e.material)) e.material = map.get(e.material);
   }
   // ---------- 산적 야영지 (습격 Raid): 목책 · 문 · 감시탑 · 천막 · 모닥불 · 우두머리 천막. 목책은 막히는 지형 (적의 길 막힘은 다음 단계) ----------
-  const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = mat(0x80838c), campStoneDark = mat(0x575a63), campGateMat = mat(0x3a2a1c);
+  const campWood = texMat(0x72502e, 'wood', 0.9), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = texMat(0x8a8d96, 'stone', 0.4), campStoneDark = texMat(0x5e616b, 'stone', 0.4), campGateMat = mat(0x3a2a1c);
   let exStats = { kills: 0, t0: 0 };                                 // 이번 원정의 전투 기록 (보고서용)
   let siegeLoad = { ram: 0, ladder: 0, catapult: 0 };                             // 이번 원정에 가져온 공성 장비
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
