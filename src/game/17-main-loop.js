@@ -113,6 +113,8 @@
     updateDash(dt);
     updateFloaters(dt); updateSmith(dt, t); autoPlanTick(dt); caravanTick(dt); tickDelayed(dt);
     Snd.setMood(nf, danger && night, enemies.some(e => e.userData.boss));
+    { const boss = enemies.some(e => e.userData.boss && !e.userData.sinking), battle = exActive ? !!(exCamp && !exCamp.broken && !exActive.prep && !exActive.training) : danger && night;       // raid music: night raids, sieges and camp assaults, bosses
+      Snd.setScene(titleMode ? 'title' : battle || boss ? 'raid' : hour >= 19 || hour < 6 ? 'night' : 'day'); }
     for (const bp of blueprints) bp.material.opacity = 0.35 + 0.15 * Math.sin(t * 4);
     animateFire(t);
     atkCd -= dt;
