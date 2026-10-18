@@ -7106,7 +7106,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   const mdlCache = {};
   const isGrey = (c) => { const r = c >> 16 & 255, g = c >> 8 & 255, b = c & 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx - mn <= 24 && mx >= 0x50 && mx <= 0xd0; };
   let stoneAuto = false;                                                    // only the keep, towers and gatehouses use the stone-block texture on their grey parts
-  const M = (c, kind, tile) => { if (!kind && stoneAuto && isGrey(c)) kind = 'stone'; const k = c + (kind || ''); return mdlCache[k] || (mdlCache[k] = kind ? texMat(c, kind, tile || 0.5) : new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 })); };
+  const WOODS = new Set([0x4a301c, 0x3a2414, 0x6b4a2a, 0x7a4f2a, 0x6a4a2a, 0x7a5a3a, 0x6b4a2b, 0x8a5a2a, 0x5a3a22, 0x5a3a1e, 0x3a2a1c, 0x8a6c48]);       // brown parts of the wooden buildings get plank texture
+  const M = (c, kind, tile) => { if (!kind && stoneAuto && isGrey(c)) kind = 'stone'; else if (!kind && WOODS.has(c)) { kind = 'wood'; tile = tile || 1.1; } const k = c + (kind || ''); return mdlCache[k] || (mdlCache[k] = kind ? texMat(c, kind, tile || 0.5) : new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 })); };
   const withStone = (fn) => function (...a) { stoneAuto = true; try { return fn.apply(this, a); } finally { stoneAuto = false; } };
   function gableGeo(w, h, d) {                                               // 삼각 단면(너비 w, 높이 h)을 깊이 d 만큼 밀어낸 박공 지붕: 바닥이 y=0, 앞뒤(z)로 d/2
     const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(0, h); sh.closePath();
