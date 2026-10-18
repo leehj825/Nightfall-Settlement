@@ -5004,7 +5004,7 @@ body.ad:not(.titlemode) #adBanner { display: flex; }
     try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1 && localStorage.getItem('nf_vol_v2')) vol.music = v.music; } catch (e) {}
     // Music (audio/*.mp3): title, day, night and raid (raids, sieges and boss fights) tracks that crossfade by scene. They follow the Music slider and the mute button;
     // the synthesized score only plays if no file could be loaded.
-    const TRACKS = { title: 'audio/title.mp3', day: 'audio/day.mp3', night: 'audio/night.mp3', raid: 'audio/raid.mp3' }, MUSIC_BASE = 0.7;
+    const TRACKS = { title: 'audio/title.mp3', night: 'audio/night.mp3', raid: 'audio/raid.mp3' }, SCENE_TRACK = { title: 'title', day: 'night', night: 'night', raid: 'raid' }, MUSIC_BASE = 0.7;       // the night song also plays by day, so 19:00 does not restart it
     const tr = {}; let scene = 'title', sceneT = 0, wantScene = 'title', calmT = 0;
     function trackMake(k) {
       if (tr[k]) return tr[k];
@@ -5013,7 +5013,7 @@ body.ad:not(.titlemode) #adBanner { display: flex; }
       return (tr[k] = { a, g: 0 });
     }
     function setScene(name) {                                          // raid starts at once; leaving it waits until it has been calm for 8 s; other changes wait 4 s so the music does not flip-flop
-      if (!TRACKS[name]) return; const now = performance.now();
+      name = SCENE_TRACK[name]; if (!name) return; const now = performance.now();
       if (name === wantScene) { calmT = now; return; }
       if (scene === 'raid' && name !== 'raid' && now - calmT < 8000) return;
       if (name !== 'raid' && name !== 'title' && scene !== 'title' && now - sceneT < 4000) return;
