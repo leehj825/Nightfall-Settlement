@@ -17,16 +17,22 @@
     } else if (kind === 'shingle') {                                  // overlapping rows of rounded tiles
       c.fillStyle = g(110); c.fillRect(0, 0, S, S);
       for (let row = 0; row < 8; row++) { const off = row % 2 ? 8 : 0; for (let col = -1; col < 9; col++) { const x = col * 16 + off, y = row * 16, v = 190 + r() * 55; c.fillStyle = g(v); c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 15, y); c.lineTo(x + 15, y + 9); c.quadraticCurveTo(x + 8, y + 20, x + 1, y + 9); c.fill(); c.fillStyle = g(v - 40); c.fillRect(x + 1, y, 14, 2); } }
-    } else if (kind === 'rough') {                                    // rough fieldstone: irregular rounded stones of many greys, no straight courses
-      c.fillStyle = g(105); c.fillRect(0, 0, S, S);
-      for (let i = 0; i < 46; i++) { const x = r() * S, y = r() * S, rw = 9 + r() * 12, rh = 7 + r() * 8, v = 175 + r() * 70; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { c.fillStyle = g(v); c.beginPath(); c.ellipse(x + ox, y + oy, rw, rh, r() * 0.6 - 0.3, 0, 7); c.fill(); c.fillStyle = g(v + 18); c.beginPath(); c.ellipse(x + ox - 2, y + oy - 2, rw * 0.6, rh * 0.5, 0, 0, 7); c.fill(); } }
+    } else if (kind === 'rough') {                                    // rubble masonry: rows of small uneven stones, dark mortar, warm and cool greys mixed
+      c.fillStyle = g(95); c.fillRect(0, 0, S, S);
+      for (let row = 0; row < 8; row++) {
+        let x = -r() * 10; const y = row * 16;
+        while (x < S) {
+          const w = 12 + r() * 16, v = 175 + r() * 55, wr = Math.round(v + 3 + (r() - 0.5) * 7), wb = Math.round(v - 5 + (r() - 0.5) * 7), ins = 1.4 + r() * 0.8, h = 16 - 2 * ins;
+          for (const ox of x + w > S ? [0, -S] : [0]) { const px = x + ox + ins, cr = 2.5; c.fillStyle = `rgb(${wr},${Math.round(v)},${wb})`; c.beginPath(); c.moveTo(px + cr, y + ins); c.lineTo(px + w - 2 * ins - cr, y + ins); c.lineTo(px + w - 2 * ins, y + ins + cr); c.lineTo(px + w - 2 * ins, y + ins + h - cr); c.lineTo(px + w - 2 * ins - cr, y + ins + h); c.lineTo(px + cr, y + ins + h); c.lineTo(px, y + ins + h - cr); c.lineTo(px, y + ins + cr); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(px + 2, y + ins, w - 2 * ins - 4, 2); }
+          x += w;
+        }
+      }
     } else if (kind === 'thatch') {                                   // straw: dense short diagonal strands in bundles
       c.fillStyle = g(190); c.fillRect(0, 0, S, S);
       for (let i = 0; i < 900; i++) { const x = r() * S, y = r() * S, v = 140 + r() * 115; c.strokeStyle = g(v); c.lineWidth = 1 + r(); c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 5, y + 8 + r() * 12); c.stroke(); }
       for (let y = 0; y < S; y += 32) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y, S, 2); }
     } else {                                                          // plaster: soft mottling and a few cracks
       for (let i = 0; i < 700; i++) { c.fillStyle = g(205 + r() * 50); c.fillRect(r() * S, r() * S, 2 + r() * 6, 2 + r() * 6); }
-      c.strokeStyle = g(170); c.lineWidth = 1; for (let i = 0; i < 3; i++) { c.beginPath(); let x = r() * S, y = r() * S; c.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 18; y += 6 + r() * 8; c.lineTo(x, y); } c.stroke(); }
     }
     for (let i = 0; i < 160; i++) { c.fillStyle = `rgba(0,0,0,${0.03 + r() * 0.05})`; c.fillRect(r() * S, r() * S, 1 + r() * 2, 1 + r() * 2); }
     const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return (procTexCache[kind] = t);

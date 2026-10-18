@@ -16,7 +16,7 @@
     const add = (geo, m, px, py, pz, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; inner.add(o); return o; };
     const stone = lvl >= 3;
     const roofKind = pick(stone ? ['shingle', 'shingle', 'plank'] : ['thatch', 'thatch', 'shingle', 'plank']);
-    const wallM = stone ? M(pick([0x9a9da4, 0xa8a294, 0x8f969e, 0xb0a898]), 'rough', 0.5) : M(pick([0xd8bf90, 0xe6d8b8, 0xcfa97c, 0xd9cfae, 0xbfa27a]), 'plaster', 0.6), beamM = M(pick([0x4a301c, 0x3a2a1c, 0x5a3a22]), 'wood', 1.2),
+    const wallM = stone ? M(pick([0x9a9da4, 0xa8a294, 0x8f969e, 0xb0a898]), 'rough', 0.9) : M(pick([0xd8bf90, 0xe6d8b8, 0xcfa97c, 0xd9cfae, 0xbfa27a]), 'plaster', 0.6), beamM = M(pick([0x4a301c, 0x3a2a1c, 0x5a3a22]), 'wood', 1.2),
       roofM = roofKind === 'thatch' ? M(pick([0xc8aa64, 0xb89a58, 0xa8884a]), 'thatch', 0.8) : roofKind === 'plank' ? M(pick([0x7a5232, 0x6a4a2e, 0x8a6038]), 'wood', 0.9) : M(stone ? pick([0x4a4f5c, 0x5c4a42, 0x3f5a52, 0x5a3f4a]) : pick([0xa34a2a, 0x8c5a34, 0x6b7d4a, 0xb5651d, 0x7a3a2a]), 'shingle', 0.7), baseM = M(0x6f7078), doorM = M(pick([0x3a2414, 0x4a2a1a, 0x2f3a4a, 0x5a2a2a])),
       flowerM = M(pick([0x4f8a3a, 0xc0504a, 0xd8a02a, 0x8a5ab0]));
     const W = stone ? 3.0 : 2.8, H = (stone ? 2.3 : 1.8) + (R() < 0.3 ? 0.5 : 0);

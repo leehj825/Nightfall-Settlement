@@ -452,3 +452,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v230: houses now really use the textures (plaster or stone walls, shingle roofs, wood beams) and every grey stone part of the classic buildings (keep, towers, gatehouse, castle) gets the stone-block texture automatically (`M()` in 04b-models.js).
 - nf-v231: the stone-block texture is only on the fortress walls, the keep, towers and gatehouses. Houses vary (plaster or rough fieldstone walls; thatch, shingle or plank roofs), barracks and cottages use rough fieldstone. New textures `rough` and `thatch`.
 - nf-v232: wooden structures (doors, beams, stables, lumber camp, town hall frame, tower decks) use the plank texture (`WOODS` colour list in 04b-models.js).
+- nf-v233: house stone walls use a finer rubble-masonry texture (the large blobs looked like leopard spots); plaster no longer has a repeating crack.
