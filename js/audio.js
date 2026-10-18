@@ -11,7 +11,7 @@
     }
     function trackTick() {
       if (!track) return;
-      const d = track.duration, t = track.currentTime, fade = d > 8 ? Math.max(0, Math.min(1, t / 2, (d - t) / 3)) : 1;
+      const d = track.duration, t = track.currentTime, fade = d > 8 ? Math.max(0, Math.min(1, t / 0.8, (d - t) / 3)) : 1;
       track.volume = Math.max(0, Math.min(1, 0.85 * vol.music * fade)); track.muted = muted;
       if (document.hidden && !track.paused) track.pause(); else if (!document.hidden && !muted && track.paused) { const pr = track.play(); if (pr && pr.catch) pr.catch(() => {}); }
     }
@@ -84,6 +84,7 @@
     // 배경음: 코드 진행을 따라가는 작은 시퀀서. 낮 = 밝은 아르페지오, 밤 = 느린 단조 패드, 습격 = 맥박 + 불안한 선율, 보스 = 더 낮고 빠른 맥박
     const N = n => 440 * Math.pow(2, (n - 69) / 12);          // MIDI -> Hz
     const DAY_CH = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];          // C Am F G
+    setTimeout(trackStart, 0);
     const NIGHT_CH = [[45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 58], [40, 47, 52, 55]];        // Am F G(m) Em, low and slow
     const DANGER_ROOT = [38, 38, 41, 36];
     function musicTick() {
