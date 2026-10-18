@@ -98,7 +98,7 @@
 
   const TR = (n) => CFG.TRAITS[n.trait] || {};
   const workMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.6 : 1) * (TR(n).work || 1) * (n.mood >= CFG.MOOD_HAPPY ? 1.1 : n.mood < CFG.MOOD_UNHAPPY ? 0.8 : 1) * (n.foreman ? 1.25 : npcs.some(f => f.foreman && !f.down) ? 1.12 : 1);
-  const moveMul = (n) => (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.75 : 1) * (TR(n).move || 1) * (n.mood < CFG.MOOD_UNHAPPY ? 0.9 : 1) * (n.mounted ? CFG.CAV.SPEED * (1 + 0.08 * pl.st.horsemaster) : 1);
+  const moveMul = (n) => soldierSpd(n) * (n.hungry ? CFG.HUNGER_MULT : 1) * (n.sick > 0 ? 0.75 : 1) * (TR(n).move || 1) * (n.mood < CFG.MOOD_UNHAPPY ? 0.9 : 1) * (n.mounted ? CFG.CAV.SPEED * (1 + 0.08 * pl.st.horsemaster) : 1);
   const rationOf = (n) => Math.ceil(CFG.RATION * (TR(n).ration || 1) * season().ration);
   const moodLabel = (v) => v < CFG.MOOD_LEAVE ? 'Miserable' : v < CFG.MOOD_UNHAPPY ? 'Unhappy' : v < 60 ? 'Content' : v < CFG.MOOD_HAPPY ? 'Happy' : 'Joyful';
   const grieve = () => { for (const x of npcs) x.shock = Math.min(25, (x.shock || 0) + 10); };         // 동료가 쓰러지면 모두 마음이 가라앉는다
@@ -126,7 +126,7 @@
     npc = target; n = n * dm().dmg;
     if (target.role !== 'citizen') n = Math.max(1, Math.round(n * (1 - gearDef(target.gear.armor).reduce) * standardMods(target).guard));      // 병사 방어구 + 지휘관의 깃발
     if (TR(target).dmg) n = Math.max(1, Math.round(n * TR(target).dmg));                                         // 용감한 성격
-    npc.hp = Math.max(0, npc.hp - n);
+    npc.hp = Math.max(0, npc.hp - n); if (n > 0) fightGain(npc, 0.3, 0.8);                      // being in the thick of it trains too
     if (npc.hp <= 0 && !npc.down) {
       if (npc.born === 'citizen') { removeNpc(npc); return; }
       npc.down = true; npc.target = null; npc.gatherT = 0; npc.returning = false; setTask(null); npc.workT = 0; npc.promote = null;
@@ -250,12 +250,13 @@
     const rows = [`Doing: ${n.down ? 'Down' : n.stateNow}`];
     if (n.hungry) rows.push('Hungry: speed and work at half');
     if (n.sick > 0) rows.push('Sick: slower and gloomy until it passes');
+    if (n.role !== 'citizen') rows.push(`Strength +${Math.round((soldierStr(n) - 1) * 100)}% · Speed +${Math.round((soldierSpd(n) - 1) * 100)}% (from fighting)`);
     if (n.role !== 'citizen' && vetLv(n)) rows.push(`Veteran rank ${vetLv(n)} (${n.vxp} drills): +${6 * vetLv(n)}% damage`);
     if (n.role !== 'citizen') rows.push(`Gear: ${(n.role === 'melee' ? soldierWeaponDef(n) : gearDef(n.gear.bow)).name}${n.gear.armor !== 'armor_none' ? ' · ' + gearDef(n.gear.armor).name : ''}`);
     else {
       rows.push(`Job: ${jobTitle(n)}`);
       if (n.work) rows.push(`Works at: ${BUILDING_NAME[n.work.userData.kind] || 'the village'}`);
-      const k = jobKind(n); if (k) rows.push(`Experience: ${(n.xp && n.xp[k]) || 0} tasks done`);
+      const k = jobKind(n); if (k) rows.push(`Technique: ${CFG.SKILL_NAMES[skillLv(n, k)]} (+${Math.round(CFG.SKILL_BONUS * skillLv(n, k) * 100)}% work speed, ${(n.xp && n.xp[k]) || 0} tasks done)`);
       const fav = CFG.TRAIT_JOB[n.trait]; if (fav) rows.push(`Talent: ${CFG.JOBS[fav]}${k === fav ? ' (using it: +10%)' : ''}`);
     }
     { const cb = document.getElementById('ncClass'); cb.style.display = n.role !== 'citizen' ? '' : 'none'; cb.textContent = `Class: ${clsTitle(n)} (tap to change)`; const pk = document.getElementById('ncPick'); pk.style.display = n.role !== 'citizen' ? '' : 'none'; const cur = n.role === 'archer' ? 'archer' : (n.cls || 'sword'); for (const b of pk.children) b.classList.toggle('on', b.dataset.cls === cur); if (n.role !== 'citizen') rows.push(CLS_INFO[cur]); }

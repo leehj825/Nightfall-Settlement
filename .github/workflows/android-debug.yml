@@ -5,6 +5,11 @@
 name: Android debug APK
 on:
   workflow_dispatch:
+    inputs:
+      real_ads:
+        description: 'Show REAL ads (tick only when you know you will not click them). Default: Google test ads'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
     branches: ['ccr-*']          # also builds when the game files change on the work branch, so it works before the workflow is merged into main
@@ -29,6 +34,8 @@ jobs:
       - name: Install web dependencies
         run: npm ci
       - name: Copy the game into the Android project
+        env:
+          NF_ADS: ${{ inputs.real_ads && 'real' || 'test' }}
         run: npm run www && npx cap sync android
       - name: Build debug APK
         working-directory: android

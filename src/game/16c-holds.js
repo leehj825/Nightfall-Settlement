@@ -20,14 +20,14 @@
     story.holds = story.holds || {}; const h = story.holds[id];
     if (h && h.n >= HOLD_MAX) return toast('Garrison is full');
     const s = pickGarrison(); if (!s) return toast('No free soldier');
-    const name = s.name, man = { name: s.name, trait: s.trait, xp: { ...(s.xp || {}) }, vxp: s.vxp || 0 }; garrisonOut(s);
+    const name = s.name, man = { name: s.name, trait: s.trait, xp: { ...(s.xp || {}) }, vxp: s.vxp || 0, cstr: s.cstr || 0, cspd: s.cspd || 0 }; garrisonOut(s);
     if (h) { h.n++; (h.men = h.men || []).push(man); } else { story.holds[id] = { n: 1, since: dayNow(), men: [man] }; story.camps[id] = true; rebuildCamps(); }
     toast(`${name} garrisons ${d.name}`); Snd.play('chime'); updateHud(); realmCheck(); renderJournal();
   }
   function recallGarrison(id) {                                            // 점령지에 둔 병사 한 명을 마을로 불러온다 (이름·성격·숙련은 그대로)
     const d = CFG.EXPEDITIONS.find(x => x.id === id), h = holdOf(id); if (!d || !h) return;
     const man = (h.men && h.men.pop()) || {}, n = makeNpc('melee', homeSlot(npcs.length), 'initial', 0, { name: man.name, trait: man.trait, xp: man.xp });
-    if (man.vxp) n.vxp = man.vxp;
+    if (man.vxp) n.vxp = man.vxp; n.cstr = man.cstr || 0; n.cspd = man.cspd || 0;
     h.n--; if (h.n <= 0) { delete story.holds[id]; (story.clearedDay = story.clearedDay || {})[id] = dayNow(); }          // 마지막 병사가 돌아오면 열흘 뒤 다시 산적이 차지한다
     toast(`${n.name} returns from ${d.name}`); Snd.play('chime'); updateHud(); realmCheck(); renderJournal();
   }

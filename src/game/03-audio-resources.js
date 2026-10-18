@@ -26,10 +26,19 @@
   const gearCost = (d) => hasPerk('smith') ? Object.fromEntries(Object.entries(d.cost).map(([k, v]) => [k, Math.ceil(v * 0.75)])) : d.cost;
   const npcMaxHp = (role, trait) => Math.round(ROLE[role].hp * (CFG.TRAITS[trait].hp || 1) * (hasPerk('lord') && role !== 'citizen' ? 1.15 : 1));
   const vetLv = (n) => { const x = n.vxp || 0; return x >= 40 ? 3 : x >= 20 ? 2 : x >= 8 ? 1 : 0; };
+  // individual growth: soldiers gain Strength (damage) and Speed (move and attack rate) from fighting at all, not only from killing, so a whole band that fights together grows together; soft caps (+30% / +15%)
+  const fgrow = (x, k) => 1 - Math.exp(-(x || 0) / k);
+  const soldierStr = (n) => !n || n.role === 'citizen' ? 1 : 1 + 0.30 * fgrow(n.cstr, 150), soldierSpd = (n) => !n || n.role === 'citizen' ? 1 : 1 + 0.15 * fgrow(n.cspd, 200);
+  function fightGain(n, s, p) {
+    if (!n || n.role === 'citizen' || n.down) return;
+    const a = Math.floor(fgrow(n.cstr, 150) * 8), b = Math.floor(fgrow(n.cspd, 200) * 8);
+    n.cstr = (n.cstr || 0) + s; n.cspd = (n.cspd || 0) + p;
+    if (Math.floor(fgrow(n.cstr, 150) * 8) > a) floatText('Stronger!', n.position.x, 3.2, n.position.z); else if (Math.floor(fgrow(n.cspd, 200) * 8) > b) floatText('Quicker!', n.position.x, 3.2, n.position.z);
+  }
   const courageOf = () => Math.max(0, Math.min(100, story.courage ?? CFG.COURAGE.START));
   const courageMul = () => { const c = courageOf() / 100, K = CFG.COURAGE; return c <= 0.7 ? K.MIN_MUL + (1 - K.MIN_MUL) * c / 0.7 : 1 + (K.MAX_MUL - 1) * (c - 0.7) / 0.3; };       // 0 = 0.75, 70 = 1.0, 100 = 1.1
   function addCourage(d) { const was = courageOf(); story.courage = Math.max(0, Math.min(100, was + d)); if (story.courage <= 0 && was > 0 && exActive) toast('The host loses heart and falls back!'); }
-  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * standardMods(n).dmg * mountMul(n) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * (hasPerk('veteran') ? 1.1 : 1) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
+  const soldierMult = (n) => (1 + 0.06 * vetLv(n)) * soldierStr(n) * standardMods(n).dmg * mountMul(n) * (rallyT > 0 ? 1.5 : 1) * (hasPerk('lord') ? 1.1 : 1) * (story.dawn ? 1.1 : 1) * (story.wide ? 1.1 : 1) * (story.dusk ? 1.1 : 1) * gateBonus(n) * (hasPerk('veteran') ? 1.1 : 1) * courageMul() * (n.levy ? CFG.LEVY.DMG : 1);
   const res = { wood: 40, stone: 0, food: 0, iron: 0, shard: 0 };
   let weaponMode = 'sword', blocking = false, blockBtn = false;
   const playerGear = { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' };
@@ -81,7 +90,7 @@
     gathering = { target: best, t: 0 }; playerAnim.breakCombo();
   }
 
-  const fenceMat = mat(0x8a5a34), wallMat = mat(0x4a4d52);
+  const fenceMat = texMat(0x946038, 'wood', 0.9), wallMat = texMat(0x55585e, 'stone', 0.5);
   const UPGRADE_RANGE = 3.2;
   function nearestFence(level) {
     let best = null, bd = UPGRADE_RANGE;
@@ -111,7 +120,7 @@
   const wallGeo = new THREE.BoxGeometry(3.0, 1.4, 0.5);
   // Fort wall: the outermost ring (the Great Wall, half-width 40) is as tall as the gate towers (4.4 m) and cannot be jumped over: a stone body with a walkway ledge and merlons along the top
   const isFortSpot = (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 32;
-  let fortGeo = null; const fortMat = new THREE.MeshStandardMaterial({ color: 0x8d9098, roughness: 0.9, flatShading: true });
+  let fortGeo = null; const fortMat = texMat(0x969aa4, 'stone', 0.4);
   function fortWallGeo() {
     if (fortGeo) return fortGeo; const it = [], add = (w, h, d, x, y, z) => { const m = new THREE.Matrix4().makeTranslation(x, y, z); it.push([new THREE.BoxGeometry(w, h, d), m]); };
     add(3.3, 3.9, 1.1, 0, 1.95, 0); add(3.3, 0.22, 1.5, 0, 3.95, 0);                                              // body, overhanging walkway ledge

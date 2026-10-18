@@ -1,6 +1,52 @@
   // ---------- 절차적 맵: 나무 / 바위 ----------
   const obstacles = [];   // 충돌 + 채집 대상 배열
   const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
+  // ---------- generated textures: stone blocks, planks, shingles, plaster. No files: drawn on a canvas, mapped by object-space triplanar so boxes, cones and walls of any size keep the same scale ----------
+  const procTexCache = {};
+  function procTex(kind) {
+    if (procTexCache[kind]) return procTexCache[kind];
+    const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S; const c = cv.getContext('2d');
+    let seed = kind.length * 977 + kind.charCodeAt(0); const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const g = (v) => { v = Math.max(0, Math.min(255, Math.round(v))); return `rgb(${v},${v},${v})`; };
+    c.fillStyle = g(235); c.fillRect(0, 0, S, S);
+    if (kind === 'stone') {                                           // staggered blocks, dark mortar, speckles
+      c.fillStyle = g(120); c.fillRect(0, 0, S, S);
+      for (let row = 0; row < 8; row++) { const bw = 32, off = row % 2 ? 16 : 0; for (let col = -1; col < 5; col++) { const x = col * bw + off, y = row * 16, v = 205 + r() * 45; c.fillStyle = g(v); c.fillRect(x + 1.5, y + 1.5, bw - 3, 13); c.fillStyle = g(v + 14); c.fillRect(x + 1.5, y + 1.5, bw - 3, 2); } }
+    } else if (kind === 'wood') {                                     // vertical planks with grain lines and nail dots
+      for (let i = 0; i < 8; i++) { const x = i * 16, v = 205 + r() * 40; c.fillStyle = g(v); c.fillRect(x, 0, 16, S); for (let k = 0; k < 9; k++) { c.fillStyle = g(v - 22 - r() * 20); c.fillRect(x + 2 + r() * 12, 0, 1, S); } c.fillStyle = g(95); c.fillRect(x + 15, 0, 1.5, S); c.fillRect(x + 7, 8, 2, 2); c.fillRect(x + 7, S - 10, 2, 2); }
+    } else if (kind === 'shingle') {                                  // overlapping rows of rounded tiles
+      c.fillStyle = g(110); c.fillRect(0, 0, S, S);
+      for (let row = 0; row < 8; row++) { const off = row % 2 ? 8 : 0; for (let col = -1; col < 9; col++) { const x = col * 16 + off, y = row * 16, v = 190 + r() * 55; c.fillStyle = g(v); c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 15, y); c.lineTo(x + 15, y + 9); c.quadraticCurveTo(x + 8, y + 20, x + 1, y + 9); c.fill(); c.fillStyle = g(v - 40); c.fillRect(x + 1, y, 14, 2); } }
+    } else if (kind === 'rough') {                                    // rubble masonry: rows of small uneven stones, dark mortar, warm and cool greys mixed
+      c.fillStyle = g(95); c.fillRect(0, 0, S, S);
+      for (let row = 0; row < 8; row++) {
+        let x = -r() * 10; const y = row * 16;
+        while (x < S) {
+          const w = 12 + r() * 16, v = 175 + r() * 55, wr = Math.round(v + 3 + (r() - 0.5) * 7), wb = Math.round(v - 5 + (r() - 0.5) * 7), ins = 1.4 + r() * 0.8, h = 16 - 2 * ins;
+          for (const ox of x + w > S ? [0, -S] : [0]) { const px = x + ox + ins, cr = 2.5; c.fillStyle = `rgb(${wr},${Math.round(v)},${wb})`; c.beginPath(); c.moveTo(px + cr, y + ins); c.lineTo(px + w - 2 * ins - cr, y + ins); c.lineTo(px + w - 2 * ins, y + ins + cr); c.lineTo(px + w - 2 * ins, y + ins + h - cr); c.lineTo(px + w - 2 * ins - cr, y + ins + h); c.lineTo(px + cr, y + ins + h); c.lineTo(px, y + ins + h - cr); c.lineTo(px, y + ins + cr); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(px + 2, y + ins, w - 2 * ins - 4, 2); }
+          x += w;
+        }
+      }
+    } else if (kind === 'thatch') {                                   // straw: dense short diagonal strands in bundles
+      c.fillStyle = g(190); c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 900; i++) { const x = r() * S, y = r() * S, v = 140 + r() * 115; c.strokeStyle = g(v); c.lineWidth = 1 + r(); c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 5, y + 8 + r() * 12); c.stroke(); }
+      for (let y = 0; y < S; y += 32) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y, S, 2); }
+    } else {                                                          // plaster: soft mottling and a few cracks
+      for (let i = 0; i < 700; i++) { c.fillStyle = g(205 + r() * 50); c.fillRect(r() * S, r() * S, 2 + r() * 6, 2 + r() * 6); }
+    }
+    for (let i = 0; i < 160; i++) { c.fillStyle = `rgba(0,0,0,${0.03 + r() * 0.05})`; c.fillRect(r() * S, r() * S, 1 + r() * 2, 1 + r() * 2); }
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return (procTexCache[kind] = t);
+  }
+  function texMat(color, kind, tile) {                                // tile: texture repeats per metre
+    const m = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 1, map: procTex(kind) });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uTile = { value: tile };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTP; varying vec3 vTN;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvTP = position * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz)); vTN = abs(normal);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTP; varying vec3 vTN; uniform float uTile;').replace('#include <map_fragment>', 'vec3 tw = pow(normalize(vTN + 1e-4), vec3(4.0)); tw /= (tw.x + tw.y + tw.z); diffuseColor.rgb *= (texture2D(map, vTP.zy * uTile) * tw.x + texture2D(map, vTP.xz * uTile) * tw.y + texture2D(map, vTP.xy * uTile) * tw.z).rgb;');
+    };
+    m.customProgramCacheKey = () => 'procTex';
+    return m;
+  }
   const trunkMat = mat(0x6b4226), leafMat = mat(0x3f8a3c), rockMat = mat(0x8b8b92);
   const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -94,7 +140,7 @@
   let titleMode = false, titleAng = 0.6;                                 // 시작 화면: 완성된 성 마을 둘레를 천천히 도는 카메라
   let DIST = 8, DIST_MAX = 22; const LOOK_H = 1.6, DIST_MIN = 4;
   function setCamMax() { DIST_MAX = stage >= 4 ? 34 : stage >= 3 ? 28 : 22; }       // 단계가 오를수록 마을이 커지므로 더 멀리 볼 수 있다
-  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 };              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
+  let exActive = null, exEnding = false; const exObjs = [], EXC = { x: 600, z: 0 }; let exR = 46;              // 원정 중이면 exActive, 원정 지역은 마을(반경 50)에서 멀리 떨어진 곳
   let bird = false, savedView = null, camFront = false, birdX = 0, birdZ = 0;      // camFront: 영웅의 앞모습을 보는 카메라 / birdX,Z: 지도 보기의 카메라 초점(자유롭게 이동)                                // 버드아이 뷰: 마을 전체를 한눈에
   const camFocus = () => bird ? { x: birdX, z: birdZ } : player.position;
   const setDist = d => { DIST = bird ? Math.min(150, Math.max(5, d)) : Math.min(DIST_MAX, Math.max(DIST_MIN, d)); };
@@ -130,7 +176,8 @@
   let panMid = null, panId = null;
   const panView = (dx, dy) => {                                     // 지도 보기: 두 손가락 / 마우스 오른쪽 드래그로 카메라 초점을 옮긴다
     const sc = DIST * 0.0016, rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-    birdX = Math.max(-140, Math.min(140, birdX + (-rx * dx + fx * dy) * sc)); birdZ = Math.max(-140, Math.min(140, birdZ + (-rz * dx + fz * dy) * sc));
+    const ox = exActive ? EXC.x : 0, oz = exActive ? EXC.z : 0;
+    birdX = ox + Math.max(-140, Math.min(140, birdX - ox + (-rx * dx + fx * dy) * sc)); birdZ = oz + Math.max(-140, Math.min(140, birdZ - oz + (-rz * dx + fz * dy) * sc));
   };
   canvas.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });

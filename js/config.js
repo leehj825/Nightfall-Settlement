@@ -44,6 +44,7 @@
       // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
       { stage: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', x: -21, z: -3.5 }] },
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
+      { stage: 4, needsThirdWall: true, label: 'Plan Great Wall Towers', cost: { wood: 60, stone: 120 }, lots: [{ kind: 'tower', x: -37.3, z: -37.3 }, { kind: 'tower', x: 37.3, z: -37.3 }, { kind: 'tower', x: -37.3, z: 37.3 }, { kind: 'tower', x: 37.3, z: 37.3 }] },       // guard towers at the four corners of the third (Great) wall
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
       // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
       { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 20, z: 3.5 }, { kind: 'pen', x: -20, z: 3.5 }] },
@@ -53,6 +54,11 @@
       { stage: 5, label: 'Plan Outer Homes (3rd ring)', cost: { wood: 160 }, lots: [{ kind: 'house', near: { x: -33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: -33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: 33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: 33, min: 27, max: 36 } }] },
       { stage: 5, label: 'Plan Training Yard', cost: { wood: 140, stone: 80 }, lots: [{ kind: 'trainyard', near: { x: -31, z: 8, min: 27, max: 38 } }] },
       { stage: 5, label: 'Plan Stables', cost: { wood: 100, stone: 40 }, lots: [{ kind: 'stable', near: { x: 30, z: 30, min: 27, max: 38 } }] },
+      // 5단계: 더 많은 집 (집 1채 = 최대 인구 +1): 첫 구역에서 밀려난 주민들이 살 바깥 구역과 셋째 성벽 안쪽을 채운다. 맨 끝에 붙여서 예전 저장의 진행이 어긋나지 않는다
+      { stage: 5, needsThirdWall: true, label: 'Plan More Homes', cost: { wood: 220 }, lots: [
+        { kind: 'house', near: { x: -16, z: -34, min: 27, max: 37 } }, { kind: 'house', near: { x: 16, z: -34, min: 27, max: 37 } }, { kind: 'house', near: { x: -16, z: 34, min: 27, max: 37 } }, { kind: 'house', near: { x: 16, z: 34, min: 27, max: 37 } },
+        { kind: 'house', near: { x: -34, z: -5, min: 27, max: 37 } }, { kind: 'house', near: { x: 34, z: -5, min: 27, max: 37 } }, { kind: 'house', near: { x: -34, z: 5, min: 27, max: 37 } }, { kind: 'house', near: { x: 34, z: 5, min: 27, max: 37 } },
+        { kind: 'house', near: { x: -28, z: -26, min: 26, max: 37 } }, { kind: 'house', near: { x: 28, z: 26, min: 26, max: 37 } }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },
@@ -108,7 +114,7 @@
       5: [{ id: 'warhost', label: 'Warhost', desc: 'You can bring one more warband on a journey' }, { id: 'crown', label: 'Crown', desc: '+10 prosperity and +1 maximum population' }, { id: 'banneret', label: 'Banneret', desc: 'Courage starts higher and recovers faster' }],
     },
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
-    EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
+    EXP_LATEST: 18, EXP_FORCE: 20, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
    
     MAP_RULES: { FOOD_PER_SOLDIER_DAY: 1, RAIDER_STRENGTH: 3.2 },       // 행군: 병사 1명이 하루에 먹는 식량 / 마을의 밤을 치를 때 적 1명의 힘 (추정값)
     // 원정 지도 (1단계: 지도 화면): 0~100 x 0~70 판 위의 마디. from = 길이 이어진 앞 마디(마을에서 시작). 규칙은 목록과 같고 모양만 지도다

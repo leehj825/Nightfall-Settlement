@@ -32,7 +32,7 @@
     if (map.has(e.material)) e.material = map.get(e.material);
   }
   // ---------- 산적 야영지 (습격 Raid): 목책 · 문 · 감시탑 · 천막 · 모닥불 · 우두머리 천막. 목책은 막히는 지형 (적의 길 막힘은 다음 단계) ----------
-  const campWood = mat(0x6b4a2a), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = mat(0x80838c), campStoneDark = mat(0x575a63), campGateMat = mat(0x3a2a1c);
+  const campWood = texMat(0x72502e, 'wood', 0.9), campDark = mat(0x3f2a1a), campTent = [mat(0xa08358), mat(0x8a5a44), mat(0x7a7048)], campRed = mat(0x6a1c1c), campStone = texMat(0x8a8d96, 'stone', 0.4), campStoneDark = texMat(0x5e616b, 'stone', 0.4), campGateMat = mat(0x3a2a1c);
   let exStats = { kills: 0, t0: 0 };                                 // 이번 원정의 전투 기록 (보고서용)
   let siegeLoad = { ram: 0, ladder: 0, catapult: 0 };                             // 이번 원정에 가져온 공성 장비
   let exCamp = null;                                                // { cx, cz, R, banner, fire }: 현재 습격 지역의 야영지 정보
@@ -126,27 +126,30 @@
     return { cx, cz, R, towers, banner, fire, solids, gate, ram, cat, ladders, oil, drops: [], load: { ...siegeLoad }, alarm: false, broken: false };
   }
   function buildZone(d) {
-    const geo = new THREE.CircleGeometry(46, 40); geo.rotateX(-Math.PI / 2);
+    exR = d.training ? (d.siege ? 80 : 62) : d.castle ? 80 : d.camp && (d.bands >= 2 || d.camp.radius >= 15) ? 62 : 46;          // 큰 전투일수록 들판이 넓다
+    const big = exR / 46, cnt = (n) => Math.round(n * big * big * 0.75), campDz = Math.round((exR - 46) * 0.3);
+    const geo = new THREE.CircleGeometry(exR, 56); geo.rotateX(-Math.PI / 2);
     const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.tint, flatShading: true, roughness: 1 }));
     ground.position.set(EXC.x, 0.02, EXC.z); ground.receiveShadow = true; exAdd(ground, false);
-    for (let i = 0; i < 26; i++) {                                   // 지역 테두리: 큰 바위들
-      const a = i / 26 * Math.PI * 2, s = rand(1.4, 2.4), r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
-      r.position.set(EXC.x + Math.cos(a) * 44, s * 0.5, EXC.z + Math.sin(a) * 44); r.castShadow = true; exAdd(r, false);
+    const nRim = Math.round(26 * big);
+    for (let i = 0; i < nRim; i++) {                                 // 지역 테두리: 큰 바위들
+      const a = i / nRim * Math.PI * 2, s = rand(1.4, 2.4), r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
+      r.position.set(EXC.x + Math.cos(a) * (exR - 2), s * 0.5, EXC.z + Math.sin(a) * (exR - 2)); r.castShadow = true; exAdd(r, false);
     }
     const flag = new THREE.Group();                                   // 귀환 깃발 (입구)
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4, 6), lampPostMat); pole.position.y = 2;
     const cloth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.05), flagMat); cloth.position.set(0.7, 3.5, 0);
-    flag.add(pole, cloth); flag.position.set(EXC.x, 0, EXC.z - 36); exAdd(flag, false);
-    const taken = [{ x: EXC.x, z: EXC.z - 34, r: 7 }];
+    flag.add(pole, cloth); flag.position.set(EXC.x, 0, EXC.z - (exR - 10)); exAdd(flag, false);
+    const taken = [{ x: EXC.x, z: EXC.z - (exR - 12), r: 7 + (exR - 46) * 0.3 }];
     const spot = (rad) => {                                           // 겹치지 않는 위치 찾기
       for (let k = 0; k < 40; k++) {
-        const a = rand(0, 6.28), rr = Math.sqrt(Math.random()) * 38, x = EXC.x + Math.cos(a) * rr, z = EXC.z + Math.sin(a) * rr;
+        const a = rand(0, 6.28), rr = Math.sqrt(Math.random()) * (exR - 8), x = EXC.x + Math.cos(a) * rr, z = EXC.z + Math.sin(a) * rr;
         if (taken.every(t => Math.hypot(x - t.x, z - t.z) > t.r + rad)) { taken.push({ x, z, r: rad }); return { x, z }; }
       }
-      return { x: EXC.x + rand(-30, 30), z: EXC.z + rand(-20, 30) };
+      return { x: EXC.x + rand(-30, 30) * big, z: EXC.z + rand(-20, 30) * big };
     };
     exCamp = null; const inner = [];
-    if (d.camp) { const cx = EXC.x, cz = EXC.z + 6; exCamp = buildBanditCamp(d, cx, cz, inner); taken.push({ x: cx, z: cz, r: d.camp.radius + 2.5 }); }
+    if (d.camp) { const cx = EXC.x, cz = EXC.z + 6 + campDz; exCamp = buildBanditCamp(d, cx, cz, inner); taken.push({ x: cx, z: cz, r: d.camp.radius + 2.5 }); }
     const innerSpot = (rad) => {                                      // 야영지 안쪽의 빈 자리
       const C = exCamp; if (!C) return spot(rad);
       for (let k = 0; k < 40; k++) {
@@ -155,8 +158,8 @@
       }
       return spot(rad);
     };
-    for (let i = 0; i < d.trees; i++) { const o = makeTree(), p = spot(1.8); o.position.set(p.x, 0, p.z); exAdd(o, true); }
-    for (let i = 0; i < d.rocks; i++) { const o = makeRock(), p = spot(1.6); o.position.set(p.x, 0, p.z); exAdd(o, true); }
+    for (let i = 0, nT = cnt(d.trees); i < nT; i++) { const o = makeTree(), p = spot(1.8); o.position.set(p.x, 0, p.z); exAdd(o, true); }
+    for (let i = 0, nR = cnt(d.rocks); i < nR; i++) { const o = makeRock(), p = spot(1.6); o.position.set(p.x, 0, p.z); exAdd(o, true); }
     for (let i = 0; i < d.ore; i++) {
       const o = makeRock(), p = spot(1.8); o.scale.setScalar(1.25); o.userData.radius *= 1.25; o.userData.ore = true;
       o.traverse(m => { if (m.isMesh) m.material = oreMat; });
@@ -172,7 +175,7 @@
     for (const kind of foeList) { const inside = exCamp && fi++ % 4 !== 3, p = inside ? innerSpot(1.4) : spot(2.5); spawnEnemy(kind, p); if (inside) { enemies[enemies.length - 1].userData.camp = true; enemies[enemies.length - 1].userData.home = { x: p.x, z: p.z }; } if (d.faction) frostTint(enemies[enemies.length - 1], d.faction); addGlow(enemies[enemies.length - 1], FOE_GLOW[d.faction] || 0xff6a4a, 1.7, 1.2); }
     if (exCamp && d.camp.towerArchers) for (let k = 0; k < d.camp.towerArchers; k++) {          // 망루 위 궁수: 마주 보는 탑 둘에 올라간다
       const t = exCamp.towers[Math.floor(k * exCamp.towers.length / d.camp.towerArchers) % exCamp.towers.length]; spawnEnemy('archer', { x: t.position.x, z: t.position.z });
-      const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 5.33; e.position.y = 5.33; u.speed = 0;
+      const e = enemies[enemies.length - 1], u = e.userData; u.tower = true; u.camp = true; u.baseY = 6.13; e.position.y = 6.13; u.speed = 0;
     }
     if (d.guardian) {                                                 // 수호자: 커다랗고 단단한 우두머리. 쓰러뜨리면 보상 상자가 나온다
       const p = exCamp ? { x: exCamp.cx - 2, z: exCamp.cz + exCamp.R * 0.3 } : spot(4); spawnEnemy(d.guardian.kind, p);
@@ -187,8 +190,12 @@
   function cleanupZone() {
     for (const o of exMeshes.concat(exObjs)) scene.remove(o);
     if (exCamp) for (const d of exCamp.drops || []) { scene.remove(d.ring); scene.remove(d.ball); }
-    exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null; for (const n of npcs) n.ramCrew = false;
+    clearAllPosts(); exMeshes.length = 0; exObjs.length = 0; exBeams.length = 0; exCamp = null; for (const n of npcs) n.ramCrew = false;
     for (const e of enemies.slice()) if (e.userData.ex) removeEnemy(e);
+  }
+  function endPrep(why) {
+    if (!exActive || !exActive.prep) return;
+    exActive.prep = false; toast(why ? `${why} The battle begins!` : 'The battle begins!'); Snd.play('horn'); wbBarHtml = ''; renderWbBar();
   }
   function exEnemyStep(e, u, dt) {
     const px = player.position.x - e.position.x, pz = player.position.z - e.position.z, pd = Math.hypot(px, pz);
@@ -199,18 +206,22 @@
       if (d < td - 1.5 && d < 10) { td = d; tx = n.position.x; tz = n.position.z; tn = n; }
     }
     const C = exCamp;
+    if (exActive && exActive.prep) {                                          // 준비 단계: 아직 싸움이 시작되지 않았다. 가까이 다가가거나 먼저 치면 끝난다
+      if (u.hp < (u.hpPrev ?? u.hp) || (C && Math.hypot(player.position.x - C.cx, player.position.z - C.cz) < C.R + 22) || near < 14) endPrep(u.hp < (u.hpPrev ?? u.hp) ? 'First blood!' : 'The foe has seen you!');
+    }
+    const prep = !!(exActive && exActive.prep);
     if (u.tower) {                                                            // 망루 궁수: 제자리에서 사거리 안의 상대를 쏜다
       u.atkAnimCd -= dt; u.anim.base('idle', 0);
-      if (near < 22 && !(C && C.broken) && !(u.stunT > 0)) { e.lookAt(tx, e.position.y, tz); u.range = 20; archerStep(e, u, dt); }
+      if (near < 22 && !prep && !(C && C.broken) && !(u.stunT > 0)) { e.lookAt(tx, e.position.y, tz); u.range = 20; archerStep(e, u, dt); }
       return;
     }
     if (C && u.camp && u.hp < (u.hpPrev ?? u.hp)) campAlarm();                // 맞으면 경보
     u.hpPrev = u.hp;
     if (C && u.camp) {                                                        // 야영지 병사: 가까이 오거나 경보가 울리면 달려들고, 아니면 자리를 지킨다
       const was = u.aggro;
-      u.aggro = C.broken ? false : (u.aggro ? near < 26 : near < (C.alarm ? 32 : 12));
+      u.aggro = C.broken || prep ? false : (u.aggro ? near < 26 : near < (C.alarm ? 32 : 12));
       if (u.aggro && !was) campAlarm();
-    } else u.aggro = exActive ? (u.aggro ? near < 24 : near < 13) : false;
+    } else u.aggro = exActive && !prep ? (u.aggro ? near < 24 : near < 13) : false;
     let moving = false; u.escortCd = (u.escortCd || 0) - dt;
     if (u.kbT > 0) { u.kbT -= dt; e.position.x += u.kbVx * dt; e.position.z += u.kbVz * dt; }
     else if (u.aggro && td > 0.9 && !(u.stunT > 0)) {
@@ -223,7 +234,7 @@
     if (C) exPush(e, u.r);
     if (u.archer && u.aggro) { u.range = 14; archerStep(e, u, dt); }
     const dx = e.position.x - EXC.x, dz = e.position.z - EXC.z, dd = Math.hypot(dx, dz);
-    if (dd > 42) { e.position.x = EXC.x + dx / dd * 42; e.position.z = EXC.z + dz / dd * 42; }
+    if (dd > exR - 4) { e.position.x = EXC.x + dx / dd * (exR - 4); e.position.z = EXC.z + dz / dd * (exR - 4); }
     u.anim.base(moving ? 'walk' : 'idle', u.speed); u.atkAnimCd -= dt;
     if (td < (tn ? 0.45 : PLAYER_R) + u.r + 0.15) {
       if (tn) { if (u.escortCd <= 0 && !(u.stunT > 0)) { u.escortCd = 0.9; damageEscort(tn, u.contact * 0.7); } }
@@ -408,7 +419,7 @@
       if (od < m && od > 1e-4) { n.position.x = o.position.x + ox / od * m; n.position.z = o.position.z + oz / od * m; }
     }
     const cx = n.position.x - EXC.x, cz = n.position.z - EXC.z, cd = Math.hypot(cx, cz);
-    if (cd > 41) { n.position.x = EXC.x + cx / cd * 41; n.position.z = EXC.z + cz / cd * 41; }
+    if (cd > exR - 5) { n.position.x = EXC.x + cx / cd * (exR - 5); n.position.z = EXC.z + cz / cd * (exR - 5); }
     return d;
   }
   function escortStep(dt) {
@@ -417,8 +428,11 @@
     n.atkCd -= dt;
     if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
     const ord = orderOf(n);                                                                     // 명령: Stand firm 은 그 자리를 지킨다, Withdraw 는 근접병이 싸우지 않고 곁에 붙는다, Charge 는 멀리서 달려든다
-    if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
-    let foe = null, bd = ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
+    const post = ord !== 'withdraw' && n.warband >= 0 ? bandPost[n.warband] : null;                  // 전투단 진지: 정해 준 자리에 줄지어 선다
+    const form = n.warband >= 0 ? warbandForm(n.warband) : 'block';
+    if (post) { const w = formWorld(form, n, post); n.hold = { x: w.x, z: w.z }; n.holdFace = w.h; }
+    else if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
+    let foe = null, bd = post ? (ord === 'charge' ? 18 : ord === 'stand' ? 9 : 13) : ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
     for (const e of enemies) {
       if (ord === 'withdraw' && n.role === 'melee') break;
       if (!e.userData.ex || e.userData.sinking || e.userData.dying > 0) continue;
@@ -453,11 +467,13 @@
       if (pd > 0.8) exMove(n, n.parade.x, n.parade.z, 5, dt); else { n.face = 0; n.rotation.y = 0; n.anim.base('idle', 0); }
     } else if (n.hold) {
       if (Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) > 0.6) exMove(n, n.hold.x, n.hold.z, 5, dt);       // 지킬 자리로 돌아온다
+      else if (post) { n.face = n.holdFace || 0; n.rotation.y = n.face; n.anim.base('idle', 0); }                             // in formation: stand facing the foe
     } else {
       const k = npcs.filter(x => x.escort).indexOf(n), a = facing + Math.PI + ((k % 6) - 2.5) * 0.7, rr = 2.6 + Math.floor(k / 6) * 1.6, tx = player.position.x + Math.sin(a) * rr, tz = player.position.z + Math.cos(a) * rr;
       const d = Math.hypot(tx - n.position.x, tz - n.position.z);
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
+    n.inForm = !!(post && n.hold && Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) < 2.2);
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
     n.rig.combat = true; n.rig.sheathe(false);                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
@@ -588,7 +604,7 @@
     }
     if (powerFor(d) < needOf(d)) return toast(`Too strong: power ${needOf(d)} needed, you have ${powerFor(d)}`);
     if (d.night) { const why = nightExpWhy(); if (why) return toast(why); }
-    else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
+    else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Night has fallen - too late to set out');
     closeJournal(); exEnding = true; gathering = null;
     const marchCost = d.march ? marchFood(d) : 0; if (marchCost) res.food -= marchCost;                 // 행군 식량은 출발할 때 먹는다
     fadeTo(() => {
@@ -596,16 +612,16 @@
       if (d.castle) { const G = siegeGear(); siegeLoad = { ram: Math.min(1, G.ram), ladder: Math.min(CFG.SIEGE.LADDER_MAX, G.ladder), catapult: Math.min(1, G.catapult) }; G.ram -= siegeLoad.ram; G.ladder -= siegeLoad.ladder; G.catapult -= siegeLoad.catapult; }
       else siegeLoad = { ram: 0, ladder: 0, catapult: 0 };
       exStats = { kills: 0, t0: performance.now() };
-      buildZone(d);
+      buildZone(d); if (d.camp && exR > 46) { exActive.prep = true; setTimeout(() => toast('Preparation: Place your bands, then Begin the assault'), 3000); }
       if (d.castle) setTimeout(() => toast(siegeLoad.ram || siegeLoad.ladder || siegeLoad.catapult ? `Siege gear: ${siegeLoad.ram} ram, ${siegeLoad.ladder} ladder${siegeLoad.ladder === 1 ? '' : 's'}${siegeLoad.catapult ? ', catapult' : ''}` : 'No siege gear! Build a Siege Workshop. You must chip the gate by hand'), 1800);
       const party = escortPool().filter(n => inParty(n)).slice(0, CFG.WARBAND.SIZE * bandMax());                // 선택한 전투단의 병사들이 함께 간다
       party.forEach((n, i) => {
         npc = n; setTask(null); n.workT = 0; n.promote = null; n.target = null; n.returning = false; returnGear(n);
         n.clsHome = homeCls(n); n.cls = tripCls(n); applyGear(n);                    // 원정 직업으로 바꾼다 (마을 직업은 clsHome 에 남는다)
-        n.escort = true; n.hold = null; n.position.set(EXC.x + ((i % 6) - 2.5) * 1.8, 0, EXC.z - 31 - Math.floor(i / 6) * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
+        n.escort = true; n.hold = null; n.position.set(EXC.x + ((i % 6) - 2.5) * 1.8, 0, EXC.z - (exR - 15) - Math.floor(i / 6) * 1.6); n.px = n.position.x; n.pz = n.position.z; n.hidden = false;
       });
       exActive.party = party.length; if (d.march) { const ml = marchOut(d); exActive.marchLines = ml; setTimeout(() => showTripReport(`${d.march}d march`, ml.concat(`Provisions: ${marchCost} food`)), 1800); } if (party.length && !npcs.some(n => n.role !== 'citizen' && !party.includes(n)) && (story.guardWarn = (story.guardWarn || 0) + 1) <= 3) setTimeout(() => toast('No soldiers left at home'), 3200);       // 처음 세 번만 알린다
-      player.position.set(EXC.x, 0, EXC.z - 33); facing = 0; player.rotation.y = 0; yaw = 0;
+      player.position.set(EXC.x, 0, EXC.z - (exR - 13)); facing = 0; player.rotation.y = 0; yaw = 0;
       camera.position.copy(goalPos(camGoal)); lookAt.set(player.position.x, LOOK_H, player.position.z);
       exEnding = false; updateExUi(); toast(d.raid ? `${d.name}: break the camp` : `${d.name}: find the chests`); Snd.play('horn');
     });

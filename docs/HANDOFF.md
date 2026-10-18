@@ -1,6 +1,6 @@
 # Handoff notes (for starting a new chat)
 
-Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v225`.
+Read this first, then `docs/ROADMAP.md` (the plan) and `README.md` (feature list by round). Last updated at version `nf-v226`.
 
 ## The project
 **Nightfall Settlement**: a quarter-view low-poly 3D survival / village game in the browser (Three.js r128, no build step for players). Repo `leehj825/Nightfall-Settlement` (use the dev branch the session gives you; push there; no pull requests unless the owner asks; `main` is still the initial commit). The owner writes Korean or English; the game UI is English only. Play Store release is documented in `RELEASE.md` but is the owner's task. A medieval setting: avoid modern words (see the terms table in the roadmap).
@@ -60,6 +60,8 @@ Headless Chromium with Playwright is available (`/opt/pw-browsers`, do not run `
 ## Added in nf-v158 to nf-v224 (owner-driven round; details in `README.md`)
 - **Leader and characters:** new skinned leader model with clavicles (`docs/LEADER_MODEL.md`), smoother classic leader, body balance tables for all humans, great sword model, riders sit (idle upper body, thighs over the flanks, fall off sideways when dead).
 - **Horse:** jointed box horse with the walk and gallop from the horse pack; mounted jump 1.7 m / 0.9 s over wood fences and stone walls; the outermost ring (Great Wall, more than 32 m from the centre) is a 4.4 m **fort wall** (`createWall` in `03-audio-resources.js`, `userData.tall`) that cannot be jumped; gatehouse towers only on the outermost wall's gates.
+- **Battlefield size and band placing:** `exR` (set in `buildZone`) is the field radius: 46 small camps, 62 big raids and the Training Field, 80 sieges and siege practice. Clamps, entry points, rim rocks and map view use it. Big raids and sieges start with `exActive.prep` (foes hold until Begin, contact, or first blood; `endPrep`). Bands are placed with Place + a ground tap (`bandPost`, `placeBands` in `10b-warbands.js`); `escortStep` turns a post into a hold point per soldier.
+- **Formations:** `FORMS`, `formSlot`, `formWorld`, `formMods` in `10b-warbands.js`; a band with a placed post (`bandPost`) stands in its slot facing `postHeading`; `n.inForm` gates the bonus in `standardMods`. Journeys: `CFG.EXP_LATEST` 18 (set out until night), `EXP_FORCE` 20 (called home).
 - **Model field:** Settings > Model field (`19-model-field.js`, `docs/MODEL_FIELD.md`): a flat field with a free camera for characters, mounts and your own .glb files.
 - **Screens:** a loading cover in `index.html` hides the half-built start scene before the title town; the in-game title text is gone; a 50 px ad banner slot sits at the top (`CFG.ADS` in `js/config.js`, `body.ad` in `css/style.css`: body becomes the containing block of the fixed UI, the canvas area, tap picking and crosshair use the area below the strip). It is a placeholder: no ad SDK yet (AdMob needs the owner's app id and banner unit id).
 

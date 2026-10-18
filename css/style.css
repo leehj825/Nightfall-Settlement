@@ -218,11 +218,11 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 
 /* simple controls: tap the screen to attack; journal/map/town hall sit above the stick; contextual buttons keep their slot */
 #leftActions { position: fixed; left: 18px; bottom: 214px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
-#ctxActions { position: fixed; right: 82px; bottom: 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; z-index: 5; }
+#ctxActions { position: fixed; right: 164px; bottom: 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; z-index: 5; }
 #leftActions .btn, #ctxActions .btn { display: block; }
 #leftActions .btn[style*="display: none"], #ctxActions .btn[style*="display: none"] { display: block !important; visibility: hidden; pointer-events: none; }
-@media (max-height: 520px) and (orientation: landscape) { #leftActions { left: 10px; bottom: 156px; gap: 4px; } #ctxActions { right: 68px; bottom: 8px; gap: 4px; } }
-@media (max-width: 640px) and (orientation: portrait) { #leftActions { left: 10px; bottom: 170px; gap: 4px; } #ctxActions { right: 64px; bottom: 8px; gap: 4px; } }
+@media (max-height: 520px) and (orientation: landscape) { #leftActions { left: 10px; bottom: 156px; gap: 4px; } #ctxActions { right: 188px; bottom: 8px; gap: 4px; } }
+@media (max-width: 640px) and (orientation: portrait) { #leftActions { left: 10px; bottom: 170px; gap: 4px; } #ctxActions { right: 128px; bottom: 8px; gap: 4px; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #leftActions { bottom: 152px; } }
 
 /* spacing fixes: planning buttons stack in one box, round buttons get breathing room, labels stay inside */
@@ -237,7 +237,7 @@ html[data-ts=l] #hud { font-size: 22px !important; } html[data-ts=s] #hud { font
 @media (max-height: 520px) and (orientation: landscape) { #planBox { top: 6px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } }
 @media (max-width: 640px) and (orientation: portrait) { #planBox { top: 100px; right: 6px; gap: 6px; } #actions, #leftActions, #ctxActions { gap: 8px; } #buildBtn { font-size: 9.5px; } #swapBtn { min-width: 62px; min-height: 34px; padding: 3px 8px; font-size: 10px; } }
 @media (max-width: 640px) and (orientation: portrait) and (max-height: 600px) { #planBox { top: 88px; } }
-@media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 62px; } #leftActions { bottom: 156px; } }
+@media (max-height: 520px) and (orientation: landscape) { .btn { width: 46px; height: 46px; font-size: 9.5px; } #actions { max-height: calc(var(--app-h, 100vh) - 100px); } #ctxActions { right: 188px; } #leftActions { bottom: 156px; } }
 
 /* button size setting (scales the round buttons and the stick) */
 html[data-bsz="s"] .btn { transform: scale(.86); transform-origin: bottom right; }
@@ -246,7 +246,7 @@ html[data-bsz="s"] #joy { width: 96px !important; height: 96px !important; }
 html[data-hand="l"] #joy { left: auto !important; right: 14px; }
 html[data-hand="l"] #actions { right: auto !important; left: 8px; align-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
 html[data-hand="l"] #leftActions { left: auto !important; right: 14px; align-items: flex-end; }
-html[data-hand="l"] #ctxActions { right: auto !important; left: 76px; }
+html[data-hand="l"] #ctxActions { right: auto !important; left: 158px; }
 html[data-hand="l"] #muteBtn { left: auto !important; right: 150px; }
 html[data-hand="l"] #setBtn { left: auto !important; right: 194px; }
 html[data-hand="l"] #actions .btn, html[data-hand="l"] #swapBtn { align-self: flex-start; }
@@ -327,6 +327,7 @@ html[data-hand="l"] #planBox { right: 8px; left: auto; align-items: flex-end; }
 #wbPanel .wlist li { display: block; } #wbPanel .wr1 { margin-bottom: 2px; } #wbPanel .wr1 span { color: #cfc7b8; font-size: 12px; margin-left: 4px; } #wbPanel .wr2 { display: flex; flex-wrap: wrap; gap: 4px; }
 #wbPanel .wbact { font-size: 11.5px; padding: 5px 8px; margin: 2px 0 0; border-radius: 8px; box-shadow: 0 2px 0 #a8480f; }
 #swapBtn { min-width: 62px; min-height: 32px; padding: 3px 8px; }
+.wbplace, .wbfollow, .wbbegin, .wbform { display: flex; align-items: center; padding: 5px 10px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25); background: rgba(20,40,60,.85); color: #bfe0ff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; } .wbplace.on { border-color: #4ab0ff; color: #fff; box-shadow: 0 0 8px #4ab0ff; } .wbbegin { background: rgba(90,30,14,.9); color: #ffd0a0; border-color: #ff9a4a; }
 .wbmark { display: flex; align-items: center; padding: 5px 10px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25); background: rgba(60,16,12,.85); color: #ffb0a0; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; } .wbmark.on { border-color: #ff3a2a; color: #fff; box-shadow: 0 0 8px #ff3a2a; }
   #smithPanel .shead { margin: 12px 2px 2px; font-size: 13px; font-weight: 700; color: #ffd27a; border-bottom: 1px solid rgba(255,210,122,.3); }
 #actions #atkBtn { background: radial-gradient(circle at 35% 30%, #ff8a7a, #c0261a); color: #fff; width: 70px; height: 70px; font-size: 14px; margin-top: 6px; }
@@ -404,3 +405,10 @@ body.ad:not(.titlemode) { overflow: visible; position: fixed; top: var(--ad-h); 
 #adBanner { display: none; position: fixed; top: calc(-1 * var(--ad-h)); left: 0; right: 0; height: var(--ad-h); z-index: 60; background: #14101e; border-bottom: 1px solid rgba(255,255,255,.12); align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; }
 body.ad:not(.titlemode) #adBanner { display: flex; }
 #adBanner .adBox { width: min(100%, 320px); height: 50px; display: flex; align-items: center; justify-content: center; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .12em; color: #9a93ad; border: 1px dashed rgba(255,255,255,.25); border-radius: 4px; }
+#adBanner .adBox { transition: opacity .3s; } body.adLive #adBanner .adBox { opacity: 0; }
+
+/* on-screen touch controls: hidden while a keyboard or controller is in use, or by choice (the ctlBtn toggle) */
+body.ctlHidden #joy, body.ctlHidden #leftActions, body.ctlHidden #ctxActions, body.ctlHidden #actions { display: none !important; }
+#ctlBtn { position: fixed; left: 264px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 17px; padding: 0; cursor: pointer; }
+@media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #ctlBtn { width: 32px; height: 32px; font-size: 14px; bottom: 12px; } }
+body.titlemode #ctlBtn { display: none; }

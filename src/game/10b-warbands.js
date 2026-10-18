@@ -164,7 +164,7 @@
   const orderOf = (n) => exActive && courageOf() <= 0 && n && n.role === 'melee' ? 'withdraw' : n && n.warband >= 0 ? warbandOrder(n.warband) : 'forward';
   // ---------- 지휘관의 깃발 (Leader's standard): 주인공(지휘관)의 곁에 있는 병사는 더 세게 치고 덜 맞는다. 지휘관이 쓰러지면 사라진다 ----------
   function standardRadius() { const S = CFG.STANDARD; return S.RADIUS * (1 + S.RANK_RADIUS * pl.st.standard) * (playerClass === 'commander' ? 1.25 : 1); }
-  function standardMods(n) { const a = leaderMods(n), c = bannerMods(n), o = marshalMods(n); return { dmg: a.dmg * c.dmg * o.dmg, guard: a.guard * c.guard * o.guard }; }
+  function standardMods(n) { const a = leaderMods(n), c = bannerMods(n), o = marshalMods(n), fm = formMods(n); return { dmg: a.dmg * c.dmg * o.dmg * fm.dmg, guard: a.guard * c.guard * o.guard * fm.guard }; }
   function marshalMods(n) {                                                  // 지휘관 기술: 돌격 명령을 받은 병사는 더 세게, 버티기 명령을 받은 병사는 덜 맞는다
     if (!n || n.role === 'citizen' || !(n.warband >= 0)) return { dmg: 1, guard: 1 };
     const o = warbandOrder(n.warband); return { dmg: o === 'charge' ? 1 + 0.08 * pl.st.warcommand : 1, guard: o === 'stand' ? 1 - 0.06 * pl.st.warcommand : 1 };
@@ -225,7 +225,64 @@
     markRing.userData.cone.position.y = 2.6 * (u.boss ? 1.8 : 1) + Math.sin(t * 6) * 0.15;
   }
   const wbBar = document.getElementById('wbBar'), wbPanel = document.getElementById('wbPanel');
-  let wbOpen = -1, wbBarHtml = '', wbSel = -1, wbAll = false, wbMoveFor = -1;
+  let wbOpen = -1, wbBarHtml = '', wbSel = -1, wbAll = false, wbMoveFor = -1, wbPlacing = false;
+  // ---------- 전투단 진지 (원정): 'Place' 를 누르고 땅을 누르면 고른 전투단이 그 자리에 줄지어 서서 지킨다. 'Follow' 는 다시 따라오게 한다 ----------
+  var bandPost = {};
+  const bandSlot = (n) => npcs.filter(x => x.escort && x.warband === n.warband).indexOf(n);
+  // ---------- formations: Block (loose), Line (one wide rank), Wedge (a point that bites in), Shield wall (melee shoulder to shoulder in front, archers behind). Only while the band holds a placed post ----------
+  const FORMS = ['block', 'line', 'wedge', 'wall'], FORM_NAME = { block: 'Block', line: 'Line', wedge: 'Wedge', wall: 'Shield wall' }, FORM_HINT = { block: 'Loose block.', line: 'One wide rank: +5% damage.', wedge: 'A point that bites in: +10% damage, +5% damage taken.', wall: 'Shield wall: melee front, archers behind. -30% damage taken, -10% damage dealt.' };
+  const warbandForm = (i) => { const o = i >= 0 && warbandInfo && warbandInfo[i] ? warbandInfo[i].form : null; return FORMS.includes(o) ? o : 'block'; };
+  function formSlot(form, n) {                                           // slot of soldier n in its band: local x = to the right, z = forward (toward the foe)
+    const mem = npcs.filter(x => x.escort && x.warband === n.warband), k = mem.indexOf(n), cnt = mem.length;
+    if (form === 'line') return { x: (k - (cnt - 1) / 2) * 2.0, z: 0 };
+    if (form === 'wedge') { if (k === 0) return { x: 0, z: 1.6 }; const r = Math.floor((k + 1) / 2); return { x: (k % 2 ? 1 : -1) * r * 1.5, z: 1.6 - r * 1.4 }; }
+    if (form === 'wall') {
+      const grp = mem.filter(x => (x.role === 'melee') === (n.role === 'melee')), gk = grp.indexOf(n), front = n.role === 'melee';
+      return { x: (gk - (grp.length - 1) / 2) * (front ? 1.25 : 1.7), z: front ? 0.4 : -1.8 };
+    }
+    return { x: ((k % 5) - 2) * 1.9, z: -Math.floor(k / 5) * 1.7 };
+  }
+  function postHeading(post) {                                           // the band faces the nearest foe, else the camp, else south
+    const now = performance.now(); if (post.hT && now - post.hT < 400) return post.h || 0; post.hT = now;
+    let best = null, bd = 70; for (const e of enemies) { const u = e.userData; if (!u.ex || u.sinking || u.dying > 0) continue; const d = Math.hypot(e.position.x - post.x, e.position.z - post.z); if (d < bd) { bd = d; best = e.position; } }
+    const t = best || (exCamp ? { x: exCamp.cx, z: exCamp.cz } : null); post.h = t ? Math.atan2(t.x - post.x, t.z - post.z) : 0; return post.h;
+  }
+  function formWorld(form, n, post) {
+    const s = formSlot(form, n), h = postHeading(post), fx = Math.sin(h), fz = Math.cos(h);
+    return { x: post.x + fz * s.x + fx * s.z, z: post.z - fx * s.x + fz * s.z, h };
+  }
+  function formMods(n) {                                                 // only soldiers standing in their slot get the bonus
+    if (!n || !n.inForm || n.warband < 0) return { dmg: 1, guard: 1 };
+    const f = warbandForm(n.warband);
+    if (f === 'line') return { dmg: 1.05, guard: 1 };
+    if (f === 'wedge') return { dmg: 1.10, guard: 1.05 };
+    if (f === 'wall') return n.role === 'melee' ? { dmg: 0.9, guard: 0.7 } : { dmg: 1, guard: 0.9 };
+    return { dmg: 1, guard: 1 };
+  }
+  function cycleForm() {
+    const tgt = wbOrderTargets(); if (!tgt.length) return;
+    const nx = FORMS[(FORMS.indexOf(warbandForm(tgt[0])) + 1) % FORMS.length];
+    for (const b of tgt) { wbi(b); warbandInfo[b].form = nx; }
+    toast(`${tgt.length === 1 ? wbi(tgt[0]).name : 'The whole host'}: ${FORM_NAME[nx]}. ${FORM_HINT[nx]}${nx === 'block' ? '' : ' (Place the band to form up)'}`); Snd.play('click'); wbBarHtml = ''; renderWbBar();
+  }
+  function postMarks() {
+    for (const k of Object.keys(bandPost)) { const p = bandPost[k]; if (!exActive || !p.mark) continue; p.mark.userData.cloth.rotation.y = Math.sin(performance.now() / 300 + +k) * 0.3; }
+  }
+  function setBandPost(i, x, z) {
+    let p = bandPost[i];
+    if (!p) { const g = new THREE.Group(), col = new THREE.Color(wbi(i).color), ring = new THREE.Mesh(new THREE.RingGeometry(3.4, 4.0, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 6, 5), lampPostMat), cloth = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.3, 0.05), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.12; pole.position.y = 3; cloth.position.set(1.05, 5.3, 0); g.add(ring, pole, cloth); g.userData.cloth = cloth; scene.add(g); exMeshes.push(g); p = bandPost[i] = { x, z, mark: g }; }
+    p.x = x; p.z = z; p.mark.position.set(x, groundY(x, z, 1) || 0, z);
+  }
+  function clearBandPost(i) { const p = bandPost[i]; if (!p) return; scene.remove(p.mark); delete bandPost[i]; }
+  function clearAllPosts() { for (const k of Object.keys(bandPost)) clearBandPost(k); wbPlacing = false; }
+  function placeBands(x, z) {                                              // 땅을 눌렀다: 고른 전투단들을 그 자리에 (여럿이면 가로로 나란히)
+    const tgt = wbOrderTargets(); wbPlacing = false; wbBarHtml = ''; renderWbBar(); if (!tgt.length) return;
+    const lim = exR - 7, hx = x - EXC.x, hz = z - EXC.z, hd = Math.hypot(hx, hz); if (hd > lim) { x = EXC.x + hx / hd * lim; z = EXC.z + hz / hd * lim; }
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    tgt.forEach((b, k) => { const off = (k - (tgt.length - 1) / 2) * 11; setBandPost(b, x + rx * off, z + rz * off); });
+    toast(tgt.length === 1 ? `${wbi(tgt[0]).name} holds that ground` : 'The bands take their ground'); Snd.play('click');
+  }
   function renderWbBar() {
     const show = !dead && !uiPause;                                  // 원정 중에도 보인다 (함께 간 전투단만)
     let html = '';
@@ -234,6 +291,7 @@
       const hurt = m.filter(n => n.down).length, sel = !exActive && bringing(i);
       html += `<button class="wbchip${sel ? ' sel' : ''}${wbSel === i ? ' pick' : ''}" data-wb="${i}" style="--c:${wbi(i).color}" title="${wbi(i).name}"><i></i><b>${m.length - hurt}/${m.length}</b>${sel ? '<em>&#9873;</em>' : ''}${bannerOf(i) >= 0 ? `<s style="color:${CFG.BANNER.COLORS[bannerOf(i)]}">${CFG.BANNER.NAMES[bannerOf(i)][0]}</s>` : ''}${warbandOrder(i) !== 'forward' ? `<u>${WB_ORDER_LABEL[warbandOrder(i)][0]}</u>` : ''}</button>`;
     }
+    if (html && exActive) html = `${exActive.prep ? '<button class="wbbegin" data-begin="1" title="End the preparation: the foe attacks">&#9876; Begin</button>' : ''}<button class="wbplace${wbPlacing ? ' on' : ''}" data-place="1" title="Then tap the ground">&#8982; ${wbPlacing ? 'Tap ground' : 'Place'}</button><button class="wbfollow" data-follow="1" title="Come back to the commander">&#9873; Follow</button><button class="wbform" data-form="1" title="Formation of the selected band (or the whole host)">&#9638; ${FORM_NAME[warbandForm(wbOrderTargets()[0] ?? -1)]}</button>` + html;
     if (html) html += `<button class="wbmark${markedFoe ? ' on' : ''}" data-mark="1" title="Mark the foe (Y)">&#9678; Mark</button>`;
     if (html) {                                                          // 명령 띠: 고른 전투단(없거나 All 이면 전체)에게 바로 내린다. 창을 열 필요가 없다
       const tgt = wbOrderTargets(), cur = tgt.length && tgt.every(b => warbandOrder(b) === warbandOrder(tgt[0])) ? warbandOrder(tgt[0]) : '';
@@ -249,6 +307,10 @@
     toast(`${tgt.length === 1 ? wbi(tgt[0]).name : 'The whole host'}: ${WB_ORDER_LABEL[o]}`); Snd.play('click'); wbBarHtml = ''; renderWbBar();
   }
   wbBar.addEventListener('pointerdown', e => {
+    if (e.target.closest('[data-begin]')) { e.preventDefault(); e.stopPropagation(); endPrep(''); return; }
+    if (e.target.closest('[data-place]')) { e.preventDefault(); e.stopPropagation(); wbPlacing = !wbPlacing; if (wbPlacing) toast(`Tap the ground to place ${wbOrderTargets().length === 1 ? wbi(wbOrderTargets()[0]).name : 'the bands'}`); wbBarHtml = ''; renderWbBar(); return; }
+    if (e.target.closest('[data-form]')) { e.preventDefault(); e.stopPropagation(); cycleForm(); return; }
+    if (e.target.closest('[data-follow]')) { e.preventDefault(); e.stopPropagation(); const tg = wbOrderTargets(); tg.forEach(clearBandPost); wbPlacing = false; toast('Following you'); wbBarHtml = ''; renderWbBar(); return; }
     if (e.target.closest('.wbmark')) { e.preventDefault(); e.stopPropagation(); toggleMark(); return; }
     const q = e.target.closest('[data-ordq]'); if (q) { e.preventDefault(); e.stopPropagation(); issueOrder(q.dataset.ordq); return; }
     if (e.target.closest('[data-all]')) { e.preventDefault(); e.stopPropagation(); wbAll = !wbAll; if (wbAll) wbSel = -1; wbBarHtml = ''; renderWbBar(); return; }
@@ -310,4 +372,4 @@
     else { const r1 = t.closest('.wr1'), li = r1 && r1.closest('li[data-n]'); if (li) { const n = npcs[+li.dataset.n]; closeWbPanel(); if (n) { openNpcCard(n); cardBackWb = i; } } }
     e.stopPropagation();
   });
-  setInterval(renderWbBar, 600);
+  setInterval(() => { renderWbBar(); postMarks(); }, 600);

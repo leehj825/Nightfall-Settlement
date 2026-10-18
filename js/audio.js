@@ -1,9 +1,44 @@
 // Nightfall Settlement - synthesized sound effects and background music (WebAudio, no asset files).
   const Snd = (() => {
-    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, vol = { sfx: 1, music: 1 }, mood = { nf: 0, danger: false, boss: false }, step = 0;
+    let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, trackOk = false, vol = { sfx: 1, music: 0.5 }, mood = { nf: 0, danger: false, boss: false }, step = 0;
     const last = {};
-    try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1) vol.music = v.music; } catch (e) {}
+    try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1 && localStorage.getItem('nf_vol_v2')) vol.music = v.music; } catch (e) {}
+    // Music (audio/*.mp3): title, day, night and raid (raids, sieges and boss fights) tracks that crossfade by scene. They follow the Music slider and the mute button;
+    // the synthesized score only plays if no file could be loaded.
+    const TRACKS = { title: 'audio/title.mp3', night: 'audio/night.mp3', raid: 'audio/raid.mp3' }, SCENE_TRACK = { title: 'title', day: 'night', night: 'night', raid: 'raid' }, MUSIC_BASE = 0.7;       // the night song also plays by day, so 19:00 does not restart it
+    const tr = {}; let scene = 'title', sceneT = 0, wantScene = 'title', calmT = 0;
+    function trackMake(k) {
+      if (tr[k]) return tr[k];
+      const a = new Audio(); a.preload = k === 'title' ? 'auto' : 'metadata'; a.loop = true; a.volume = 0; a.src = TRACKS[k];
+      a.addEventListener('playing', () => { trackOk = true; }); a.addEventListener('error', () => { /* keep the synth score if nothing plays */ });
+      return (tr[k] = { a, g: 0 });
+    }
+    function setScene(name) {                                          // raid starts at once; leaving it waits until it has been calm for 8 s; other changes wait 4 s so the music does not flip-flop
+      name = SCENE_TRACK[name]; if (!name) return; const now = performance.now();
+      if (name === wantScene) { calmT = now; return; }
+      if (scene === 'raid' && name !== 'raid' && now - calmT < 8000) return;
+      if (name !== 'raid' && name !== 'title' && scene !== 'title' && now - sceneT < 4000) return;
+      wantScene = name; sceneT = now; calmT = now;
+    }
+    function trackStart() {
+      try { const w = trackMake(wantScene); if (!muted && w.a.paused && !document.hidden) { const pr = w.a.play(); if (pr && pr.catch) pr.catch(() => {}); } } catch (e) { /* no audio */ }
+      if (!trackStart.timer) trackStart.timer = setInterval(trackTick, 200);
+    }
+    function trackTick() {
+      scene = wantScene;
+      for (const k of Object.keys(TRACKS)) {
+        if (k === scene) trackMake(k);
+        const o = tr[k]; if (!o) continue;
+        const a = o.a, goal = k === scene ? 1 : 0;
+        o.g += Math.max(-0.12, Math.min(0.12, goal - o.g));            // ~1.7 s crossfade (200 ms ticks)
+        const d = a.duration, t = a.currentTime, edge = d > 8 ? Math.max(0, Math.min(1, t / 0.8, (d - t) / 3)) : 1;
+        a.volume = Math.max(0, Math.min(1, MUSIC_BASE * vol.music * o.g * edge)); a.muted = muted;
+        if (document.hidden || (o.g <= 0.001 && k !== scene)) { if (!a.paused) a.pause(); }
+        else if (!muted && a.paused) { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      }
+    }
     function init() {
+      trackStart();
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -71,10 +106,11 @@
     // 배경음: 코드 진행을 따라가는 작은 시퀀서. 낮 = 밝은 아르페지오, 밤 = 느린 단조 패드, 습격 = 맥박 + 불안한 선율, 보스 = 더 낮고 빠른 맥박
     const N = n => 440 * Math.pow(2, (n - 69) / 12);          // MIDI -> Hz
     const DAY_CH = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];          // C Am F G
+    setTimeout(trackStart, 0);
     const NIGHT_CH = [[45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 58], [40, 47, 52, 55]];        // Am F G(m) Em, low and slow
     const DANGER_ROOT = [38, 38, 41, 36];
     function musicTick() {
-      if (!ctx || muted) return;
+      if (!ctx || muted || trackOk) return;
       step++;
       drone.gain.setTargetAtTime(0.35 * mood.nf * (mood.danger ? 1.5 : 1), ctx.currentTime, 1.5);
       const bar = (step >> 3) & 3, beat = step & 7;                       // 8 ticks per bar, a bar per chord
@@ -99,11 +135,12 @@
     function setMuted(m) {
       muted = m; try { localStorage.setItem('nf_mute', m ? '1' : '0'); } catch (e) {}
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05);
+      for (const k in tr) tr[k].a.muted = m; if (!m) trackStart();
       const b = document.getElementById('muteBtn'); if (b) b.textContent = m ? '🔇' : '🔊';
     }
     function setVol(kind, v) {
-      vol[kind] = Math.max(0, Math.min(1, v)); try { localStorage.setItem('nf_vol', JSON.stringify(vol)); } catch (e) {}
+      vol[kind] = Math.max(0, Math.min(1, v)); try { localStorage.setItem('nf_vol', JSON.stringify(vol)); localStorage.setItem('nf_vol_v2', '1'); } catch (e) {}
       if (ctx) { (kind === 'sfx' ? sfxBus : musicBus).gain.setTargetAtTime((kind === 'sfx' ? 0.8 : 0.3) * vol[kind], ctx.currentTime, 0.05); }
     }
-    return { init, play, setVol, getVol: k => vol[k], setMood: (nf, danger, boss) => { mood.nf = nf; mood.danger = danger; mood.boss = !!boss; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
+    return { init, play, setVol, setScene, scene: () => wantScene, getVol: k => vol[k], setMood: (nf, danger, boss) => { mood.nf = nf; mood.danger = danger; mood.boss = !!boss; }, toggle: () => setMuted(!muted), isMuted: () => muted, setMuted };
   })();
