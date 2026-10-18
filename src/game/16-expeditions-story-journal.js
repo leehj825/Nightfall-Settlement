@@ -429,7 +429,8 @@
     if (n.cls === 'medic' && n.role === 'melee') medicTick(dt);                                // 원정 중에도 치료사는 주변 아군과 주인공을 치료한다
     const ord = orderOf(n);                                                                     // 명령: Stand firm 은 그 자리를 지킨다, Withdraw 는 근접병이 싸우지 않고 곁에 붙는다, Charge 는 멀리서 달려든다
     const post = ord !== 'withdraw' && n.warband >= 0 ? bandPost[n.warband] : null;                  // 전투단 진지: 정해 준 자리에 줄지어 선다
-    if (post) { const k = bandSlot(n); n.hold = { x: post.x + ((k % 5) - 2) * 1.9, z: post.z - Math.floor(k / 5) * 1.7 }; }
+    const form = n.warband >= 0 ? warbandForm(n.warband) : 'block';
+    if (post) { const w = formWorld(form, n, post); n.hold = { x: w.x, z: w.z }; n.holdFace = w.h; }
     else if (ord === 'stand') { if (!n.hold) n.hold = { x: n.position.x, z: n.position.z }; } else n.hold = null;
     let foe = null, bd = post ? (ord === 'charge' ? 18 : ord === 'stand' ? 9 : 13) : ord === 'charge' ? 26 : ord === 'stand' ? 9 : 16;
     for (const e of enemies) {
@@ -466,11 +467,13 @@
       if (pd > 0.8) exMove(n, n.parade.x, n.parade.z, 5, dt); else { n.face = 0; n.rotation.y = 0; n.anim.base('idle', 0); }
     } else if (n.hold) {
       if (Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) > 0.6) exMove(n, n.hold.x, n.hold.z, 5, dt);       // 지킬 자리로 돌아온다
+      else if (post) { n.face = n.holdFace || 0; n.rotation.y = n.face; n.anim.base('idle', 0); }                             // in formation: stand facing the foe
     } else {
       const k = npcs.filter(x => x.escort).indexOf(n), a = facing + Math.PI + ((k % 6) - 2.5) * 0.7, rr = 2.6 + Math.floor(k / 6) * 1.6, tx = player.position.x + Math.sin(a) * rr, tz = player.position.z + Math.cos(a) * rr;
       const d = Math.hypot(tx - n.position.x, tz - n.position.z);
       if (d > 1.2) exMove(n, tx, tz, d > 8 ? 8 : 5, dt);
     }
+    n.inForm = !!(post && n.hold && Math.hypot(n.hold.x - n.position.x, n.hold.z - n.position.z) < 2.2);
     const mv = Math.hypot(n.position.x - n.px, n.position.z - n.pz) / Math.max(dt, 1e-4); n.px = n.position.x; n.pz = n.position.z;
     n.rig.combat = true; n.rig.sheathe(false);                                                // 원정 중에는 항상 전투 자세 이동
     n.anim.base(mv > 4.4 ? 'run' : mv > 0.5 ? 'walk' : 'idle', mv);
@@ -601,7 +604,7 @@
     }
     if (powerFor(d) < needOf(d)) return toast(`Too strong: power ${needOf(d)} needed, you have ${powerFor(d)}`);
     if (d.night) { const why = nightExpWhy(); if (why) return toast(why); }
-    else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Too late to set out - dusk is near');
+    else if (nowHour < 6 || nowHour >= CFG.EXP_LATEST) return toast('Night has fallen - too late to set out');
     closeJournal(); exEnding = true; gathering = null;
     const marchCost = d.march ? marchFood(d) : 0; if (marchCost) res.food -= marchCost;                 // 행군 식량은 출발할 때 먹는다
     fadeTo(() => {

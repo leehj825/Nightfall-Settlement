@@ -114,7 +114,7 @@
       5: [{ id: 'warhost', label: 'Warhost', desc: 'You can bring one more warband on a journey' }, { id: 'crown', label: 'Crown', desc: '+10 prosperity and +1 maximum population' }, { id: 'banneret', label: 'Banneret', desc: 'Courage starts higher and recovers faster' }],
     },
     // 원정: 낮에 마을 밖의 별도 지역으로 떠났다가 해 지기 전에 돌아온다 (EXP_LATEST 이후에는 출발 불가, EXP_FORCE에는 자동 귀환)
-    EXP_LATEST: 13, EXP_FORCE: 17.5, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
+    EXP_LATEST: 18, EXP_FORCE: 20, EXP_TIME_MULT: 0.5,         // 원정 중에는 게임 시계가 절반 속도 (현실 1초 = 게임 2.2분): 8시 출발이면 현실 약 4분 20초
    
     MAP_RULES: { FOOD_PER_SOLDIER_DAY: 1, RAIDER_STRENGTH: 3.2 },       // 행군: 병사 1명이 하루에 먹는 식량 / 마을의 밤을 치를 때 적 1명의 힘 (추정값)
     // 원정 지도 (1단계: 지도 화면): 0~100 x 0~70 판 위의 마디. from = 길이 이어진 앞 마디(마을에서 시작). 규칙은 목록과 같고 모양만 지도다
