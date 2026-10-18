@@ -17,6 +17,13 @@
     } else if (kind === 'shingle') {                                  // overlapping rows of rounded tiles
       c.fillStyle = g(110); c.fillRect(0, 0, S, S);
       for (let row = 0; row < 8; row++) { const off = row % 2 ? 8 : 0; for (let col = -1; col < 9; col++) { const x = col * 16 + off, y = row * 16, v = 190 + r() * 55; c.fillStyle = g(v); c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 15, y); c.lineTo(x + 15, y + 9); c.quadraticCurveTo(x + 8, y + 20, x + 1, y + 9); c.fill(); c.fillStyle = g(v - 40); c.fillRect(x + 1, y, 14, 2); } }
+    } else if (kind === 'rough') {                                    // rough fieldstone: irregular rounded stones of many greys, no straight courses
+      c.fillStyle = g(105); c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 46; i++) { const x = r() * S, y = r() * S, rw = 9 + r() * 12, rh = 7 + r() * 8, v = 175 + r() * 70; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { c.fillStyle = g(v); c.beginPath(); c.ellipse(x + ox, y + oy, rw, rh, r() * 0.6 - 0.3, 0, 7); c.fill(); c.fillStyle = g(v + 18); c.beginPath(); c.ellipse(x + ox - 2, y + oy - 2, rw * 0.6, rh * 0.5, 0, 0, 7); c.fill(); } }
+    } else if (kind === 'thatch') {                                   // straw: dense short diagonal strands in bundles
+      c.fillStyle = g(190); c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 900; i++) { const x = r() * S, y = r() * S, v = 140 + r() * 115; c.strokeStyle = g(v); c.lineWidth = 1 + r(); c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 5, y + 8 + r() * 12); c.stroke(); }
+      for (let y = 0; y < S; y += 32) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y, S, 2); }
     } else {                                                          // plaster: soft mottling and a few cracks
       for (let i = 0; i < 700; i++) { c.fillStyle = g(205 + r() * 50); c.fillRect(r() * S, r() * S, 2 + r() * 6, 2 + r() * 6); }
       c.strokeStyle = g(170); c.lineWidth = 1; for (let i = 0; i < 3; i++) { c.beginPath(); let x = r() * S, y = r() * S; c.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 18; y += 6 + r() * 8; c.lineTo(x, y); } c.stroke(); }

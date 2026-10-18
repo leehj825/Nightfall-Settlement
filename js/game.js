@@ -168,6 +168,13 @@
     } else if (kind === 'shingle') {                                  // overlapping rows of rounded tiles
       c.fillStyle = g(110); c.fillRect(0, 0, S, S);
       for (let row = 0; row < 8; row++) { const off = row % 2 ? 8 : 0; for (let col = -1; col < 9; col++) { const x = col * 16 + off, y = row * 16, v = 190 + r() * 55; c.fillStyle = g(v); c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 15, y); c.lineTo(x + 15, y + 9); c.quadraticCurveTo(x + 8, y + 20, x + 1, y + 9); c.fill(); c.fillStyle = g(v - 40); c.fillRect(x + 1, y, 14, 2); } }
+    } else if (kind === 'rough') {                                    // rough fieldstone: irregular rounded stones of many greys, no straight courses
+      c.fillStyle = g(105); c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 46; i++) { const x = r() * S, y = r() * S, rw = 9 + r() * 12, rh = 7 + r() * 8, v = 175 + r() * 70; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { c.fillStyle = g(v); c.beginPath(); c.ellipse(x + ox, y + oy, rw, rh, r() * 0.6 - 0.3, 0, 7); c.fill(); c.fillStyle = g(v + 18); c.beginPath(); c.ellipse(x + ox - 2, y + oy - 2, rw * 0.6, rh * 0.5, 0, 0, 7); c.fill(); } }
+    } else if (kind === 'thatch') {                                   // straw: dense short diagonal strands in bundles
+      c.fillStyle = g(190); c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 900; i++) { const x = r() * S, y = r() * S, v = 140 + r() * 115; c.strokeStyle = g(v); c.lineWidth = 1 + r(); c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 5, y + 8 + r() * 12); c.stroke(); }
+      for (let y = 0; y < S; y += 32) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y, S, 2); }
     } else {                                                          // plaster: soft mottling and a few cracks
       for (let i = 0; i < 700; i++) { c.fillStyle = g(205 + r() * 50); c.fillRect(r() * S, r() * S, 2 + r() * 6, 2 + r() * 6); }
       c.strokeStyle = g(170); c.lineWidth = 1; for (let i = 0; i < 3; i++) { c.beginPath(); let x = r() * S, y = r() * S; c.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 18; y += 6 + r() * 8; c.lineTo(x, y); } c.stroke(); }
@@ -539,7 +546,7 @@
   }
   // ----- 마을 건물 (거주지 / 병영 / 사격장) -----
   const bMat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
-  const houseWall = texMat(0xd2ac70, 'plaster', 0.6), houseRoof = texMat(0xb04e2c, 'shingle', 0.7), barrackMat = texMat(0x858a94, 'stone', 0.45), barrackTop = texMat(0x626772, 'shingle', 0.7);
+  const houseWall = texMat(0xd2ac70, 'plaster', 0.6), houseRoof = texMat(0xb04e2c, 'shingle', 0.7), barrackMat = texMat(0x858a94, 'rough', 0.5), barrackTop = texMat(0x626772, 'shingle', 0.7);
   const woodMat2 = texMat(0x946038, 'wood', 0.9), tgtRed = new THREE.MeshStandardMaterial({ color: 0xd23a2a, roughness: 1 }), tgtWhite = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 });
   function faceOf(x, z) {              // 가장 가까운 큰길(x=0 또는 z=0 십자 길)을 향하는 방향
     if (Math.abs(x) < Math.abs(z)) return { x: x > 0 ? -1 : 1, z: 0 };
@@ -553,7 +560,7 @@
   }
   const windowGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 }), lampGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 });        // 밤이 되면 따뜻하게 켜진다 (tick)
   const forgeGlow = new THREE.MeshBasicMaterial({ color: 0xff7a1a }), anvilMat = bMat(0x34363c);
-  const tentMat = bMat(0xd9c9a0), tentDoor = bMat(0x4a3a24), stoneWall = texMat(0x969aa4, 'stone', 0.5), slateRoof = texMat(0x545864, 'shingle', 0.7), chimneyMat = texMat(0x6f727a, 'stone', 0.9);
+  const tentMat = bMat(0xd9c9a0), tentDoor = bMat(0x4a3a24), stoneWall = texMat(0x969aa4, 'rough', 0.5), slateRoof = texMat(0x545864, 'shingle', 0.7), chimneyMat = texMat(0x6f727a, 'rough', 0.9);
   const dirt = bMat(0x6b4a2b), cropMat = bMat(0x4fae3a), logPile = bMat(0x7a4f2a), rockPile = bMat(0x9a9aa2), towerStone = bMat(0x7f838c), towerTop = bMat(0x5c606a);
   // 거주지 외형은 시대에 따라 바뀐다: 1시대 텐트(원뿔) → 2시대 나무집(삼각 지붕) → 3시대 돌집
   function setHouseModel(g) {
@@ -1039,7 +1046,9 @@
   // ---------- 더 자세한 건물 모양 (집과 성채): 기본 도형을 모아 만든 로우폴리 모델. 모두 function 선언이다 ----------
   const mdlCache = {};
   const isGrey = (c) => { const r = c >> 16 & 255, g = c >> 8 & 255, b = c & 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx - mn <= 24 && mx >= 0x50 && mx <= 0xd0; };
-  const M = (c, kind, tile) => { const k = c + (kind || ''); return mdlCache[k] || (mdlCache[k] = kind ? texMat(c, kind, tile || 0.6) : isGrey(c) ? texMat(c, 'stone', 0.5) : new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 })); };       // grey = stone blocks, automatically
+  let stoneAuto = false;                                                    // only the keep, towers and gatehouses use the stone-block texture on their grey parts
+  const M = (c, kind, tile) => { if (!kind && stoneAuto && isGrey(c)) kind = 'stone'; const k = c + (kind || ''); return mdlCache[k] || (mdlCache[k] = kind ? texMat(c, kind, tile || 0.5) : new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 })); };
+  const withStone = (fn) => function (...a) { stoneAuto = true; try { return fn.apply(this, a); } finally { stoneAuto = false; } };
   function gableGeo(w, h, d) {                                               // 삼각 단면(너비 w, 높이 h)을 깊이 d 만큼 밀어낸 박공 지붕: 바닥이 y=0, 앞뒤(z)로 d/2
     const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(0, h); sh.closePath();
     const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return g;
@@ -1050,8 +1059,9 @@
     const inner = new THREE.Group(); inner.scale.set(0.9 + R() * 0.3, 0.92 + R() * 0.2, 0.88 + R() * 0.25); g.add(inner);
     const add = (geo, m, px, py, pz, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; inner.add(o); return o; };
     const stone = lvl >= 3;
-    const wallM = stone ? M(pick([0x9a9da4, 0xa8a294, 0x8f969e, 0xb0a898]), 'stone', 0.55) : M(pick([0xd8bf90, 0xe6d8b8, 0xcfa97c, 0xd9cfae, 0xbfa27a]), 'plaster', 0.6), beamM = M(pick([0x4a301c, 0x3a2a1c, 0x5a3a22]), 'wood', 1.2),
-      roofM = M(stone ? pick([0x4a4f5c, 0x5c4a42, 0x3f5a52, 0x5a3f4a]) : pick([0xa34a2a, 0x8c5a34, 0x6b7d4a, 0xb5651d, 0x7a3a2a]), 'shingle', 0.7), baseM = M(0x6f7078), doorM = M(pick([0x3a2414, 0x4a2a1a, 0x2f3a4a, 0x5a2a2a])),
+    const roofKind = pick(stone ? ['shingle', 'shingle', 'plank'] : ['thatch', 'thatch', 'shingle', 'plank']);
+    const wallM = stone ? M(pick([0x9a9da4, 0xa8a294, 0x8f969e, 0xb0a898]), 'rough', 0.5) : M(pick([0xd8bf90, 0xe6d8b8, 0xcfa97c, 0xd9cfae, 0xbfa27a]), 'plaster', 0.6), beamM = M(pick([0x4a301c, 0x3a2a1c, 0x5a3a22]), 'wood', 1.2),
+      roofM = roofKind === 'thatch' ? M(pick([0xc8aa64, 0xb89a58, 0xa8884a]), 'thatch', 0.8) : roofKind === 'plank' ? M(pick([0x7a5232, 0x6a4a2e, 0x8a6038]), 'wood', 0.9) : M(stone ? pick([0x4a4f5c, 0x5c4a42, 0x3f5a52, 0x5a3f4a]) : pick([0xa34a2a, 0x8c5a34, 0x6b7d4a, 0xb5651d, 0x7a3a2a]), 'shingle', 0.7), baseM = M(0x6f7078), doorM = M(pick([0x3a2414, 0x4a2a1a, 0x2f3a4a, 0x5a2a2a])),
       flowerM = M(pick([0x4f8a3a, 0xc0504a, 0xd8a02a, 0x8a5ab0]));
     const W = stone ? 3.0 : 2.8, H = (stone ? 2.3 : 1.8) + (R() < 0.3 ? 0.5 : 0);
     const ridgeX = R() < 0.5, dOff = R() < 0.5 ? 0 : (R() < 0.5 ? -1 : 1) * W * 0.17;                              // 용마루 방향 / 문 위치 어긋남
@@ -1096,7 +1106,7 @@
       else { add(new THREE.CylinderGeometry(0.28, 0.3, 0.6, 8), M(0x6b4a2a), side * (W / 2 - 0.2), 0.6, W / 2 + 0.45); add(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8), M(0x3a78c8), side * (W / 2 - 0.2), 0.92, W / 2 + 0.45); }
     }
   }
-  function keepModel(add, stage) {                                           // 석조 성채: 3단계 키프, 4단계 큰 성채, 5단계 금빛 왕좌의 방
+  const keepModel = withStone(function keepModel0(add, stage) {                                           // 석조 성채: 3단계 키프, 4단계 큰 성채, 5단계 금빛 왕좌의 방
     const gold = stage >= 5, big = stage >= 4, W = big ? 7.4 : 6.0, H = big ? 3.8 : 3.3, stoneM = M(0x8d9098), darkM = M(0x6a6e78), lightM = M(0xa9acb4), roofM = gold ? new THREE.MeshStandardMaterial({ color: 0xe0b040, flatShading: true, roughness: 0.55, metalness: 0.3 }) : M(0x6b2a2a), dark = M(0x1e1a16);
     add(new THREE.BoxGeometry(W + 0.9, 0.45, W + 0.9), darkM, 0, 0.22, 0);                                       // 기단
     add(new THREE.BoxGeometry(W, H, W), stoneM, 0, 0.45 + H / 2, 0);
@@ -1133,7 +1143,7 @@
       add(new THREE.BoxGeometry(3.6, 0.2, 1.2), lightM, 0, 0.1, W / 2 + 0.9); add(new THREE.BoxGeometry(2.8, 0.2, 0.9), lightM, 0, 0.3, W / 2 + 0.7);
       for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.06, 0.06, 3.2, 6), M(0x4a301c), sx * 2.3, 1.7, W / 2 + 1.1); add(new THREE.BoxGeometry(0.7, 1.1, 0.04), M(0xe0b040), sx * 2.3 + 0.38, 2.6, W / 2 + 1.1); }
     }
-  }
+  });
 
   function townHallModel(add) {                                              // 2단계 마을 회관: 목골 2층 + 박공 지붕 + 현관 지붕 + 종탑 (정면은 +z)
     const wall = M(0xd9c196), beam = M(0x4a301c), roof = M(0x9a3f24), roofDk = M(0x7c3019), stone = M(0x6f7078), door = M(0x3a2414), glow = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffa030, emissiveIntensity: 0.5, flatShading: true });
@@ -1230,7 +1240,7 @@
     add(new THREE.BoxGeometry(0.08, 1.0, 0.08), beam, 0.1, 0.5, 1.4).rotation.z = 0.4; add(new THREE.BoxGeometry(0.5, 0.1, 0.1), iron, -0.05, 0.98, 1.4);      // 기대 둔 곡괭이
   }
 
-  function towerModel(add) {                                                 // 방어 타워: 비탈진 돌 기단 + 돌 몸통 + 화살 구멍 + 돌출 흉벽 + 목재 지붕과 깃발 (궁수 높이는 y≈4.3 유지)
+  const towerModel = withStone(function towerModel0(add) {                                                 // 방어 타워: 비탈진 돌 기단 + 돌 몸통 + 화살 구멍 + 돌출 흉벽 + 목재 지붕과 깃발 (궁수 높이는 y≈4.3 유지)
     const st = M(0x7f838c), stDk = M(0x6a6e77), top = M(0x5c606a), wood = M(0x6b4a2b), roof = M(0x8c3a24), flag = M(0xc23a2a), slit = M(0x14161c);
     add(new THREE.CylinderGeometry(1.7, 1.9, 0.6, 10), stDk, 0, 0.3, 0);
     add(new THREE.CylinderGeometry(1.2, 1.5, 3.4, 10), st, 0, 2.3, 0);
@@ -1243,7 +1253,7 @@
     for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; add(new THREE.BoxGeometry(0.14, 1.6, 0.14), wood, Math.cos(a) * 1.0, 5.3, Math.sin(a) * 1.0); }   // 지붕 기둥
     add(new THREE.ConeGeometry(1.55, 1.0, 8), roof, 0, 6.4, 0);
     add(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 5), wood, 0, 7.4, 0); add(new THREE.BoxGeometry(0.6, 0.35, 0.04), flag, 0.3, 7.7, 0);
-  }
+  });
 
   // ---------- 5단계 '권좌의 도시' 건물: 광장 분수, 집결장(깃발 터), 가축 우리 ----------
   function plazaModel(add) {                                                 // 광장: 둥근 포석 + 분수 + 가로등 네 개 + 긴 의자
@@ -1346,7 +1356,7 @@
     }
     return horses;
   }
-  function gatehouseModel(g, gate) {                                         // 성문 문루: 문 양옆 돌탑 + 위의 아치 + 횃불 (보기용, 지나다니는 데 방해 없음)
+  const gatehouseModel = withStone(function gatehouseModel0(g, gate) {                                         // 성문 문루: 문 양옆 돌탑 + 위의 아치 + 횃불 (보기용, 지나다니는 데 방해 없음)
     const grp = new THREE.Group(), stone = M(0x8d9098), dark = M(0x6a6e78), light = M(0xa9acb4);
     const mk = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; grp.add(o); return o; };
     for (const s of [-1, 1]) {
@@ -1361,7 +1371,7 @@
     mk(new THREE.BoxGeometry(1.4, 1.1, 0.06), M(0xe0b040), 0, 3.0, 1.0);
     grp.position.set(gate.x, 0, gate.z); grp.rotation.y = Math.atan2(gate.nx, gate.nz); scene.add(grp); doormats.push(grp);
     return grp;
-  }
+  });
   function trainyardModel(add, g) {                                          // 훈련소: 모래 마당 + 나무 울타리 + 짚 인형 셋 + 과녁 + 무기 걸이 + 깃발. 아침 훈련 때 인형이 흔들린다
     const post = M(0x6b4a2a);
     add(new THREE.BoxGeometry(7, 0.1, 5.6), M(0xc8b080), 0, 0.05, 0);

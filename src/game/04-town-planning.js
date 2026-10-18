@@ -11,7 +11,7 @@
   }
   // ----- 마을 건물 (거주지 / 병영 / 사격장) -----
   const bMat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 1 });
-  const houseWall = texMat(0xd2ac70, 'plaster', 0.6), houseRoof = texMat(0xb04e2c, 'shingle', 0.7), barrackMat = texMat(0x858a94, 'stone', 0.45), barrackTop = texMat(0x626772, 'shingle', 0.7);
+  const houseWall = texMat(0xd2ac70, 'plaster', 0.6), houseRoof = texMat(0xb04e2c, 'shingle', 0.7), barrackMat = texMat(0x858a94, 'rough', 0.5), barrackTop = texMat(0x626772, 'shingle', 0.7);
   const woodMat2 = texMat(0x946038, 'wood', 0.9), tgtRed = new THREE.MeshStandardMaterial({ color: 0xd23a2a, roughness: 1 }), tgtWhite = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 });
   function faceOf(x, z) {              // 가장 가까운 큰길(x=0 또는 z=0 십자 길)을 향하는 방향
     if (Math.abs(x) < Math.abs(z)) return { x: x > 0 ? -1 : 1, z: 0 };
@@ -25,7 +25,7 @@
   }
   const windowGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 }), lampGlow = new THREE.MeshBasicMaterial({ color: 0x2a2a33 });        // 밤이 되면 따뜻하게 켜진다 (tick)
   const forgeGlow = new THREE.MeshBasicMaterial({ color: 0xff7a1a }), anvilMat = bMat(0x34363c);
-  const tentMat = bMat(0xd9c9a0), tentDoor = bMat(0x4a3a24), stoneWall = texMat(0x969aa4, 'stone', 0.5), slateRoof = texMat(0x545864, 'shingle', 0.7), chimneyMat = texMat(0x6f727a, 'stone', 0.9);
+  const tentMat = bMat(0xd9c9a0), tentDoor = bMat(0x4a3a24), stoneWall = texMat(0x969aa4, 'rough', 0.5), slateRoof = texMat(0x545864, 'shingle', 0.7), chimneyMat = texMat(0x6f727a, 'rough', 0.9);
   const dirt = bMat(0x6b4a2b), cropMat = bMat(0x4fae3a), logPile = bMat(0x7a4f2a), rockPile = bMat(0x9a9aa2), towerStone = bMat(0x7f838c), towerTop = bMat(0x5c606a);
   // 거주지 외형은 시대에 따라 바뀐다: 1시대 텐트(원뿔) → 2시대 나무집(삼각 지붕) → 3시대 돌집
   function setHouseModel(g) {
