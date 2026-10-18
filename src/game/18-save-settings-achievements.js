@@ -194,10 +194,12 @@
 
   // 시작 화면: 저장이 있으면 이어하기 / 새 게임 / (엔딩을 본 적이 있으면) 새 게임+
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
+  const startUiEls = () => [document.getElementById('game'), document.getElementById('startPanel')];
+  function showStartUi() { for (const e of startUiEls()) if (e) e.style.visibility = ''; }              // canvas and title stay invisible under the loading cover until the finished town is drawn
   function hideBootCover() {                                                 // the loading cover (index.html) hides the half-built start scene; lift it after two drawn frames
     const c = document.getElementById('bootCover'); if (!c || c.dataset.done) return; c.dataset.done = 1;
     const f0 = bootFrames, t0 = performance.now();                           // lift only after the finished scene has really been drawn (shader compiling can make the first frames slow)
-    const lift = () => { if (bootFrames < f0 + 4 && performance.now() - t0 < 7000) return requestAnimationFrame(lift); c.classList.add('off'); setTimeout(() => c.remove(), 600); };
+    const lift = () => { if (bootFrames < f0 + 4 && performance.now() - t0 < 7000) return requestAnimationFrame(lift); showStartUi(); c.classList.add('off'); setTimeout(() => c.remove(), 600); };
     requestAnimationFrame(lift);
   }
   setTimeout(hideBootCover, 8000);                                           // safety: never keep the cover up
@@ -221,13 +223,15 @@
     $('startInfo').textContent = d ? `Saved game · Day ${d.day} · ${new Date(d.ts).toLocaleDateString()}` : 'Hold the night. Build the realm.';
     $('startContinue').style.display = d ? '' : 'none';
     const ngBtn = $('startNG'); ngBtn.style.display = carry ? '' : 'none'; if (carry) ngBtn.textContent = `New Game+ ${carry.ng} (keep Lv ${carry.lvl})`;
+    for (const e of startUiEls()) if (e) e.style.visibility = 'hidden';
     document.body.classList.add('titlemode'); p.style.display = 'flex'; dispatchEvent(new Event('resize'));        // the title uses the whole screen (no ad strip)
     const go = (intent) => { try { sessionStorage.setItem('nf_intent', intent); } catch (e) { /* ignore */ } p.classList.add('out'); setTimeout(() => location.reload(), 380); };
     $('startContinue').addEventListener('click', () => go('continue'));
     $('startNew').addEventListener('click', () => go('new'));
     ngBtn.addEventListener('click', () => go('ng'));
     $('startDbg').addEventListener('click', () => go('dbg' + $('startStage').value));
-    setTimeout(() => { titleMode = true; debugJump(5); hideBootCover(); }, 120);            // the background town is built behind the loading cover; the cover lifts once it has been drawn
+    titleMode = true; debugJump(5); hideBootCover();       // built at once, before the first frame is drawn, so the stage-1 campfire view is never drawn at all (the render loop starts after this file)
+    //            // the background town is built behind the loading cover; the cover lifts once it has been drawn
   }
   { const sl = document.getElementById('setLeader'); sl.value = String(window.NF_LEADER ? 1 : 0);                       // 지휘관 모델 바꾸기(시험): 저장해 두고 다시 불러온다
     sl.addEventListener('change', () => {
