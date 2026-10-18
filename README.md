@@ -474,3 +474,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v252: touch (and mouse) always works with a controller connected: a real touch hides the pad cursor, which only comes back by itself when the pad is used after the last touch; holding LB no longer overrides a keyboard Shift.
 - nf-v253: on-screen touch controls (joystick, action, left and context buttons) hide by themselves while a keyboard or controller is the last thing used and come back on touch; a new 🎮 button beside Settings cycles Auto / Show (👆) / Hide (🚫), saved (`src/game/18c-controls.js`).
 - nf-v254: the release workflow reads the signing secrets named KEYSTORE_B64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD.
+- nf-v255: Android minSdkVersion raised from 22 to 24 (Play automatic protection requires 24 or higher).
