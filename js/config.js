@@ -44,6 +44,7 @@
       // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
       { stage: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', x: -21, z: -3.5 }] },
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
+      { stage: 4, needsThirdWall: true, label: 'Plan Great Wall Towers', cost: { wood: 60, stone: 120 }, lots: [{ kind: 'tower', x: -37.3, z: -37.3 }, { kind: 'tower', x: 37.3, z: -37.3 }, { kind: 'tower', x: -37.3, z: 37.3 }, { kind: 'tower', x: 37.3, z: 37.3 }] },       // guard towers at the four corners of the third (Great) wall
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
       // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
       { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 20, z: 3.5 }, { kind: 'pen', x: -20, z: 3.5 }] },

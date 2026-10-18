@@ -4686,6 +4686,7 @@ body.ad:not(.titlemode) #adBanner { display: flex; }
       // 공성 작업장: 마지막에 계획한다. 여기서 공성 망치와 사다리를 만든다 (대장간 창에서)
       { stage: 3, label: 'Plan Siege Workshop', cost: { wood: 80, stone: 40, iron: 10 }, lots: [{ kind: 'siegeshop', x: -21, z: -3.5 }] },
       // 4단계: 셋째 성벽(큰 성벽)이 완성되면 바깥 구역에 시장 거리, 둘째 병영과 주택을 계획한다
+      { stage: 4, needsThirdWall: true, label: 'Plan Great Wall Towers', cost: { wood: 60, stone: 120 }, lots: [{ kind: 'tower', x: -37.3, z: -37.3 }, { kind: 'tower', x: 37.3, z: -37.3 }, { kind: 'tower', x: -37.3, z: 37.3 }, { kind: 'tower', x: 37.3, z: 37.3 }] },       // guard towers at the four corners of the third (Great) wall
       { stage: 4, needsThirdWall: true, label: 'Plan Market District', cost: { wood: 120, stone: 60 }, lots: [{ kind: 'market', x: 9, z: 33 }, { kind: 'barracks', x: -9, z: 33 }, { kind: 'house', x: 33, z: -10 }, { kind: 'house', x: 33, z: 10 }, { kind: 'house', x: -33, z: -10 }, { kind: 'house', x: -33, z: 10 }, { kind: 'house', x: 10, z: -33 }, { kind: 'house', x: -10, z: -33 }] },
       // 5단계 권좌의 도시: 광장 분수, 집결장(깃발 터), 가축 우리 두 개
       { stage: 5, label: 'Plan Seat of Power', cost: { wood: 150, stone: 120 }, lots: [{ kind: 'plaza', x: 3.5, z: 10 }, { kind: 'muster', near: { x: -30, z: 24, min: 27, max: 36 } }, { kind: 'pen', x: 20, z: 3.5 }, { kind: 'pen', x: -20, z: 3.5 }] },
@@ -10714,7 +10715,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const pos = (o) => ({ x: o.position.x, z: o.position.z });
     const res_ = (o) => o.userData.type === 'wood' || o.userData.type === 'stone';
     return {
-      gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, stage, chapterCleared, lastWarnDay, lastRespawnDay,
+      tw3: 1, gameMin, wbInfo: warbandInfo ? warbandInfo.map(x => ({ ...x })) : null, res: { ...res }, story: JSON.parse(JSON.stringify(story)), playerClass, perks: { ...perks }, order, playerGear: { ...playerGear }, weaponMode, hp, fireHp, designTier, townStage, stage, chapterCleared, lastWarnDay, lastRespawnDay,
       wave: { ...wave }, player: { ...pos(player), facing }, pl: { lvl: pl.lvl, xp: pl.xp, pend: pl.pend, st: { ...pl.st } }, tk: totalKills,
       nodes: obstacles.filter(res_).map(o => ({ t: o.userData.type, ...pos(o), rot: o.rotation.y })),
       fences: obstacles.filter(o => o.userData.type === 'fence').map(o => ({ level: o.userData.level, ...pos(o), rot: o.rotation.y, hp: o.userData.hp })),
@@ -10767,7 +10768,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     order = sn.order || 'guard'; document.getElementById('ordSub').textContent = `O · ${order === 'follow' ? 'Follow' : 'Guard'}`;
     Object.assign(playerGear, { sword: 'sword_basic', bow: 'bow_basic', armor: 'armor_none', great: 'great_basic', spear: 'spear_basic' }, sn.playerGear || {}); if (!(sn.playerGear && sn.playerGear.great)) playerGear.great = gearAtTier('great', gearDef(playerGear.sword).tier); if (!(sn.playerGear && sn.playerGear.spear)) playerGear.spear = gearAtTier('spear', gearDef(playerGear.sword).tier); weaponMode = sn.weaponMode; applyPlayerGear();
     closeSmith(); hp = sn.hp; fireHp = sn.fireHp;
-    designTier = sn.designTier; townStage = sn.townStage || 0; stage = sn.stage || 1; chapterCleared = sn.chapterCleared;
+    designTier = sn.designTier; townStage = sn.townStage || 0; if (!sn.tw3 && townStage >= 7) townStage++;          // older saves: the Great Wall Towers group was inserted at index 7 stage = sn.stage || 1; chapterCleared = sn.chapterCleared;
     buildHall(); updateStageUi();                                      // 시대에 맞는 회관/거주지 외형으로 복원
     lastWarnDay = sn.lastWarnDay; lastRespawnDay = sn.lastRespawnDay; Object.assign(wave, sn.wave);
     dead = false; fireAlive = true; flame.visible = stage === 1; hurtCd = 0; sinceHurt = 99; bossShakeT = 0; shake = 0;
