@@ -6041,6 +6041,7 @@
   // ---------- 메인 루프 ----------
   const SPEED = 6;
   let mvActive = false;                                       // Model field (19-model-field.js) is showing: the game is not stepped
+  let bootFrames = 0;                                         // frames drawn so far; the loading cover waits for a few after the start scene is built
   // ---------- 날씨: 비(봄·가을 위주, 폭풍우 밤엔 항상) / 눈(겨울). 시야와 빛이 줄고, 궁수의 사거리가 짧아진다 ----------
   const WX_N = 1600, WX_BASE = 650, wxPos = new Float32Array(WX_N * 6), wxVel = new Float32Array(WX_N), wxLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xaec6ff, transparent: true, opacity: 0.0, depthWrite: false, fog: false }));
   for (let i = 0; i < WX_N; i++) { const x = rand(-16, 16), y = rand(0, 14), z = rand(-16, 16); wxPos.set([x, y, z, x, y + 0.7, z], i * 6); wxVel[i] = rand(0.8, 1.2); }
@@ -6285,7 +6286,7 @@
       camera.position.add(off);
       shake = Math.max(0, shake - dt * 1.5);
     }
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); bootFrames++;
     if (off) camera.position.sub(off);
   }
   applyPlayerGear(); updateHud();
@@ -6488,7 +6489,9 @@
   const readCarry = () => { try { const c = JSON.parse(localStorage.getItem('nf_carry') || 'null'); return c && c.ng >= 1 && c.lvl >= 1 ? c : null; } catch (e) { return null; } };
   function hideBootCover() {                                                 // the loading cover (index.html) hides the half-built start scene; lift it after two drawn frames
     const c = document.getElementById('bootCover'); if (!c || c.dataset.done) return; c.dataset.done = 1;
-    requestAnimationFrame(() => requestAnimationFrame(() => { c.classList.add('off'); setTimeout(() => c.remove(), 600); }));
+    const f0 = bootFrames, t0 = performance.now();                           // lift only after the finished scene has really been drawn (shader compiling can make the first frames slow)
+    const lift = () => { if (bootFrames < f0 + 4 && performance.now() - t0 < 7000) return requestAnimationFrame(lift); c.classList.add('off'); setTimeout(() => c.remove(), 600); };
+    requestAnimationFrame(lift);
   }
   setTimeout(hideBootCover, 8000);                                           // safety: never keep the cover up
   function bootGame() {
@@ -6536,7 +6539,7 @@
   });
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
-  if (!document.body.classList.contains('titlemode')) setTimeout(hideBootCover, 300);        // not the title screen (continue / new game / debug): show the game itself
+  if (!document.body.classList.contains('titlemode')) setTimeout(hideBootCover, 600);        // not the title screen (continue / new game / debug): show the game itself
   if (/[?&]debug/.test(location.search)) window.__nf = { procTex, get bandPost() { return bandPost; }, createFence, createWall, get mvSubs() { return mv.subs; }, showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
   // ---------- Model field: a separate flat field to look at characters, mounts and your own .glb files with a free camera (Settings > Model field) ----------
   const mv = { scene: null, cam: null, subs: [], sel: 'all', weapon: 'sword', mounted: false, yaw: 0.5, pitch: 0.25, dist: 6, target: new THREE.Vector3(0, 1, 0), auto: false, action: 'idle', gl: [] };
