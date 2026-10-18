@@ -12777,6 +12777,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     pad.el.style.display = v ? 'block' : 'none'; if (v) { pad.cx = pad.cx || innerWidth / 2; pad.cy = pad.cy || innerHeight / 2; }
     if (v) { joy.x = 0; joy.y = 0; keys.ShiftLeft = false; }
   }
+  addEventListener('pointerdown', e => { if (e.isTrusted) { pad.touchT = performance.now(); if (pad.cursor && pad.auto) padCursorOn(false); } }, true);       // a real touch or mouse press always wins: the pad cursor steps aside
   addEventListener('gamepadconnected', () => { pad.on = true; toast('Controller connected'); });
   addEventListener('gamepaddisconnected', () => { pad.on = !!(navigator.getGamepads && [...navigator.getGamepads()].some(Boolean)); if (!pad.on) { joy.x = 0; joy.y = 0; keys.ShiftLeft = false; padCursorOn(false); } });
   let padLast = performance.now();
@@ -12787,7 +12788,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (!g) return; pad.on = true;
     const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed), edge = (i) => b(i) && !pad.prev[i], dz = (v) => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
     const lx = dz(g.axes[0] || 0), ly = dz(g.axes[1] || 0), rx = dz(g.axes[2] || 0), ry = dz(g.axes[3] || 0);
-    const auto = titleMode || eventOpen || uiPause;                  // menus and event windows need the pointer
+    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) pad.activeT = now;
+    const auto = (titleMode || eventOpen || uiPause) && (pad.activeT || 0) > (pad.touchT || 0);                  // menus and event windows get the pad cursor only while the pad was used after the last touch (touch always works)
     if (edge(9)) padCursorOn(!pad.cursor); else if (auto && !pad.cursor) padCursorOn(true); else if (!auto && pad.cursor && pad.auto) padCursorOn(false);
     pad.auto = auto && !edge(9);
     if (pad.cursor) {
@@ -12799,7 +12801,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
       if (lx || ly) { const m = Math.min(1, Math.hypot(lx, ly)); joy.x = lx / (Math.hypot(lx, ly) || 1) * m; joy.y = -ly / (Math.hypot(lx, ly) || 1) * m; pad.stick = true; } else if (pad.stick) { joy.x = 0; joy.y = 0; pad.stick = false; }
       if (rx || ry) { yaw -= rx * 2.6 * dt; pitch = Math.min(bird ? 1.5 : 1.2, Math.max(bird ? 0.12 : 0.1, pitch + ry * 1.5 * dt)); }
       if (b(12)) setDist(DIST * Math.exp(-1.2 * dt)); if (b(13)) setDist(DIST * Math.exp(1.2 * dt));
-      keys.ShiftLeft = b(4);                                                     // LB held = block
+      if (b(4) !== !!pad.prev[4]) keys.ShiftLeft = b(4);                                                     // LB held = block
       for (const k in PAD_KEYS) if (edge(+k) && !(+k === 9)) { padKey('keydown', PAD_KEYS[k]); setTimeout(() => padKey('keyup', PAD_KEYS[k]), 60); }
     }
     for (let i = 0; i < g.buttons.length; i++) pad.prev[i] = b(i);
