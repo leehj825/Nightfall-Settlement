@@ -454,3 +454,4 @@ At Stage 5 the warband window can put a warband under a Dragon, Griffin or Hart 
 - nf-v232: wooden structures (doors, beams, stables, lumber camp, town hall frame, tower decks) use the plank texture (`WOODS` colour list in 04b-models.js).
 - nf-v233: house stone walls use a finer rubble-masonry texture (the large blobs looked like leopard spots); plaster no longer has a repeating crack.
 - nf-v234: the loading cover now waits until four frames of the finished start scene have really been drawn (a frame counter in the render loop), so the half-built campfire view can no longer show through.
+- nf-v235: Android launch splash no longer shows the campfire icon: every `splash.png` is now the same dark "NIGHTFALL SETTLEMENT / LOADING" look as the in-game loading cover, and the Android 12 system splash uses that background with a blank icon (needs a rebuilt APK).
