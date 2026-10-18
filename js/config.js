@@ -54,6 +54,11 @@
       { stage: 5, label: 'Plan Outer Homes (3rd ring)', cost: { wood: 160 }, lots: [{ kind: 'house', near: { x: -33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: -22, min: 27, max: 36 } }, { kind: 'house', near: { x: -33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 33, z: 22, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: -33, min: 27, max: 36 } }, { kind: 'house', near: { x: 22, z: 33, min: 27, max: 36 } }, { kind: 'house', near: { x: -22, z: 33, min: 27, max: 36 } }] },
       { stage: 5, label: 'Plan Training Yard', cost: { wood: 140, stone: 80 }, lots: [{ kind: 'trainyard', near: { x: -31, z: 8, min: 27, max: 38 } }] },
       { stage: 5, label: 'Plan Stables', cost: { wood: 100, stone: 40 }, lots: [{ kind: 'stable', near: { x: 30, z: 30, min: 27, max: 38 } }] },
+      // 5단계: 더 많은 집 (집 1채 = 최대 인구 +1): 첫 구역에서 밀려난 주민들이 살 바깥 구역과 셋째 성벽 안쪽을 채운다. 맨 끝에 붙여서 예전 저장의 진행이 어긋나지 않는다
+      { stage: 5, needsThirdWall: true, label: 'Plan More Homes', cost: { wood: 220 }, lots: [
+        { kind: 'house', near: { x: -16, z: -34, min: 27, max: 37 } }, { kind: 'house', near: { x: 16, z: -34, min: 27, max: 37 } }, { kind: 'house', near: { x: -16, z: 34, min: 27, max: 37 } }, { kind: 'house', near: { x: 16, z: 34, min: 27, max: 37 } },
+        { kind: 'house', near: { x: -34, z: -5, min: 27, max: 37 } }, { kind: 'house', near: { x: 34, z: -5, min: 27, max: 37 } }, { kind: 'house', near: { x: -34, z: 5, min: 27, max: 37 } }, { kind: 'house', near: { x: 34, z: 5, min: 27, max: 37 } },
+        { kind: 'house', near: { x: -28, z: -26, min: 26, max: 37 } }, { kind: 'house', near: { x: 28, z: 26, min: 26, max: 37 } }] },
     ],
     WOUND: { DAYS: [1, 2], CASTLE_DAYS: [2, 3], MEDIC_EXTRA: 1, TEND_FOOD: 3 },
     COURAGE: { START: 70, WIN: 12, FALL: 4, WITHDRAW: 6, HUNGRY: 5, DRIFT: 5, MIN_MUL: 0.75, MAX_MUL: 1.1 },

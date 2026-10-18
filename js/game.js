@@ -757,7 +757,18 @@
     const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), poolMat); pool.rotation.x = -Math.PI / 2; pool.scale.set(11, 11, 1); pool.position.y = 0.06; pool.renderOrder = 4;
     g.add(post, bowl, flame, halo, pool); g.position.set(x, 0, z); scene.add(g); doormats.push(g); lampHalos.push(halo);
   }
-  function cornerLampsSync() {                                      // 설계한 성벽 줄마다 한 번씩 (예전 저장·디버그 시작도 여기서 채운다)
+  // first layer too crowded: once the second wall stands, the starting houses move out to the second / third layer (the freed room stays open)
+  const HOUSE_OUT = [{ x: 17, z: -16, min: 16, max: 24 }, { x: -17, z: 17, min: 16, max: 24 }, { x: 29, z: -4, min: 26, max: 37 }, { x: -29, z: -4, min: 26, max: 37 }, { x: -28, z: -26, min: 26, max: 37 }, { x: 28, z: 26, min: 26, max: 37 }, { x: -16, z: 30, min: 26, max: 37 }, { x: 16, z: -30, min: 26, max: 37 }];
+  function thinFirstLayer() {
+    if (!outerWallDone()) return;
+    const inner = [...obstacles.filter(o => o.userData.type === 'building' && o.userData.kind === 'house'), ...blueprints.filter(b => b.userData.type === 'blueprint' && b.userData.bkind === 'house')].filter(o => cheb(o.position.x, o.position.z) < 15);
+    inner.forEach((o) => {
+      let pos = null; for (const t of HOUSE_OUT) { pos = findSpotNear('house', t, o, true); if (pos) break; } if (!pos) return;
+      clearArea(pos.x, pos.z, 3.2); o.position.x = pos.x; o.position.z = pos.z; dust(pos.x, pos.z);
+    });
+  }
+  function cornerLampsSync() {
+    thinFirstLayer();                                      // 설계한 성벽 줄마다 한 번씩 (예전 저장·디버그 시작도 여기서 채운다)
     for (let t = 0; t < designTier && t < CFG.DESIGN.length; t++) {
       if (cornerLit[t]) continue; cornerLit[t] = true;
       const h = CFG.DESIGN[t].half - 0.4; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addCornerLamp(sx * h, sz * h);
