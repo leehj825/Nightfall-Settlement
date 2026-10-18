@@ -7221,7 +7221,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   });
 
   function townHallModel(add) {                                              // 2단계 마을 회관: 목골 2층 + 박공 지붕 + 현관 지붕 + 종탑 (정면은 +z)
-    const wall = M(0xd9c196), beam = M(0x4a301c), roof = M(0x9a3f24), roofDk = M(0x7c3019), stone = M(0x6f7078), door = M(0x3a2414), glow = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffa030, emissiveIntensity: 0.5, flatShading: true });
+    const wall = M(0xd9c196, 'plaster', 0.6), beam = M(0x4a301c), roof = M(0x9a3f24, 'shingle', 0.7), roofDk = M(0x7c3019, 'shingle', 0.7), stone = M(0x6f7078, 'rough', 0.9), door = M(0x3a2414), glow = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffa030, emissiveIntensity: 0.5, flatShading: true });
     const W = 4.6, H = 2.9, B = 0.35, T = B + H;
     add(new THREE.BoxGeometry(W + 0.5, B, W + 0.5), stone, 0, B / 2, 0);                                           // 돌 기단
     add(new THREE.BoxGeometry(W, H, W), wall, 0, B + H / 2, 0);
@@ -7254,7 +7254,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
   }
 
   function barracksModel(add) {                                              // 병영: 돌 기단 + 목골 긴 건물 + 박공 지붕 + 문 앞 무기 걸이와 방패 (정면은 +z, 크기 6.4x4.4)
-    const wall = M(0xb9b3a4), beam = M(0x4a301c), roof = M(0x5a4a42), roofDk = M(0x3f332e), stone = M(0x6f7078), door = M(0x3a2414), iron = M(0x8d9199), red = M(0xb3342a), blue = M(0x2f4f8f);
+    const wall = M(0xb9b3a4, 'plaster', 0.6), beam = M(0x4a301c), roof = M(0x5a4a42, 'shingle', 0.7), roofDk = M(0x3f332e, 'shingle', 0.7), stone = M(0x6f7078, 'rough', 0.9), door = M(0x3a2414), iron = M(0x8d9199), red = M(0xb3342a), blue = M(0x2f4f8f);
     const glow = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffa030, emissiveIntensity: 0.5, flatShading: true });
     const L = 6.4, D = 4.4, H = 1.9, B = 0.3, T = B + H;
     add(new THREE.BoxGeometry(L + 0.4, B, D + 0.4), stone, 0, B / 2, 0);
@@ -7376,8 +7376,8 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     return sheep;
   }
   function windmillModel(add, g) {                                           // 풍차: 돌 몸통 + 나무 모자 + 돌아가는 날개 네 개 + 곡식 자루
-    add(new THREE.CylinderGeometry(1.25, 1.75, 0.5, 10), M(0x8d9098), 0, 0.25, 0);
-    add(new THREE.CylinderGeometry(1.0, 1.5, 3.6, 10), M(0xd8cfba), 0, 2.3, 0);
+    add(new THREE.CylinderGeometry(1.25, 1.75, 0.5, 10), M(0x8d9098, 'rough', 0.9), 0, 0.25, 0);
+    add(new THREE.CylinderGeometry(1.0, 1.5, 3.6, 10), M(0xd8cfba, 'plaster', 0.6), 0, 2.3, 0);
     add(new THREE.CylinderGeometry(1.05, 1.05, 0.2, 10), M(0x6a4a2a), 0, 4.15, 0);
     add(new THREE.ConeGeometry(1.35, 1.6, 10), houseRoof, 0, 5.0, 0);
     add(new THREE.BoxGeometry(0.7, 1.2, 0.12), M(0x4a301c), 0, 0.85, 1.42);                                      // 문
@@ -7393,9 +7393,9 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (const [x, z] of [[1.6, 0.6], [1.9, 1.1]]) add(new THREE.CylinderGeometry(0.3, 0.34, 0.5, 8), M(0xc8a860), x, 0.25, z);
   }
   function infirmaryModel(add) {                                             // 병원: 흰 회벽 긴 집 + 붉은 지붕 + 빨간 십자 간판 + 약초밭
-    add(new THREE.BoxGeometry(5.6, 0.3, 3.8), M(0x8d9098), 0, 0.15, 0);
-    add(new THREE.BoxGeometry(5.0, 2.1, 3.2), M(0xe8e2d2), 0, 1.35, 0);
-    const roof = add(gableGeo(5.6, 1.5, 3.8), M(0xa84a3a), 0, 2.4, 0); roof.rotation.y = Math.PI / 2; roof.scale.set(1, 1, 1);
+    add(new THREE.BoxGeometry(5.6, 0.3, 3.8), M(0x8d9098, 'rough', 0.9), 0, 0.15, 0);
+    add(new THREE.BoxGeometry(5.0, 2.1, 3.2), M(0xe8e2d2, 'plaster', 0.6), 0, 1.35, 0);
+    const roof = add(gableGeo(5.6, 1.5, 3.8), M(0xa84a3a, 'shingle', 0.7), 0, 2.4, 0); roof.rotation.y = Math.PI / 2; roof.scale.set(1, 1, 1);
     add(new THREE.BoxGeometry(0.9, 1.5, 0.12), M(0x6a4a2a), 0, 1.05, 1.62);
     for (const x of [-1.7, 1.7]) add(new THREE.BoxGeometry(0.7, 0.6, 0.1), windowGlow, x, 1.7, 1.62);
     add(new THREE.BoxGeometry(1.0, 1.0, 0.08), M(0xf4f4f0), 0, 3.0, 1.66);
@@ -7418,7 +7418,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     const rnd = rngOf(seed || 11), wood = M(0x7a5a3a), post = M(0x6b4a2a);
     add(new THREE.BoxGeometry(5.2, 0.1, 6.4), M(0x7a8a3a), 0, 0.05, 0.3);
     add(new THREE.BoxGeometry(5.0, 2.2, 2.6), wood, 0, 1.2, -2.2);
-    const roof = add(gableGeo(5.6, 1.3, 2.9), M(0x6a3a2a), 0, 2.3, -2.2); roof.rotation.y = Math.PI / 2;
+    const roof = add(gableGeo(5.6, 1.3, 2.9), M(0x6a3a2a, 'shingle', 0.7), 0, 2.3, -2.2); roof.rotation.y = Math.PI / 2;
     for (const x of [-1.6, 0, 1.6]) { add(new THREE.BoxGeometry(1.2, 1.5, 0.1), M(0x3a2a1c), x, 0.85, -0.88); add(new THREE.BoxGeometry(0.1, 1.4, 0.1), post, x + 0.8, 0.7, -0.8); }
     for (const z of [0.2, 3.2]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(5.0, 0.09, 0.09), post, 0, y, z);
     for (const x of [-2.5, 2.5]) for (const y of [0.45, 0.85]) add(new THREE.BoxGeometry(0.09, 0.09, 3.0), post, x, y, 1.7);
