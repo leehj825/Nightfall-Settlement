@@ -11,10 +11,10 @@ base64 -w0 release.keystore > release.keystore.b64
 ## 2. Add GitHub repository secrets (Settings -> Secrets and variables -> Actions)
 | Secret | Value |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | contents of `release.keystore.b64` |
-| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
-| `ANDROID_KEY_ALIAS` | `nightfall` |
-| `ANDROID_KEY_PASSWORD` | key password |
+| `KEYSTORE_B64` | contents of `release.keystore.b64` |
+| `KEYSTORE_PASSWORD` | keystore password |
+| `KEY_ALIAS` | `nightfall` |
+| `KEY_PASSWORD` | key password |
 
 ## 3. Build
 Actions -> **Android release** -> Run workflow. Raise `version_code` on every upload. Download the `nightfall-release` artifact: `app-release.aab` (upload to Play) and `app-release.apk` (sideload test).
