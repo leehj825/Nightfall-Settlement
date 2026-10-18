@@ -6613,6 +6613,57 @@
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
   if (!document.body.classList.contains('titlemode')) setTimeout(hideBootCover, 600);        // not the title screen (continue / new game / debug): show the game itself
   if (/[?&]debug/.test(location.search)) window.__nf = { procTex, get bandPost() { return bandPost; }, createFence, createWall, get mvSubs() { return mv.subs; }, showVictory, throneLine, fixTightBuildings, woundsMorning2: 0, toggleLeaderMount, leaderMountMul, leaderDismount, toggleMount, mountedCount, mountCap, applyMount, marshalMods, bannerFlagTick, cornerLampsSync, fixKeepOverlaps, findTownSpot, debugJump, setWeather: (k) => { wx.kind = k; wx.day = dayNow(); wx.lvl = 0.7; }, setHostOrder, warbandOrder, drilledTogether, setBanner, bannerOf, bannerBands, bannerMods, toggleBringBanner, setStage, builtBuildings, trainDrill, startTraining, trainSpawn, endTraining, tendWounded, callLevy, woundsMorning, addCourage, courageOf, courageMul, dismissLevy, recallGarrison, breachWall, catapultTick, createBuilding, siegeGear, raiseLadder, castleTick, ramTick, ramCrewPower, makeNpc, assignWarband, powerFor, set invincible(v) { invincibleT = v; }, get isDead() { return dead; }, pause(v) { uiPause = v; }, get playerAnim() { return playerAnim; }, attack, get facing() { return facing; }, get weaponMode() { return weaponMode; }, swapWeapon, get yaw() { return yaw; }, setClass, get order() { return order; }, get playerClass() { return playerClass; }, realmRelief, realmOfNight, realmHeld, realmCheck, holdsMorning, holdRisk, garrisonIt, holdOf, holdCount, get gameMin() { return gameMin; }, marchFood, homeOdds, homeThreat, homeGuard, resolveHomeNight, makeSnapshot, applySnapshot, get gathering() { return gathering; }, gather, get playerRig() { return playerRig; }, camTest: (d, p, front) => { camFront = front !== false; DIST = d; pitch = p; }, campRelief, hitEnemy, get exCamp() { return exCamp; }, EXC, requestReturn, story, openJournal, get stage() { return stage; }, get escortBands() { return escortBands; }, bandMax, openSmith, weaponDef, gearAtTier, soldierWeaponDef, playerGear, applyPlayerGear, openLevelPick, standardMods, standardRadius, pl, toggleMark, get markedFoe() { return markedFoe; }, homeCls, tripCls, setClassFor, cycleTripCls, startExpedition: typeof startExpedition === "function" ? startExpedition : null, endExpedition, warbandOrder, setWarbandOrder, needOf, powerOf, applyGear, openNpcCard, get playerAnim() { return playerAnim; }, spawnCaravan, get caravan() { return caravan; }, set caravanDay(v) { caravanDay = v; }, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, enemyArrows, specialKind, sectorHit, get facing() { return facing; }, set facing(v) { facing = v; }, assignForeman, upgradeGates, gateWaypoints, hitEnemy, climbMul, stepRoad, roadAt, get riverMode() { return riverMode; }, terrSpd, terrH, spawnChampion, CFG, res, npcs, enemies, obstacles, playerGear, player, setMin: m => { gameMin = m; }, getMin: () => gameMin, debugSetup, spawnEnemy, setClass, toggleBird, toggleOrder, choosePerk, openPerk, perks, rally: () => rally(), get bird() { return bird; }, scene, blueprints, makeRock, designDefense, designTown, exObjs, story, startExpedition, endExpedition, checkStory, get exActive() { return exActive; }, EVENTS, openEvent, nightTypeOf, openNpcCard, checkDepartures, snap: () => makeSnapshot(), recordBest, endlessMilestone, dm, get diff() { return diff; }, set diff(v) { diff = v; }, get ngLevel() { return ngLevel; }, set ngLevel(v) { ngLevel = v; }, scaleHp, readCarry, nightExpWhy, fireTale, nextTale, nightMerchantMenu, get nmActive() { return nmActive; }, NIGHT_EVENTS, get peaceT() { return peaceT; }, wave, hitEnemyDbg: (e) => hitEnemy(e, 999, e.position.x - 1, e.position.z, false, null, true), toggleRest, canRest, get resting() { return resting; }, vetLv, powerOf, needOf, pl, giveXp, openLevelPick, isRaid, checkStoryAll, unlockAch, achSave, achStep, ACH, openEvent, nightTypeOf, setEscort: n => { escortN = n; }, buildCamp, campIncome, storyChain, campMeshes, upgradeBuildings, rollSickness, seasonTick, season, citizens, merchantVisit, nextPref, jobTitle, bLevel, skillLv, saveGame, readSave, loadSave, tut, TUT, tutorStep, get saveReady() { return saveReady; }, settings, restore: sn => applySnapshot(sn), feedCitizens, openSmith, get peaceful() { return peaceful; } };
+  // ---------- Game controller (Xbox-style pad via the Gamepad API; Bluetooth pads work in the Android app) ----------
+  // Left stick moves, right stick turns the camera, buttons fire the same key actions as the keyboard (synthetic key events), so every key binding works.
+  //   A jump · B dash · X attack · Y swap weapon · RT attack · LT gather · RB ultimate · LB block (hold)
+  //   L-stick click mount · R-stick click mark foe · D-pad up/down zoom · D-pad left orders · D-pad right smithy · Back map view
+  //   Start: menu cursor on/off. In cursor mode the left stick moves a pointer, A clicks, right stick scrolls lists. It is on by itself on the title screen and in event windows.
+  const pad = { on: false, cursor: false, cx: 0, cy: 0, prev: [], el: null, keyHeld: {} };
+  const PAD_KEYS = { 0: 'Space', 1: 'KeyR', 2: 'KeyF', 3: 'KeyQ', 7: 'KeyF', 6: 'KeyG', 5: 'KeyE', 10: 'KeyM', 11: 'KeyY', 8: 'KeyB', 14: 'KeyO', 15: 'KeyC' };
+  const padKey = (type, code) => dispatchEvent(new KeyboardEvent(type, { code, key: code, bubbles: true }));
+  function padPointer(type, x, y, target) { const o = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' || type === 'click' ? 0 : 1, pointerId: 77, pointerType: 'mouse', isPrimary: true }; target.dispatchEvent(type === 'click' ? new MouseEvent('click', o) : new PointerEvent(type, o)); }
+  function padClick() {
+    const x = pad.cx, y = pad.cy; if (pad.el) pad.el.style.visibility = 'hidden';
+    const t = document.elementFromPoint(x, y); if (pad.el) pad.el.style.visibility = '';
+    if (!t) return; padPointer('pointerdown', x, y, t); padPointer('pointerup', x, y, t); padPointer('click', x, y, t);
+  }
+  function padScroll(dy) {
+    if (pad.el) pad.el.style.visibility = 'hidden'; let t = document.elementFromPoint(pad.cx, pad.cy); if (pad.el) pad.el.style.visibility = '';
+    for (; t && t !== document.body; t = t.parentElement) { if (t.scrollHeight > t.clientHeight + 2 && /auto|scroll/.test(getComputedStyle(t).overflowY)) { t.scrollTop += dy; return; } }
+  }
+  function padCursorOn(v) {
+    pad.cursor = v; if (!pad.el) { pad.el = document.createElement('div'); pad.el.style.cssText = 'position:fixed;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border:3px solid #ffd27a;border-radius:50%;background:rgba(255,210,122,.25);z-index:99999;pointer-events:none;display:none'; document.body.appendChild(pad.el); }
+    pad.el.style.display = v ? 'block' : 'none'; if (v) { pad.cx = pad.cx || innerWidth / 2; pad.cy = pad.cy || innerHeight / 2; }
+    if (v) { joy.x = 0; joy.y = 0; keys.ShiftLeft = false; }
+  }
+  addEventListener('gamepadconnected', () => { pad.on = true; toast('Controller connected'); });
+  addEventListener('gamepaddisconnected', () => { pad.on = !!(navigator.getGamepads && [...navigator.getGamepads()].some(Boolean)); if (!pad.on) { joy.x = 0; joy.y = 0; keys.ShiftLeft = false; padCursorOn(false); } });
+  let padLast = performance.now();
+  function padPoll() {
+    requestAnimationFrame(padPoll);
+    const now = performance.now(), dt = Math.min(0.05, (now - padLast) / 1000); padLast = now;
+    const gps = navigator.getGamepads ? navigator.getGamepads() : []; let g = null; for (const x of gps) if (x && x.connected) { g = x; break; }
+    if (!g) return; pad.on = true;
+    const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed), edge = (i) => b(i) && !pad.prev[i], dz = (v) => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
+    const lx = dz(g.axes[0] || 0), ly = dz(g.axes[1] || 0), rx = dz(g.axes[2] || 0), ry = dz(g.axes[3] || 0);
+    const auto = titleMode || eventOpen || uiPause;                  // menus and event windows need the pointer
+    if (edge(9)) padCursorOn(!pad.cursor); else if (auto && !pad.cursor) padCursorOn(true); else if (!auto && pad.cursor && pad.auto) padCursorOn(false);
+    pad.auto = auto && !edge(9);
+    if (pad.cursor) {
+      pad.cx = Math.max(0, Math.min(innerWidth - 1, pad.cx + lx * 900 * dt)); pad.cy = Math.max(0, Math.min(innerHeight - 1, pad.cy + ly * 900 * dt));
+      pad.el.style.left = pad.cx + 'px'; pad.el.style.top = pad.cy + 'px'; if (ry) padScroll(ry * 600 * dt);
+      if (edge(0) || edge(2) || edge(7)) padClick();
+      if (edge(1)) padKey('keydown', 'Escape');
+    } else if (!dead) {
+      if (lx || ly) { const m = Math.min(1, Math.hypot(lx, ly)); joy.x = lx / (Math.hypot(lx, ly) || 1) * m; joy.y = -ly / (Math.hypot(lx, ly) || 1) * m; pad.stick = true; } else if (pad.stick) { joy.x = 0; joy.y = 0; pad.stick = false; }
+      if (rx || ry) { yaw -= rx * 2.6 * dt; pitch = Math.min(bird ? 1.5 : 1.2, Math.max(bird ? 0.12 : 0.1, pitch + ry * 1.5 * dt)); }
+      if (b(12)) setDist(DIST * Math.exp(-1.2 * dt)); if (b(13)) setDist(DIST * Math.exp(1.2 * dt));
+      keys.ShiftLeft = b(4);                                                     // LB held = block
+      for (const k in PAD_KEYS) if (edge(+k) && !(+k === 9)) { padKey('keydown', PAD_KEYS[k]); setTimeout(() => padKey('keyup', PAD_KEYS[k]), 60); }
+    }
+    for (let i = 0; i < g.buttons.length; i++) pad.prev[i] = b(i);
+  }
+  requestAnimationFrame(padPoll);
   // ---------- Model field: a separate flat field to look at characters, mounts and your own .glb files with a free camera (Settings > Model field) ----------
   const mv = { scene: null, cam: null, subs: [], sel: 'all', weapon: 'sword', mounted: false, yaw: 0.5, pitch: 0.25, dist: 6, target: new THREE.Vector3(0, 1, 0), auto: false, action: 'idle', gl: [] };
   function mvInit() {
