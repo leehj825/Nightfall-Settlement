@@ -418,6 +418,7 @@ body.ad:not(.titlemode) { overflow: visible; position: fixed; top: var(--ad-h); 
 #adBanner { display: none; position: fixed; top: calc(-1 * var(--ad-h)); left: 0; right: 0; height: var(--ad-h); z-index: 60; background: #14101e; border-bottom: 1px solid rgba(255,255,255,.12); align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; }
 body.ad:not(.titlemode) #adBanner { display: flex; }
 #adBanner .adBox { width: min(100%, 320px); height: 50px; display: flex; align-items: center; justify-content: center; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .12em; color: #9a93ad; border: 1px dashed rgba(255,255,255,.25); border-radius: 4px; }
+#adBanner .adBox { transition: opacity .3s; } body.adLive #adBanner .adBox { opacity: 0; }
 </style>
 </head>
 <body>
@@ -4994,6 +4995,36 @@ body.ad:not(.titlemode) #adBanner { display: flex; }
     HP_SCALE_EVERY: 2,                         // 모든 적 최대 HP가 N일마다 +1 (보너스 = floor((Day-1)/N))
   };
   for (const id in CFG.GEAR) CFG.GEAR[id].id = id;
+
+</script>
+<script>
+// 'test' shows Google's sample banner (safe for development). The release build writes 'real' here (tools/make_www.js, env NF_ADS=real).
+window.NF_ADS_MODE = 'test';
+
+</script>
+<script>
+// Nightfall Settlement - AdMob banner (Android app only; the web build keeps the placeholder strip).
+// Never click your own real ads: debug builds use Google's test banner unless NF_ADS_MODE is 'real'.
+(function () {
+  const C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform()) return;
+  const AdMob = C.Plugins && C.Plugins.AdMob; if (!AdMob) return;
+  const real = window.NF_ADS_MODE === 'real';
+  const BANNER_ID = real ? 'ca-app-pub-4400173019354346/8899629819' : 'ca-app-pub-3940256099942544/6300978111';      // second = Google's sample banner
+  let shown = false;
+  async function show() { if (shown) return; shown = true; try { await AdMob.showBanner({ adId: BANNER_ID, adSize: 'BANNER', position: 'TOP_CENTER', margin: 0, isTesting: !real }); } catch (e) { shown = false; } }
+  async function hide() { if (!shown) return; shown = false; try { await AdMob.hideBanner(); } catch (e) { /* ignore */ } }
+  async function start() {
+    try {
+      await AdMob.initialize({ initializeForTesting: !real });
+      try { const info = await AdMob.requestConsentInfo(); if (info && info.isConsentFormAvailable && info.status === 'REQUIRED') await AdMob.showConsentForm(); } catch (e) { /* consent is optional outside the EEA */ }
+      AdMob.addListener('bannerAdLoaded', () => document.body.classList.add('adLive'));
+      AdMob.addListener('bannerAdFailedToLoad', () => document.body.classList.remove('adLive'));
+      const sync = () => { if (document.body.classList.contains('titlemode')) { hide(); document.body.classList.remove('adLive'); } else show(); };
+      new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] }); sync();
+    } catch (e) { /* ads are never allowed to break the game */ }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
 
 </script>
 <script>

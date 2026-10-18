@@ -16,6 +16,7 @@ jobs:
     env:
       VERSION_NAME: ${{ inputs.version_name }}
       VERSION_CODE: ${{ inputs.version_code }}
+      NF_ADS: real                      # the Play Store build shows real ads
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

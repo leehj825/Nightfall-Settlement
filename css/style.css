@@ -405,3 +405,4 @@ body.ad:not(.titlemode) { overflow: visible; position: fixed; top: var(--ad-h); 
 #adBanner { display: none; position: fixed; top: calc(-1 * var(--ad-h)); left: 0; right: 0; height: var(--ad-h); z-index: 60; background: #14101e; border-bottom: 1px solid rgba(255,255,255,.12); align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; }
 body.ad:not(.titlemode) #adBanner { display: flex; }
 #adBanner .adBox { width: min(100%, 320px); height: 50px; display: flex; align-items: center; justify-content: center; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .12em; color: #9a93ad; border: 1px dashed rgba(255,255,255,.25); border-radius: 4px; }
+#adBanner .adBox { transition: opacity .3s; } body.adLive #adBanner .adBox { opacity: 0; }
