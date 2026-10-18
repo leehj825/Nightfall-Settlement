@@ -3,7 +3,20 @@
     let ctx = null, master, sfxBus, musicBus, drone, noiseBuf, muted = false, vol = { sfx: 1, music: 1 }, mood = { nf: 0, danger: false, boss: false }, step = 0;
     const last = {};
     try { muted = localStorage.getItem('nf_mute') === '1'; const v = JSON.parse(localStorage.getItem('nf_vol') || '{}'); if (v.sfx >= 0 && v.sfx <= 1) vol.sfx = v.sfx; if (v.music >= 0 && v.music <= 1) vol.music = v.music; } catch (e) {}
+    // The song (audio/*.mp3) plays on a loop through the whole game, with a soft fade at both ends of each pass. It follows the Music slider and the mute button; the synthesized score only plays if the file cannot be loaded.
+    const TRACK_URL = 'audio/kingdom_at_nights_edge.mp3'; let track = null, trackOk = false;
+    function trackStart() {
+      if (!track) { try { track = new Audio(TRACK_URL); track.loop = true; track.preload = 'auto'; track.addEventListener('playing', () => { trackOk = true; }); track.addEventListener('error', () => { trackOk = false; }); setInterval(trackTick, 200); } catch (e) { track = null; return; } }
+      if (!muted && track.paused && !document.hidden) { const pr = track.play(); if (pr && pr.catch) pr.catch(() => {}); }
+    }
+    function trackTick() {
+      if (!track) return;
+      const d = track.duration, t = track.currentTime, fade = d > 8 ? Math.max(0, Math.min(1, t / 2, (d - t) / 3)) : 1;
+      track.volume = Math.max(0, Math.min(1, 0.85 * vol.music * fade)); track.muted = muted;
+      if (document.hidden && !track.paused) track.pause(); else if (!document.hidden && !muted && track.paused) { const pr = track.play(); if (pr && pr.catch) pr.catch(() => {}); }
+    }
     function init() {
+      trackStart();
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -74,7 +87,7 @@
     const NIGHT_CH = [[45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 58], [40, 47, 52, 55]];        // Am F G(m) Em, low and slow
     const DANGER_ROOT = [38, 38, 41, 36];
     function musicTick() {
-      if (!ctx || muted) return;
+      if (!ctx || muted || trackOk) return;
       step++;
       drone.gain.setTargetAtTime(0.35 * mood.nf * (mood.danger ? 1.5 : 1), ctx.currentTime, 1.5);
       const bar = (step >> 3) & 3, beat = step & 7;                       // 8 ticks per bar, a bar per chord
@@ -99,6 +112,7 @@
     function setMuted(m) {
       muted = m; try { localStorage.setItem('nf_mute', m ? '1' : '0'); } catch (e) {}
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05);
+      if (track) { track.muted = m; if (!m && track.paused) trackStart(); }
       const b = document.getElementById('muteBtn'); if (b) b.textContent = m ? '🔇' : '🔊';
     }
     function setVol(kind, v) {
