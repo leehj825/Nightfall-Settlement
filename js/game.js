@@ -6647,7 +6647,7 @@
     if (!g) return; pad.on = true;
     const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed), edge = (i) => b(i) && !pad.prev[i], dz = (v) => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
     const lx = dz(g.axes[0] || 0), ly = dz(g.axes[1] || 0), rx = dz(g.axes[2] || 0), ry = dz(g.axes[3] || 0);
-    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) pad.activeT = now;
+    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) { pad.activeT = now; ctlSeen('pad'); }
     const auto = (titleMode || eventOpen || uiPause) && (pad.activeT || 0) > (pad.touchT || 0);                  // menus and event windows get the pad cursor only while the pad was used after the last touch (touch always works)
     if (edge(9)) padCursorOn(!pad.cursor); else if (auto && !pad.cursor) padCursorOn(true); else if (!auto && pad.cursor && pad.auto) padCursorOn(false);
     pad.auto = auto && !edge(9);
@@ -6666,6 +6666,30 @@
     for (let i = 0; i < g.buttons.length; i++) pad.prev[i] = b(i);
   }
   requestAnimationFrame(padPoll);
+  // ---------- On-screen controls: auto-hide while a keyboard or controller is the last thing used; the 🎮 button cycles Auto / Show / Hide by choice (saved) ----------
+  const ctl = { mode: 'auto', last: 'touch' };
+  try { const m = localStorage.getItem('nf_ctl'); if (m === 'show' || m === 'hide' || m === 'auto') ctl.mode = m; } catch (e) { /* ignore */ }
+  const CTL_ICON = { auto: '🎮', show: '👆', hide: '🚫' }, CTL_TEXT = { auto: 'Auto: the on-screen buttons hide while a keyboard or controller is used', show: 'On-screen buttons: always shown', hide: 'On-screen buttons: hidden' };
+  function applyCtl() {
+    const hide = ctl.mode === 'hide' || (ctl.mode === 'auto' && ctl.last !== 'touch');
+    document.body.classList.toggle('ctlHidden', hide);
+    const b = document.getElementById('ctlBtn'); if (b) { b.textContent = CTL_ICON[ctl.mode]; b.title = CTL_TEXT[ctl.mode]; }
+  }
+  function ctlSeen(kind) { if (ctl.last !== kind) { ctl.last = kind; applyCtl(); } }
+  addEventListener('keydown', e => { if (e.isTrusted && !e.repeat && !/^(Shift|Control|Alt|Meta)/.test(e.code)) ctlSeen('keys'); }, true);
+  addEventListener('pointerdown', e => { if (e.isTrusted && (e.pointerType === 'touch' || e.pointerType === 'pen')) ctlSeen('touch'); }, true);
+  { const b = document.getElementById('ctlBtn');
+    if (b) {
+      b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); const nx = { auto: 'show', show: 'hide', hide: 'auto' }[ctl.mode]; ctl.mode = nx; if (nx === 'auto') ctl.last = 'touch'; try { localStorage.setItem('nf_ctl', nx); } catch (er) { /* ignore */ } applyCtl(); toast(CTL_TEXT[nx]); });
+      const place = () => {                                          // sits next to the settings button, using that button's own (containing-block relative) offsets
+        const s = document.getElementById('setBtn'); if (!s || !s.offsetWidth) return; const cs = getComputedStyle(s), w = s.offsetWidth + 6, left = document.documentElement.dataset.hand === 'l';
+        b.style.width = b.style.height = s.offsetWidth + 'px'; b.style.top = 'auto'; b.style.bottom = cs.bottom;
+        if (left) { b.style.left = 'auto'; b.style.right = (parseFloat(cs.right) + w) + 'px'; } else { b.style.right = 'auto'; b.style.left = (parseFloat(cs.left) + w) + 'px'; }
+      };
+      setInterval(place, 700); addEventListener('resize', place); place();
+    }
+  }
+  applyCtl();
   // ---------- Model field: a separate flat field to look at characters, mounts and your own .glb files with a free camera (Settings > Model field) ----------
   const mv = { scene: null, cam: null, subs: [], sel: 'all', weapon: 'sword', mounted: false, yaw: 0.5, pitch: 0.25, dist: 6, target: new THREE.Vector3(0, 1, 0), auto: false, action: 'idle', gl: [] };
   function mvInit() {

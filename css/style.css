@@ -406,3 +406,9 @@ body.ad:not(.titlemode) { overflow: visible; position: fixed; top: var(--ad-h); 
 body.ad:not(.titlemode) #adBanner { display: flex; }
 #adBanner .adBox { width: min(100%, 320px); height: 50px; display: flex; align-items: center; justify-content: center; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .12em; color: #9a93ad; border: 1px dashed rgba(255,255,255,.25); border-radius: 4px; }
 #adBanner .adBox { transition: opacity .3s; } body.adLive #adBanner .adBox { opacity: 0; }
+
+/* on-screen touch controls: hidden while a keyboard or controller is in use, or by choice (the ctlBtn toggle) */
+body.ctlHidden #joy, body.ctlHidden #leftActions, body.ctlHidden #ctxActions, body.ctlHidden #actions { display: none !important; }
+#ctlBtn { position: fixed; left: 264px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 17px; padding: 0; cursor: pointer; }
+@media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #ctlBtn { width: 32px; height: 32px; font-size: 14px; bottom: 12px; } }
+body.titlemode #ctlBtn { display: none; }

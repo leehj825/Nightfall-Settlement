@@ -419,6 +419,12 @@ body.ad:not(.titlemode) { overflow: visible; position: fixed; top: var(--ad-h); 
 body.ad:not(.titlemode) #adBanner { display: flex; }
 #adBanner .adBox { width: min(100%, 320px); height: 50px; display: flex; align-items: center; justify-content: center; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .12em; color: #9a93ad; border: 1px dashed rgba(255,255,255,.25); border-radius: 4px; }
 #adBanner .adBox { transition: opacity .3s; } body.adLive #adBanner .adBox { opacity: 0; }
+
+/* on-screen touch controls: hidden while a keyboard or controller is in use, or by choice (the ctlBtn toggle) */
+body.ctlHidden #joy, body.ctlHidden #leftActions, body.ctlHidden #ctxActions, body.ctlHidden #actions { display: none !important; }
+#ctlBtn { position: fixed; left: 264px; bottom: 18px; z-index: 6; width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); background: rgba(20,10,30,.55); color: #fff; font-size: 17px; padding: 0; cursor: pointer; }
+@media (max-height: 520px) and (orientation: landscape), (max-width: 640px) and (orientation: portrait) { #ctlBtn { width: 32px; height: 32px; font-size: 14px; bottom: 12px; } }
+body.titlemode #ctlBtn { display: none; }
 </style>
 </head>
 <body>
@@ -452,6 +458,7 @@ body.ad:not(.titlemode) #adBanner { display: flex; }
 <div id="report"><h4 id="repTitle"></h4><ul id="repList"></ul><small>Tap to dismiss</small></div>
 <button id="muteBtn" title="Sound (M)">🔊</button>
 <button id="setBtn" title="Settings">⚙️</button>
+<button id="ctlBtn" title="On-screen buttons">🎮</button>
 <div id="repPanel" style="display:none"><div class="scard2"><h3>Balance report</h3><p class="jhint">Copy this and send it along when something felt too easy or too hard.</p><textarea id="repText" readonly rows="12" style="width:100%;box-sizing:border-box;font:11px/1.35 monospace;background:#17120d;color:#e8dcc4;border:1px solid #6b5a3a;border-radius:8px;padding:6px"></textarea><div class="tbtns"><button id="repCopy">Copy</button><button id="repClose">Close</button></div></div></div>
 <div id="treePanel"><div class="scard2 tree"><h3>Hero skills</h3><p class="jhint" id="treeHead"></p><div id="treeCols"></div><div class="tbtns"><button id="treeClose">Close</button></div></div></div>
 <div id="achPanel"><div class="scard2"><h3>Achievements</h3><p id="achCount"></p><div id="achList"></div><div class="tbtns"><button id="achClose">Close</button></div></div></div>
@@ -12788,7 +12795,7 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     if (!g) return; pad.on = true;
     const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed), edge = (i) => b(i) && !pad.prev[i], dz = (v) => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
     const lx = dz(g.axes[0] || 0), ly = dz(g.axes[1] || 0), rx = dz(g.axes[2] || 0), ry = dz(g.axes[3] || 0);
-    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) pad.activeT = now;
+    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) { pad.activeT = now; ctlSeen('pad'); }
     const auto = (titleMode || eventOpen || uiPause) && (pad.activeT || 0) > (pad.touchT || 0);                  // menus and event windows get the pad cursor only while the pad was used after the last touch (touch always works)
     if (edge(9)) padCursorOn(!pad.cursor); else if (auto && !pad.cursor) padCursorOn(true); else if (!auto && pad.cursor && pad.auto) padCursorOn(false);
     pad.auto = auto && !edge(9);
@@ -12807,6 +12814,30 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     for (let i = 0; i < g.buttons.length; i++) pad.prev[i] = b(i);
   }
   requestAnimationFrame(padPoll);
+  // ---------- On-screen controls: auto-hide while a keyboard or controller is the last thing used; the 🎮 button cycles Auto / Show / Hide by choice (saved) ----------
+  const ctl = { mode: 'auto', last: 'touch' };
+  try { const m = localStorage.getItem('nf_ctl'); if (m === 'show' || m === 'hide' || m === 'auto') ctl.mode = m; } catch (e) { /* ignore */ }
+  const CTL_ICON = { auto: '🎮', show: '👆', hide: '🚫' }, CTL_TEXT = { auto: 'Auto: the on-screen buttons hide while a keyboard or controller is used', show: 'On-screen buttons: always shown', hide: 'On-screen buttons: hidden' };
+  function applyCtl() {
+    const hide = ctl.mode === 'hide' || (ctl.mode === 'auto' && ctl.last !== 'touch');
+    document.body.classList.toggle('ctlHidden', hide);
+    const b = document.getElementById('ctlBtn'); if (b) { b.textContent = CTL_ICON[ctl.mode]; b.title = CTL_TEXT[ctl.mode]; }
+  }
+  function ctlSeen(kind) { if (ctl.last !== kind) { ctl.last = kind; applyCtl(); } }
+  addEventListener('keydown', e => { if (e.isTrusted && !e.repeat && !/^(Shift|Control|Alt|Meta)/.test(e.code)) ctlSeen('keys'); }, true);
+  addEventListener('pointerdown', e => { if (e.isTrusted && (e.pointerType === 'touch' || e.pointerType === 'pen')) ctlSeen('touch'); }, true);
+  { const b = document.getElementById('ctlBtn');
+    if (b) {
+      b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); const nx = { auto: 'show', show: 'hide', hide: 'auto' }[ctl.mode]; ctl.mode = nx; if (nx === 'auto') ctl.last = 'touch'; try { localStorage.setItem('nf_ctl', nx); } catch (er) { /* ignore */ } applyCtl(); toast(CTL_TEXT[nx]); });
+      const place = () => {                                          // sits next to the settings button, using that button's own (containing-block relative) offsets
+        const s = document.getElementById('setBtn'); if (!s || !s.offsetWidth) return; const cs = getComputedStyle(s), w = s.offsetWidth + 6, left = document.documentElement.dataset.hand === 'l';
+        b.style.width = b.style.height = s.offsetWidth + 'px'; b.style.top = 'auto'; b.style.bottom = cs.bottom;
+        if (left) { b.style.left = 'auto'; b.style.right = (parseFloat(cs.right) + w) + 'px'; } else { b.style.right = 'auto'; b.style.left = (parseFloat(cs.left) + w) + 'px'; }
+      };
+      setInterval(place, 700); addEventListener('resize', place); place();
+    }
+  }
+  applyCtl();
   // ---------- Model field: a separate flat field to look at characters, mounts and your own .glb files with a free camera (Settings > Model field) ----------
   const mv = { scene: null, cam: null, subs: [], sel: 'all', weapon: 'sword', mounted: false, yaw: 0.5, pitch: 0.25, dist: 6, target: new THREE.Vector3(0, 1, 0), auto: false, action: 'idle', gl: [] };
   function mvInit() {

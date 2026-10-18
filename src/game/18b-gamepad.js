@@ -32,7 +32,7 @@
     if (!g) return; pad.on = true;
     const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed), edge = (i) => b(i) && !pad.prev[i], dz = (v) => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
     const lx = dz(g.axes[0] || 0), ly = dz(g.axes[1] || 0), rx = dz(g.axes[2] || 0), ry = dz(g.axes[3] || 0);
-    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) pad.activeT = now;
+    const any = lx || ly || rx || ry || g.buttons.some(x => x && x.pressed); if (any) { pad.activeT = now; ctlSeen('pad'); }
     const auto = (titleMode || eventOpen || uiPause) && (pad.activeT || 0) > (pad.touchT || 0);                  // menus and event windows get the pad cursor only while the pad was used after the last touch (touch always works)
     if (edge(9)) padCursorOn(!pad.cursor); else if (auto && !pad.cursor) padCursorOn(true); else if (!auto && pad.cursor && pad.auto) padCursorOn(false);
     pad.auto = auto && !edge(9);
