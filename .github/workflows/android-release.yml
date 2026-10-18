@@ -1,22 +1,29 @@
-# Builds a Play-Store-ready release bundle (.aab) and a release APK. Manual only: Actions -> "Android release" -> Run workflow.
+# Builds a Play-Store-ready release bundle (.aab) and a release APK. Runs on every merge/push to main, or by hand: Actions -> "Android release" -> Run workflow.
+# The release build removes the developer features (?debug=1 tools, window.__nf, the title-screen Debug start, Model field) and shows real ads.
+# Every run also publishes a GitHub Release "release-<run number>" with the .aab and .apk attached. Version name 1.0.<run number>, version code = run number.
 # Signing needs four repository secrets (see RELEASE.md). Without them the build still runs but produces UNSIGNED output.
 name: Android release
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Version name shown to players (e.g. 1.0.1)'
-        default: '1.0'
+        description: 'Version name shown to players (leave empty for 1.0.<run number>)'
+        default: ''
       version_code:
-        description: 'Integer that must increase with every Play Store upload'
-        default: '1'
+        description: 'Integer that must increase with every Play Store upload (leave empty for the run number)'
+        default: ''
+permissions:
+  contents: write
 jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VERSION_NAME: ${{ inputs.version_name }}
-      VERSION_CODE: ${{ inputs.version_code }}
+      VERSION_NAME: ${{ inputs.version_name || format('1.0.{0}', github.run_number) }}
+      VERSION_CODE: ${{ inputs.version_code || github.run_number }}
       NF_ADS: real                      # the Play Store build shows real ads
+      NF_RELEASE: '1'                   # and has no developer features
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,6 +49,8 @@ jobs:
           else
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret - the output will be unsigned"
           fi
+      - name: Check js/game.js matches src/game parts
+        run: python3 tools/build_game.py --check
       - run: npm ci
       - run: npm run www && npx cap sync android
       - name: Build AAB and APK
@@ -54,3 +63,11 @@ jobs:
             android/app/build/outputs/bundle/release/*.aab
             android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+      - name: Publish a GitHub Release with the bundle and APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="release-${VERSION_CODE}"
+          gh release create "$tag" --target "${GITHUB_SHA}" --title "Nightfall Settlement ${VERSION_NAME}" \
+            --notes "Release build ${VERSION_NAME} (code ${VERSION_CODE}) from ${GITHUB_SHA}. Upload the .aab to the Play Console." \
+            android/app/build/outputs/bundle/release/*.aab android/app/build/outputs/apk/release/*.apk
