@@ -12668,6 +12668,10 @@ const mat = (c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true,
     try { saveGame(); sessionStorage.setItem('nf_intent', 'title'); } catch (e) { /* ignore */ }
     location.reload();
   });
+  { const A = document.getElementById('actions'), C = document.getElementById('ctxActions');       // the context buttons sit right beside however many columns the action buttons wrap into
+    const placeCtx = () => { if (!A || !C) return; const r = A.getBoundingClientRect(), left = document.documentElement.dataset.hand === 'l'; if (!r.width) return;
+      if (left) { C.style.left = Math.round(r.right + 8) + 'px'; C.style.right = ''; } else { C.style.right = Math.round(document.body.clientWidth - r.left + 8) + 'px'; C.style.left = ''; } };
+    if (window.ResizeObserver && A) new ResizeObserver(placeCtx).observe(A); addEventListener('resize', placeCtx); setInterval(placeCtx, 700); placeCtx(); }
   updateStageUi(); updateTownBtn(); updateRaidUi(8, 1);
   bootGame();      // 처음 시작할 때 역할 선택 (저장이 있으면 이어하기 선택)
   if (!document.body.classList.contains('titlemode')) setTimeout(hideBootCover, 600);        // not the title screen (continue / new game / debug): show the game itself
